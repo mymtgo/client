@@ -44,10 +44,12 @@ class SyncDecks
             }
 
             $cards = collect($array['Item'])->map(function ($item) {
+                $attrs = $item['@attributes'] ?? $item;
+
                 return [
-                    'mtgo_id' => $item['@attributes']['CatId'],
-                    'quantity' => $item['@attributes']['Quantity'],
-                    'sideboard' => $item['@attributes']['IsSideboard'],
+                    'mtgo_id' => $attrs['CatId'],
+                    'quantity' => $attrs['Quantity'],
+                    'sideboard' => $attrs['IsSideboard'],
                 ];
             });
 
