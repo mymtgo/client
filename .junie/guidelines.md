@@ -1,6 +1,18 @@
 <laravel-boost-guidelines>
 === foundation rules ===
 
+# AI AGENTS – READ THIS FIRST
+
+This project uses **local MTGO files** (logs + XML).
+There is NO API.
+
+Before answering questions:
+1. Read `/docs/system.md`
+2. Read `/docs/pipelines.md`
+3. Read `/docs/database.md`
+4. Understand the ingestion pipeline
+5. Assume file-based data only
+
 # Laravel Boost Guidelines
 
 The Laravel Boost guidelines are specifically curated by Laravel maintainers for this application. These guidelines should be followed closely to enhance the user's satisfaction building Laravel applications.
