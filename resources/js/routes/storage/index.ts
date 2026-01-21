@@ -1,8 +1,8 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, applyUrlDefaults } from './../../wayfinder'
 /**
- * @see vendor/laravel/framework/src/Illuminate/Filesystem/FilesystemServiceProvider.php:98
- * @route '/storage/{path}'
- */
+* @see vendor/laravel/framework/src/Illuminate/Filesystem/FilesystemServiceProvider.php:98
+* @route '/storage/{path}'
+*/
 export const local = (args: { path: string | number } | [path: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: local.url(args, options),
     method: 'get',
@@ -14,26 +14,25 @@ local.definition = {
 } satisfies RouteDefinition<["get","head"]>
 
 /**
- * @see vendor/laravel/framework/src/Illuminate/Filesystem/FilesystemServiceProvider.php:98
- * @route '/storage/{path}'
- */
+* @see vendor/laravel/framework/src/Illuminate/Filesystem/FilesystemServiceProvider.php:98
+* @route '/storage/{path}'
+*/
 local.url = (args: { path: string | number } | [path: string | number ] | string | number, options?: RouteQueryOptions) => {
     if (typeof args === 'string' || typeof args === 'number') {
         args = { path: args }
     }
 
-    
     if (Array.isArray(args)) {
         args = {
-                    path: args[0],
-                }
+            path: args[0],
+        }
     }
 
     args = applyUrlDefaults(args)
 
     const parsedArgs = {
-                        path: args.path,
-                }
+        path: args.path,
+    }
 
     return local.definition.url
             .replace('{path}', parsedArgs.path.toString())
@@ -41,21 +40,23 @@ local.url = (args: { path: string | number } | [path: string | number ] | string
 }
 
 /**
- * @see vendor/laravel/framework/src/Illuminate/Filesystem/FilesystemServiceProvider.php:98
- * @route '/storage/{path}'
- */
+* @see vendor/laravel/framework/src/Illuminate/Filesystem/FilesystemServiceProvider.php:98
+* @route '/storage/{path}'
+*/
 local.get = (args: { path: string | number } | [path: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: local.url(args, options),
     method: 'get',
 })
+
 /**
- * @see vendor/laravel/framework/src/Illuminate/Filesystem/FilesystemServiceProvider.php:98
- * @route '/storage/{path}'
- */
+* @see vendor/laravel/framework/src/Illuminate/Filesystem/FilesystemServiceProvider.php:98
+* @route '/storage/{path}'
+*/
 local.head = (args: { path: string | number } | [path: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     url: local.url(args, options),
     method: 'head',
 })
+
 const storage = {
     local: Object.assign(local, local),
 }
