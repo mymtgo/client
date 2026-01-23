@@ -1,0 +1,20 @@
+{
+  "mcpServers": {
+    "laravel-boost": {
+      "command": "/Users/alecritson/Library/Application Support/Herd/bin/php84",
+      "args": [
+        "/Volumes/Dev/mymtgo/client/artisan",
+        "boost:mcp"
+      ]
+    },
+    "herd": {
+      "command": "/Users/alecritson/Library/Application Support/Herd/bin/php84",
+      "args": [
+        "/Applications/Herd.app/Contents/Resources/herd-mcp.phar"
+      ],
+      "env": {
+        "SITE_PATH": "/Volumes/Dev/mymtgo/client"
+      }
+    }
+  }
+}

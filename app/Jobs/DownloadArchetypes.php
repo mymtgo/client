@@ -27,11 +27,15 @@ class DownloadArchetypes implements ShouldQueue
         $response = Http::withoutVerifying()->get('https://api.test/api/archetypes');
 
         foreach ($response->json() as $archetype) {
-            Archetype::firstOrCreate([
+            $model = Archetype::where('uuid', $archetype['uuid'])->first() ?: new Archetype([
                 'name' => $archetype['name'],
-                'format' => $archetype['format'],
-            ], [
                 'uuid' => $archetype['uuid'],
+                'format' => strtolower($archetype['format']),
+            ]);
+
+            $model->save();
+
+            $model->update([
                 'color_identity' => $archetype['colorIdentity'],
             ]);
         }

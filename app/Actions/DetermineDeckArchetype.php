@@ -23,7 +23,7 @@ class DetermineDeckArchetype
 
         $archetype = array_first($archetypes);
 
-        $archetypeModel = Archetype::where('uuid', $archetype['archetype']['uuid'])->first();
+        $archetypeModel = Archetype::where('uuid', $archetype['uuid'])->first();
 
         if (! $archetypeModel) {
             return null;

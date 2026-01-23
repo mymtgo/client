@@ -14,7 +14,6 @@ class DetermineMatchArchetypes
         $player = $match->games->first()->localPlayers->first();
 
         $playerDeck = $player->pivot->deck_json;
-
         $archetype = DetermineDeckArchetype::run(collect($playerDeck), $match->format);
 
         if ($archetype) {

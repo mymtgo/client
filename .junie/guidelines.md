@@ -3,6 +3,9 @@
 
 # AI AGENTS – READ THIS FIRST
 
+If you have not read the documents listed below in order,
+you do not have enough context to answer questions about this project.
+
 This project uses **local MTGO files** (logs + XML).
 There is NO API.
 
@@ -10,8 +13,12 @@ Before answering questions:
 1. Read `/docs/system.md`
 2. Read `/docs/pipelines.md`
 3. Read `/docs/database.md`
-4. Understand the ingestion pipeline
-5. Assume file-based data only
+4. Read `/docs/known_mtgo_lies_and_traps.md`
+5. Understand that Matches and Games are BUILT by projecting LogEvents, not inferred from database tables
+6. Assume local, append-only, file-based data only
+
+If a proposed solution assumes clean match starts, clean match ends,
+or deterministic MTGO behaviour, the solution is incorrect.
 
 # Laravel Boost Guidelines
 
