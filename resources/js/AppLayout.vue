@@ -13,12 +13,24 @@ const page = usePage();
 </script>
 
 <template>
-    <UApp>
-        Hello
+    <SidebarProvider>
+        <AppSidebar variant="inset" />
 
-        <UButton>Hello</UButton>
-        <slot />
-    </UApp>
+        <SidebarInset>
+            <SiteHeader>
+                <template #title> {{ title }} </template>
+            </SiteHeader>
+            <div class="flex flex-1 flex-col">
+                <div class="@container/main flex flex-1 flex-col gap-2">
+                    <div class="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
+                        <div class="px-4 lg:px-6">
+                            <slot />
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </SidebarInset>
+    </SidebarProvider>
 </template>
 
 <style scoped></style>

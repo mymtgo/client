@@ -2,7 +2,6 @@ import './bootstrap';
 
 import { createInertiaApp } from '@inertiajs/vue3';
 import { createApp, h } from 'vue';
-import ui from '@nuxt/ui/vue-plugin';
 
 createInertiaApp({
     resolve: (name) => {
@@ -12,7 +11,6 @@ createInertiaApp({
     setup({ el, App, props, plugin }) {
         createApp({ render: () => h(App, props) })
             .use(plugin)
-            .use(ui)
             .mount(el);
     },
 });
