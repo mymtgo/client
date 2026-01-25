@@ -1,8 +1,8 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, applyUrlDefaults } from './../../../../../wayfinder'
 /**
-* @see \App\Http\Controllers\Matches\ShowController::__invoke
-* @see app/Http/Controllers/Matches/ShowController.php:16
-* @route '/matches/{id}'
+* @see \App\Http\Controllers\Games\ShowController::__invoke
+* @see app/Http/Controllers/Games/ShowController.php:14
+* @route '/games/{id}'
 */
 const ShowController = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: ShowController.url(args, options),
@@ -11,13 +11,13 @@ const ShowController = (args: { id: string | number } | [id: string | number ] |
 
 ShowController.definition = {
     methods: ["get","head"],
-    url: '/matches/{id}',
+    url: '/games/{id}',
 } satisfies RouteDefinition<["get","head"]>
 
 /**
-* @see \App\Http\Controllers\Matches\ShowController::__invoke
-* @see app/Http/Controllers/Matches/ShowController.php:16
-* @route '/matches/{id}'
+* @see \App\Http\Controllers\Games\ShowController::__invoke
+* @see app/Http/Controllers/Games/ShowController.php:14
+* @route '/games/{id}'
 */
 ShowController.url = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions) => {
     if (typeof args === 'string' || typeof args === 'number') {
@@ -42,9 +42,9 @@ ShowController.url = (args: { id: string | number } | [id: string | number ] | s
 }
 
 /**
-* @see \App\Http\Controllers\Matches\ShowController::__invoke
-* @see app/Http/Controllers/Matches/ShowController.php:16
-* @route '/matches/{id}'
+* @see \App\Http\Controllers\Games\ShowController::__invoke
+* @see app/Http/Controllers/Games/ShowController.php:14
+* @route '/games/{id}'
 */
 ShowController.get = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: ShowController.url(args, options),
@@ -52,9 +52,9 @@ ShowController.get = (args: { id: string | number } | [id: string | number ] | s
 })
 
 /**
-* @see \App\Http\Controllers\Matches\ShowController::__invoke
-* @see app/Http/Controllers/Matches/ShowController.php:16
-* @route '/matches/{id}'
+* @see \App\Http\Controllers\Games\ShowController::__invoke
+* @see app/Http/Controllers/Games/ShowController.php:14
+* @route '/games/{id}'
 */
 ShowController.head = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     url: ShowController.url(args, options),

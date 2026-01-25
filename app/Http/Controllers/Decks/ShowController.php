@@ -19,8 +19,6 @@ class ShowController extends Controller
 {
     public function __invoke(string $id, Request $request)
     {
-        (new BuildMatches())->run();
-
         $deck = Deck::with(['matches.opponentArchetypes.archetype'])->withCount(['wonMatches', 'lostMatches', 'matches'])->find($id);
 
         if (! $deck) {

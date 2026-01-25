@@ -4,6 +4,7 @@ namespace App\Data\Front;
 
 use App\Models\MtgoMatch;
 use Carbon\Carbon;
+use Illuminate\Support\Collection;
 use Spatie\LaravelData\Data;
 use Spatie\LaravelData\Lazy;
 
@@ -22,6 +23,7 @@ class MatchData extends Data
         public string $matchTime,
         public Lazy|DeckData $deck,
         public Lazy $opponentArchetypes,
+        public Lazy|Collection $games,
     ) {}
 
     public static function fromModel(MtgoMatch $match): self
@@ -38,6 +40,7 @@ class MatchData extends Data
             matchTime: $match->matchTime,
             deck: Lazy::whenLoaded('deck', $match, fn () => DeckData::from($match->deck)),
             opponentArchetypes: Lazy::whenLoaded('opponentArchetypes', $match, fn () => MatchArchetypeData::collect($match->opponentArchetypes)),
+            games: Lazy::whenLoaded('games', $match, fn () => GameData::collect($match->games)),
         );
     }
 }

@@ -23,6 +23,12 @@ Route::group([
     });
 
     $router->group([
+        'prefix' => 'games',
+    ], function (\Illuminate\Routing\Router $group) {
+        $group->get('{id}', \App\Http\Controllers\Games\ShowController::class)->name('games.show');
+    });
+
+    $router->group([
         'prefix' => 'decks',
     ], function (\Illuminate\Routing\Router $group) {
         $group->get('{deck:id}', \App\Http\Controllers\Decks\ShowController::class)->name('decks.show');
