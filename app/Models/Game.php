@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Game extends Model
@@ -42,5 +43,10 @@ class Game extends Model
     public function deck(): HasOne
     {
         return $this->hasOne(GameDeck::class);
+    }
+
+    public function timeline(): HasMany
+    {
+        return $this->hasMany(GameTimeline::class);
     }
 }
