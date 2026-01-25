@@ -9,6 +9,7 @@ use Spatie\LaravelData\Data;
 class CardData extends Data
 {
     public function __construct(
+        public ?int $mtgoId,
         public ?string $name,
         public ?string $type,
         public ?string $identity,
@@ -26,12 +27,13 @@ class CardData extends Data
         }
 
         return new self(
+            mtgoId: $card->mtgo_id,
             name: $card->name,
             type: $type,
             identity: $card->color_identity,
             image: $card->image,
             quantity: $card->quantity ?: 1,
-            sideboard: $card->sideboard,
+            sideboard: $card->sideboard ?: false,
         );
     }
 }
