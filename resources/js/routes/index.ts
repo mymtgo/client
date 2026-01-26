@@ -1,7 +1,7 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition } from './../wayfinder'
 /**
 * @see \App\Http\Controllers\IndexController::__invoke
-* @see app/Http/Controllers/IndexController.php:20
+* @see app/Http/Controllers/IndexController.php:10
 * @route '/'
 */
 export const home = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -16,7 +16,7 @@ home.definition = {
 
 /**
 * @see \App\Http\Controllers\IndexController::__invoke
-* @see app/Http/Controllers/IndexController.php:20
+* @see app/Http/Controllers/IndexController.php:10
 * @route '/'
 */
 home.url = (options?: RouteQueryOptions) => {
@@ -25,7 +25,7 @@ home.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\IndexController::__invoke
-* @see app/Http/Controllers/IndexController.php:20
+* @see app/Http/Controllers/IndexController.php:10
 * @route '/'
 */
 home.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -35,7 +35,7 @@ home.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 
 /**
 * @see \App\Http\Controllers\IndexController::__invoke
-* @see app/Http/Controllers/IndexController.php:20
+* @see app/Http/Controllers/IndexController.php:10
 * @route '/'
 */
 home.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({

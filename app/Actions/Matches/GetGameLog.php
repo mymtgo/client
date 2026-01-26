@@ -2,8 +2,8 @@
 
 namespace App\Actions\Matches;
 
-use App\Models\GameLog;
 use App\Facades\Mtgo;
+use App\Models\GameLog;
 
 class GetGameLog
 {
