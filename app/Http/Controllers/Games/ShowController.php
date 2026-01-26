@@ -2,12 +2,16 @@
 
 namespace App\Http\Controllers\Games;
 
+use App\Data\Front\GameTimelineData;
 use App\Data\Front\MatchData;
 use App\Http\Controllers\Controller;
+use App\Models\Card;
 use App\Models\Game;
+use App\Models\GameTimeline;
 use App\Models\MtgoMatch;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use function Laravel\Prompts\form;
 
 class ShowController extends Controller
 {
@@ -15,8 +19,49 @@ class ShowController extends Controller
     {
         $game = Game::find($id);
 
-        return Inertia::render('games/Game', [
+        $timeline = GameTimeline::where('game_id', $id)->get();
+
+        $cards = [];
+
+        foreach ($timeline as $event) {
+            $eventCards = $event->content['Cards'];
+            foreach ($eventCards as $eventCard) {
+                $cards[] = $eventCard['CatalogID'];
+            }
+        }
+
+        $cardIds = collect($cards)->unique();
+
+        $cardModels = Card::whereIn('mtgo_id', $cardIds)->get();
+
+        $events = [];
+
+        $localPlayer = $game->localPlayers->first();
+
+        foreach ($timeline as $eIndex => $event) {
+            $content = $event->content;
+
+            foreach ($content['Players'] as $playerIndex => $player) {
+                $content['Players'][$playerIndex]['IsLocal'] = $localPlayer->username == $player['Name'];
+            }
+
+            foreach ($content['Cards'] as $cardIndex => $eventCard) {
+                $cardModel = $cardModels->first(
+                    fn ($m) => $m->mtgo_id == $eventCard['CatalogID']
+                );
+
+                $content['Cards'][$cardIndex]['image'] = $cardModel?->image;
+            }
+
+            $events[] = new GameTimelineData(
+                timestamp: $event->timestamp,
+                content: $content
+            );
+        }
+
+        return Inertia::render('games/Show', [
             'game' => $game,
+            'timeline' => GameTimelineData::collect($events),
         ]);
     }
 }
