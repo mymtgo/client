@@ -1,7 +1,7 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, applyUrlDefaults } from './../../wayfinder'
 /**
 * @see \App\Http\Controllers\Games\ShowController::__invoke
-* @see app/Http/Controllers/Games/ShowController.php:14
+* @see app/Http/Controllers/Games/ShowController.php:18
 * @route '/games/{id}'
 */
 export const show = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -16,7 +16,7 @@ show.definition = {
 
 /**
 * @see \App\Http\Controllers\Games\ShowController::__invoke
-* @see app/Http/Controllers/Games/ShowController.php:14
+* @see app/Http/Controllers/Games/ShowController.php:18
 * @route '/games/{id}'
 */
 show.url = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -43,7 +43,7 @@ show.url = (args: { id: string | number } | [id: string | number ] | string | nu
 
 /**
 * @see \App\Http\Controllers\Games\ShowController::__invoke
-* @see app/Http/Controllers/Games/ShowController.php:14
+* @see app/Http/Controllers/Games/ShowController.php:18
 * @route '/games/{id}'
 */
 show.get = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -53,7 +53,7 @@ show.get = (args: { id: string | number } | [id: string | number ] | string | nu
 
 /**
 * @see \App\Http\Controllers\Games\ShowController::__invoke
-* @see app/Http/Controllers/Games/ShowController.php:14
+* @see app/Http/Controllers/Games/ShowController.php:18
 * @route '/games/{id}'
 */
 show.head = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'head'> => ({

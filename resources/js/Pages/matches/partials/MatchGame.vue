@@ -4,6 +4,9 @@ import { find } from 'lodash';
 import MtgoCard from '@/components/MtgoCard.vue';
 import { Card, CardContent } from '@/components/ui/card';
 import MatchGameTimelineEntry from '@/Pages/matches/partials/MatchGameTimelineEntry.vue';
+import GameReplay from '@/Pages/games/partials/GameReplay.vue';
+import { Link } from '@inertiajs/vue3';
+import ShowController from '@/actions/App/Http/Controllers/Games/ShowController';
 
 const props = defineProps<{
     game: App.Data.Front.GameData;
@@ -35,7 +38,7 @@ const opponent = computed(() => {
         </Card>
 
         <div>
-            <MatchGameTimelineEntry :content="entry.content" v-for="(entry, idx) in game.timeline" :key="`entry_${idx}`" />
+            <Link :href="ShowController({id: game.id}).url">Replay</Link>
         </div>
     </div>
 </template>

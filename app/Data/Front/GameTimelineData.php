@@ -21,7 +21,7 @@ class GameTimelineData extends Data
     {
         return new self(
             timestamp: $timeline->timestamp,
-            content: json_decode($timeline->content, true),
+            content: $timeline->content,
         );
     }
 }

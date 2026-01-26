@@ -4,15 +4,13 @@ namespace App\Http\Controllers\Decks;
 
 use App\Actions\Cards\GetCards;
 use App\Actions\Decks\GetArchetypeMatchupSpread;
-use App\Actions\Matches\BuildMatches;
 use App\Data\Front\CardData;
 use App\Data\Front\DeckData;
 use App\Data\Front\MatchData;
-use App\Facades\Mtgo;
 use App\Http\Controllers\Controller;
 use App\Models\Deck;
+use App\Models\Game;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 class ShowController extends Controller
@@ -105,6 +103,17 @@ class ShowController extends Controller
         $wins = $matchesQuery->clone()->whereRaw('games_won > games_lost')->count();
         $gamesWon = $matchesQuery->clone()->sum('games_won');
         $gamesLost = $matchesQuery->clone()->sum('games_lost');
+
+        $gamesotp = Game::whereHas(
+            'match',
+            fn ($query) => $query->whereIn(
+                'match_id',
+                $deck->matches()->select('matches.id')->get()->pluck('id')
+            )
+        )->whereHas(
+            'localPlayers',
+            fn ($query) => $query->where('on_play', 1)
+        )->count();
 
         $matchWinrate = round(100 * ($wins / ($matchesQuery->count() ?: 1)));
         $gameWinrate = round(100 * ($gamesWon / (($gamesWon + $gamesLost) ?: 1)));

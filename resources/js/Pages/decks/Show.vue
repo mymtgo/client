@@ -21,6 +21,7 @@ defineProps<{
     gamesLost: number;
     matchWinrate: number;
     gameWinrate: number;
+    gameWinrateOtp: number;
     matches: App.Data.Front.MatchData[];
 }>();
 
@@ -59,7 +60,7 @@ usePoll(2000);
                     </Card>
                     <Card class="gap-0">
                         <CardHeader>Game Winrate</CardHeader>
-                        <CardContent class="text-2xl"> {{ gameWinrate }}% </CardContent>
+                        <CardContent class="text-xl"> {{ gameWinrate }}% OTP</CardContent>
                     </Card>
                 </div>
 

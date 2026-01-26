@@ -1,7 +1,7 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, applyUrlDefaults } from './../../../../../wayfinder'
 /**
 * @see \App\Http\Controllers\Matches\ShowController::__invoke
-* @see app/Http/Controllers/Matches/ShowController.php:16
+* @see app/Http/Controllers/Matches/ShowController.php:15
 * @route '/matches/{id}'
 */
 const ShowController = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -16,7 +16,7 @@ ShowController.definition = {
 
 /**
 * @see \App\Http\Controllers\Matches\ShowController::__invoke
-* @see app/Http/Controllers/Matches/ShowController.php:16
+* @see app/Http/Controllers/Matches/ShowController.php:15
 * @route '/matches/{id}'
 */
 ShowController.url = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -43,7 +43,7 @@ ShowController.url = (args: { id: string | number } | [id: string | number ] | s
 
 /**
 * @see \App\Http\Controllers\Matches\ShowController::__invoke
-* @see app/Http/Controllers/Matches/ShowController.php:16
+* @see app/Http/Controllers/Matches/ShowController.php:15
 * @route '/matches/{id}'
 */
 ShowController.get = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -53,7 +53,7 @@ ShowController.get = (args: { id: string | number } | [id: string | number ] | s
 
 /**
 * @see \App\Http\Controllers\Matches\ShowController::__invoke
-* @see app/Http/Controllers/Matches/ShowController.php:16
+* @see app/Http/Controllers/Matches/ShowController.php:15
 * @route '/matches/{id}'
 */
 ShowController.head = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'head'> => ({

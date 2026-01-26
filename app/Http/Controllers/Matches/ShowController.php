@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Matches;
 
 use App\Data\Front\CardData;
 use App\Data\Front\MatchData;
-use App\Facades\Mtgo;
 use App\Http\Controllers\Controller;
 use App\Models\Card;
 use App\Models\MtgoMatch;
