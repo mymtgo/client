@@ -18,7 +18,7 @@ class ShowController extends Controller
 
         $cardsSeen = collect();
 
-//        Mtgo::populateMissingCardData(sync: true);
+        //        Mtgo::populateMissingCardData(sync: true);
 
         foreach ($match->games as $game) {
             foreach ($game->players as $player) {

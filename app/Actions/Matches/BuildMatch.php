@@ -20,8 +20,8 @@ class BuildMatch
 
         $stateChanges = LogEvent::where('match_token', $matchToken)->where('event_type', LogEventType::MATCH_STATE_CHANGED->value)->get()->values();
 
-        $idxConcede = $events->search(fn($e) => str_contains($e->message ?? '', 'MatchConcedeRequest'));
-        $idxNotJoined = $events->search(fn($e) => str_contains($e->message ?? '', 'MatchNotJoinedUnderway'));
+        $idxConcede = $events->search(fn ($e) => str_contains($e->message ?? '', 'MatchConcedeRequest'));
+        $idxNotJoined = $events->search(fn ($e) => str_contains($e->message ?? '', 'MatchNotJoinedUnderway'));
 
         $concededAndQuit = $idxConcede !== false
             && $idxNotJoined !== false
@@ -29,17 +29,14 @@ class BuildMatch
 
         $idxCompletedAfterNotJoined = $events
             ->slice($idxNotJoined)
-            ->search(fn($e) =>
-                str_contains($e->message ?? '', 'MatchCompleted')
+            ->search(fn ($e) => str_contains($e->message ?? '', 'MatchCompleted')
             );
-
 
         $matchEnded = $stateChanges->first(
             fn (LogEvent $event) => str_contains($event->context, 'TournamentMatchClosedState') || str_contains($event->context, 'MatchCompletedState') || str_contains($event->context, 'MatchEndedState') || str_contains($event->context, 'MatchClosedState')
         );
 
         $concededAndQuit = $concededAndQuit && $idxCompletedAfterNotJoined !== false;
-
 
         $canFinalize = $matchEnded || $concededAndQuit;
 
@@ -56,7 +53,6 @@ class BuildMatch
 
             return null;
         }
-
 
         if (! $joinedState || ! $canFinalize) {
             return null;
@@ -82,7 +78,7 @@ class BuildMatch
 
         $ended = now()->parse($lastEvent->logged_at)->setTimeFromTimeString($lastEvent->timestamp);
 
-//        DB::beginTransaction();
+        //        DB::beginTransaction();
 
         /**
          * Have we already got this match?
@@ -146,7 +142,7 @@ class BuildMatch
 
         DetermineMatchArchetypes::run($match);
 
-//        DB::commit();
+        //        DB::commit();
 
         Notification::title('New match Recorded')
             ->message($match->deck?->name.' // '.$match->games_won.'-'.$match->games_lost)

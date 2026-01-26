@@ -3,15 +3,12 @@
 namespace App\Http\Controllers\Games;
 
 use App\Data\Front\GameTimelineData;
-use App\Data\Front\MatchData;
 use App\Http\Controllers\Controller;
 use App\Models\Card;
 use App\Models\Game;
 use App\Models\GameTimeline;
-use App\Models\MtgoMatch;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
-use function Laravel\Prompts\form;
 
 class ShowController extends Controller
 {
