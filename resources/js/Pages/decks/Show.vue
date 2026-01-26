@@ -10,6 +10,7 @@ import { router, usePoll } from '@inertiajs/vue3';
 import MatchupSpread from '@/Pages/decks/partials/MatchupSpread.vue';
 import DeckMatches from '@/Pages/decks/partials/DeckMatches.vue';
 import DeckLeagues from '@/Pages/decks/partials/DeckLeagues.vue';
+import DeckList from '@/Pages/decks/partials/DeckList.vue';
 
 defineProps<{
     matchupSpread: any[];
@@ -108,45 +109,8 @@ usePoll(2000);
                 </div>
             </div>
 
-            <div class="col-span-3 px-8">
-                <div>
-                    <header>Maindeck</header>
-
-                    <div class="mt-2 space-y-2">
-                        <section v-for="(cards, type) in maindeck" :key="`group_${type}`" class="space-y-1">
-                            <header class="text-sm font-semibold text-sidebar-foreground/70">{{ type }} ({{ cards.length }})</header>
-                            <ul class="space-y-1">
-                                <li v-for="card in cards" :key="`card_${card.id}`">
-                                    <HoverCard>
-                                        <HoverCardTrigger>
-                                            <div>
-                                                <Badge variant="secondary">{{ card.quantity }}</Badge> {{ card.name }}
-                                            </div>
-                                        </HoverCardTrigger>
-                                        <HoverCardContent side="right" avoidCollisions class="overflow-hidden rounded-xl p-0">
-                                            <img :src="card.image" class="w-64" />
-                                        </HoverCardContent>
-                                    </HoverCard>
-                                </li>
-                            </ul>
-                        </section>
-                    </div>
-                    <header class="my-2">Sideboard</header>
-                    <ul class="space-y-1">
-                        <li v-for="card in sideboard" :key="`card_${card.id}`">
-                            <HoverCard>
-                                <HoverCardTrigger>
-                                    <div>
-                                        <Badge variant="secondary">{{ card.quantity }}</Badge> {{ card.name }}
-                                    </div>
-                                </HoverCardTrigger>
-                                <HoverCardContent side="right" avoidCollisions class="overflow-hidden rounded-xl p-0">
-                                    <img :src="card.image" class="w-64" />
-                                </HoverCardContent>
-                            </HoverCard>
-                        </li>
-                    </ul>
-                </div>
+            <div class="col-span-3 px-8 h-screen no-scrollbar overflow-y-auto">
+                <DeckList :maindeck="maindeck" :sideboard="sideboard" />
             </div>
         </div>
     </AppLayout>
