@@ -69,35 +69,32 @@ class ShowController extends Controller
             fn ($card) => (bool) $card->sideboard,
         );
 
-
         /**
          * Get winrate for the timeframe.
          */
-//        $matchChartData = $deck->matches()
-//            ->select(
-//                'started_at',
-//                DB::raw('COUNT(*) total_matches'),
-//                DB::raw('SUM(CASE WHEN games_won > games_lost THEN 1 ELSE 0 END) as match_wins'),
-//                DB::raw('SUM(CASE WHEN games_won < games_lost THEN 1 ELSE 0 END) as match_losses'),
-//                DB::raw('ROUND(
-//                    100.0 * SUM(CASE WHEN games_won > games_lost THEN 1 ELSE 0 END)
-//                    / NULLIF(COUNT(*), 0),
-//                    0
-//                ) as match_winrate_pct')
-//            )
-//            ->groupByRaw("STRFTIME('%d-%m', started_at)")
-//            ->whereBetween('started_at', [
-//                now()->subDays(7)->startOfDay(),
-//                now()->endOfDay(),
-//            ])
-//            ->get();
+        //        $matchChartData = $deck->matches()
+        //            ->select(
+        //                'started_at',
+        //                DB::raw('COUNT(*) total_matches'),
+        //                DB::raw('SUM(CASE WHEN games_won > games_lost THEN 1 ELSE 0 END) as match_wins'),
+        //                DB::raw('SUM(CASE WHEN games_won < games_lost THEN 1 ELSE 0 END) as match_losses'),
+        //                DB::raw('ROUND(
+        //                    100.0 * SUM(CASE WHEN games_won > games_lost THEN 1 ELSE 0 END)
+        //                    / NULLIF(COUNT(*), 0),
+        //                    0
+        //                ) as match_winrate_pct')
+        //            )
+        //            ->groupByRaw("STRFTIME('%d-%m', started_at)")
+        //            ->whereBetween('started_at', [
+        //                now()->subDays(7)->startOfDay(),
+        //                now()->endOfDay(),
+        //            ])
+        //            ->get();
 
         $matchesQuery = $deck->matches()->whereBetween('started_at', [
             $from = now()->subMonth()->startOfDay(),
             $to = now()->endOfDay(),
         ]);
-
-
 
         $losses = $matchesQuery->clone()->whereRaw('games_won < games_lost')->count();
         $wins = $matchesQuery->clone()->whereRaw('games_won > games_lost')->count();

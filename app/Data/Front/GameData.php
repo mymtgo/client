@@ -2,7 +2,6 @@
 
 namespace App\Data\Front;
 
-use App\Data\GamePlayerData;
 use App\Models\Game;
 use Illuminate\Support\Collection;
 use Spatie\LaravelData\Data;

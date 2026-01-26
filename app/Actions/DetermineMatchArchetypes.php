@@ -51,7 +51,6 @@ class DetermineMatchArchetypes
                 ];
             });
 
-
             $archetype = DetermineDeckArchetype::run($cards, $match->format);
 
             if ($archetype) {

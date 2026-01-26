@@ -84,7 +84,7 @@ class GetGameLog
 
         foreach ($winMatches as $m) {
             $events[] = [
-                'type'   => 'win',
+                'type' => 'win',
                 'player' => $m['player'][0],
                 'offset' => $m[0][1],
             ];
@@ -92,7 +92,7 @@ class GetGameLog
 
         foreach ($terminalMatches as $m) {
             $events[] = [
-                'type'   => 'terminal',
+                'type' => 'terminal',
                 'player' => $m['player'][0], // loser
                 'offset' => $m[0][1],
                 'reason' => strtolower($m['reason'][0]),
@@ -112,6 +112,7 @@ class GetGameLog
             if ($e['type'] === 'terminal') {
                 // remember loser in case MTGO never prints a win line
                 $pendingLoser = $e['player'];
+
                 continue;
             }
 
@@ -161,14 +162,14 @@ class GetGameLog
                 : ($map[$handRaw] ?? null);
 
             return [
-                'player'        => $m['player'],
+                'player' => $m['player'],
                 'starting_hand' => $hand,
             ];
         })->values();
 
         return [
-            'results'        => $gameResults,
-            'on_play'        => $onPlay,
+            'results' => $gameResults,
+            'on_play' => $onPlay,
             'starting_hands' => $starts->toArray(),
         ];
     }

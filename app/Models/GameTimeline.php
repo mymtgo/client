@@ -9,6 +9,6 @@ class GameTimeline extends Model
     protected $guarded = [];
 
     protected $casts = [
-        'content' => 'array'
+        'content' => 'array',
     ];
 }
