@@ -10,6 +10,7 @@ use App\Models\League;
 use App\Models\LogEvent;
 use App\Models\MtgoMatch;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Native\Laravel\Facades\Notification;
 
 class BuildMatch
@@ -60,8 +61,6 @@ class BuildMatch
 
         $gameMeta = ExtractKeyValueBlock::run($joinedState->raw_text);
 
-        $league = null;
-
         if (! empty($gameMeta['League Token'])) {
             $league = League::firstOrCreate([
                 'token' => $gameMeta['League Token'],
@@ -70,6 +69,16 @@ class BuildMatch
                 'started_at' => now(),
                 'name' => trim(($gameMeta['GameStructureCd'] ?? '').' League '.now()->format('d-m-Y h:ma')),
             ]);
+        } else {
+            $league = League::where('format', $gameMeta['PlayFormatCd'])->latest()->first();
+            if ($league && $league->matches()->count() == 5) {
+                $league = League::create([
+                    'token' => Str::random(),
+                    'format' => $gameMeta['PlayFormatCd'],
+                    'started_at' => now(),
+                    'name' => 'Phantom ' . trim(($gameMeta['GameStructureCd'] ?? '') . ' League' . now()->format('d-m-Y h:ma'))
+                ]);
+            }
         }
 
         $lastEvent = $events->last();

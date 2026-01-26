@@ -6,10 +6,12 @@ use App\Actions\Cards\GetCards;
 use App\Actions\Decks\GetArchetypeMatchupSpread;
 use App\Data\Front\CardData;
 use App\Data\Front\DeckData;
+use App\Data\Front\LeagueData;
 use App\Data\Front\MatchData;
 use App\Http\Controllers\Controller;
 use App\Models\Deck;
 use App\Models\Game;
+use App\Models\League;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -94,7 +96,9 @@ class ShowController extends Controller
         $matchesQuery = $deck->matches()->whereBetween('started_at', [
             $from = now()->subMonth()->startOfDay(),
             $to = now()->endOfDay(),
-        ]);
+        ])->whereNull('deleted_at');
+
+        $leagues = League::with(['matches.opponentArchetypes.archetype'])->whereHas('matches', fn ($query) => $query->whereIn('matches.id', $matchesQuery->pluck('matches.id')))->with('matches')->get();
 
         $losses = $matchesQuery->clone()->whereRaw('games_won < games_lost')->count();
         $wins = $matchesQuery->clone()->whereRaw('games_won > games_lost')->count();
@@ -150,6 +154,7 @@ class ShowController extends Controller
             'matches' => MatchData::collect(
                 $deck->matches()->whereBetween('started_at', [$from, $to])->with(['opponentArchetypes.archetype'])->orderByDesc('started_at')->paginate(50)
             ),
+            'leagues' => LeagueData::collect($leagues),
         ]);
     }
 }
