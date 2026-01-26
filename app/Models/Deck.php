@@ -30,6 +30,7 @@ class Deck extends Model
         return $this->hasManyThrough(MtgoMatch::class, DeckVersion::class, 'deck_id', 'deck_version_id');
     }
 
+
     public function lostMatches(): HasManyThrough
     {
         return $this->matches()->whereRaw('games_lost > games_won');

@@ -9,6 +9,10 @@ class League extends Model
 {
     protected $guarded = [];
 
+    protected $casts = [
+        'started_at' => 'datetime',
+    ];
+
     public function matches(): HasMany
     {
         return $this->hasMany(MtgoMatch::class);
