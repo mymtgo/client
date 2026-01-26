@@ -81,7 +81,6 @@ const updatePage = (page: number) => {
                         </TableCell>
 
                         <TableCell>
-                            {{ ShowController({ id: match.id }).url }}
                             <Button size="sm" variant="outline" @click="router.visit(ShowController({ id: match.id }).url)">View</Button>
                         </TableCell>
                     </TableRow>

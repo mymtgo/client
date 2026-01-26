@@ -104,19 +104,33 @@ class ShowController extends Controller
         $gamesWon = $matchesQuery->clone()->sum('games_won');
         $gamesLost = $matchesQuery->clone()->sum('games_lost');
 
-        $gamesotp = Game::whereHas(
+        $matchGamesQuery = Game::whereHas(
             'match',
             fn ($query) => $query->whereIn(
                 'match_id',
                 $deck->matches()->select('matches.id')->get()->pluck('id')
             )
-        )->whereHas(
+        );
+
+        $gamesotp = $matchGamesQuery->clone()->whereHas(
             'localPlayers',
             fn ($query) => $query->where('on_play', 1)
-        )->count();
+        );
+
+        $gamesotpWon = $gamesotp->clone()->where('won', 1)->count();
+        $gamesotpLost = $gamesotp->clone()->where('won', 0)->count();
+
+        $gamesotd = $matchGamesQuery->clone()->whereHas(
+            'localPlayers',
+            fn ($query) => $query->where('on_play', 0)
+        );
+
+        $gamesotdWon = $gamesotd->clone()->where('won', 1)->count();
+        $gamesotdLost = $gamesotd->clone()->where('won', 0)->count();
 
         $matchWinrate = round(100 * ($wins / ($matchesQuery->count() ?: 1)));
         $gameWinrate = round(100 * ($gamesWon / (($gamesWon + $gamesLost) ?: 1)));
+        $otpRate = round(100 * ($gamesotp->count() / (($gamesotp->count() + $gamesotd->count()) ?: 1)));
 
         return Inertia::render('decks/Show', [
             'deck' => DeckData::from($deck),
@@ -129,6 +143,13 @@ class ShowController extends Controller
             'gamesLost' => $gamesLost,
             'matchWinrate' => $matchWinrate,
             'gameWinrate' => $gameWinrate,
+            'gamesOtd' => $gamesotd->count(),
+            'gamesOtdWon' => $gamesotdWon,
+            'gamesOtdLost' => $gamesotdLost,
+            'gamesOtp' => $gamesotp->count(),
+            'gamesOtpWon' => $gamesotpWon,
+            'gamesOtpLost' => $gamesotpLost,
+            'otpRate' => $otpRate,
             'matches' => MatchData::collect(
                 $deck->matches()->whereBetween('started_at', [$from, $to])->with(['opponentArchetypes.archetype'])->orderByDesc('started_at')->paginate(50)
             ),

@@ -22,11 +22,17 @@ defineProps<{
     matchWinrate: number;
     gameWinrate: number;
     gameWinrateOtp: number;
+    gamesOtd: number;
+    gamesOtdWon: number;
+    gamesOtdLost: number;
+    gamesOtp: number;
+    gamesOtpWon: number;
+    gamesOtpLost: number;
+    otpRate: number;
     matches: App.Data.Front.MatchData[];
 }>();
 
 usePoll(2000);
-
 </script>
 
 <template>
@@ -60,7 +66,22 @@ usePoll(2000);
                     </Card>
                     <Card class="gap-0">
                         <CardHeader>Game Winrate</CardHeader>
-                        <CardContent class="text-xl"> {{ gameWinrate }}% OTP</CardContent>
+                        <CardContent class="text-xl"> {{ gameWinrate }}%</CardContent>
+                    </Card>
+                </div>
+
+                <div class="grid grid-cols-4 gap-4">
+                    <Card class="gap-0">
+                        <CardHeader>OTP W/L</CardHeader>
+                        <CardContent class="text-xl"> {{ gamesOtpWon }}-{{ gamesOtpLost }}</CardContent>
+                    </Card>
+                    <Card class="gap-0">
+                        <CardHeader>OTD W/L</CardHeader>
+                        <CardContent class="text-xl"> {{ gamesOtdWon }}-{{ gamesOtdLost }}</CardContent>
+                    </Card>
+                    <Card class="gap-0">
+                        <CardHeader>OTP %</CardHeader>
+                        <CardContent class="text-xl"> {{ otpRate }}%</CardContent>
                     </Card>
                 </div>
 
