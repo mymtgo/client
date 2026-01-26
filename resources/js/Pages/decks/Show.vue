@@ -9,6 +9,7 @@ import { home } from '@/routes';
 import { router, usePoll } from '@inertiajs/vue3';
 import MatchupSpread from '@/Pages/decks/partials/MatchupSpread.vue';
 import DeckMatches from '@/Pages/decks/partials/DeckMatches.vue';
+import DeckLeagues from '@/Pages/decks/partials/DeckLeagues.vue';
 
 defineProps<{
     matchupSpread: any[];
@@ -30,6 +31,7 @@ defineProps<{
     gamesOtpLost: number;
     otpRate: number;
     matches: App.Data.Front.MatchData[];
+    leagues: App.Data.Front.LeagueData[]
 }>();
 
 usePoll(2000);
@@ -86,17 +88,22 @@ usePoll(2000);
                 </div>
 
                 <div>
-                    <Tabs default-value="matches">
+                    <Tabs default-value="leagues">
                         <TabsList>
+                            <TabsTrigger value="leagues"> Leagues </TabsTrigger>
                             <TabsTrigger value="matches"> Matches </TabsTrigger>
                             <TabsTrigger value="matchupSpread"> Matchup spread </TabsTrigger>
                         </TabsList>
+                        <TabsContent value="leagues">
+                            <DeckLeagues :leagues="leagues" />
+                        </TabsContent>
                         <TabsContent value="matches">
                             <DeckMatches :matches="matches" />
                         </TabsContent>
                         <TabsContent value="matchupSpread">
                             <MatchupSpread :matchupSpread="matchupSpread" />
                         </TabsContent>
+
                     </Tabs>
                 </div>
             </div>

@@ -19,6 +19,7 @@ Route::group([
         'prefix' => 'matches',
     ], function (\Illuminate\Routing\Router $group) {
         $group->get('{id}', \App\Http\Controllers\Matches\ShowController::class)->name('matches.show');
+        $group->delete('{id}', \App\Http\Controllers\Matches\DeleteController::class)->name('matches.delete');
     });
 
     $router->group([
