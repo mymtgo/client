@@ -81,7 +81,6 @@ class CreateGames
                 ];
             }
 
-
             $onPlay = $gameLog['on_play'][$gameIndex] ?? false;
 
             $playerModelMapping[$playerModel->id] = [
@@ -90,7 +89,6 @@ class CreateGames
                 'is_local' => $isYou,
                 'deck_json' => $deck,
             ];
-
 
             $playerModels->push($playerModel);
         }

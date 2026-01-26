@@ -2,7 +2,6 @@
 
 namespace App\Data\Front;
 
-use App\Models\Game;
 use Spatie\LaravelData\Data;
 
 /** @typescript  */
