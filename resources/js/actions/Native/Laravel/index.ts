@@ -1,5 +1,4 @@
 import Http from './Http'
-
 const Laravel = {
     Http: Object.assign(Http, Http),
 }

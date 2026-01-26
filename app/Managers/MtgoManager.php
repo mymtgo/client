@@ -114,7 +114,7 @@ class MtgoManager
 
     public function schedule(Schedule $schedule): void
     {
-        $pause = true;
+        $pause = false;
 
         if ($pause) {
             return;
