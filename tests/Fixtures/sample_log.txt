@@ -1,0 +1,6 @@
+15:04:11 [INF] (SESSION|Start Session) Starting MtGO logging session.
+15:04:12 [INF] (Initialization|SessionStarted) ID: 5bad104b-efc4-41a6-bd86-1aa5aed4f7b5
+15:04:14 [INF] (UI|LastLoginName) Username=anticloser
+15:04:53 [INF] (Game Management|Match State Changed for 1b60d302-5391-4947-bff5-70a8108dc509 from TournamentMatchUninitializedState to TournamentMatchClosedState)
+15:04:53 [INF] (Game Management|Match State Changed for 963451e4-181a-45d0-8a4f-a147cb2331ce from TournamentMatchUninitializedState to TournamentMatchClosedState)
+15:05:00 [INF] (Game Management|Processing) Message: {"MatchToken":"abc-123-def","MatchID":12345,"GameID":67890}

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Deck xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" GroupingType="Deck" NetDeckId="12345" Name="Test Deck" FormatCode="Standard" Timestamp="2026-01-20T10:00:00">
+  <Item CatId="1001" Quantity="4" IsSideboard="false" />
+  <Item CatId="1002" Quantity="4" IsSideboard="false" />
+  <Item CatId="1003" Quantity="4" IsSideboard="false" />
+  <Item CatId="2001" Quantity="3" IsSideboard="true" />
+</Deck>
