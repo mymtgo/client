@@ -17,6 +17,7 @@ class DetermineDeckArchetype
 
         $archetypes = $response->json();
 
+        dd($cards, $format);
         if (! $response->ok() || ! count($archetypes)) {
             return null;
         }

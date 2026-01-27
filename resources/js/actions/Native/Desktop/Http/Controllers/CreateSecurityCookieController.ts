@@ -1,7 +1,7 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition } from './../../../../../wayfinder'
 /**
-* @see \Native\Laravel\Http\Controllers\CreateSecurityCookieController::__invoke
- * @see vendor/nativephp/laravel/src/Http/Controllers/CreateSecurityCookieController.php:9
+* @see \Native\Desktop\Http\Controllers\CreateSecurityCookieController::__invoke
+ * @see vendor/nativephp/desktop/src/Http/Controllers/CreateSecurityCookieController.php:9
  * @route '/_native/api/cookie'
  */
 const CreateSecurityCookieController = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -15,8 +15,8 @@ CreateSecurityCookieController.definition = {
 } satisfies RouteDefinition<["get","head"]>
 
 /**
-* @see \Native\Laravel\Http\Controllers\CreateSecurityCookieController::__invoke
- * @see vendor/nativephp/laravel/src/Http/Controllers/CreateSecurityCookieController.php:9
+* @see \Native\Desktop\Http\Controllers\CreateSecurityCookieController::__invoke
+ * @see vendor/nativephp/desktop/src/Http/Controllers/CreateSecurityCookieController.php:9
  * @route '/_native/api/cookie'
  */
 CreateSecurityCookieController.url = (options?: RouteQueryOptions) => {
@@ -24,8 +24,8 @@ CreateSecurityCookieController.url = (options?: RouteQueryOptions) => {
 }
 
 /**
-* @see \Native\Laravel\Http\Controllers\CreateSecurityCookieController::__invoke
- * @see vendor/nativephp/laravel/src/Http/Controllers/CreateSecurityCookieController.php:9
+* @see \Native\Desktop\Http\Controllers\CreateSecurityCookieController::__invoke
+ * @see vendor/nativephp/desktop/src/Http/Controllers/CreateSecurityCookieController.php:9
  * @route '/_native/api/cookie'
  */
 CreateSecurityCookieController.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -33,8 +33,8 @@ CreateSecurityCookieController.get = (options?: RouteQueryOptions): RouteDefinit
     method: 'get',
 })
 /**
-* @see \Native\Laravel\Http\Controllers\CreateSecurityCookieController::__invoke
- * @see vendor/nativephp/laravel/src/Http/Controllers/CreateSecurityCookieController.php:9
+* @see \Native\Desktop\Http\Controllers\CreateSecurityCookieController::__invoke
+ * @see vendor/nativephp/desktop/src/Http/Controllers/CreateSecurityCookieController.php:9
  * @route '/_native/api/cookie'
  */
 CreateSecurityCookieController.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
