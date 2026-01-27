@@ -8,6 +8,7 @@ use App\Data\Front\CardData;
 use App\Data\Front\DeckData;
 use App\Data\Front\LeagueData;
 use App\Data\Front\MatchData;
+use App\Facades\Mtgo;
 use App\Http\Controllers\Controller;
 use App\Models\Deck;
 use App\Models\Game;
@@ -19,6 +20,8 @@ class ShowController extends Controller
 {
     public function __invoke(string $id, Request $request)
     {
+        Mtgo::processLogEvents(sync:true);
+        dd(1);
         $deck = Deck::with(['matches.opponentArchetypes.archetype'])->withCount(['wonMatches', 'lostMatches', 'matches'])->find($id);
 
         if (! $deck) {

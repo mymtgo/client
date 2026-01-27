@@ -11,7 +11,7 @@ use App\Models\LogEvent;
 use App\Models\MtgoMatch;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
-use Native\Laravel\Facades\Notification;
+use Native\Desktop\Facades\Notification;
 
 class BuildMatch
 {
@@ -21,23 +21,27 @@ class BuildMatch
 
         $stateChanges = LogEvent::where('match_token', $matchToken)->where('event_type', LogEventType::MATCH_STATE_CHANGED->value)->get()->values();
 
-        $idxConcede = $events->search(fn ($e) => str_contains($e->message ?? '', 'MatchConcedeRequest'));
-        $idxNotJoined = $events->search(fn ($e) => str_contains($e->message ?? '', 'MatchNotJoinedUnderway'));
+        $idxConcede = $stateChanges->search(fn ($e) => str_contains($e->context ?? '', 'MatchConcedeReq'));
+        $idxNotJoined = $stateChanges->search(fn ($e) => str_contains($e->context ?? '', 'MatchNotJoinedUnderway'));
+        $idxConcedeFulfilled = $stateChanges->search(fn ($e) => str_contains($e->context ?? '', 'MatchConcedeReqState to MatchNotJoinedEventUnderwayState'));
 
-        $concededAndQuit = $idxConcede !== false
+
+        $concededAndQuit = ($idxConcede !== false
             && $idxNotJoined !== false
-            && $idxNotJoined > $idxConcede;
+            && $idxNotJoined > $idxConcede) || $idxConcedeFulfilled;
 
         $idxCompletedAfterNotJoined = $events
             ->slice($idxNotJoined)
             ->search(fn ($e) => str_contains($e->message ?? '', 'MatchCompleted')
             );
 
+
         $matchEnded = $stateChanges->first(
             fn (LogEvent $event) => str_contains($event->context, 'TournamentMatchClosedState') || str_contains($event->context, 'MatchCompletedState') || str_contains($event->context, 'MatchEndedState') || str_contains($event->context, 'MatchClosedState')
         );
 
-        $concededAndQuit = $concededAndQuit && $idxCompletedAfterNotJoined !== false;
+
+        $concededAndQuit = $concededAndQuit && $idxCompletedAfterNotJoined !== false || $idxConcedeFulfilled !== false;
 
         $canFinalize = $matchEnded || $concededAndQuit;
 
@@ -71,7 +75,7 @@ class BuildMatch
             ]);
         } else {
             $league = League::where('format', $gameMeta['PlayFormatCd'])->latest()->first();
-            if ($league && $league->matches()->count() == 5) {
+            if (!$league || $league?->matches()->count() == 5) {
                 $league = League::create([
                     'token' => Str::random(),
                     'format' => $gameMeta['PlayFormatCd'],
@@ -87,7 +91,7 @@ class BuildMatch
 
         $ended = now()->parse($lastEvent->logged_at)->setTimeFromTimeString($lastEvent->timestamp);
 
-        //        DB::beginTransaction();
+        DB::beginTransaction();
 
         /**
          * Have we already got this match?
@@ -131,6 +135,7 @@ class BuildMatch
         $wins = $match->games->sum('won');
         $losses = count($gameLog['results']) - $wins;
 
+
         if ($wins == $losses || ! $losses) {
             /**
              * Did we concede from this game?
@@ -151,7 +156,8 @@ class BuildMatch
 
         DetermineMatchArchetypes::run($match);
 
-        //        DB::commit();
+        dd(1);
+        DB::commit();
 
         Notification::title('New match Recorded')
             ->message($match->deck?->name.' // '.$match->games_won.'-'.$match->games_lost)

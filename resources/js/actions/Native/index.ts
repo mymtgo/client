@@ -1,6 +1,6 @@
-import Laravel from './Laravel'
+import Desktop from './Desktop'
 const Native = {
-    Laravel: Object.assign(Laravel, Laravel),
+    Desktop: Object.assign(Desktop, Desktop),
 }
 
 export default Native
