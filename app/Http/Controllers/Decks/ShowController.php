@@ -12,7 +12,9 @@ use App\Http\Controllers\Controller;
 use App\Models\Deck;
 use App\Models\Game;
 use App\Models\League;
+use Carbon\CarbonPeriod;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 class ShowController extends Controller
@@ -24,6 +26,11 @@ class ShowController extends Controller
         if (! $deck) {
             return redirect()->route('home');
         }
+
+        $timeframe = $request->input('timeframe', 'week');
+
+        $start = now()->subDays(7)->startOfDay();
+        $end = now()->endOfDay();
 
         $deckVersion = $deck->latestVersion;
 
@@ -74,31 +81,51 @@ class ShowController extends Controller
         /**
          * Get winrate for the timeframe.
          */
-        //        $matchChartData = $deck->matches()
-        //            ->select(
-        //                'started_at',
-        //                DB::raw('COUNT(*) total_matches'),
-        //                DB::raw('SUM(CASE WHEN games_won > games_lost THEN 1 ELSE 0 END) as match_wins'),
-        //                DB::raw('SUM(CASE WHEN games_won < games_lost THEN 1 ELSE 0 END) as match_losses'),
-        //                DB::raw('ROUND(
-        //                    100.0 * SUM(CASE WHEN games_won > games_lost THEN 1 ELSE 0 END)
-        //                    / NULLIF(COUNT(*), 0),
-        //                    0
-        //                ) as match_winrate_pct')
-        //            )
-        //            ->groupByRaw("STRFTIME('%d-%m', started_at)")
-        //            ->whereBetween('started_at', [
-        //                now()->subDays(7)->startOfDay(),
-        //                now()->endOfDay(),
-        //            ])
-        //            ->get();
+        $matchChartData = $deck->matches()
+            ->select(
+                'started_at',
+                DB::raw('COUNT(*) total_matches'),
+                DB::raw('SUM(CASE WHEN games_won > games_lost THEN 1 ELSE 0 END) as match_wins'),
+                DB::raw('SUM(CASE WHEN games_won < games_lost THEN 1 ELSE 0 END) as match_losses'),
+                DB::raw('ROUND(
+                    100.0 * SUM(CASE WHEN games_won > games_lost THEN 1 ELSE 0 END)
+                    / NULLIF(COUNT(*), 0),
+                    0
+                ) as match_winrate_pct')
+            )
+            ->groupByRaw("STRFTIME('%d-%m', started_at)")
+            ->whereBetween('started_at', [
+                $start,
+                $end,
+            ])
+            ->get();
+
+        $period = CarbonPeriod::create($start, $end, '1 day');
+
+        $chartData = [];
+
+        foreach ($period as $date) {
+            $match = $matchChartData->first(
+                fn ($match) => $match->started_at->format('Y-m-d') === $date->format('Y-m-d')
+            );
+
+            $chartData[] = [
+                'date' => $date->format('Y-m-d'),
+                'total_matches' => $match?->total_matches ?: 0,
+                'match_wins' => $match?->match_wins ?: 0,
+                'match_losses' => $match?->match_losses ?: 0,
+                'winrate' => $match?->match_winrate_pct ?: 0,
+            ];
+        }
 
         $matchesQuery = $deck->matches()->whereBetween('started_at', [
-            $from = now()->subMonth()->startOfDay(),
-            $to = now()->endOfDay(),
+            $start,
+            $end,
         ])->whereNull('deleted_at');
 
-        $leagues = League::with(['matches.opponentArchetypes.archetype'])->whereHas('matches', fn ($query) => $query->whereIn('matches.id', $matchesQuery->pluck('matches.id')))->with('matches')->get();
+        $leagues = League::with(['matches.opponentArchetypes.archetype'])
+            ->whereHas('matches', fn ($query) => $query->whereIn('matches.id', $matchesQuery->pluck('matches.id')))
+            ->with('matches')->get();
 
         $losses = $matchesQuery->clone()->whereRaw('games_won < games_lost')->count();
         $wins = $matchesQuery->clone()->whereRaw('games_won > games_lost')->count();
@@ -135,7 +162,7 @@ class ShowController extends Controller
 
         return Inertia::render('decks/Show', [
             'deck' => DeckData::from($deck),
-            'matchupSpread' => GetArchetypeMatchupSpread::run($deck, $from, $to),
+            'matchupSpread' => GetArchetypeMatchupSpread::run($deck, $start, $end),
             'maindeck' => $mainDeck,
             'sideboard' => $sideboard,
             'matchesWon' => $wins,
@@ -151,8 +178,9 @@ class ShowController extends Controller
             'gamesOtpWon' => $gamesotpWon,
             'gamesOtpLost' => $gamesotpLost,
             'otpRate' => $otpRate,
+            'matchChartData' => $chartData,
             'matches' => MatchData::collect(
-                $deck->matches()->whereBetween('started_at', [$from, $to])->with(['opponentArchetypes.archetype'])->orderByDesc('started_at')->paginate(50)
+                $deck->matches()->whereBetween('started_at', [$start, $end])->with(['opponentArchetypes.archetype'])->orderByDesc('started_at')->paginate(50)
             ),
             'leagues' => LeagueData::collect($leagues),
         ]);
