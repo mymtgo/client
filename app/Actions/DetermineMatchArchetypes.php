@@ -53,6 +53,7 @@ class DetermineMatchArchetypes
 
             $archetype = DetermineDeckArchetype::run($cards, $match->format);
 
+            dd($archetype);
             if ($archetype) {
                 $matchArchetypes[] = [
                     'archetype_id' => $archetype['archetype_id'],

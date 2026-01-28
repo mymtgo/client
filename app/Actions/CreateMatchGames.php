@@ -7,7 +7,7 @@ use App\Models\Game;
 use App\Models\GameDeck;
 use App\Models\MtgoMatch;
 use App\Models\Player;
-use Native\Laravel\Facades\Settings;
+use Native\Desktop\Facades\Settings;
 
 class CreateMatchGames
 {

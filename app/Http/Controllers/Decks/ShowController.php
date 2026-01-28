@@ -8,6 +8,7 @@ use App\Data\Front\CardData;
 use App\Data\Front\DeckData;
 use App\Data\Front\LeagueData;
 use App\Data\Front\MatchData;
+use App\Facades\Mtgo;
 use App\Http\Controllers\Controller;
 use App\Models\Deck;
 use App\Models\Game;
