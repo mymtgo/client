@@ -32,7 +32,7 @@ class MatchData extends Data
             id: $match->id,
             format: $match->format,
             matchType: $match->match_type,
-            leagueGame: (bool) $match->league_id,
+            leagueGame: (bool) !$match->league->phantom,
             gamesWon: $match->games_won,
             gamesLost: $match->games_lost,
             result: $match->games_won > $match->games_lost ? 'won' : 'lost',

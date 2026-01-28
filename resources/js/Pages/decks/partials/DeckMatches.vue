@@ -29,14 +29,13 @@ const updatePage = (page: number) => {
             <MatchesTable :matches="matches.data" v-if="matches.total" />
         </CardContent>
 
-        <div class="justify-end py-2 text-right">
+        <div class="justify-end py-2 text-right" v-if="matches.total > 24">
             <Pagination
                 @update:page="updatePage"
                 v-slot="{ page }"
                 :items-per-page="matches.per_page"
                 :total="matches.total"
                 :default-page="1"
-                v-if="matches.total > 1"
             >
                 <PaginationContent v-slot="{ items }">
                     <PaginationPrevious />

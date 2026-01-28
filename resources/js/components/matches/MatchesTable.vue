@@ -4,8 +4,10 @@ import { Badge } from '@/components/ui/badge';
 import ManaSymbols from '@/components/ManaSymbols.vue';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import dayjs from 'dayjs';
-import { useForm } from '@inertiajs/vue3';
+import { router, useForm } from '@inertiajs/vue3';
 import DeleteController from '@/actions/App/Http/Controllers/Matches/DeleteController';
+import { Button } from '@/components/ui/button';
+import ShowController from '@/actions/App/Http/Controllers/Matches/ShowController';
 
 defineProps<{
     matches: App.Data.Front.MatchData[];
@@ -55,13 +57,13 @@ const deleteMatch = (id: string | number) => {
                                 <span v-if="!match.leagueGame">Casual</span>
                             </TableCell>
                             <TableCell>
-                                <div class="flex items-center gap-1" v-if="match.opponentArchetypes">
+                                <div class="flex items-center gap-1" v-if="match.opponentArchetypes[0]">
                                     {{ match.opponentArchetypes[0].archetype.name }}
                                 </div>
                                 <span v-if="!match.opponentArchetypes[0]" class="opacity-50"> Unknown</span>
                             </TableCell>
                             <TableCell>
-                                <div v-if="match.opponentArchetypes">
+                                <div v-if="match.opponentArchetypes[0]">
                                     <ManaSymbols :symbols="match.opponentArchetypes[0].archetype.colorIdentity" />
                                 </div>
                             </TableCell>
@@ -79,7 +81,7 @@ const deleteMatch = (id: string | number) => {
                             </TableCell>
 
                             <TableCell>
-                                <!--                                        <Button size="sm" variant="outline" @click="router.visit(ShowController({ id: match.id }).url)">View</Button>-->
+                                <Button size="sm" variant="outline" @click="router.visit(ShowController({ id: match.id }).url)">View</Button>
                             </TableCell>
                         </TableRow>
                     </ContextMenuTrigger>
