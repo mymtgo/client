@@ -1,7 +1,6 @@
 import Http from './Http'
-
-const Laravel = {
+const Desktop = {
     Http: Object.assign(Http, Http),
 }
 
-export default Laravel
+export default Desktop

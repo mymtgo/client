@@ -8,7 +8,7 @@ Route::post('/settings', function (Request $request) {
         'username' => 'required',
     ]);
 
-    \Native\Laravel\Facades\Settings::set('mtgo_username', $request->input('username'));
+    \Native\Desktop\Facades\Settings::set('mtgo_username', $request->input('username'));
 });
 
 Route::group([

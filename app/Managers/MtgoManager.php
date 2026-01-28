@@ -12,7 +12,7 @@ use App\Models\Archetype;
 use App\Models\Deck;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Facades\Storage;
-use Native\Laravel\Facades\Settings;
+use Native\Desktop\Facades\Settings;
 
 class MtgoManager
 {
@@ -114,7 +114,7 @@ class MtgoManager
 
     public function schedule(Schedule $schedule): void
     {
-        $pause = true;
+        $pause = false;
 
         if ($pause) {
             return;
@@ -132,9 +132,9 @@ class MtgoManager
             fn () => $this->ingestLogs()
         )->everySecond()->name('ingest_logs')->withoutOverlapping(5);
 
-        $schedule->call(
-            fn () => $this->processLogEvents()
-        )->everyThirtySeconds()->name('process_log_events')->withoutOverlapping(30);
+//        $schedule->call(
+//            fn () => $this->processLogEvents()
+//        )->everyThirtySeconds()->name('process_log_events')->withoutOverlapping(30);
 
         $schedule->call(
             fn () => $this->downloadArchetypes()
