@@ -16,7 +16,7 @@ const page = usePage<{
             </SidebarGroupLabel>
             <SidebarMenu>
                 <SidebarMenuItem v-for="deck in decks" :key="deck.name">
-                    <SidebarMenuButton as-child>
+                    <SidebarMenuButton as-child :isActive="page.props.currentDeck == deck.id">
                         <Link :href="ShowController(deck.id).url">
                             <span>{{ deck.name }}</span>
                         </Link>

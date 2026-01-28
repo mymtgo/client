@@ -35,9 +35,18 @@ defineProps<{
     matches: App.Data.Front.MatchData[];
     leagues: App.Data.Front.LeagueData[];
     matchChartData: any[];
+    timeframe: string
 }>();
 
 usePoll(2000);
+
+const updateTimeframe = (value: string) => {
+    router.reload({
+        data: {
+            timeframe: value,
+        },
+    });
+};
 </script>
 
 <template>
@@ -45,11 +54,12 @@ usePoll(2000);
         <div class="grid grow grid-cols-12 text-white">
             <div class="col-span-9 grow space-y-2">
                 <div class="flex justify-end">
-                    <NativeSelect model-value="7days">
-                        <option value="7days">Last 7 days</option>
+                    <NativeSelect :model-value="timeframe" @change="(e) => updateTimeframe(e.target.value)">
+                        <option value="week">Last 7 days</option>
                         <option value="biweekly">Last 2 weeks</option>
                         <option value="monthly">Last 30 days</option>
                         <option value="year">This year</option>
+                        <option value="alltime">All time</option>
                     </NativeSelect>
                 </div>
 
@@ -72,11 +82,9 @@ usePoll(2000);
                     </Card>
                     <Card class="gap-0">
                         <CardHeader>Game Winrate</CardHeader>
-                        <CardContent class="text-xl"> {{ gameWinrate }}%</CardContent>
+                        <CardContent class="text-2xl"> {{ gameWinrate }}%</CardContent>
                     </Card>
                 </div>
-
-                <MatchHistoryChart :data="matchChartData" />
 
                 <div class="grid grid-cols-4 gap-4">
                     <Card class="gap-0">
@@ -94,20 +102,20 @@ usePoll(2000);
                 </div>
 
                 <div>
-                    <Tabs default-value="leagues">
+                    <Tabs default-value="matches">
                         <TabsList>
-                            <TabsTrigger value="leagues"> Leagues </TabsTrigger>
                             <TabsTrigger value="matches"> Matches </TabsTrigger>
                             <TabsTrigger value="matchupSpread"> Matchup spread </TabsTrigger>
+                            <TabsTrigger value="leagues"> Leagues </TabsTrigger>
                         </TabsList>
-                        <TabsContent value="leagues">
-                            <DeckLeagues :leagues="leagues" />
-                        </TabsContent>
                         <TabsContent value="matches">
                             <DeckMatches :matches="matches" />
                         </TabsContent>
                         <TabsContent value="matchupSpread">
                             <MatchupSpread :matchupSpread="matchupSpread" />
+                        </TabsContent>
+                        <TabsContent value="leagues">
+                            <DeckLeagues :leagues="leagues" />
                         </TabsContent>
                     </Tabs>
                 </div>

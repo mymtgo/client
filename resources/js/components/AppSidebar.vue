@@ -1,19 +1,8 @@
 <script setup lang="ts">
 import NavDecks from '@/components/NavDecks.vue';
-import NavUser from '@/components/NavUser.vue';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
-
-const data = {
-    user: {
-        name: 'shadcn',
-        email: 'm@example.com',
-        avatar: '/avatars/shadcn.jpg',
-    },
-    navMain: [],
-    navClouds: [],
-    navSecondary: [],
-    documents: [],
-};
+import { Button } from '@/components/ui/button';
+import { Settings2Icon as CogIcon } from 'lucide-vue-next';
 </script>
 
 <template>
@@ -21,7 +10,7 @@ const data = {
         <SidebarHeader>
             <SidebarMenu>
                 <SidebarMenuItem>
-                    <SidebarMenuButton as-child class="data-[slot=sidebar-menu-button]:!p-1.5">
+                    <SidebarMenuButton as-child class="data-[slot=sidebar-menu-button]:p-1.5!">
                         <a href="#">
                             <span class="text-base font-semibold">mymtgo</span>
                         </a>
@@ -33,7 +22,11 @@ const data = {
             <NavDecks />
         </SidebarContent>
         <SidebarFooter>
-            <NavUser :user="data.user" />
+            <div>
+                <Button variant="outline">
+                    <CogIcon />
+                    Settings</Button>
+            </div>
         </SidebarFooter>
     </Sidebar>
 </template>

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class DeckVersion extends Model
 {
@@ -27,5 +28,10 @@ class DeckVersion extends Model
                 'sideboard' => $parts[2],
             ];
         })->toArray();
+    }
+
+    public function matches(): HasMany
+    {
+        return $this->hasMany(MtgoMatch::class, 'deck_version_id');
     }
 }
