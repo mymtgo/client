@@ -4,7 +4,7 @@ namespace App\Actions;
 
 use App\Models\MtgoMatch;
 use Illuminate\Support\Facades\Storage;
-use Native\Laravel\Facades\Settings;
+use Native\Desktop\Facades\Settings;
 
 class StoreMatchResults
 {

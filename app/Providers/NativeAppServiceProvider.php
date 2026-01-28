@@ -3,8 +3,8 @@
 namespace App\Providers;
 
 use App\Facades\Mtgo;
-use Native\Laravel\Contracts\ProvidesPhpIni;
-use Native\Laravel\Facades\Window;
+use Native\Desktop\Contracts\ProvidesPhpIni;
+use Native\Desktop\Facades\Window;
 
 class NativeAppServiceProvider implements ProvidesPhpIni
 {
@@ -16,7 +16,7 @@ class NativeAppServiceProvider implements ProvidesPhpIni
     {
         Window::open()->width(1600)->height(900)->minHeight(800)->minWidth(1200);
 
-        Mtgo::runInitialSetup();
+//        Mtgo::runInitialSetup();
 
         // bump3
     }
