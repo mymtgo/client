@@ -1,73 +1,71 @@
 <script setup lang="ts">
 import AppLayout from '@/AppLayout.vue';
-import { usePage } from '@inertiajs/vue3';
-import { CategoryScale, Chart as ChartJS, Legend, LinearScale, LineElement, PointElement, Title, Tooltip } from 'chart.js';
+import { NativeSelect } from '@/components/ui/native-select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { router, usePoll } from '@inertiajs/vue3';
+import DashboardStats from '@/Pages/partials/DashboardStats.vue';
+import RecentMatches from '@/Pages/partials/RecentMatches.vue';
+import DeckPerformance from '@/Pages/partials/DeckPerformance.vue';
 
-ChartJS.register(Title, Tooltip, Legend, PointElement, CategoryScale, LinearScale, LineElement);
+defineProps<{
+    matchesWon: number;
+    matchesLost: number;
+    gamesWon: number;
+    gamesLost: number;
+    matchWinrate: number;
+    gameWinrate: number;
+    recentMatches: App.Data.Front.MatchData[];
+    deckStats: App.Data.Front.DeckData[];
+    timeframe: string;
+}>();
 
-ChartJS.defaults.backgroundColor = '#9BD0F5';
-ChartJS.defaults.borderColor = '#000';
-ChartJS.defaults.color = '#fff';
+usePoll(2000);
 
-const page = usePage();
-
-const chart = {
-    data: {
-        labels: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
-        datasets: [
-            {
-                data: [50, 100, 20, 40, 50, 102, 40],
-                label: 'Matches',
-            },
-        ],
-    },
+const updateTimeframe = (value: string) => {
+    router.reload({
+        data: {
+            timeframe: value,
+        },
+    });
 };
 </script>
 
 <template>
-    <AppLayout>
-        <div>
-            {{ page.props.count }}
-            <!--            <LineChart :data="chart.data" />-->
+    <AppLayout title="Dashboard">
+        <div class="grow space-y-4 text-white">
+            <div class="flex justify-end">
+                <NativeSelect :model-value="timeframe" @change="(e) => updateTimeframe(e.target.value)">
+                    <option value="week">Last 7 days</option>
+                    <option value="biweekly">Last 2 weeks</option>
+                    <option value="monthly">Last 30 days</option>
+                    <option value="year">This year</option>
+                    <option value="alltime">All time</option>
+                </NativeSelect>
+            </div>
+
+            <DashboardStats
+                :matches-won="matchesWon"
+                :matches-lost="matchesLost"
+                :games-won="gamesWon"
+                :games-lost="gamesLost"
+                :match-winrate="matchWinrate"
+                :game-winrate="gameWinrate"
+            />
 
             <div>
-                <div>
-                    Hello
-                    <!--                    <Table>-->
-                    <!--                        <TableHeader>-->
-                    <!--                            <tr>-->
-                    <!--                                <TableHead>Deck</TableHead>-->
-                    <!--                                <TableHead>W/L</TableHead>-->
-                    <!--                                <TableHead>Opponent</TableHead>-->
-                    <!--                                <TableHead>Format</TableHead>-->
-                    <!--                                <TableHead>Date</TableHead>-->
-                    <!--                            </tr>-->
-                    <!--                        </TableHeader>-->
-                    <!--                        <TableBody>-->
-                    <!--                            <TableRow v-for="(match, idx) in matches.data" :key="`match_${idx}`">-->
-                    <!--                                <TableCell>-->
-                    <!--                                    {{ match.deck?.name || 'Unknown' }}-->
-                    <!--                                </TableCell>-->
-                    <!--                                <TableCell> {{ match.gamesWon }} - {{ match.gamesLost }} </TableCell>-->
-                    <!--                                <TableCell>-->
-                    <!--                                    <div class="grid grid-cols-2 space-x-1" v-for="(oa, ai) in match.opponentArchetypes" :key="`archetype_${ai}`">-->
-                    <!--                                        <ManaSymbols :symbols="oa.archetype?.colorIdentity" />-->
-                    <!--                                        <span>{{ oa.archetype?.name }}</span>-->
-                    <!--                                    </div>-->
-                    <!--                                </TableCell>-->
-                    <!--                                <TableCell>-->
-                    <!--                                    {{ match.format }}-->
-                    <!--                                </TableCell>-->
-                    <!--                                <TableCell>-->
-                    <!--                                    {{ match.startedAt }}-->
-                    <!--                                </TableCell>-->
-                    <!--                            </TableRow>-->
-                    <!--                        </TableBody>-->
-                    <!--                    </Table>-->
-                </div>
+                <Tabs default-value="matches">
+                    <TabsList>
+                        <TabsTrigger value="matches"> Recent Matches </TabsTrigger>
+                        <TabsTrigger value="decks"> Deck Performance </TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="matches">
+                        <RecentMatches :matches="recentMatches" />
+                    </TabsContent>
+                    <TabsContent value="decks">
+                        <DeckPerformance :deck-stats="deckStats" />
+                    </TabsContent>
+                </Tabs>
             </div>
         </div>
     </AppLayout>
 </template>
-
-<style scoped></style>
