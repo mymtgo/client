@@ -55,13 +55,13 @@ const deleteMatch = (id: string | number) => {
                                 <span v-if="!match.leagueGame">Casual</span>
                             </TableCell>
                             <TableCell>
-                                <div class="flex items-center gap-1" v-if="match.opponentArchetypes">
+                                <div class="flex items-center gap-1" v-if="match.opponentArchetypes?.[0]?.archetype">
                                     {{ match.opponentArchetypes[0].archetype.name }}
                                 </div>
-                                <span v-if="!match.opponentArchetypes[0]" class="opacity-50"> Unknown</span>
+                                <span v-else class="opacity-50"> Unknown</span>
                             </TableCell>
                             <TableCell>
-                                <div v-if="match.opponentArchetypes">
+                                <div v-if="match.opponentArchetypes?.[0]?.archetype">
                                     <ManaSymbols :symbols="match.opponentArchetypes[0].archetype.colorIdentity" />
                                 </div>
                             </TableCell>

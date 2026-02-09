@@ -35,7 +35,6 @@ defineProps<{
     leagues: App.Data.Front.LeagueData[]
 }>();
 
-usePoll(2000);
 </script>
 
 <template>
