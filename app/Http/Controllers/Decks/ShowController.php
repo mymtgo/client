@@ -20,8 +20,6 @@ class ShowController extends Controller
 {
     public function __invoke(string $id, Request $request)
     {
-        Mtgo::processLogEvents(sync:true);
-        dd(1);
         $deck = Deck::with(['matches.opponentArchetypes.archetype'])->withCount(['wonMatches', 'lostMatches', 'matches'])->find($id);
 
         if (! $deck) {

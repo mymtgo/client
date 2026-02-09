@@ -156,7 +156,6 @@ class BuildMatch
 
         DetermineMatchArchetypes::run($match);
 
-        dd(1);
         DB::commit();
 
         Notification::title('New match Recorded')
