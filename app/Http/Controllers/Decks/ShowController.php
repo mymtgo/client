@@ -4,12 +4,13 @@ namespace App\Http\Controllers\Decks;
 
 use App\Actions\Cards\GetCards;
 use App\Actions\Decks\GetArchetypeMatchupSpread;
+use App\Data\Front\ArchetypeData;
 use App\Data\Front\CardData;
 use App\Data\Front\DeckData;
 use App\Data\Front\LeagueData;
 use App\Data\Front\MatchData;
-use App\Facades\Mtgo;
 use App\Http\Controllers\Controller;
+use App\Models\Archetype;
 use App\Models\Deck;
 use App\Models\Game;
 use App\Models\League;
@@ -156,6 +157,7 @@ class ShowController extends Controller
                 $deck->matches()->whereBetween('started_at', [$from, $to])->with(['opponentArchetypes.archetype'])->orderByDesc('started_at')->paginate(50)
             ),
             'leagues' => LeagueData::collect($leagues),
+            'archetypes' => ArchetypeData::collect(Archetype::orderBy('name')->get()),
         ]);
     }
 }
