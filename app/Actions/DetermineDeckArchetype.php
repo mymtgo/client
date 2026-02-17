@@ -3,36 +3,52 @@
 namespace App\Actions;
 
 use App\Models\Archetype;
+use App\Models\ArchetypeMatchAttempt;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
 
 class DetermineDeckArchetype
 {
-    public static function run(Collection $cards, string $format): ?array
+    public static function run(Collection $cards, string $format, ?int $matchId = null, ?int $playerId = null): ?array
     {
-        $response = Http::withoutVerifying()->post('https://api.test/api/archetypes/estimate', [
+        $payload = [
             'format' => $format,
-            'cards' => $cards,
-        ]);
+            'cards' => $cards->values(),
+        ];
+
+        $response = Http::withoutVerifying()->post('https://api.test/api/archetypes/estimate', $payload);
 
         $archetypes = $response->json();
 
-        dd($cards, $format);
-        if (! $response->ok() || ! count($archetypes)) {
-            return null;
+        $result = null;
+
+        if ($response->ok() && is_array($archetypes) && count($archetypes)) {
+            $archetype = $archetypes[0];
+            $archetypeModel = Archetype::where('uuid', $archetype['uuid'])->first();
+
+            if ($archetypeModel) {
+                $result = [
+                    'archetype_id' => $archetypeModel->id,
+                    'confidence' => $archetype['confidence'],
+                ];
+            }
         }
 
-        $archetype = array_first($archetypes);
-
-        $archetypeModel = Archetype::where('uuid', $archetype['uuid'])->first();
-
-        if (! $archetypeModel) {
-            return null;
+        try {
+            ArchetypeMatchAttempt::create([
+                'match_id' => $matchId,
+                'player_id' => $playerId,
+                'format' => $format,
+                'payload' => $payload,
+                'status_code' => $response->status(),
+                'response' => $archetypes,
+                'archetype_id' => $result['archetype_id'] ?? null,
+                'confidence' => $result['confidence'] ?? null,
+            ]);
+        } catch (\Throwable $e) {
+            \Log::warning('Failed to log archetype attempt: ' . $e->getMessage());
         }
 
-        return [
-            'archetype_id' => $archetypeModel->id,
-            'confidence' => $archetype['confidence'],
-        ];
+        return $result;
     }
 }
