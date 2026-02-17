@@ -32,7 +32,8 @@ defineProps<{
     gamesOtpLost: number;
     otpRate: number;
     matches: App.Data.Front.MatchData[];
-    leagues: App.Data.Front.LeagueData[]
+    leagues: App.Data.Front.LeagueData[];
+    archetypes: App.Data.Front.ArchetypeData[];
 }>();
 
 </script>
@@ -95,10 +96,10 @@ defineProps<{
                             <TabsTrigger value="matchupSpread"> Matchup spread </TabsTrigger>
                         </TabsList>
                         <TabsContent value="leagues">
-                            <DeckLeagues :leagues="leagues" />
+                            <DeckLeagues :leagues="leagues" :archetypes="archetypes" />
                         </TabsContent>
                         <TabsContent value="matches">
-                            <DeckMatches :matches="matches" />
+                            <DeckMatches :matches="matches" :archetypes="archetypes" />
                         </TabsContent>
                         <TabsContent value="matchupSpread">
                             <MatchupSpread :matchupSpread="matchupSpread" />
