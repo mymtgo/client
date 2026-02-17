@@ -7,14 +7,14 @@ use App\Models\Player;
 
 class DetermineMatchArchetypes
 {
-    public static function run(MtgoMatch $match)
+    public static function run(MtgoMatch $match): void
     {
         $matchArchetypes = [];
 
         $player = $match->games->first()->localPlayers->first();
 
         $playerDeck = $player->pivot->deck_json;
-        $archetype = DetermineDeckArchetype::run(collect($playerDeck), $match->format);
+        $archetype = DetermineDeckArchetype::run(collect($playerDeck), $match->format, $match->id, $player->id);
 
         if ($archetype) {
             $matchArchetypes[] = [
@@ -51,9 +51,8 @@ class DetermineMatchArchetypes
                 ];
             });
 
-            $archetype = DetermineDeckArchetype::run($cards, $match->format);
+            $archetype = DetermineDeckArchetype::run($cards, $match->format, $match->id, $opponentId);
 
-            dd($archetype);
             if ($archetype) {
                 $matchArchetypes[] = [
                     'archetype_id' => $archetype['archetype_id'],
