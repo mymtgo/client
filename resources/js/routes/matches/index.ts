@@ -62,6 +62,59 @@ show.head = (args: { id: string | number } | [id: string | number ] | string | n
 })
 
 /**
+* @see \App\Http\Controllers\Matches\UpdateArchetypeController::__invoke
+ * @see app/Http/Controllers/Matches/UpdateArchetypeController.php:12
+ * @route '/matches/{id}/archetype'
+ */
+export const updateArchetype = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'patch'> => ({
+    url: updateArchetype.url(args, options),
+    method: 'patch',
+})
+
+updateArchetype.definition = {
+    methods: ["patch"],
+    url: '/matches/{id}/archetype',
+} satisfies RouteDefinition<["patch"]>
+
+/**
+* @see \App\Http\Controllers\Matches\UpdateArchetypeController::__invoke
+ * @see app/Http/Controllers/Matches/UpdateArchetypeController.php:12
+ * @route '/matches/{id}/archetype'
+ */
+updateArchetype.url = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions) => {
+    if (typeof args === 'string' || typeof args === 'number') {
+        args = { id: args }
+    }
+
+    
+    if (Array.isArray(args)) {
+        args = {
+                    id: args[0],
+                }
+    }
+
+    args = applyUrlDefaults(args)
+
+    const parsedArgs = {
+                        id: args.id,
+                }
+
+    return updateArchetype.definition.url
+            .replace('{id}', parsedArgs.id.toString())
+            .replace(/\/+$/, '') + queryParams(options)
+}
+
+/**
+* @see \App\Http\Controllers\Matches\UpdateArchetypeController::__invoke
+ * @see app/Http/Controllers/Matches/UpdateArchetypeController.php:12
+ * @route '/matches/{id}/archetype'
+ */
+updateArchetype.patch = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'patch'> => ({
+    url: updateArchetype.url(args, options),
+    method: 'patch',
+})
+
+/**
 * @see \App\Http\Controllers\Matches\DeleteController::__invoke
  * @see app/Http/Controllers/Matches/DeleteController.php:11
  * @route '/matches/{id}'
@@ -115,6 +168,7 @@ deleteMethod.delete = (args: { id: string | number } | [id: string | number ] | 
 })
 const matches = {
     show: Object.assign(show, show),
+updateArchetype: Object.assign(updateArchetype, updateArchetype),
 delete: Object.assign(deleteMethod, deleteMethod),
 }
 

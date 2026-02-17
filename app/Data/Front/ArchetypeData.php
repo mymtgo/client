@@ -9,6 +9,7 @@ use Spatie\LaravelData\Data;
 class ArchetypeData extends Data
 {
     public function __construct(
+        public int $id,
         public string $name,
         public string $format,
         public string $colorIdentity,
@@ -17,6 +18,7 @@ class ArchetypeData extends Data
     public static function fromModel(Archetype $archetype): self
     {
         return new self(
+            id: $archetype->id,
             name: $archetype->name,
             format: $archetype->format,
             colorIdentity: $archetype->color_identity,
