@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir:*)",
+      "Bash(php artisan tinker:*)",
+      "Bash(findstr:*)",
+      "Bash(cmd /c \"dir /b %APPDATA% | findstr /i mtgo\")",
+      "Bash(cmd /c \"echo %APPDATA%\")",
+      "Bash(sqlite3:*)",
+      "Bash(cmd /c \"where sqlite3\")",
+      "Bash(php artisan wayfinder:generate:*)",
+      "Bash(where:*)",
+      "Bash(\"C:\\\\Users\\\\Alec\\\\.config\\\\herd\\\\bin\\\\php.bat\" artisan wayfinder:generate)",
+      "Bash(\"C:\\\\Users\\\\Alec\\\\.config\\\\herd\\\\bin\\\\php.bat\" artisan typescript:transform)",
+      "Bash(E:\\\\mymtgo\\\\client\\\\vendor\\\\bin\\\\pint:*)",
+      "Bash(\"C:\\\\Users\\\\Alec\\\\.config\\\\herd\\\\bin\\\\php.bat\" E:mymtgoclientvendorbinpint --dirty)",
+      "Bash(\"C:\\\\Users\\\\Alec\\\\.config\\\\herd\\\\bin\\\\php.bat\" vendor/bin/pint --dirty)"
+    ]
+  }
+}

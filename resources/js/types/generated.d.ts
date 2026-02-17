@@ -1,5 +1,6 @@
 declare namespace App.Data.Front {
 export type ArchetypeData = {
+id: number;
 name: string;
 format: string;
 colorIdentity: string;
@@ -33,6 +34,13 @@ timeline: any | Array<any>;
 export type GameTimelineData = {
 timestamp: string;
 content: Array<any>;
+};
+export type LeagueData = {
+name: string;
+startedAt: any;
+phantom: boolean;
+format: string;
+matches: Array<any>;
 };
 export type MatchArchetypeData = {
 confidence: number;

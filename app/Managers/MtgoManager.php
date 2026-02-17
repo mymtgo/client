@@ -132,9 +132,9 @@ class MtgoManager
             fn () => $this->ingestLogs()
         )->everySecond()->name('ingest_logs')->withoutOverlapping(5);
 
-//        $schedule->call(
-//            fn () => $this->processLogEvents()
-//        )->everyThirtySeconds()->name('process_log_events')->withoutOverlapping(30);
+        $schedule->call(
+            fn () => $this->processLogEvents()
+        )->everyThirtySeconds()->name('process_log_events')->withoutOverlapping(30);
 
         $schedule->call(
             fn () => $this->downloadArchetypes()

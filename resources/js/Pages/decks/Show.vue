@@ -11,7 +11,6 @@ import MatchupSpread from '@/Pages/decks/partials/MatchupSpread.vue';
 import DeckMatches from '@/Pages/decks/partials/DeckMatches.vue';
 import DeckLeagues from '@/Pages/decks/partials/DeckLeagues.vue';
 import DeckList from '@/Pages/decks/partials/DeckList.vue';
-import MatchHistoryChart from '@/Pages/decks/partials/MatchHistoryChart.vue';
 
 defineProps<{
     matchupSpread: any[];
@@ -34,19 +33,9 @@ defineProps<{
     otpRate: number;
     matches: App.Data.Front.MatchData[];
     leagues: App.Data.Front.LeagueData[];
-    matchChartData: any[];
-    timeframe: string
+    archetypes: App.Data.Front.ArchetypeData[];
 }>();
 
-usePoll(2000);
-
-const updateTimeframe = (value: string) => {
-    router.reload({
-        data: {
-            timeframe: value,
-        },
-    });
-};
 </script>
 
 <template>
@@ -54,15 +43,13 @@ const updateTimeframe = (value: string) => {
         <div class="grid grow grid-cols-12 text-white">
             <div class="col-span-9 grow space-y-2">
                 <div class="flex justify-end">
-                    <NativeSelect :model-value="timeframe" @change="(e) => updateTimeframe(e.target.value)">
-                        <option value="week">Last 7 days</option>
+                    <NativeSelect model-value="7days">
+                        <option value="7days">Last 7 days</option>
                         <option value="biweekly">Last 2 weeks</option>
                         <option value="monthly">Last 30 days</option>
                         <option value="year">This year</option>
-                        <option value="alltime">All time</option>
                     </NativeSelect>
                 </div>
-
                 <div class="grid grid-cols-4 gap-4">
                     <Card class="gap-0">
                         <CardHeader>Total Matches</CardHeader>
@@ -82,7 +69,7 @@ const updateTimeframe = (value: string) => {
                     </Card>
                     <Card class="gap-0">
                         <CardHeader>Game Winrate</CardHeader>
-                        <CardContent class="text-2xl"> {{ gameWinrate }}%</CardContent>
+                        <CardContent class="text-xl"> {{ gameWinrate }}%</CardContent>
                     </Card>
                 </div>
 
@@ -102,26 +89,27 @@ const updateTimeframe = (value: string) => {
                 </div>
 
                 <div>
-                    <Tabs default-value="matches">
+                    <Tabs default-value="leagues">
                         <TabsList>
+                            <TabsTrigger value="leagues"> Leagues </TabsTrigger>
                             <TabsTrigger value="matches"> Matches </TabsTrigger>
                             <TabsTrigger value="matchupSpread"> Matchup spread </TabsTrigger>
-                            <TabsTrigger value="leagues"> Leagues </TabsTrigger>
                         </TabsList>
+                        <TabsContent value="leagues">
+                            <DeckLeagues :leagues="leagues" :archetypes="archetypes" />
+                        </TabsContent>
                         <TabsContent value="matches">
-                            <DeckMatches :matches="matches" />
+                            <DeckMatches :matches="matches" :archetypes="archetypes" />
                         </TabsContent>
                         <TabsContent value="matchupSpread">
                             <MatchupSpread :matchupSpread="matchupSpread" />
                         </TabsContent>
-                        <TabsContent value="leagues">
-                            <DeckLeagues :leagues="leagues" />
-                        </TabsContent>
+
                     </Tabs>
                 </div>
             </div>
 
-            <div class="col-span-3 no-scrollbar h-screen overflow-y-auto px-8">
+            <div class="col-span-3 px-8 h-screen no-scrollbar overflow-y-auto">
                 <DeckList :maindeck="maindeck" :sideboard="sideboard" />
             </div>
         </div>

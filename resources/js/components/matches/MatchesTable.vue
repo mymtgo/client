@@ -1,17 +1,21 @@
 <script setup lang="ts">
+import { ref } from 'vue';
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from '@/components/ui/context-menu';
 import { Badge } from '@/components/ui/badge';
 import ManaSymbols from '@/components/ManaSymbols.vue';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import dayjs from 'dayjs';
-import { router, useForm } from '@inertiajs/vue3';
+import { useForm } from '@inertiajs/vue3';
 import DeleteController from '@/actions/App/Http/Controllers/Matches/DeleteController';
-import { Button } from '@/components/ui/button';
-import ShowController from '@/actions/App/Http/Controllers/Matches/ShowController';
+import UpdateArchetypeController from '@/actions/App/Http/Controllers/Matches/UpdateArchetypeController';
+import SetArchetypeDialog from '@/components/matches/SetArchetypeDialog.vue';
 
 defineProps<{
     matches: App.Data.Front.MatchData[];
+    archetypes?: App.Data.Front.ArchetypeData[];
 }>();
+
+const archetypeDialog = ref<InstanceType<typeof SetArchetypeDialog> | null>(null);
 
 const deleteForm = useForm<{
     id: string | number;
@@ -26,9 +30,21 @@ const deleteMatch = (id: string | number) => {
         onSuccess: () => deleteForm.reset(),
     });
 };
+
+const clearArchetypeForm = useForm<{ archetype_id: null }>({
+    archetype_id: null,
+});
+
+const clearArchetype = (matchId: number) => {
+    clearArchetypeForm.submit(UpdateArchetypeController({ id: matchId }), {
+        onSuccess: () => clearArchetypeForm.reset(),
+    });
+};
 </script>
 
 <template>
+    <SetArchetypeDialog ref="archetypeDialog" :archetypes="archetypes ?? []" />
+
     <Table>
         <TableHeader class="bg-muted">
             <TableRow>
@@ -57,13 +73,13 @@ const deleteMatch = (id: string | number) => {
                                 <span v-if="!match.leagueGame">Casual</span>
                             </TableCell>
                             <TableCell>
-                                <div class="flex items-center gap-1" v-if="match.opponentArchetypes[0]">
+                                <div class="flex items-center gap-1" v-if="match.opponentArchetypes?.[0]?.archetype">
                                     {{ match.opponentArchetypes[0].archetype.name }}
                                 </div>
-                                <span v-if="!match.opponentArchetypes[0]" class="opacity-50"> Unknown</span>
+                                <span v-else class="opacity-50"> Unknown</span>
                             </TableCell>
                             <TableCell>
-                                <div v-if="match.opponentArchetypes[0]">
+                                <div v-if="match.opponentArchetypes?.[0]?.archetype">
                                     <ManaSymbols :symbols="match.opponentArchetypes[0].archetype.colorIdentity" />
                                 </div>
                             </TableCell>
@@ -81,11 +97,18 @@ const deleteMatch = (id: string | number) => {
                             </TableCell>
 
                             <TableCell>
-                                <Button size="sm" variant="outline" @click="router.visit(ShowController({ id: match.id }).url)">View</Button>
+                                <!--                                        <Button size="sm" variant="outline" @click="router.visit(ShowController({ id: match.id }).url)">View</Button>-->
                             </TableCell>
                         </TableRow>
                     </ContextMenuTrigger>
                     <ContextMenuContent>
+                        <ContextMenuItem @click="archetypeDialog?.openForMatch(match.id, match.format)">Set archetype</ContextMenuItem>
+                        <ContextMenuItem
+                            v-if="match.opponentArchetypes?.[0]?.archetype"
+                            @click="clearArchetype(match.id)"
+                        >
+                            Clear archetype
+                        </ContextMenuItem>
                         <ContextMenuItem @click="deleteMatch(match.id)">Remove from stats</ContextMenuItem>
                     </ContextMenuContent>
                 </ContextMenu>

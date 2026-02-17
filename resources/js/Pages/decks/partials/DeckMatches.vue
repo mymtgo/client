@@ -7,6 +7,7 @@ import DeleteController from '@/actions/App/Http/Controllers/Matches/DeleteContr
 import MatchesTable from '@/components/matches/MatchesTable.vue';
 defineProps<{
     matches: App.Data.Front.MatchData[];
+    archetypes: App.Data.Front.ArchetypeData[];
 }>();
 
 const updatePage = (page: number) => {
@@ -26,7 +27,7 @@ const updatePage = (page: number) => {
                 <EmptyDescription>No matches recorded</EmptyDescription>
             </Empty>
 
-            <MatchesTable :matches="matches.data" v-if="matches.total" />
+            <MatchesTable :matches="matches.data" :archetypes="archetypes" v-if="matches.total" />
         </CardContent>
 
         <div class="justify-end py-2 text-right" v-if="matches.total > 24">

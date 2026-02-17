@@ -6,6 +6,7 @@ import MatchesTable from '@/components/matches/MatchesTable.vue';
 
 defineProps<{
     leagues: App.Data.Front.LeagueData;
+    archetypes: App.Data.Front.ArchetypeData[];
 }>();
 </script>
 
@@ -16,7 +17,7 @@ defineProps<{
                 {{ league.name }}
             </CardHeader>
             <CardContent class="px-0">
-                <MatchesTable :matches="league.matches" />
+                <MatchesTable :matches="league.matches" :archetypes="archetypes" />
             </CardContent>
         </Card>
     </div>
