@@ -17,6 +17,7 @@ const matches = [
         result: 'W',
         deck: { id: 1, name: 'Boros Energy' },
         format: 'Standard',
+        opponentName: 'Karadorinn',
         opponentArchetype: 'Dimir Midrange',
         games: '2-0',
         startedAt: '2026-02-17T19:34:00Z',
@@ -27,6 +28,7 @@ const matches = [
         result: 'L',
         deck: { id: 1, name: 'Boros Energy' },
         format: 'Standard',
+        opponentName: 'blisterguy',
         opponentArchetype: 'Azorius Oculus',
         games: '1-2',
         startedAt: '2026-02-17T19:05:00Z',
@@ -37,6 +39,7 @@ const matches = [
         result: 'W',
         deck: { id: 1, name: 'Boros Energy' },
         format: 'Standard',
+        opponentName: 'Patxi_7',
         opponentArchetype: null,
         games: '2-1',
         startedAt: '2026-02-16T21:15:00Z',
@@ -47,6 +50,7 @@ const matches = [
         result: 'W',
         deck: { id: 2, name: 'Izzet Prowess' },
         format: 'Modern',
+        opponentName: 'blisterguy',
         opponentArchetype: 'Burn',
         games: '2-0',
         startedAt: '2026-02-15T14:22:00Z',
@@ -57,6 +61,7 @@ const matches = [
         result: 'L',
         deck: { id: 2, name: 'Izzet Prowess' },
         format: 'Modern',
+        opponentName: 'HammerTime99',
         opponentArchetype: 'Amulet Titan',
         games: '0-2',
         startedAt: '2026-02-15T13:50:00Z',
@@ -67,6 +72,7 @@ const matches = [
         result: 'W',
         deck: { id: 3, name: 'Mono-Green Devotion' },
         format: 'Pioneer',
+        opponentName: 'zuberamaster',
         opponentArchetype: 'Rakdos Midrange',
         games: '2-1',
         startedAt: '2026-02-14T20:10:00Z',
@@ -90,6 +96,7 @@ const matches = [
                         <TableHead>Deck</TableHead>
                         <TableHead>Format</TableHead>
                         <TableHead>Opponent</TableHead>
+                        <TableHead>Archetype</TableHead>
                         <TableHead>Games</TableHead>
                         <TableHead>When</TableHead>
                         <TableHead></TableHead>
@@ -108,8 +115,9 @@ const matches = [
                         <TableCell>
                             <Badge variant="outline">{{ match.format }}</Badge>
                         </TableCell>
+                        <TableCell class="font-medium">{{ match.opponentName }}</TableCell>
                         <TableCell>
-                            <span v-if="match.opponentArchetype">{{ match.opponentArchetype }}</span>
+                            <span v-if="match.opponentArchetype" class="text-sm">{{ match.opponentArchetype }}</span>
                             <span v-else class="text-muted-foreground text-xs">Unknown</span>
                         </TableCell>
                         <TableCell class="tabular-nums">{{ match.games }}</TableCell>

@@ -13,13 +13,14 @@ import { LayoutDashboard, Layers, Trophy, Settings, Sun, Moon } from 'lucide-vue
 import { ref } from 'vue';
 import DashboardController from '@/actions/App/Http/Controllers/IndexController';
 import DecksIndexController from '@/actions/App/Http/Controllers/Decks/IndexController';
+import LeaguesIndexController from '@/actions/App/Http/Controllers/Leagues/IndexController';
 
 const page = usePage();
 
 const nav = [
     { label: 'Dashboard', icon: LayoutDashboard, href: DashboardController.url() },
     { label: 'Decks',     icon: Layers,           href: DecksIndexController.url() },
-    { label: 'Leagues',   icon: Trophy,            href: '/leagues' },
+    { label: 'Leagues',   icon: Trophy,            href: LeaguesIndexController.url() },
 ];
 
 const isActive = (href: string) => {
