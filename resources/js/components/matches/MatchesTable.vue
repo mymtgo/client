@@ -9,7 +9,6 @@ import { useForm, router } from '@inertiajs/vue3';
 import DeleteController from '@/actions/App/Http/Controllers/Matches/DeleteController';
 import UpdateArchetypeController from '@/actions/App/Http/Controllers/Matches/UpdateArchetypeController';
 import ShowController from '@/actions/App/Http/Controllers/Matches/ShowController';
-import { Button } from '@/components/ui/button';
 import SetArchetypeDialog from '@/components/matches/SetArchetypeDialog.vue';
 
 defineProps<{
@@ -59,14 +58,13 @@ const clearArchetype = (matchId: number) => {
                 <TableHead>Games lost</TableHead>
                 <TableHead>Duration</TableHead>
                 <TableHead>Date</TableHead>
-                <TableHead></TableHead>
             </TableRow>
         </TableHeader>
         <TableBody>
             <template v-for="(match, idx) in matches" :key="`match_${idx}`">
                 <ContextMenu>
                     <ContextMenuTrigger asChild>
-                        <TableRow>
+                        <TableRow class="cursor-pointer" @click="router.visit(ShowController({ id: match.id }).url)">
                             <TableCell>
                                 <Badge variant="default" v-if="match.gamesWon > match.gamesLost"> Win </Badge>
                                 <Badge variant="destructive" v-if="match.gamesWon < match.gamesLost"> Loss </Badge>
@@ -103,9 +101,6 @@ const clearArchetype = (matchId: number) => {
                                 {{ dayjs(match.startedAt).format('DD/MM/YYYY hh:mma') }}
                             </TableCell>
 
-                            <TableCell>
-                                <Button size="sm" variant="ghost" @click="router.visit(ShowController({ id: match.id }).url)">View</Button>
-                            </TableCell>
                         </TableRow>
                     </ContextMenuTrigger>
                     <ContextMenuContent>
