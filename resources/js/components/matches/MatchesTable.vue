@@ -5,9 +5,11 @@ import { Badge } from '@/components/ui/badge';
 import ManaSymbols from '@/components/ManaSymbols.vue';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import dayjs from 'dayjs';
-import { useForm } from '@inertiajs/vue3';
+import { useForm, router } from '@inertiajs/vue3';
 import DeleteController from '@/actions/App/Http/Controllers/Matches/DeleteController';
 import UpdateArchetypeController from '@/actions/App/Http/Controllers/Matches/UpdateArchetypeController';
+import ShowController from '@/actions/App/Http/Controllers/Matches/ShowController';
+import { Button } from '@/components/ui/button';
 import SetArchetypeDialog from '@/components/matches/SetArchetypeDialog.vue';
 
 defineProps<{
@@ -102,7 +104,7 @@ const clearArchetype = (matchId: number) => {
                             </TableCell>
 
                             <TableCell>
-                                <!--                                        <Button size="sm" variant="outline" @click="router.visit(ShowController({ id: match.id }).url)">View</Button>-->
+                                <Button size="sm" variant="ghost" @click="router.visit(ShowController({ id: match.id }).url)">View</Button>
                             </TableCell>
                         </TableRow>
                     </ContextMenuTrigger>
