@@ -1,7 +1,7 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition } from './../wayfinder'
 /**
 * @see \App\Http\Controllers\IndexController::__invoke
-* @see app/Http/Controllers/IndexController.php:15
+* @see app/Http/Controllers/IndexController.php:16
 * @route '/'
 */
 export const home = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -16,7 +16,7 @@ home.definition = {
 
 /**
 * @see \App\Http\Controllers\IndexController::__invoke
-* @see app/Http/Controllers/IndexController.php:15
+* @see app/Http/Controllers/IndexController.php:16
 * @route '/'
 */
 home.url = (options?: RouteQueryOptions) => {
@@ -25,7 +25,7 @@ home.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\IndexController::__invoke
-* @see app/Http/Controllers/IndexController.php:15
+* @see app/Http/Controllers/IndexController.php:16
 * @route '/'
 */
 home.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -35,7 +35,7 @@ home.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 
 /**
 * @see \App\Http\Controllers\IndexController::__invoke
-* @see app/Http/Controllers/IndexController.php:15
+* @see app/Http/Controllers/IndexController.php:16
 * @route '/'
 */
 home.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -45,7 +45,7 @@ home.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 
 /**
 * @see \App\Http\Controllers\IndexController::__invoke
-* @see app/Http/Controllers/IndexController.php:15
+* @see app/Http/Controllers/IndexController.php:16
 * @route '/'
 */
 const homeForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -55,7 +55,7 @@ const homeForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
 
 /**
 * @see \App\Http\Controllers\IndexController::__invoke
-* @see app/Http/Controllers/IndexController.php:15
+* @see app/Http/Controllers/IndexController.php:16
 * @route '/'
 */
 homeForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -65,7 +65,7 @@ homeForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
 
 /**
 * @see \App\Http\Controllers\IndexController::__invoke
-* @see app/Http/Controllers/IndexController.php:15
+* @see app/Http/Controllers/IndexController.php:16
 * @route '/'
 */
 homeForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
