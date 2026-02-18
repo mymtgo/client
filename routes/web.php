@@ -32,6 +32,7 @@ Route::group([
     $router->group([
         'prefix' => 'decks',
     ], function (\Illuminate\Routing\Router $group) {
+        $group->get('/', \App\Http\Controllers\Decks\IndexController::class)->name('decks.index');
         $group->get('{deck:id}', \App\Http\Controllers\Decks\ShowController::class)->name('decks.show');
     });
 

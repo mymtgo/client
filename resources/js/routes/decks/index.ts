@@ -1,5 +1,49 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, applyUrlDefaults } from './../../wayfinder'
 /**
+* @see \App\Http\Controllers\Decks\IndexController::__invoke
+* @see app/Http/Controllers/Decks/IndexController.php:10
+* @route '/decks'
+*/
+export const index = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
+    url: index.url(options),
+    method: 'get',
+})
+
+index.definition = {
+    methods: ["get","head"],
+    url: '/decks',
+} satisfies RouteDefinition<["get","head"]>
+
+/**
+* @see \App\Http\Controllers\Decks\IndexController::__invoke
+* @see app/Http/Controllers/Decks/IndexController.php:10
+* @route '/decks'
+*/
+index.url = (options?: RouteQueryOptions) => {
+    return index.definition.url + queryParams(options)
+}
+
+/**
+* @see \App\Http\Controllers\Decks\IndexController::__invoke
+* @see app/Http/Controllers/Decks/IndexController.php:10
+* @route '/decks'
+*/
+index.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
+    url: index.url(options),
+    method: 'get',
+})
+
+/**
+* @see \App\Http\Controllers\Decks\IndexController::__invoke
+* @see app/Http/Controllers/Decks/IndexController.php:10
+* @route '/decks'
+*/
+index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
+    url: index.url(options),
+    method: 'head',
+})
+
+/**
 * @see \App\Http\Controllers\Decks\ShowController::__invoke
 * @see app/Http/Controllers/Decks/ShowController.php:22
 * @route '/decks/{deck}'
@@ -68,6 +112,7 @@ show.head = (args: { deck: string | number | { id: string | number } } | [deck: 
 })
 
 const decks = {
+    index: Object.assign(index, index),
     show: Object.assign(show, show),
 }
 
