@@ -1,4 +1,4 @@
-import { queryParams, type RouteQueryOptions, type RouteDefinition, applyUrlDefaults } from './../../../../../wayfinder'
+import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition, applyUrlDefaults } from './../../../../../wayfinder'
 /**
 * @see \App\Http\Controllers\Games\ShowController::__invoke
 * @see app/Http/Controllers/Games/ShowController.php:15
@@ -60,5 +60,42 @@ ShowController.head = (args: { id: string | number } | [id: string | number ] | 
     url: ShowController.url(args, options),
     method: 'head',
 })
+
+/**
+* @see \App\Http\Controllers\Games\ShowController::__invoke
+* @see app/Http/Controllers/Games/ShowController.php:15
+* @route '/games/{id}'
+*/
+const ShowControllerForm = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+    action: ShowController.url(args, options),
+    method: 'get',
+})
+
+/**
+* @see \App\Http\Controllers\Games\ShowController::__invoke
+* @see app/Http/Controllers/Games/ShowController.php:15
+* @route '/games/{id}'
+*/
+ShowControllerForm.get = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+    action: ShowController.url(args, options),
+    method: 'get',
+})
+
+/**
+* @see \App\Http\Controllers\Games\ShowController::__invoke
+* @see app/Http/Controllers/Games/ShowController.php:15
+* @route '/games/{id}'
+*/
+ShowControllerForm.head = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+    action: ShowController.url(args, {
+        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+            _method: 'HEAD',
+            ...(options?.query ?? options?.mergeQuery ?? {}),
+        }
+    }),
+    method: 'get',
+})
+
+ShowController.form = ShowControllerForm
 
 export default ShowController

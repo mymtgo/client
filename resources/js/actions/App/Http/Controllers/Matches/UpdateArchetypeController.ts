@@ -1,4 +1,4 @@
-import { queryParams, type RouteQueryOptions, type RouteDefinition, applyUrlDefaults } from './../../../../../wayfinder'
+import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition, applyUrlDefaults } from './../../../../../wayfinder'
 /**
 * @see \App\Http\Controllers\Matches\UpdateArchetypeController::__invoke
 * @see app/Http/Controllers/Matches/UpdateArchetypeController.php:12
@@ -50,5 +50,37 @@ UpdateArchetypeController.patch = (args: { id: string | number } | [id: string |
     url: UpdateArchetypeController.url(args, options),
     method: 'patch',
 })
+
+/**
+* @see \App\Http\Controllers\Matches\UpdateArchetypeController::__invoke
+* @see app/Http/Controllers/Matches/UpdateArchetypeController.php:12
+* @route '/matches/{id}/archetype'
+*/
+const UpdateArchetypeControllerForm = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+    action: UpdateArchetypeController.url(args, {
+        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+            _method: 'PATCH',
+            ...(options?.query ?? options?.mergeQuery ?? {}),
+        }
+    }),
+    method: 'post',
+})
+
+/**
+* @see \App\Http\Controllers\Matches\UpdateArchetypeController::__invoke
+* @see app/Http/Controllers/Matches/UpdateArchetypeController.php:12
+* @route '/matches/{id}/archetype'
+*/
+UpdateArchetypeControllerForm.patch = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+    action: UpdateArchetypeController.url(args, {
+        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+            _method: 'PATCH',
+            ...(options?.query ?? options?.mergeQuery ?? {}),
+        }
+    }),
+    method: 'post',
+})
+
+UpdateArchetypeController.form = UpdateArchetypeControllerForm
 
 export default UpdateArchetypeController
