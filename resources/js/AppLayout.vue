@@ -5,6 +5,7 @@ import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
 
 defineProps<{
     title?: string;
+    breadcrumbs?: { label: string; href?: string }[];
 }>();
 </script>
 
@@ -13,7 +14,7 @@ defineProps<{
         <AppSidebar />
 
         <SidebarInset>
-            <SiteHeader>
+            <SiteHeader :breadcrumbs="breadcrumbs">
                 <template #title>{{ title }}</template>
             </SiteHeader>
             <div class="flex flex-1 flex-col overflow-y-auto">
