@@ -1,42 +1,37 @@
 <script setup lang="ts">
+import { computed } from 'vue';
 import type { ChartConfig } from '@/components/ui/chart';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ChartContainer } from '@/components/ui/chart';
 import { VisAxis, VisLine, VisXYContainer } from '@unovis/vue';
 
-// FAKE DATA — replace with props from backend
-// Each entry is one month, with a win rate (0–100) per format played
-type DataPoint = {
-    x: number;
-    Modern: number | null;
-    Pioneer: number | null;
-    Legacy: number | null;
+type FormatChart = {
+    months: string[];
+    formats: string[];
+    data: ({ x: number } & Record<string, number | null>)[];
 };
 
-const months = ['Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb'];
+const props = defineProps<{
+    formatChart: FormatChart;
+}>();
 
-const data: DataPoint[] = [
-    { x: 0, Modern: 55, Pioneer: 60, Legacy: null },
-    { x: 1, Modern: 61, Pioneer: 52, Legacy: 48 },
-    { x: 2, Modern: 58, Pioneer: 58, Legacy: 52 },
-    { x: 3, Modern: 64, Pioneer: 55, Legacy: 45 },
-    { x: 4, Modern: 67, Pioneer: 61, Legacy: 55 },
-    { x: 5, Modern: 63, Pioneer: 57, Legacy: 58 },
-];
+const chartColors = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)', 'var(--chart-4)', 'var(--chart-5)'];
 
-const formats: { key: keyof Omit<DataPoint, 'x'>; color: string; label: string }[] = [
-    { key: 'Modern', color: 'var(--chart-1)', label: 'Modern' },
-    { key: 'Pioneer', color: 'var(--chart-2)', label: 'Pioneer' },
-    { key: 'Legacy', color: 'var(--chart-3)', label: 'Legacy' },
-];
+const formats = computed(() =>
+    props.formatChart.formats.map((key, i) => ({
+        key,
+        color: chartColors[i % chartColors.length],
+        label: key,
+    })),
+);
 
-const chartConfig = {
-    Modern: { label: 'Modern', color: 'var(--chart-1)' },
-    Pioneer: { label: 'Pioneer', color: 'var(--chart-2)' },
-    Legacy: { label: 'Legacy', color: 'var(--chart-3)' },
-} satisfies ChartConfig;
+const chartConfig = computed(() =>
+    Object.fromEntries(
+        formats.value.map((f) => [f.key, { label: f.label, color: f.color }]),
+    ) as ChartConfig,
+);
 
-const tickFormat = (i: number) => months[i] ?? '';
+const tickFormat = (i: number) => props.formatChart.months[i] ?? '';
 const yTickFormat = (v: number) => `${v}%`;
 </script>
 
@@ -57,12 +52,12 @@ const yTickFormat = (v: number) => `${v}%`;
 
         <CardContent>
             <ChartContainer :config="chartConfig" class="h-[220px] w-full">
-                <VisXYContainer :data="data">
+                <VisXYContainer :data="formatChart.data">
                     <VisLine
                         v-for="f in formats"
                         :key="f.key"
-                        :x="(d: DataPoint) => d.x"
-                        :y="(d: DataPoint) => d[f.key]"
+                        :x="(d: Record<string, number | null>) => d.x"
+                        :y="(d: Record<string, number | null>) => d[f.key]"
                         :color="f.color"
                         :line-width="2"
                     />

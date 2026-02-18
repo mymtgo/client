@@ -18,7 +18,12 @@
       "Bash(npx shadcn-vue@latest:*)",
       "WebFetch(domain:mtga.untapped.gg)",
       "Bash(php artisan make:controller:*)",
-      "WebFetch(domain:nativephp.com)"
+      "WebFetch(domain:nativephp.com)",
+      "mcp__laravel-boost__application-info",
+      "mcp__laravel-boost__database-schema",
+      "mcp__laravel-boost__tinker",
+      "Bash(php artisan typescript:transform:*)",
+      "Bash(vendor/bin/pint:*)"
     ]
   },
   "enabledMcpjsonServers": [

@@ -3,21 +3,26 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Trophy } from 'lucide-vue-next';
 
-// FAKE DATA — replace with props from backend
-const league = {
-    isActive: true,
-    deck: { id: 1, name: 'Boros Energy', format: 'Standard' },
-    results: ['W', 'W', 'L', null, null] as (string | null)[],
-    matchesRemaining: 2,
-    isTrophy: false,
+type League = {
+    name: string;
+    format: string;
+    phantom: boolean;
+    isActive: boolean;
+    isTrophy: boolean;
+    deckName: string | null;
+    results: ('W' | 'L' | null)[];
+    wins: number;
+    losses: number;
+    matchesRemaining: number;
 };
 
-const wins = league.results.filter((r) => r === 'W').length;
-const losses = league.results.filter((r) => r === 'L').length;
+const props = defineProps<{
+    league: League | null;
+}>();
 </script>
 
 <template>
-    <Card>
+    <Card v-if="league">
         <CardHeader class="pb-2">
             <div class="flex items-center justify-between">
                 <CardTitle class="text-sm font-medium text-muted-foreground uppercase tracking-wide">
@@ -30,13 +35,13 @@ const losses = league.results.filter((r) => r === 'L').length;
         <CardContent class="flex items-center justify-between gap-6">
             <!-- Left: deck info + record -->
             <div class="flex flex-col gap-1">
-                <span class="text-lg font-semibold leading-tight">{{ league.deck.name }}</span>
+                <span class="text-lg font-semibold leading-tight">{{ league.deckName ?? league.name }}</span>
                 <div class="flex items-center gap-2">
-                    <Badge variant="outline">{{ league.deck.format }}</Badge>
+                    <Badge variant="outline">{{ league.format }}</Badge>
                     <span class="text-sm text-muted-foreground">
-                        <span class="font-medium">{{ wins }}W</span>
+                        <span class="font-medium">{{ league.wins }}W</span>
                         <span class="mx-0.5">–</span>
-                        <span class="text-destructive font-medium">{{ losses }}L</span>
+                        <span class="text-destructive font-medium">{{ league.losses }}L</span>
                         <span v-if="league.isActive" class="ml-1 text-muted-foreground">· {{ league.matchesRemaining }} remaining</span>
                     </span>
                 </div>

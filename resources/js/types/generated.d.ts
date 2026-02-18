@@ -58,6 +58,7 @@ startedAt: string;
 matchTime: string;
 deck: any | App.Data.Front.DeckData;
 opponentArchetypes: any;
+opponentName: any | string | null;
 games: any | Array<any>;
 };
 export type MatchDeckData = {
