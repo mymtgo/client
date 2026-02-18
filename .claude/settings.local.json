@@ -24,7 +24,8 @@
       "mcp__laravel-boost__tinker",
       "Bash(php artisan typescript:transform:*)",
       "Bash(vendor/bin/pint:*)",
-      "mcp__laravel-boost__database-query"
+      "mcp__laravel-boost__database-query",
+      "Bash(php vendor/bin/pint:*)"
     ]
   },
   "enabledMcpjsonServers": [
