@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import AppLayout from '@/AppLayout.vue';
+import DecksIndexController from '@/actions/App/Http/Controllers/Decks/IndexController';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -255,7 +256,10 @@ const allTime = versionList[0];
 </script>
 
 <template>
-    <AppLayout :title="fakeDeck.name">
+    <AppLayout
+        :title="fakeDeck.name"
+        :breadcrumbs="[{ label: 'Decks', href: DecksIndexController().url }, { label: fakeDeck.name }]"
+    >
         <div class="grid grow grid-cols-12 items-start">
             <!-- Main content -->
             <div class="col-span-8 flex flex-col gap-4 p-4 lg:p-6">

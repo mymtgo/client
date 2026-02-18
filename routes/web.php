@@ -36,6 +36,12 @@ Route::group([
     });
 
     $router->group([
+        'prefix' => 'opponents',
+    ], function (\Illuminate\Routing\Router $group) {
+        $group->get('/', \App\Http\Controllers\Opponents\IndexController::class)->name('opponents.index');
+    });
+
+    $router->group([
         'prefix' => 'decks',
     ], function (\Illuminate\Routing\Router $group) {
         $group->get('/', \App\Http\Controllers\Decks\IndexController::class)->name('decks.index');
