@@ -32,5 +32,3 @@ const page = usePage();
         </SidebarInset>
     </SidebarProvider>
 </template>
-
-<style scoped></style>

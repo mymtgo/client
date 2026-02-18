@@ -32,7 +32,7 @@ const updateTimeframe = (value: string) => {
 
 <template>
     <AppLayout title="Dashboard">
-        <div class="grow space-y-4 text-white">
+        <div class="grow space-y-4">
             <div class="flex justify-end">
                 <NativeSelect :model-value="timeframe" @change="(e) => updateTimeframe(e.target.value)">
                     <option value="week">Last 7 days</option>

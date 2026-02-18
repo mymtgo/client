@@ -67,18 +67,18 @@ const deleteMatch = (id: string | number) => {
                             <ContextMenuTrigger asChild>
                                 <TableRow>
                                     <TableCell>
-                                        <Badge variant="secondary" class="bg-green-500 text-black" v-if="match.gamesWon > match.gamesLost"> Win </Badge>
+                                        <Badge class="border-transparent bg-win text-win-foreground" v-if="match.gamesWon > match.gamesLost"> Win </Badge>
                                         <Badge variant="destructive" v-if="match.gamesWon < match.gamesLost"> Loss </Badge>
                                     </TableCell>
                                     <TableCell>
                                         <span
                                             v-if="match.deck"
-                                            class="cursor-pointer text-blue-400 hover:underline"
+                                            class="cursor-pointer text-primary hover:underline"
                                             @click="router.visit(DeckShowController({ deck: match.deck.id }).url)"
                                         >
                                             {{ match.deck.name }}
                                         </span>
-                                        <span v-else class="opacity-50">Unknown</span>
+                                        <span v-else class="text-muted-foreground">Unknown</span>
                                     </TableCell>
                                     <TableCell>
                                         <span v-if="match.leagueGame">League</span>

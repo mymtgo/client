@@ -37,12 +37,12 @@ defineProps<{
                                 <ManaSymbols :symbols="matchup.color_identity" />
                             </TableCell>
                             <TableCell> {{ matchup.match_record }}</TableCell>
-                            <TableCell class="">
+                            <TableCell>
                                 <span
                                     :class="{
-                                        'text-red-500': !matchup.match_winrate,
-                                        'text-orange-500': matchup.match_winrate && matchup.match_winrate < 50,
-                                        'text-green-500': matchup.match_winrate >= 50,
+                                        'text-loss': !matchup.match_winrate,
+                                        'text-draw': matchup.match_winrate && matchup.match_winrate < 50,
+                                        'text-win': matchup.match_winrate >= 50,
                                     }"
                                 >
                                     {{ matchup.match_winrate }}%
@@ -52,9 +52,9 @@ defineProps<{
                             <TableCell>
                                 <span
                                     :class="{
-                                        'text-red-500': !matchup.game_winrate,
-                                        'text-orange-500': matchup.game_winrate && matchup.game_winrate < 50,
-                                        'text-green-500': matchup.game_winrate >= 50,
+                                        'text-loss': !matchup.game_winrate,
+                                        'text-draw': matchup.game_winrate && matchup.game_winrate < 50,
+                                        'text-win': matchup.game_winrate >= 50,
                                     }"
                                 >
                                     {{ matchup.game_winrate }}%
@@ -67,5 +67,3 @@ defineProps<{
         </Card>
     </div>
 </template>
-
-<style scoped></style>

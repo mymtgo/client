@@ -65,7 +65,7 @@ const clearArchetype = (matchId: number) => {
                     <ContextMenuTrigger asChild>
                         <TableRow>
                             <TableCell>
-                                <Badge variant="secondary" class="bg-green-500 text-black" v-if="match.gamesWon > match.gamesLost"> Win </Badge>
+                                <Badge class="border-transparent bg-win text-win-foreground" v-if="match.gamesWon > match.gamesLost"> Win </Badge>
                                 <Badge variant="destructive" v-if="match.gamesWon < match.gamesLost"> Loss </Badge>
                             </TableCell>
                             <TableCell>
@@ -76,7 +76,7 @@ const clearArchetype = (matchId: number) => {
                                 <div class="flex items-center gap-1" v-if="match.opponentArchetypes?.[0]?.archetype">
                                     {{ match.opponentArchetypes[0].archetype.name }}
                                 </div>
-                                <span v-else class="opacity-50"> Unknown</span>
+                                <span v-else class="text-muted-foreground">Unknown</span>
                             </TableCell>
                             <TableCell>
                                 <div v-if="match.opponentArchetypes?.[0]?.archetype">
@@ -116,5 +116,3 @@ const clearArchetype = (matchId: number) => {
         </TableBody>
     </Table>
 </template>
-
-<style scoped></style>
