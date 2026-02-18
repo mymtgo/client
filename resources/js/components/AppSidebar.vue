@@ -10,14 +10,15 @@ import {
 } from '@/components/ui/sidebar';
 import { Link, usePage } from '@inertiajs/vue3';
 import { LayoutDashboard, Layers, Trophy, Settings, Sun, Moon } from 'lucide-vue-next';
-import { computed, ref } from 'vue';
-import IndexController from '@/actions/App/Http/Controllers/IndexController';
+import { ref } from 'vue';
+import DashboardController from '@/actions/App/Http/Controllers/IndexController';
+import DecksIndexController from '@/actions/App/Http/Controllers/Decks/IndexController';
 
 const page = usePage();
 
 const nav = [
-    { label: 'Dashboard', icon: LayoutDashboard, href: IndexController.url() },
-    { label: 'Decks',     icon: Layers,           href: '/decks' },
+    { label: 'Dashboard', icon: LayoutDashboard, href: DashboardController.url() },
+    { label: 'Decks',     icon: Layers,           href: DecksIndexController.url() },
     { label: 'Leagues',   icon: Trophy,            href: '/leagues' },
 ];
 
@@ -41,7 +42,7 @@ const toggleTheme = () => {
             <SidebarMenu>
                 <SidebarMenuItem>
                     <SidebarMenuButton as-child class="data-[slot=sidebar-menu-button]:p-1.5!">
-                        <Link :href="IndexController.url()">
+                        <Link :href="DashboardController.url()">
                             <span class="text-base font-semibold">mymtgo</span>
                         </Link>
                     </SidebarMenuButton>
