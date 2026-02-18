@@ -1,7 +1,7 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition } from './../../../../../wayfinder'
 /**
 * @see \App\Http\Controllers\Leagues\IndexController::__invoke
-* @see app/Http/Controllers/Leagues/IndexController.php:10
+* @see app/Http/Controllers/Leagues/IndexController.php:14
 * @route '/leagues'
 */
 const IndexController = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -16,7 +16,7 @@ IndexController.definition = {
 
 /**
 * @see \App\Http\Controllers\Leagues\IndexController::__invoke
-* @see app/Http/Controllers/Leagues/IndexController.php:10
+* @see app/Http/Controllers/Leagues/IndexController.php:14
 * @route '/leagues'
 */
 IndexController.url = (options?: RouteQueryOptions) => {
@@ -25,7 +25,7 @@ IndexController.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\Leagues\IndexController::__invoke
-* @see app/Http/Controllers/Leagues/IndexController.php:10
+* @see app/Http/Controllers/Leagues/IndexController.php:14
 * @route '/leagues'
 */
 IndexController.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -35,7 +35,7 @@ IndexController.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => (
 
 /**
 * @see \App\Http\Controllers\Leagues\IndexController::__invoke
-* @see app/Http/Controllers/Leagues/IndexController.php:10
+* @see app/Http/Controllers/Leagues/IndexController.php:14
 * @route '/leagues'
 */
 IndexController.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -45,7 +45,7 @@ IndexController.head = (options?: RouteQueryOptions): RouteDefinition<'head'> =>
 
 /**
 * @see \App\Http\Controllers\Leagues\IndexController::__invoke
-* @see app/Http/Controllers/Leagues/IndexController.php:10
+* @see app/Http/Controllers/Leagues/IndexController.php:14
 * @route '/leagues'
 */
 const IndexControllerForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -55,7 +55,7 @@ const IndexControllerForm = (options?: RouteQueryOptions): RouteFormDefinition<'
 
 /**
 * @see \App\Http\Controllers\Leagues\IndexController::__invoke
-* @see app/Http/Controllers/Leagues/IndexController.php:10
+* @see app/Http/Controllers/Leagues/IndexController.php:14
 * @route '/leagues'
 */
 IndexControllerForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -65,7 +65,7 @@ IndexControllerForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'ge
 
 /**
 * @see \App\Http\Controllers\Leagues\IndexController::__invoke
-* @see app/Http/Controllers/Leagues/IndexController.php:10
+* @see app/Http/Controllers/Leagues/IndexController.php:14
 * @route '/leagues'
 */
 IndexControllerForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
