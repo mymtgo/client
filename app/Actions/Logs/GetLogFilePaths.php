@@ -2,17 +2,19 @@
 
 namespace App\Actions\Logs;
 
-use Illuminate\Support\Facades\Storage;
-
 class GetLogFilePaths
 {
     public static function run(string $path)
     {
         $logPaths = collect();
 
+        if (empty($path) || ! is_dir($path)) {
+            return $logPaths;
+        }
+
         try {
             $iterator = new \RecursiveIteratorIterator(
-                new \RecursiveDirectoryIterator(Storage::disk('user_home')->path('\\AppData\\Local\\Apps\\2.0'), \FilesystemIterator::SKIP_DOTS)
+                new \RecursiveDirectoryIterator($path, \FilesystemIterator::SKIP_DOTS)
             );
 
             foreach ($iterator as $file) {
