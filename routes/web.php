@@ -3,6 +3,8 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
+Route::get('/settings', \App\Http\Controllers\Settings\IndexController::class)->name('settings.index');
+
 Route::post('/settings', function (Request $request) {
     $request->validate([
         'username' => 'required',
