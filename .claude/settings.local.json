@@ -15,7 +15,8 @@
       "Bash(E:\\\\mymtgo\\\\client\\\\vendor\\\\bin\\\\pint:*)",
       "Bash(\"C:\\\\Users\\\\Alec\\\\.config\\\\herd\\\\bin\\\\php.bat\" E:mymtgoclientvendorbinpint --dirty)",
       "Bash(\"C:\\\\Users\\\\Alec\\\\.config\\\\herd\\\\bin\\\\php.bat\" vendor/bin/pint --dirty)",
-      "Bash(npx shadcn-vue@latest:*)"
+      "Bash(npx shadcn-vue@latest:*)",
+      "WebFetch(domain:mtga.untapped.gg)"
     ]
   },
   "enabledMcpjsonServers": [
