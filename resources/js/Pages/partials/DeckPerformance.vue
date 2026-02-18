@@ -42,10 +42,10 @@ defineProps<{
                             {{ deck.matchesCount }}
                         </TableCell>
                         <TableCell>
-                            <span class="text-green-400">{{ deck.matchesWon }}</span>-<span class="text-red-400">{{ deck.matchesLost }}</span>
+                            <span class="text-win">{{ deck.matchesWon }}</span>-<span class="text-loss">{{ deck.matchesLost }}</span>
                         </TableCell>
                         <TableCell>
-                            <span :class="deck.winrate >= 50 ? 'text-green-400' : 'text-red-400'">{{ deck.winrate }}%</span>
+                            <span :class="deck.winrate >= 50 ? 'text-win' : 'text-loss'">{{ deck.winrate }}%</span>
                         </TableCell>
                         <TableCell>
                             <Button size="sm" variant="outline" @click="router.visit(DeckShowController({ deck: deck.id }).url)">View</Button>

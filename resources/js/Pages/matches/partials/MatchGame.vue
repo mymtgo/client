@@ -29,7 +29,7 @@ const opponent = computed(() => {
                     <div v-for="deckCard in opponent.deck" :key="`card_${deckCard.mtgo_id}`">
                         <MtgoCard :id="deckCard.mtgo_id">
                             <template #default="{ card }">
-                                <img :src="card.image" v-if="card" class="rounded-[10px]" />
+                                <img :src="card.image" v-if="card" class="rounded-lg" />
                             </template>
                         </MtgoCard>
                     </div>
@@ -42,5 +42,3 @@ const opponent = computed(() => {
         </div>
     </div>
 </template>
-
-<style scoped></style>

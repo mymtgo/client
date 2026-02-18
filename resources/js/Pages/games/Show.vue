@@ -10,7 +10,7 @@ defineProps<{
 
 <template>
     <AppLayout>
-        <h1 class="mb-6 text-2xl font-bold">Game Replay</h1>
+        <h1 class="text-2xl font-bold tracking-tight">Game Replay</h1>
 
         <GameReplay :timeline="timeline" />
     </AppLayout>

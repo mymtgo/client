@@ -1,12 +1,9 @@
 <script setup lang="ts">
 import AppLayout from '@/AppLayout.vue';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
+import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
 import { NativeSelect } from '@/components/ui/native-select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { home } from '@/routes';
-import { router, usePoll } from '@inertiajs/vue3';
 import MatchupSpread from '@/Pages/decks/partials/MatchupSpread.vue';
 import DeckMatches from '@/Pages/decks/partials/DeckMatches.vue';
 import DeckLeagues from '@/Pages/decks/partials/DeckLeagues.vue';
@@ -40,7 +37,7 @@ defineProps<{
 
 <template>
     <AppLayout :back="home().url" :title="deck.name">
-        <div class="grid grow grid-cols-12 text-white">
+        <div class="grid grow grid-cols-12">
             <div class="col-span-9 grow space-y-2">
                 <div class="flex justify-end">
                     <NativeSelect model-value="7days">
@@ -51,40 +48,54 @@ defineProps<{
                     </NativeSelect>
                 </div>
                 <div class="grid grid-cols-4 gap-4">
-                    <Card class="gap-0">
-                        <CardHeader>Total Matches</CardHeader>
-                        <CardContent class="text-2xl">
-                            {{ matchesWon }}-{{ matchesLost }} <span class="text-white/40">({{ matchesWon + matchesLost }})</span></CardContent
-                        >
-                    </Card>
-                    <Card class="gap-0">
-                        <CardHeader>Match winrate</CardHeader>
-                        <CardContent class="text-2xl"> {{ matchWinrate }}% </CardContent>
-                    </Card>
-                    <Card class="gap-0">
-                        <CardHeader>Total Games</CardHeader>
-                        <CardContent class="text-2xl">
-                            {{ gamesWon }}-{{ gamesLost }} <span class="text-white/40">({{ gamesWon + gamesLost }})</span>
+                    <Card class="gap-2">
+                        <CardHeader>
+                            <CardDescription>Total Matches</CardDescription>
+                        </CardHeader>
+                        <CardContent class="text-2xl font-semibold">
+                            {{ matchesWon }}-{{ matchesLost }} <span class="text-muted-foreground text-sm font-normal">({{ matchesWon + matchesLost }})</span>
                         </CardContent>
                     </Card>
-                    <Card class="gap-0">
-                        <CardHeader>Game Winrate</CardHeader>
-                        <CardContent class="text-xl"> {{ gameWinrate }}%</CardContent>
+                    <Card class="gap-2">
+                        <CardHeader>
+                            <CardDescription>Match Winrate</CardDescription>
+                        </CardHeader>
+                        <CardContent class="text-2xl font-semibold">{{ matchWinrate }}%</CardContent>
+                    </Card>
+                    <Card class="gap-2">
+                        <CardHeader>
+                            <CardDescription>Total Games</CardDescription>
+                        </CardHeader>
+                        <CardContent class="text-2xl font-semibold">
+                            {{ gamesWon }}-{{ gamesLost }} <span class="text-muted-foreground text-sm font-normal">({{ gamesWon + gamesLost }})</span>
+                        </CardContent>
+                    </Card>
+                    <Card class="gap-2">
+                        <CardHeader>
+                            <CardDescription>Game Winrate</CardDescription>
+                        </CardHeader>
+                        <CardContent class="text-2xl font-semibold">{{ gameWinrate }}%</CardContent>
                     </Card>
                 </div>
 
                 <div class="grid grid-cols-4 gap-4">
-                    <Card class="gap-0">
-                        <CardHeader>OTP W/L</CardHeader>
-                        <CardContent class="text-xl"> {{ gamesOtpWon }}-{{ gamesOtpLost }}</CardContent>
+                    <Card class="gap-2">
+                        <CardHeader>
+                            <CardDescription>OTP W/L</CardDescription>
+                        </CardHeader>
+                        <CardContent class="text-xl font-semibold">{{ gamesOtpWon }}-{{ gamesOtpLost }}</CardContent>
                     </Card>
-                    <Card class="gap-0">
-                        <CardHeader>OTD W/L</CardHeader>
-                        <CardContent class="text-xl"> {{ gamesOtdWon }}-{{ gamesOtdLost }}</CardContent>
+                    <Card class="gap-2">
+                        <CardHeader>
+                            <CardDescription>OTD W/L</CardDescription>
+                        </CardHeader>
+                        <CardContent class="text-xl font-semibold">{{ gamesOtdWon }}-{{ gamesOtdLost }}</CardContent>
                     </Card>
-                    <Card class="gap-0">
-                        <CardHeader>OTP %</CardHeader>
-                        <CardContent class="text-xl"> {{ otpRate }}%</CardContent>
+                    <Card class="gap-2">
+                        <CardHeader>
+                            <CardDescription>OTP %</CardDescription>
+                        </CardHeader>
+                        <CardContent class="text-xl font-semibold">{{ otpRate }}%</CardContent>
                     </Card>
                 </div>
 
@@ -109,11 +120,9 @@ defineProps<{
                 </div>
             </div>
 
-            <div class="col-span-3 px-8 h-screen no-scrollbar overflow-y-auto">
+            <div class="col-span-3 sticky top-0 max-h-screen overflow-y-auto no-scrollbar px-8">
                 <DeckList :maindeck="maindeck" :sideboard="sideboard" />
             </div>
         </div>
     </AppLayout>
 </template>
-
-<style scoped></style>

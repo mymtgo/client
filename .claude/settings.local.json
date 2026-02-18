@@ -14,7 +14,12 @@
       "Bash(\"C:\\\\Users\\\\Alec\\\\.config\\\\herd\\\\bin\\\\php.bat\" artisan typescript:transform)",
       "Bash(E:\\\\mymtgo\\\\client\\\\vendor\\\\bin\\\\pint:*)",
       "Bash(\"C:\\\\Users\\\\Alec\\\\.config\\\\herd\\\\bin\\\\php.bat\" E:mymtgoclientvendorbinpint --dirty)",
-      "Bash(\"C:\\\\Users\\\\Alec\\\\.config\\\\herd\\\\bin\\\\php.bat\" vendor/bin/pint --dirty)"
+      "Bash(\"C:\\\\Users\\\\Alec\\\\.config\\\\herd\\\\bin\\\\php.bat\" vendor/bin/pint --dirty)",
+      "Bash(npx shadcn-vue@latest:*)"
     ]
-  }
+  },
+  "enabledMcpjsonServers": [
+    "laravel-boost",
+    "herd"
+  ]
 }

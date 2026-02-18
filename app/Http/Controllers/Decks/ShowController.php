@@ -96,7 +96,7 @@ class ShowController extends Controller
         //            ->get();
 
         $matchesQuery = $deck->matches()->whereBetween('started_at', [
-            $from = now()->subMonth()->startOfDay(),
+            $from = now()->subYear()->startOfDay(),
             $to = now()->endOfDay(),
         ])->whereNull('deleted_at');
 

@@ -33,11 +33,9 @@ const formatDay = (ms: number) => new Date(ms).toLocaleDateString('en-GB', { wee
 
 <template>
     <div>
-        <header>
-            <strong>Deck winrate</strong>
-        </header>
+        <h3 class="text-sm font-semibold tracking-tight">Deck winrate</h3>
         <!-- Size is IMPORTANT -->
-        <ChartContainer :config="chartConfig" class="h-100 w-full mt-4">
+        <ChartContainer :config="chartConfig" class="mt-4 h-[400px] w-full">
             <VisXYContainer :data="chartData">
                 <VisLine :x="(d) => d.date" :y="(d) => d.rate" :color="chartConfig.rate.color" />
                 <VisAxis type="x" label="Day" :tick-format="formatDay" />

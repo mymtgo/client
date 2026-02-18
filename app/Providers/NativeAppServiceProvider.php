@@ -20,7 +20,7 @@ class NativeAppServiceProvider implements ProvidesPhpIni
 
         // DEBUG: remove after testing
 
-        // bump5
+        // bump6
     }
 
     /**
