@@ -7,7 +7,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import ManaSymbols from '@/components/ManaSymbols.vue';
 import SetArchetypeDialog from '@/components/matches/SetArchetypeDialog.vue';
 import MatchGame from '@/Pages/matches/partials/MatchGame.vue';
-import ShowController from '@/actions/App/Http/Controllers/Decks/ShowController';
+import DecksIndexController from '@/actions/App/Http/Controllers/Decks/IndexController';
+import DeckShowController from '@/actions/App/Http/Controllers/Decks/ShowController';
 import { router } from '@inertiajs/vue3';
 import { PencilIcon } from 'lucide-vue-next';
 import dayjs from 'dayjs';
@@ -143,7 +144,14 @@ const isWin = fakeMatch.gamesWon > fakeMatch.gamesLost;
 <template>
     <SetArchetypeDialog ref="archetypeDialog" :archetypes="fakeArchetypes" />
 
-    <AppLayout :title="`vs ${fakeMatch.opponent.username}`">
+    <AppLayout
+        :title="`vs ${fakeMatch.opponent.username}`"
+        :breadcrumbs="[
+            { label: 'Decks', href: DecksIndexController().url },
+            { label: fakeMatch.deck.name, href: DeckShowController({ deck: fakeMatch.deck.id }).url },
+            { label: `vs ${fakeMatch.opponent.username}` },
+        ]"
+    >
         <div class="flex flex-col gap-4 p-4 lg:p-6">
             <!-- Match summary -->
             <Card>
@@ -186,7 +194,7 @@ const isWin = fakeMatch.gamesWon > fakeMatch.gamesLost;
                             <div class="flex items-center gap-1.5">
                                 <span
                                     class="cursor-pointer font-medium hover:underline"
-                                    @click="router.visit(ShowController({ deck: fakeMatch.deck.id }).url)"
+                                    @click="router.visit(DeckShowController({ deck: fakeMatch.deck.id }).url)"
                                 >{{ fakeMatch.deck.name }}</span>
                                 <Badge variant="outline" class="text-xs">{{ fakeMatch.deck.format }}</Badge>
                             </div>

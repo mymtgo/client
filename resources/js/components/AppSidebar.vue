@@ -9,11 +9,12 @@ import {
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { Link, usePage } from '@inertiajs/vue3';
-import { LayoutDashboard, Layers, Trophy, Settings, Sun, Moon } from 'lucide-vue-next';
+import { LayoutDashboard, Layers, Trophy, Swords, Settings, Sun, Moon } from 'lucide-vue-next';
 import { ref } from 'vue';
 import DashboardController from '@/actions/App/Http/Controllers/IndexController';
 import DecksIndexController from '@/actions/App/Http/Controllers/Decks/IndexController';
 import LeaguesIndexController from '@/actions/App/Http/Controllers/Leagues/IndexController';
+import OpponentsIndexController from '@/actions/App/Http/Controllers/Opponents/IndexController';
 
 const page = usePage();
 
@@ -21,6 +22,7 @@ const nav = [
     { label: 'Dashboard', icon: LayoutDashboard, href: DashboardController.url() },
     { label: 'Decks',     icon: Layers,           href: DecksIndexController.url() },
     { label: 'Leagues',   icon: Trophy,            href: LeaguesIndexController.url() },
+    { label: 'Opponents', icon: Swords,            href: OpponentsIndexController.url() },
 ];
 
 const isActive = (href: string) => {
