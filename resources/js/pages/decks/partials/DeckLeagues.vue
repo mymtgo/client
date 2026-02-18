@@ -1,11 +1,9 @@
 <script setup lang="ts">
-import { Table, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import DeckMatches from '@/pages/decks/partials/DeckMatches.vue';
 import MatchesTable from '@/components/matches/MatchesTable.vue';
 
 defineProps<{
-    leagues: App.Data.Front.LeagueData;
+    leagues: App.Data.Front.LeagueData[];
     archetypes: App.Data.Front.ArchetypeData[];
 }>();
 </script>

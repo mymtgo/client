@@ -3,6 +3,7 @@
 namespace App\Data\Front;
 
 use App\Models\Deck;
+use Carbon\Carbon;
 use Illuminate\Support\Str;
 use Spatie\LaravelData\Data;
 use Spatie\LaravelData\Lazy;
@@ -18,6 +19,7 @@ class DeckData extends Data
         public int $matchesWon,
         public int $matchesLost,
         public int $winrate,
+        public ?Carbon $lastPlayedAt,
         public Lazy $matches,
         public Lazy $identity,
         public Lazy $cards,
@@ -39,6 +41,7 @@ class DeckData extends Data
             matchesWon: $deck->won_matches_count ?: 0,
             matchesLost: $deck->lost_matches_count ?: 0,
             winrate: round($winrate * 100),
+            lastPlayedAt: $deck->matches_max_started_at ? Carbon::parse($deck->matches_max_started_at) : null,
             matches: Lazy::whenLoaded('matches', $deck, fn () => MatchData::collect($deck->matches)),
             identity: Lazy::whenLoaded('cards', $deck, function () use ($deck) {
                 return $deck->cards->pluck('color_identity')->map(

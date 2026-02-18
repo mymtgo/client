@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { Empty, EmptyDescription } from '@/components/ui/empty';
 import { Pagination, PaginationContent, PaginationItem, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 import { Card, CardContent } from '@/components/ui/card';
 import { router } from '@inertiajs/vue3';
 import MatchesTable from '@/components/matches/MatchesTable.vue';
+
+type Paginator<T> = { data: T[]; total: number; per_page: number };
+
 defineProps<{
-    matches: App.Data.Front.MatchData[];
+    matches: Paginator<App.Data.Front.MatchData>;
     archetypes: App.Data.Front.ArchetypeData[];
 }>();
 
@@ -22,9 +24,7 @@ const updatePage = (page: number) => {
 <template>
     <Card class="gap-0 overflow-hidden p-0">
         <CardContent class="px-0">
-            <Empty v-if="!matches.total">
-                <EmptyDescription>No matches recorded</EmptyDescription>
-            </Empty>
+            <p v-if="!matches.total" class="text-muted-foreground py-8 text-center text-sm">No matches recorded</p>
 
             <MatchesTable :matches="matches.data" :archetypes="archetypes" v-if="matches.total" />
         </CardContent>
