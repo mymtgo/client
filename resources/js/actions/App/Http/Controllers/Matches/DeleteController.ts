@@ -1,4 +1,4 @@
-import { queryParams, type RouteQueryOptions, type RouteDefinition, applyUrlDefaults } from './../../../../../wayfinder'
+import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition, applyUrlDefaults } from './../../../../../wayfinder'
 /**
 * @see \App\Http\Controllers\Matches\DeleteController::__invoke
 * @see app/Http/Controllers/Matches/DeleteController.php:11
@@ -50,5 +50,37 @@ DeleteController.delete = (args: { id: string | number } | [id: string | number 
     url: DeleteController.url(args, options),
     method: 'delete',
 })
+
+/**
+* @see \App\Http\Controllers\Matches\DeleteController::__invoke
+* @see app/Http/Controllers/Matches/DeleteController.php:11
+* @route '/matches/{id}'
+*/
+const DeleteControllerForm = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+    action: DeleteController.url(args, {
+        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+            _method: 'DELETE',
+            ...(options?.query ?? options?.mergeQuery ?? {}),
+        }
+    }),
+    method: 'post',
+})
+
+/**
+* @see \App\Http\Controllers\Matches\DeleteController::__invoke
+* @see app/Http/Controllers/Matches/DeleteController.php:11
+* @route '/matches/{id}'
+*/
+DeleteControllerForm.delete = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+    action: DeleteController.url(args, {
+        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+            _method: 'DELETE',
+            ...(options?.query ?? options?.mergeQuery ?? {}),
+        }
+    }),
+    method: 'post',
+})
+
+DeleteController.form = DeleteControllerForm
 
 export default DeleteController

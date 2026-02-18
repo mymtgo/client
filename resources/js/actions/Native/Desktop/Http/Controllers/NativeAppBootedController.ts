@@ -1,4 +1,4 @@
-import { queryParams, type RouteQueryOptions, type RouteDefinition } from './../../../../../wayfinder'
+import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition } from './../../../../../wayfinder'
 /**
 * @see \Native\Desktop\Http\Controllers\NativeAppBootedController::__invoke
 * @see vendor/nativephp/desktop/src/Http/Controllers/NativeAppBootedController.php:10
@@ -32,5 +32,27 @@ NativeAppBootedController.post = (options?: RouteQueryOptions): RouteDefinition<
     url: NativeAppBootedController.url(options),
     method: 'post',
 })
+
+/**
+* @see \Native\Desktop\Http\Controllers\NativeAppBootedController::__invoke
+* @see vendor/nativephp/desktop/src/Http/Controllers/NativeAppBootedController.php:10
+* @route '/_native/api/booted'
+*/
+const NativeAppBootedControllerForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+    action: NativeAppBootedController.url(options),
+    method: 'post',
+})
+
+/**
+* @see \Native\Desktop\Http\Controllers\NativeAppBootedController::__invoke
+* @see vendor/nativephp/desktop/src/Http/Controllers/NativeAppBootedController.php:10
+* @route '/_native/api/booted'
+*/
+NativeAppBootedControllerForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+    action: NativeAppBootedController.url(options),
+    method: 'post',
+})
+
+NativeAppBootedController.form = NativeAppBootedControllerForm
 
 export default NativeAppBootedController

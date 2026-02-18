@@ -1,4 +1,4 @@
-import { queryParams, type RouteQueryOptions, type RouteDefinition, applyUrlDefaults } from './../../wayfinder'
+import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition, applyUrlDefaults } from './../../wayfinder'
 /**
 * @see \App\Http\Controllers\Matches\ShowController::__invoke
 * @see app/Http/Controllers/Matches/ShowController.php:15
@@ -62,6 +62,43 @@ show.head = (args: { id: string | number } | [id: string | number ] | string | n
 })
 
 /**
+* @see \App\Http\Controllers\Matches\ShowController::__invoke
+* @see app/Http/Controllers/Matches/ShowController.php:15
+* @route '/matches/{id}'
+*/
+const showForm = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+    action: show.url(args, options),
+    method: 'get',
+})
+
+/**
+* @see \App\Http\Controllers\Matches\ShowController::__invoke
+* @see app/Http/Controllers/Matches/ShowController.php:15
+* @route '/matches/{id}'
+*/
+showForm.get = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+    action: show.url(args, options),
+    method: 'get',
+})
+
+/**
+* @see \App\Http\Controllers\Matches\ShowController::__invoke
+* @see app/Http/Controllers/Matches/ShowController.php:15
+* @route '/matches/{id}'
+*/
+showForm.head = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+    action: show.url(args, {
+        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+            _method: 'HEAD',
+            ...(options?.query ?? options?.mergeQuery ?? {}),
+        }
+    }),
+    method: 'get',
+})
+
+show.form = showForm
+
+/**
 * @see \App\Http\Controllers\Matches\UpdateArchetypeController::__invoke
 * @see app/Http/Controllers/Matches/UpdateArchetypeController.php:12
 * @route '/matches/{id}/archetype'
@@ -114,6 +151,38 @@ updateArchetype.patch = (args: { id: string | number } | [id: string | number ] 
 })
 
 /**
+* @see \App\Http\Controllers\Matches\UpdateArchetypeController::__invoke
+* @see app/Http/Controllers/Matches/UpdateArchetypeController.php:12
+* @route '/matches/{id}/archetype'
+*/
+const updateArchetypeForm = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+    action: updateArchetype.url(args, {
+        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+            _method: 'PATCH',
+            ...(options?.query ?? options?.mergeQuery ?? {}),
+        }
+    }),
+    method: 'post',
+})
+
+/**
+* @see \App\Http\Controllers\Matches\UpdateArchetypeController::__invoke
+* @see app/Http/Controllers/Matches/UpdateArchetypeController.php:12
+* @route '/matches/{id}/archetype'
+*/
+updateArchetypeForm.patch = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+    action: updateArchetype.url(args, {
+        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+            _method: 'PATCH',
+            ...(options?.query ?? options?.mergeQuery ?? {}),
+        }
+    }),
+    method: 'post',
+})
+
+updateArchetype.form = updateArchetypeForm
+
+/**
 * @see \App\Http\Controllers\Matches\DeleteController::__invoke
 * @see app/Http/Controllers/Matches/DeleteController.php:11
 * @route '/matches/{id}'
@@ -164,6 +233,38 @@ deleteMethod.delete = (args: { id: string | number } | [id: string | number ] | 
     url: deleteMethod.url(args, options),
     method: 'delete',
 })
+
+/**
+* @see \App\Http\Controllers\Matches\DeleteController::__invoke
+* @see app/Http/Controllers/Matches/DeleteController.php:11
+* @route '/matches/{id}'
+*/
+const deleteMethodForm = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+    action: deleteMethod.url(args, {
+        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+            _method: 'DELETE',
+            ...(options?.query ?? options?.mergeQuery ?? {}),
+        }
+    }),
+    method: 'post',
+})
+
+/**
+* @see \App\Http\Controllers\Matches\DeleteController::__invoke
+* @see app/Http/Controllers/Matches/DeleteController.php:11
+* @route '/matches/{id}'
+*/
+deleteMethodForm.delete = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+    action: deleteMethod.url(args, {
+        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+            _method: 'DELETE',
+            ...(options?.query ?? options?.mergeQuery ?? {}),
+        }
+    }),
+    method: 'post',
+})
+
+deleteMethod.form = deleteMethodForm
 
 const matches = {
     show: Object.assign(show, show),

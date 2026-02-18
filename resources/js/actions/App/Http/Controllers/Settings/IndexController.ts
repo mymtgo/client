@@ -1,4 +1,4 @@
-import { queryParams, type RouteQueryOptions, type RouteDefinition } from './../../../../../wayfinder'
+import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition } from './../../../../../wayfinder'
 /**
 * @see \App\Http\Controllers\Settings\IndexController::__invoke
 * @see app/Http/Controllers/Settings/IndexController.php:11
@@ -42,5 +42,42 @@ IndexController.head = (options?: RouteQueryOptions): RouteDefinition<'head'> =>
     url: IndexController.url(options),
     method: 'head',
 })
+
+/**
+* @see \App\Http\Controllers\Settings\IndexController::__invoke
+* @see app/Http/Controllers/Settings/IndexController.php:11
+* @route '/settings'
+*/
+const IndexControllerForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+    action: IndexController.url(options),
+    method: 'get',
+})
+
+/**
+* @see \App\Http\Controllers\Settings\IndexController::__invoke
+* @see app/Http/Controllers/Settings/IndexController.php:11
+* @route '/settings'
+*/
+IndexControllerForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+    action: IndexController.url(options),
+    method: 'get',
+})
+
+/**
+* @see \App\Http\Controllers\Settings\IndexController::__invoke
+* @see app/Http/Controllers/Settings/IndexController.php:11
+* @route '/settings'
+*/
+IndexControllerForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+    action: IndexController.url({
+        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+            _method: 'HEAD',
+            ...(options?.query ?? options?.mergeQuery ?? {}),
+        }
+    }),
+    method: 'get',
+})
+
+IndexController.form = IndexControllerForm
 
 export default IndexController
