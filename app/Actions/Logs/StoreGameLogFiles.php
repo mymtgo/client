@@ -2,15 +2,19 @@
 
 namespace App\Actions\Logs;
 
+use App\Facades\Mtgo;
 use App\Models\GameLog;
-use Illuminate\Support\Facades\Storage;
 use Symfony\Component\Finder\Finder;
 
 class StoreGameLogFiles
 {
     public static function run()
     {
-        $basePath = Storage::disk('user_home')->path('AppData\\Local\\Apps\\2.0\\Data');
+        $basePath = Mtgo::getLogDataPath();
+
+        if (empty($basePath) || ! is_dir($basePath)) {
+            return;
+        }
 
         $finder = Finder::create()
             ->files()
@@ -33,6 +37,5 @@ class StoreGameLogFiles
                 'file_path' => $file,
             ]);
         }
-
     }
 }

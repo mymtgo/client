@@ -3,6 +3,7 @@
 namespace App\Managers;
 
 use App\Actions\Logs\GetLogFilePaths;
+use App\Actions\Settings\ValidatePath;
 use App\Jobs\DownloadArchetypes;
 use App\Jobs\PopulateMissingCardData;
 use App\Jobs\ProcessLogEvents;
@@ -11,7 +12,6 @@ use App\Jobs\SyncDecks;
 use App\Models\Archetype;
 use App\Models\Deck;
 use Illuminate\Console\Scheduling\Schedule;
-use Illuminate\Support\Facades\Storage;
 use Native\Desktop\Facades\Settings;
 
 class MtgoManager
@@ -25,9 +25,21 @@ class MtgoManager
         return ! $this->logFileMissing() && $this->getUsername();
     }
 
-    public function getLogPath(): ?string
+    public function defaultLogPath(): string
     {
-        return Settings::get('log_path', Storage::disk('user_home')->path('\\AppData\\Local\\Apps\\2.0'));
+        $home = getenv('USERPROFILE') ?: getenv('HOMEDRIVE').getenv('HOMEPATH');
+
+        return $home.'\\AppData\\Local\\Apps\\2.0';
+    }
+
+    public function defaultDataPath(): string
+    {
+        return $this->defaultLogPath().'\\Data';
+    }
+
+    public function getLogPath(): string
+    {
+        return Settings::get('log_path') ?: $this->defaultLogPath();
     }
 
     public function checkLogPath()
@@ -48,9 +60,9 @@ class MtgoManager
         return $this->logFileMissing;
     }
 
-    public function getLogDataPath(): ?string
+    public function getLogDataPath(): string
     {
-        return Settings::get('log_data_path');
+        return Settings::get('log_data_path') ?: $this->defaultDataPath();
     }
 
     public function setUsername(string $username): string
@@ -67,6 +79,15 @@ class MtgoManager
 
     public function runInitialSetup()
     {
+        // Seed default paths on first launch so most users need no configuration
+        if (! Settings::get('log_path')) {
+            Settings::set('log_path', $this->defaultLogPath());
+        }
+
+        if (! Settings::get('log_data_path')) {
+            Settings::set('log_data_path', $this->defaultDataPath());
+        }
+
         if (! Archetype::count()) {
             $this->downloadArchetypes(sync: true);
         }
@@ -112,9 +133,22 @@ class MtgoManager
         $sync ? PopulateMissingCardData::dispatchSync() : PopulateMissingCardData::dispatch();
     }
 
+    public function pathsAreValid(): bool
+    {
+        $logOk = ValidatePath::forLogs($this->getLogPath() ?? '');
+        $dataOk = ValidatePath::forData($this->getLogDataPath() ?? '');
+
+        return $logOk['valid'] && $dataOk['valid'];
+    }
+
     public function schedule(Schedule $schedule): void
     {
-        $pause = true;
+        try {
+            $pause = ! Settings::get('watcher_active', true) || ! $this->pathsAreValid();
+        } catch (\Throwable) {
+            // NativePHP Settings API not yet available — default to paused.
+            return;
+        }
 
         if ($pause) {
             return;

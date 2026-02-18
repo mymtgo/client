@@ -2,14 +2,18 @@
 
 namespace App\Actions\Decks;
 
-use Illuminate\Support\Facades\Storage;
+use App\Facades\Mtgo;
 use Symfony\Component\Finder\Finder;
 
 class GetDeckFiles
 {
     public static function run(): array
     {
-        $basePath = Storage::disk('user_home')->path('AppData\\Local\\Apps\\2.0\\Data');
+        $basePath = Mtgo::getLogDataPath();
+
+        if (empty($basePath) || ! is_dir($basePath)) {
+            return [];
+        }
 
         $finder = Finder::create()
             ->files()

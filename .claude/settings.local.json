@@ -17,7 +17,8 @@
       "Bash(\"C:\\\\Users\\\\Alec\\\\.config\\\\herd\\\\bin\\\\php.bat\" vendor/bin/pint --dirty)",
       "Bash(npx shadcn-vue@latest:*)",
       "WebFetch(domain:mtga.untapped.gg)",
-      "Bash(php artisan make:controller:*)"
+      "Bash(php artisan make:controller:*)",
+      "WebFetch(domain:nativephp.com)"
     ]
   },
   "enabledMcpjsonServers": [

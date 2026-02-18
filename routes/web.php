@@ -1,20 +1,8 @@
 <?php
 
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/settings', \App\Http\Controllers\Settings\IndexController::class)->name('settings.index');
-
-Route::post('/settings', function (Request $request) {
-    $request->validate([
-        'username' => 'required',
-    ]);
-
-    \Native\Desktop\Facades\Settings::set('mtgo_username', $request->input('username'));
-});
-
-Route::group([
-], function (\Illuminate\Routing\Router $router) {
+Route::group([], function (\Illuminate\Routing\Router $router) {
     $router->get('/', \App\Http\Controllers\IndexController::class)->name('home');
 
     $router->group([
@@ -50,4 +38,15 @@ Route::group([
         $group->get('{deck:id}', \App\Http\Controllers\Decks\ShowController::class)->name('decks.show');
     });
 
+    $router->group([
+        'prefix' => 'settings',
+    ], function (\Illuminate\Routing\Router $group) {
+        $group->get('/', \App\Http\Controllers\Settings\IndexController::class)->name('settings.index');
+        $group->patch('log-path', \App\Http\Controllers\Settings\UpdateLogPathController::class)->name('settings.log-path');
+        $group->patch('data-path', \App\Http\Controllers\Settings\UpdateDataPathController::class)->name('settings.data-path');
+        $group->patch('watcher', \App\Http\Controllers\Settings\UpdateWatcherController::class)->name('settings.watcher');
+        $group->post('ingest', \App\Http\Controllers\Settings\RunIngestController::class)->name('settings.ingest');
+        $group->post('sync', \App\Http\Controllers\Settings\RunSyncController::class)->name('settings.sync');
+        $group->patch('anonymous-stats', \App\Http\Controllers\Settings\UpdateAnonymousStatsController::class)->name('settings.anonymous-stats');
+    });
 });
