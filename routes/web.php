@@ -30,6 +30,12 @@ Route::group([
     });
 
     $router->group([
+        'prefix' => 'leagues',
+    ], function (\Illuminate\Routing\Router $group) {
+        $group->get('/', \App\Http\Controllers\Leagues\IndexController::class)->name('leagues.index');
+    });
+
+    $router->group([
         'prefix' => 'decks',
     ], function (\Illuminate\Routing\Router $group) {
         $group->get('/', \App\Http\Controllers\Decks\IndexController::class)->name('decks.index');

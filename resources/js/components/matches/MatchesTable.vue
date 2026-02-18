@@ -50,6 +50,7 @@ const clearArchetype = (matchId: number) => {
             <TableRow>
                 <TableHead>Result</TableHead>
                 <TableHead>Type</TableHead>
+                <TableHead>Opponent</TableHead>
                 <TableHead>Archetype</TableHead>
                 <TableHead></TableHead>
                 <TableHead>Games won</TableHead>
@@ -71,6 +72,10 @@ const clearArchetype = (matchId: number) => {
                             <TableCell>
                                 <span v-if="match.leagueGame">League</span>
                                 <span v-if="!match.leagueGame">Casual</span>
+                            </TableCell>
+                            <TableCell class="font-medium">
+                                <!-- TODO: wire up opponent username from MatchData once added to DTO -->
+                                <span class="text-muted-foreground text-xs">—</span>
                             </TableCell>
                             <TableCell>
                                 <div class="flex items-center gap-1" v-if="match.opponentArchetypes?.[0]?.archetype">
