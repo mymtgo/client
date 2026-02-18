@@ -14,106 +14,45 @@ import relativeTime from 'dayjs/plugin/relativeTime';
 
 dayjs.extend(relativeTime);
 
-defineProps<{
-    opponents?: any[];
+type Opponent = {
+    playerId: number;
+    username: string;
+    matchesWon: number;
+    matchesLost: number;
+    formats: string[];
+    archetypes: { name: string; colorIdentity: string }[];
+    lastPlayedAt: string;
+};
+
+const props = defineProps<{
+    opponents: Opponent[];
 }>();
 
-// FAKE DATA — replace with props from backend
-const allOpponents = [
-    {
-        username: 'blisterguy',
-        matchesWon: 3, matchesLost: 8, winrate: 27,
-        formats: ['Standard', 'Modern'],
-        lastPlayedAt: '2026-02-17T19:05:00Z',
-        archetypes: [
-            { name: 'Azorius Oculus', colorIdentity: 'W,U' },
-            { name: 'Dimir Midrange', colorIdentity: 'U,B' },
-        ],
-    },
-    {
-        username: 'Karadorinn',
-        matchesWon: 7, matchesLost: 5, winrate: 58,
-        formats: ['Standard'],
-        lastPlayedAt: '2026-02-17T19:34:00Z',
-        archetypes: [
-            { name: 'Dimir Midrange', colorIdentity: 'U,B' },
-        ],
-    },
-    {
-        username: 'zuberamaster',
-        matchesWon: 8, matchesLost: 2, winrate: 80,
-        formats: ['Pioneer', 'Standard'],
-        lastPlayedAt: '2026-02-14T20:10:00Z',
-        archetypes: [
-            { name: 'Rakdos Midrange', colorIdentity: 'B,R' },
-            { name: 'Mono-Green Devotion', colorIdentity: 'G' },
-        ],
-    },
-    {
-        username: 'Patxi_7',
-        matchesWon: 4, matchesLost: 2, winrate: 67,
-        formats: ['Standard'],
-        lastPlayedAt: '2026-02-16T21:15:00Z',
-        archetypes: [],
-    },
-    {
-        username: 'HammerTime99',
-        matchesWon: 2, matchesLost: 3, winrate: 40,
-        formats: ['Modern'],
-        lastPlayedAt: '2026-02-15T13:50:00Z',
-        archetypes: [
-            { name: 'Hammer Time', colorIdentity: 'W' },
-        ],
-    },
-    {
-        username: 'mtggrinder42',
-        matchesWon: 5, matchesLost: 4, winrate: 56,
-        formats: ['Standard'],
-        lastPlayedAt: '2026-02-10T18:30:00Z',
-        archetypes: [
-            { name: 'Temur Oculus', colorIdentity: 'G,U' },
-        ],
-    },
-    {
-        username: 'DraftKing99',
-        matchesWon: 1, matchesLost: 3, winrate: 25,
-        formats: ['Modern'],
-        lastPlayedAt: '2026-01-05T12:00:00Z',
-        archetypes: [
-            { name: 'Amulet Titan', colorIdentity: 'G' },
-        ],
-    },
-    {
-        username: 'CubeSlinger',
-        matchesWon: 1, matchesLost: 1, winrate: 50,
-        formats: ['Legacy'],
-        lastPlayedAt: '2026-01-20T15:00:00Z',
-        archetypes: [
-            { name: 'Reanimator', colorIdentity: 'U,B' },
-        ],
-    },
-];
-
-// Tag logic — min 3 matches required
-const getTag = (opp: typeof allOpponents[0]) => {
+const getTag = (opp: Opponent) => {
     const total = opp.matchesWon + opp.matchesLost;
     if (total < 3) return null;
-    if (opp.winrate < 40) return 'nemesis';
-    if (opp.winrate < 50) return 'rival';
-    if (opp.winrate > 65) return 'favourite_victim';
+    const winrate = opp.matchesWon / total;
+    if (winrate < 0.4) return 'nemesis';
+    if (winrate < 0.5) return 'rival';
+    if (winrate > 0.65) return 'favourite_victim';
     return null;
 };
 
-// All formats across fake data
-const allFormats = [...new Set(allOpponents.flatMap((o) => o.formats))].sort();
+const winrate = (opp: Opponent) => {
+    const total = opp.matchesWon + opp.matchesLost;
+    return total === 0 ? 0 : Math.round((opp.matchesWon / total) * 100);
+};
 
-// Toolbar state
+const allFormats = computed(() =>
+    [...new Set(props.opponents.flatMap((o) => o.formats))].sort()
+);
+
 const search = ref('');
 const sortBy = ref('most_played');
 const selectedFormat = ref<string | null>(null);
 
 const filtered = computed(() => {
-    let list = [...allOpponents];
+    let list = [...props.opponents];
 
     if (search.value.trim()) {
         const q = search.value.toLowerCase();
@@ -126,8 +65,8 @@ const filtered = computed(() => {
 
     list.sort((a, b) => {
         switch (sortBy.value) {
-            case 'winrate_asc':  return a.winrate - b.winrate;
-            case 'winrate_desc': return b.winrate - a.winrate;
+            case 'winrate_asc':  return winrate(a) - winrate(b);
+            case 'winrate_desc': return winrate(b) - winrate(a);
             case 'most_recent':  return dayjs(b.lastPlayedAt).diff(dayjs(a.lastPlayedAt));
             default:             return (b.matchesWon + b.matchesLost) - (a.matchesWon + a.matchesLost);
         }
@@ -193,15 +132,14 @@ const filtered = computed(() => {
                     <TableBody>
                         <template v-if="filtered.length === 0">
                             <TableRow>
-                                <TableCell colspan="5" class="py-12 text-center text-muted-foreground text-sm">
+                                <TableCell colspan="5" class="text-muted-foreground py-12 text-center text-sm">
                                     No opponents found.
                                 </TableCell>
                             </TableRow>
                         </template>
                         <TableRow
                             v-for="opp in filtered"
-                            :key="opp.username"
-                            class="cursor-pointer"
+                            :key="opp.playerId"
                         >
                             <TableCell>
                                 <div class="flex items-center gap-2">
@@ -210,15 +148,15 @@ const filtered = computed(() => {
                                         v-if="getTag(opp) === 'nemesis'"
                                         variant="destructive"
                                         class="text-xs"
-                                    >👹 Nemesis</Badge>
+                                    >Nemesis</Badge>
                                     <Badge
                                         v-else-if="getTag(opp) === 'rival'"
                                         variant="secondary"
-                                    >⚔️ Rival</Badge>
+                                    >Rival</Badge>
                                     <Badge
                                         v-else-if="getTag(opp) === 'favourite_victim'"
                                         variant="default"
-                                    >🎯 Favourite Victim</Badge>
+                                    >Favourite Victim</Badge>
                                 </div>
                             </TableCell>
                             <TableCell>
@@ -241,11 +179,11 @@ const filtered = computed(() => {
                             </TableCell>
                             <TableCell
                                 class="font-semibold tabular-nums"
-                                :class="opp.winrate < 50 ? 'text-destructive' : ''"
+                                :class="winrate(opp) < 50 ? 'text-destructive' : ''"
                             >
-                                {{ opp.winrate }}%
+                                {{ winrate(opp) }}%
                             </TableCell>
-                            <TableCell class="text-muted-foreground text-sm whitespace-nowrap">
+                            <TableCell class="text-muted-foreground whitespace-nowrap text-sm">
                                 {{ dayjs(opp.lastPlayedAt).fromNow() }}
                             </TableCell>
                         </TableRow>
