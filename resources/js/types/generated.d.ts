@@ -22,6 +22,7 @@ matchesCount: number;
 matchesWon: number;
 matchesLost: number;
 winrate: number;
+lastPlayedAt: string | null;
 matches: any;
 identity: any;
 cards: any;
