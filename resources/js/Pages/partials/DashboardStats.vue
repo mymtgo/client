@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 defineProps<{
     matchesWon: number;
@@ -13,25 +13,33 @@ defineProps<{
 
 <template>
     <div class="grid grid-cols-4 gap-4">
-        <Card class="gap-0">
-            <CardHeader>Total Matches</CardHeader>
-            <CardContent class="text-2xl">
-                {{ matchesWon }}-{{ matchesLost }} <span class="text-white/40">({{ matchesWon + matchesLost }})</span>
+        <Card class="gap-2">
+            <CardHeader>
+                <CardDescription>Total Matches</CardDescription>
+            </CardHeader>
+            <CardContent class="text-2xl font-semibold">
+                {{ matchesWon }}-{{ matchesLost }} <span class="text-muted-foreground text-sm font-normal">({{ matchesWon + matchesLost }})</span>
             </CardContent>
         </Card>
-        <Card class="gap-0">
-            <CardHeader>Match Winrate</CardHeader>
-            <CardContent class="text-2xl"> {{ matchWinrate }}% </CardContent>
+        <Card class="gap-2">
+            <CardHeader>
+                <CardDescription>Match Winrate</CardDescription>
+            </CardHeader>
+            <CardContent class="text-2xl font-semibold">{{ matchWinrate }}%</CardContent>
         </Card>
-        <Card class="gap-0">
-            <CardHeader>Total Games</CardHeader>
-            <CardContent class="text-2xl">
-                {{ gamesWon }}-{{ gamesLost }} <span class="text-white/40">({{ gamesWon + gamesLost }})</span>
+        <Card class="gap-2">
+            <CardHeader>
+                <CardDescription>Total Games</CardDescription>
+            </CardHeader>
+            <CardContent class="text-2xl font-semibold">
+                {{ gamesWon }}-{{ gamesLost }} <span class="text-muted-foreground text-sm font-normal">({{ gamesWon + gamesLost }})</span>
             </CardContent>
         </Card>
-        <Card class="gap-0">
-            <CardHeader>Game Winrate</CardHeader>
-            <CardContent class="text-2xl"> {{ gameWinrate }}% </CardContent>
+        <Card class="gap-2">
+            <CardHeader>
+                <CardDescription>Game Winrate</CardDescription>
+            </CardHeader>
+            <CardContent class="text-2xl font-semibold">{{ gameWinrate }}%</CardContent>
         </Card>
     </div>
 </template>

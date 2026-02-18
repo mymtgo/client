@@ -21,5 +21,3 @@ defineProps<{
         </Tabs>
     </AppLayout>
 </template>
-
-<style scoped></style>

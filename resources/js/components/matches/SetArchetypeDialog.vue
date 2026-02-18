@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import { useForm } from '@inertiajs/vue3';
+import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import ManaSymbols from '@/components/ManaSymbols.vue';
@@ -79,19 +80,19 @@ defineExpose({ openForMatch });
             <Input v-model="search" placeholder="Search archetypes..." class="mb-2" />
 
             <div class="flex-1 overflow-y-auto space-y-0.5">
-                <button
+                <Button
                     v-for="archetype in filteredArchetypes(archetypes)"
                     :key="archetype.id"
-                    type="button"
-                    class="hover:bg-accent flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm transition-colors"
+                    variant="ghost"
+                    class="w-full justify-between"
                     :disabled="form.processing"
                     @click="selectArchetype(archetype.id)"
                 >
-                    <span class="flex-1">{{ archetype.name }}</span>
+                    <span class="flex-1 text-left">{{ archetype.name }}</span>
                     <ManaSymbols :symbols="archetype.colorIdentity" />
-                </button>
+                </Button>
 
-                <p v-if="filteredArchetypes(archetypes).length === 0" class="text-muted-foreground py-4 text-center text-sm">
+                <p v-if="filteredArchetypes(archetypes).length === 0" class="py-4 text-center text-sm text-muted-foreground">
                     No archetypes found.
                 </p>
             </div>

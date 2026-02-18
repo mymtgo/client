@@ -2,8 +2,7 @@
 import { Empty, EmptyDescription } from '@/components/ui/empty';
 import { Pagination, PaginationContent, PaginationItem, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 import { Card, CardContent } from '@/components/ui/card';
-import { router, useForm } from '@inertiajs/vue3';
-import DeleteController from '@/actions/App/Http/Controllers/Matches/DeleteController';
+import { router } from '@inertiajs/vue3';
 import MatchesTable from '@/components/matches/MatchesTable.vue';
 defineProps<{
     matches: App.Data.Front.MatchData[];
@@ -51,5 +50,3 @@ const updatePage = (page: number) => {
         </div>
     </Card>
 </template>
-
-<style scoped></style>

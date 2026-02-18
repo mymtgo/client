@@ -1,7 +1,6 @@
 <script setup lang="ts">
-import { Badge } from '@/components/ui/badge';
-import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
-import { sum, sumBy } from 'lodash';
+import { Separator } from '@/components/ui/separator';
+import { sumBy } from 'lodash';
 import DeckListCard from '@/Pages/decks/partials/DeckListCard.vue';
 
 defineProps<{
@@ -13,21 +12,26 @@ const getCount = (cards: App.Data.Front.CardData[]) => sumBy(cards, 'quantity');
 </script>
 
 <template>
-    <div>
-        <header>Maindeck</header>
+    <div class="space-y-4">
+        <div class="space-y-2">
+            <h3 class="text-sm font-semibold tracking-tight">Maindeck</h3>
 
-        <div class="mt-2 space-y-2">
-            <section v-for="(cards, type) in maindeck" :key="`group_${type}`" class="space-y-2">
-                <header class="text-sm font-semibold text-sidebar-foreground/70">{{ type }} ({{ getCount(cards) }})</header>
-                <ul class="space-y-1">
-                    <li v-for="card in cards" :key="`card_${card.id}`">
-                        <DeckListCard :card="card" />
-                    </li>
-                </ul>
-            </section>
+            <div class="space-y-2">
+                <section v-for="(cards, type) in maindeck" :key="`group_${type}`" class="space-y-1">
+                    <h4 class="text-xs font-medium text-muted-foreground">{{ type }} ({{ getCount(cards) }})</h4>
+                    <ul class="space-y-1">
+                        <li v-for="card in cards" :key="`card_${card.id}`">
+                            <DeckListCard :card="card" />
+                        </li>
+                    </ul>
+                </section>
+            </div>
         </div>
-        <div>
-            <header class="my-2">Sideboard</header>
+
+        <Separator />
+
+        <div class="space-y-2">
+            <h3 class="text-sm font-semibold tracking-tight">Sideboard</h3>
             <ul class="space-y-1">
                 <li v-for="card in sideboard" :key="`card_${card.id}`">
                     <DeckListCard :card="card" />
@@ -36,5 +40,3 @@ const getCount = (cards: App.Data.Front.CardData[]) => sumBy(cards, 'quantity');
         </div>
     </div>
 </template>
-
-<style scoped></style>
