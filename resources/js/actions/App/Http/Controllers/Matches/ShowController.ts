@@ -1,7 +1,7 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition, applyUrlDefaults } from './../../../../../wayfinder'
 /**
 * @see \App\Http\Controllers\Matches\ShowController::__invoke
-* @see app/Http/Controllers/Matches/ShowController.php:15
+* @see app/Http/Controllers/Matches/ShowController.php:19
 * @route '/matches/{id}'
 */
 const ShowController = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -16,7 +16,7 @@ ShowController.definition = {
 
 /**
 * @see \App\Http\Controllers\Matches\ShowController::__invoke
-* @see app/Http/Controllers/Matches/ShowController.php:15
+* @see app/Http/Controllers/Matches/ShowController.php:19
 * @route '/matches/{id}'
 */
 ShowController.url = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -43,7 +43,7 @@ ShowController.url = (args: { id: string | number } | [id: string | number ] | s
 
 /**
 * @see \App\Http\Controllers\Matches\ShowController::__invoke
-* @see app/Http/Controllers/Matches/ShowController.php:15
+* @see app/Http/Controllers/Matches/ShowController.php:19
 * @route '/matches/{id}'
 */
 ShowController.get = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -53,7 +53,7 @@ ShowController.get = (args: { id: string | number } | [id: string | number ] | s
 
 /**
 * @see \App\Http\Controllers\Matches\ShowController::__invoke
-* @see app/Http/Controllers/Matches/ShowController.php:15
+* @see app/Http/Controllers/Matches/ShowController.php:19
 * @route '/matches/{id}'
 */
 ShowController.head = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -63,7 +63,7 @@ ShowController.head = (args: { id: string | number } | [id: string | number ] | 
 
 /**
 * @see \App\Http\Controllers\Matches\ShowController::__invoke
-* @see app/Http/Controllers/Matches/ShowController.php:15
+* @see app/Http/Controllers/Matches/ShowController.php:19
 * @route '/matches/{id}'
 */
 const ShowControllerForm = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -73,7 +73,7 @@ const ShowControllerForm = (args: { id: string | number } | [id: string | number
 
 /**
 * @see \App\Http\Controllers\Matches\ShowController::__invoke
-* @see app/Http/Controllers/Matches/ShowController.php:15
+* @see app/Http/Controllers/Matches/ShowController.php:19
 * @route '/matches/{id}'
 */
 ShowControllerForm.get = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -83,7 +83,7 @@ ShowControllerForm.get = (args: { id: string | number } | [id: string | number ]
 
 /**
 * @see \App\Http\Controllers\Matches\ShowController::__invoke
-* @see app/Http/Controllers/Matches/ShowController.php:15
+* @see app/Http/Controllers/Matches/ShowController.php:19
 * @route '/matches/{id}'
 */
 ShowControllerForm.head = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
