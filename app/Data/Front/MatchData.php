@@ -25,6 +25,7 @@ class MatchData extends Data
         public Lazy|DeckData $deck,
         public Lazy $opponentArchetypes,
         public Lazy|string|null $opponentName,
+        public Lazy|string|null $leagueName,
         public Lazy|Collection $games,
     ) {}
 
@@ -34,7 +35,7 @@ class MatchData extends Data
             id: $match->id,
             format: Str::title(strtolower(substr($match->format, 1))),
             matchType: $match->match_type,
-            leagueGame: (bool) ! $match->league->phantom,
+            leagueGame: $match->league_id !== null && ! ($match->league?->phantom ?? true),
             gamesWon: $match->games_won,
             gamesLost: $match->games_lost,
             result: $match->games_won > $match->games_lost ? 'won' : 'lost',
@@ -43,6 +44,7 @@ class MatchData extends Data
             deck: Lazy::whenLoaded('deck', $match, fn () => DeckData::from($match->deck)),
             opponentArchetypes: Lazy::whenLoaded('opponentArchetypes', $match, fn () => MatchArchetypeData::collect($match->opponentArchetypes)),
             opponentName: Lazy::whenLoaded('opponentArchetypes', $match, fn () => $match->opponentArchetypes->first()?->player?->username),
+            leagueName: Lazy::whenLoaded('league', $match, fn () => $match->league?->name),
             games: Lazy::whenLoaded('games', $match, fn () => GameData::collect($match->games)),
         );
     }
