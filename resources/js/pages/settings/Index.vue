@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { computed, ref } from 'vue';
+import { usePage } from '@inertiajs/vue3';
 import AppLayout from '@/AppLayout.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,80 +9,109 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
+import { router } from '@inertiajs/vue3';
+import UpdateLogPathController from '@/actions/App/Http/Controllers/Settings/UpdateLogPathController';
+import UpdateDataPathController from '@/actions/App/Http/Controllers/Settings/UpdateDataPathController';
+import UpdateWatcherController from '@/actions/App/Http/Controllers/Settings/UpdateWatcherController';
+import RunIngestController from '@/actions/App/Http/Controllers/Settings/RunIngestController';
+import RunSyncController from '@/actions/App/Http/Controllers/Settings/RunSyncController';
+import UpdateAnonymousStatsController from '@/actions/App/Http/Controllers/Settings/UpdateAnonymousStatsController';
+import { useAppearance } from '@/composables/useAppearance';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 
 dayjs.extend(relativeTime);
 
-// FAKE DATA — replace with props from backend
-const username = ref('blisterguy');
+const props = defineProps<{
+    logPath: string;
+    dataPath: string;
+    watcherActive: boolean;
+    anonymousStats: boolean;
+    dateFormat: 'DMY' | 'MDY';
+    logPathStatus: { valid: boolean; fileCount: number; message: string };
+    dataPathStatus: { valid: boolean; fileCount: number; message: string };
+    lastIngestAt: string | null;
+    lastSyncAt: string | null;
+}>();
 
-const logDir = ref('C:\\Users\\Alec\\AppData\\Local\\Apps\\2.0\\mtgo\\Logs');
-const logDirValid = ref(true);
+const logPathInput = ref(props.logPath);
+const dataPathInput = ref(props.dataPath);
 
-const deckDir = ref('C:\\Users\\Alec\\AppData\\Local\\Apps\\2.0\\mtgo\\Decks');
-const deckDirValid = ref(true);
+const pathsValid = computed(() => props.logPathStatus.valid && props.dataPathStatus.valid);
 
-const watcherActive = ref(true);
-const lastIngestAt = ref('2026-02-18T09:41:00Z');
-const lastSyncAt = ref('2026-02-18T09:40:00Z');
+const errors = computed(() => usePage().props.errors as Record<string, string>);
 
-const theme = ref(document.documentElement.classList.contains('dark') ? 'dark' : 'light');
-watch(theme, (val) => {
-    document.documentElement.classList.toggle('dark', val === 'dark');
-});
+const { appearance, updateAppearance } = useAppearance();
 
-const dateFormat = ref('relative');
-const statsPeriod = ref('all');
+const opts = { preserveScroll: true };
 
-const usageTracking = ref(false);
+function saveLogPath() {
+    router.patch(UpdateLogPathController.url(), { path: logPathInput.value }, opts);
+}
+
+function saveDataPath() {
+    router.patch(UpdateDataPathController.url(), { path: dataPathInput.value }, opts);
+}
+
+function toggleWatcher() {
+    router.patch(UpdateWatcherController.url(), { active: !props.watcherActive }, opts);
+}
+
+function runIngest() {
+    router.post(RunIngestController.url(), {}, opts);
+}
+
+function runSync() {
+    router.post(RunSyncController.url(), {}, opts);
+}
+
+function toggleAnonymousStats(checked: boolean | 'indeterminate') {
+    router.patch(UpdateAnonymousStatsController.url(), { enabled: checked === true }, opts);
+}
 </script>
 
 <template>
     <AppLayout title="Settings">
         <div class="max-w-2xl divide-y">
-
-            <!-- Identity -->
-            <div class="flex flex-col gap-4 p-4 lg:p-6">
-                <div>
-                    <p class="font-semibold">Identity</p>
-                    <p class="text-muted-foreground text-sm">Your MTGO username, used to determine which player is you when parsing match logs.</p>
-                </div>
-                <div class="flex flex-col gap-2">
-                    <Label for="username">MTGO Username</Label>
-                    <div class="flex gap-2">
-                        <Input id="username" v-model="username" placeholder="Enter your MTGO username" />
-                        <Button variant="outline">Save</Button>
-                    </div>
-                </div>
-            </div>
-
             <!-- File Paths -->
             <div class="flex flex-col gap-4 p-4 lg:p-6">
                 <div>
                     <p class="font-semibold">File Paths</p>
-                    <p class="text-muted-foreground text-sm">Where to look for MTGO log files and deck XML files.</p>
+                    <p class="text-sm text-muted-foreground">
+                        Where to look for MTGO log files and game data. Defaults are set automatically for standard MTGO installs.
+                    </p>
                 </div>
+
                 <div class="flex flex-col gap-2">
                     <Label>Log File Directory</Label>
-                    <p class="text-muted-foreground text-sm">Match log files (<code>Match_GameLog_*.dat</code>)</p>
+                    <p class="text-sm text-muted-foreground">Contains <code>mtgo.log</code> files</p>
                     <div class="flex gap-2">
-                        <Input v-model="logDir" />
-                        <Button variant="outline">Browse…</Button>
+                        <Input v-model="logPathInput" @keydown.enter="saveLogPath" />
+                        <Button variant="outline" @click="saveLogPath">Save</Button>
                     </div>
-                    <p v-if="!logDirValid" class="text-destructive text-sm">Path not found or no log files detected.</p>
-                    <p v-else class="text-muted-foreground text-sm">Path found</p>
+                    <div v-if="logPath" class="flex items-center gap-2">
+                        <div class="size-2 shrink-0 rounded-full" :class="logPathStatus.valid ? 'bg-primary' : 'bg-destructive'" />
+                        <span class="text-sm" :class="logPathStatus.valid ? 'text-muted-foreground' : 'text-destructive'">
+                            {{ logPathStatus.message }}
+                        </span>
+                    </div>
                 </div>
+
                 <Separator />
+
                 <div class="flex flex-col gap-2">
-                    <Label>Deck XML Directory</Label>
-                    <p class="text-muted-foreground text-sm">Deck XML files used for deck sync</p>
+                    <Label>Game Data Directory</Label>
+                    <p class="text-sm text-muted-foreground">Contains <code>Match_GameLog_*</code> and deck XML files</p>
                     <div class="flex gap-2">
-                        <Input v-model="deckDir" />
-                        <Button variant="outline">Browse…</Button>
+                        <Input v-model="dataPathInput" @keydown.enter="saveDataPath" />
+                        <Button variant="outline" @click="saveDataPath">Save</Button>
                     </div>
-                    <p v-if="!deckDirValid" class="text-destructive text-sm">Path not found.</p>
-                    <p v-else class="text-muted-foreground text-sm">Path found</p>
+                    <div v-if="dataPath" class="flex items-center gap-2">
+                        <div class="size-2 shrink-0 rounded-full" :class="dataPathStatus.valid ? 'bg-primary' : 'bg-destructive'" />
+                        <span class="text-sm" :class="dataPathStatus.valid ? 'text-muted-foreground' : 'text-destructive'">
+                            {{ dataPathStatus.message }}
+                        </span>
+                    </div>
                 </div>
             </div>
 
@@ -89,92 +119,84 @@ const usageTracking = ref(false);
             <div class="flex flex-col gap-4 p-4 lg:p-6">
                 <div>
                     <p class="font-semibold">Watcher &amp; Ingestion</p>
-                    <p class="text-muted-foreground text-sm">Control the file system watcher and manually trigger log or deck sync operations.</p>
+                    <p class="text-sm text-muted-foreground">Control the file system watcher and manually trigger operations.</p>
                 </div>
+
                 <div class="flex items-center justify-between">
                     <div>
                         <Label>File Watcher</Label>
-                        <p class="text-muted-foreground text-sm">Monitors log files and triggers ingestion automatically.</p>
+                        <p class="text-sm text-muted-foreground">Monitors log files and triggers ingestion automatically.</p>
+                        <p v-if="!pathsValid" class="text-sm text-destructive">File paths must be valid to enable the watcher.</p>
                     </div>
                     <div class="flex items-center gap-3">
-                        <Badge :variant="watcherActive ? 'default' : 'secondary'">
-                            {{ watcherActive ? 'Running' : 'Stopped' }}
+                        <Badge :variant="watcherActive && pathsValid ? 'default' : 'secondary'">
+                            {{ watcherActive && pathsValid ? 'Running' : 'Stopped' }}
                         </Badge>
-                        <Button variant="outline" size="sm" @click="watcherActive = !watcherActive">
-                            {{ watcherActive ? 'Stop' : 'Start' }}
+                        <Button variant="outline" size="sm" :disabled="!pathsValid" @click="toggleWatcher">
+                            {{ watcherActive && pathsValid ? 'Stop' : 'Start' }}
                         </Button>
                     </div>
                 </div>
+
                 <Separator />
+
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-sm font-medium">Ingest Logs</p>
-                        <p class="text-muted-foreground text-sm">Last run {{ dayjs(lastIngestAt).fromNow() }}</p>
+                        <p class="text-sm text-muted-foreground">
+                            {{ lastIngestAt ? `Last run ${dayjs(lastIngestAt).fromNow()}` : 'Never run' }}
+                        </p>
+                        <p v-if="errors.ingest" class="text-sm text-destructive">{{ errors.ingest }}</p>
                     </div>
-                    <Button variant="outline" size="sm">Run now</Button>
+                    <Button variant="outline" size="sm" :disabled="!pathsValid" @click="runIngest">Run now</Button>
                 </div>
+
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-sm font-medium">Sync Decks</p>
-                        <p class="text-muted-foreground text-sm">Last run {{ dayjs(lastSyncAt).fromNow() }}</p>
+                        <p class="text-sm text-muted-foreground">
+                            {{ lastSyncAt ? `Last run ${dayjs(lastSyncAt).fromNow()}` : 'Never run' }}
+                        </p>
+                        <p v-if="errors.sync" class="text-sm text-destructive">{{ errors.sync }}</p>
                     </div>
-                    <Button variant="outline" size="sm">Run now</Button>
+                    <Button variant="outline" size="sm" :disabled="!pathsValid" @click="runSync">Run now</Button>
                 </div>
             </div>
 
-            <!-- Display Preferences -->
+            <!-- Display -->
             <div class="flex flex-col gap-4 p-4 lg:p-6">
                 <div>
-                    <p class="font-semibold">Display Preferences</p>
-                    <p class="text-muted-foreground text-sm">Customise how the app looks and displays data.</p>
+                    <p class="font-semibold">Display</p>
+                    <p class="text-sm text-muted-foreground">Appearance preferences.</p>
                 </div>
+
                 <div class="flex items-center justify-between">
                     <div>
                         <Label>Theme</Label>
-                        <p class="text-muted-foreground text-sm">Light or dark.</p>
+                        <p class="text-sm text-muted-foreground">Light or dark.</p>
                     </div>
-                    <Select v-model="theme">
+                    <Select :model-value="appearance" @update:model-value="updateAppearance">
                         <SelectTrigger class="w-36">
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
                             <SelectItem value="light">Light</SelectItem>
                             <SelectItem value="dark">Dark</SelectItem>
+                            <SelectItem value="system">System</SelectItem>
                         </SelectContent>
                     </Select>
                 </div>
+
                 <Separator />
+
                 <div class="flex items-center justify-between">
                     <div>
                         <Label>Date Format</Label>
-                        <p class="text-muted-foreground text-sm">How dates are shown throughout the app.</p>
+                        <p class="text-sm text-muted-foreground">Detected from your system locale.</p>
                     </div>
-                    <Select v-model="dateFormat">
-                        <SelectTrigger class="w-44">
-                            <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="relative">Relative (3 days ago)</SelectItem>
-                            <SelectItem value="absolute">Absolute (12 Feb 2026)</SelectItem>
-                        </SelectContent>
-                    </Select>
-                </div>
-                <Separator />
-                <div class="flex items-center justify-between">
-                    <div>
-                        <Label>Default Stats Period</Label>
-                        <p class="text-muted-foreground text-sm">Default time window for win rate calculations.</p>
-                    </div>
-                    <Select v-model="statsPeriod">
-                        <SelectTrigger class="w-44">
-                            <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">All time</SelectItem>
-                            <SelectItem value="90d">Last 90 days</SelectItem>
-                            <SelectItem value="30d">Last 30 days</SelectItem>
-                        </SelectContent>
-                    </Select>
+                    <span class="text-sm text-muted-foreground">
+                        {{ dateFormat === 'DMY' ? 'DD/MM/YYYY' : 'MM/DD/YYYY' }}
+                    </span>
                 </div>
             </div>
 
@@ -182,19 +204,18 @@ const usageTracking = ref(false);
             <div class="flex flex-col gap-4 p-4 lg:p-6">
                 <div>
                     <p class="font-semibold">Data &amp; Privacy</p>
-                    <p class="text-muted-foreground text-sm">Control what data is collected from your use of the app.</p>
+                    <p class="text-sm text-muted-foreground">Control what data is collected from your use of the app.</p>
                 </div>
                 <div class="flex items-start gap-3">
-                    <Checkbox id="usage-tracking" v-model:checked="usageTracking" />
+                    <Checkbox id="usage-tracking" :defaultValue="anonymousStats" @update:modelValue="toggleAnonymousStats" />
                     <div class="flex flex-col gap-1">
                         <Label for="usage-tracking">Send anonymous usage statistics</Label>
-                        <p class="text-muted-foreground text-sm">
-                            Helps improve the app. No personal data, match results, usernames, or deck contents are ever sent. Disabled by default.
+                        <p class="text-sm text-muted-foreground">
+                            Helps improve the app. No personal data, match results, usernames, or deck contents are ever sent.
                         </p>
                     </div>
                 </div>
             </div>
-
         </div>
     </AppLayout>
 </template>
