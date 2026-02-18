@@ -68,7 +68,7 @@ const clearArchetype = (matchId: number) => {
                     <ContextMenuTrigger asChild>
                         <TableRow>
                             <TableCell>
-                                <Badge class="border-transparent bg-win text-win-foreground" v-if="match.gamesWon > match.gamesLost"> Win </Badge>
+                                <Badge variant="default" v-if="match.gamesWon > match.gamesLost"> Win </Badge>
                                 <Badge variant="destructive" v-if="match.gamesWon < match.gamesLost"> Loss </Badge>
                             </TableCell>
                             <TableCell>
