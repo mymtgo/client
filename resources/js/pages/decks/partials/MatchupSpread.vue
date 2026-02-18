@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { Empty, EmptyDescription } from '@/components/ui/empty';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import ManaSymbols from '@/components/ManaSymbols.vue';
@@ -13,9 +12,9 @@ defineProps<{
     <div>
         <Card class="gap-0 overflow-hidden p-0">
             <CardContent class="px-0">
-                <Empty v-if="!matchupSpread.length">
-                    <EmptyDescription> Archetype matchup data will appear as you play matches. </EmptyDescription>
-                </Empty>
+                <p v-if="!matchupSpread.length" class="text-muted-foreground py-8 text-center text-sm">
+                    Archetype matchup data will appear as you play matches.
+                </p>
 
                 <Table v-if="matchupSpread.length">
                     <TableHeader class="bg-muted">
