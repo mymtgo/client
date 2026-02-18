@@ -15,6 +15,7 @@ import DashboardController from '@/actions/App/Http/Controllers/IndexController'
 import DecksIndexController from '@/actions/App/Http/Controllers/Decks/IndexController';
 import LeaguesIndexController from '@/actions/App/Http/Controllers/Leagues/IndexController';
 import OpponentsIndexController from '@/actions/App/Http/Controllers/Opponents/IndexController';
+import SettingsIndexController from '@/actions/App/Http/Controllers/Settings/IndexController';
 
 const page = usePage();
 
@@ -69,8 +70,8 @@ const toggleTheme = () => {
         <SidebarFooter>
             <SidebarMenu>
                 <SidebarMenuItem>
-                    <SidebarMenuButton as-child>
-                        <Link href="/settings">
+                    <SidebarMenuButton as-child :is-active="isActive(SettingsIndexController.url())">
+                        <Link :href="SettingsIndexController.url()">
                             <Settings class="size-4" />
                             <span>Settings</span>
                         </Link>
