@@ -137,31 +137,40 @@ class BuildMatch
         }
 
         $gameLog = GetGameLog::run($match->token);
-        $logResults = $gameLog['results'] ?? [];
+        $gameCount = $games->count();
+
+        // Cap log results to actual game count — the game log parser can
+        // produce a phantom extra result when the opponent disconnects
+        // after the final game (terminal event fires fallback).
+        $logResults = array_slice($gameLog['results'] ?? [], 0, $gameCount);
 
         $wins = count(array_filter($logResults, fn ($r) => $r === true));
         $losses = count(array_filter($logResults, fn ($r) => $r === false));
 
         /**
-         * On MTGO, a match ends when one player wins 2 games (best-of-3).
-         * If fewer than 2 game results were recorded the match ended early —
-         * either the local player conceded the match or the opponent quit.
+         * Matches are best-of-N (BO3 needs 2 wins, BO5 needs 3).
+         * Determine the win threshold from the game count: a completed
+         * BO3 has 2–3 games, a completed BO5 has 3–5 games.
+         * If the match ended early with fewer results than expected,
+         * either the local player conceded or the opponent quit.
          *
          * MatchConcedeReqState → MatchNotJoinedEventUnderwayState only appears
          * when the LOCAL player triggers the concede protocol; an opponent quitting
          * MTGO entirely never generates that transition on our client.
          */
-        if (($wins + $losses) < 2) {
+        $winThreshold = $gameCount >= 3 && ($wins >= 3 || $losses >= 3) ? 3 : 2;
+
+        if (($wins + $losses) < $winThreshold) {
             $localConceded = $stateChanges->contains(
                 fn (LogEvent $event) => str_contains($event->context ?? '', 'MatchConcedeReqState to MatchNotJoinedEventUnderwayState')
             );
 
             if ($localConceded) {
-                // Local forfeited — opponent is awarded all remaining games
-                $losses = 2;
+                // Local forfeited — opponent is awarded enough games to win
+                $losses = $winThreshold;
             } else {
-                // Opponent quit/disconnected — local is awarded all remaining games
-                $wins = 2;
+                // Opponent quit/disconnected — local is awarded enough games to win
+                $wins = $winThreshold;
             }
         }
 
