@@ -51,10 +51,10 @@ defineProps<{
                     <p class="mb-2 text-xs font-medium tracking-wide text-muted-foreground uppercase">
                         {{ game.localMulligans > 0 ? `Kept Hand (mulligan to ${7 - game.localMulligans})` : 'Opening Hand' }}
                     </p>
-                    <div class="flex flex-wrap gap-2">
+                    <div class="grid grid-cols-8 gap-1">
                         <div v-for="(card, i) in game.keptHand" :key="`kept_${i}`" class="relative shrink-0">
                             <div
-                                class="h-28 w-20 overflow-hidden rounded-lg border-2 shadow-sm"
+                                class="overflow-hidden rounded-[10px] border-2 shadow-sm"
                                 :class="card.bottomed ? 'border-destructive' : 'border-transparent'"
                             >
                                 <img v-if="card.image" :src="card.image" :alt="card.name" class="h-full w-full object-cover" />

@@ -25,7 +25,11 @@
       "Bash(php artisan typescript:transform:*)",
       "Bash(vendor/bin/pint:*)",
       "mcp__laravel-boost__database-query",
-      "Bash(php vendor/bin/pint:*)"
+      "Bash(php vendor/bin/pint:*)",
+      "Bash(LC_ALL=C cat:*)",
+      "Bash(LC_ALL=C tr:*)",
+      "Bash(LC_ALL=C sed:*)",
+      "Bash(php artisan:*)"
     ]
   },
   "enabledMcpjsonServers": [

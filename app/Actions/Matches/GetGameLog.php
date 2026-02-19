@@ -15,7 +15,20 @@ class GetGameLog
             return null;
         }
 
-        $raw = file_get_contents($log->file_path);
+        $raw = @file_get_contents($log->file_path);
+
+        // Fallback: stored path may be a Windows path on a different machine.
+        // Reconstruct from storage using the hash directory embedded in the path.
+        if ($raw === false) {
+            $hashDir = basename(dirname(str_replace('\\', '/', $log->file_path)));
+            $filename = basename(str_replace('\\', '/', $log->file_path));
+            $fallback = storage_path("app/{$hashDir}/{$filename}");
+            $raw = @file_get_contents($fallback);
+        }
+
+        if ($raw === false) {
+            return null;
+        }
 
         /**
          * Clean log

@@ -25,7 +25,6 @@ class BuildMatch
         $idxNotJoined = $stateChanges->search(fn ($e) => str_contains($e->context ?? '', 'MatchNotJoinedUnderway'));
         $idxConcedeFulfilled = $stateChanges->search(fn ($e) => str_contains($e->context ?? '', 'MatchConcedeReqState to MatchNotJoinedEventUnderwayState'));
 
-
         $concededAndQuit = ($idxConcede !== false
             && $idxNotJoined !== false
             && $idxNotJoined > $idxConcede) || $idxConcedeFulfilled;
@@ -35,11 +34,9 @@ class BuildMatch
             ->search(fn ($e) => str_contains($e->message ?? '', 'MatchCompleted')
             );
 
-
         $matchEnded = $stateChanges->first(
             fn (LogEvent $event) => str_contains($event->context, 'TournamentMatchClosedState') || str_contains($event->context, 'MatchCompletedState') || str_contains($event->context, 'MatchEndedState') || str_contains($event->context, 'MatchClosedState')
         );
-
 
         $concededAndQuit = $concededAndQuit && $idxCompletedAfterNotJoined !== false || $idxConcedeFulfilled !== false;
 
@@ -75,12 +72,12 @@ class BuildMatch
             ]);
         } else {
             $league = League::where('format', $gameMeta['PlayFormatCd'])->latest()->first();
-            if (!$league || $league?->matches()->count() == 5) {
+            if (! $league || $league?->matches()->count() == 5) {
                 $league = League::create([
                     'token' => Str::random(),
                     'format' => $gameMeta['PlayFormatCd'],
                     'started_at' => now(),
-                    'name' => 'Phantom ' . trim(($gameMeta['GameStructureCd'] ?? '') . ' League' . now()->format('d-m-Y h:ma'))
+                    'name' => 'Phantom '.trim(($gameMeta['GameStructureCd'] ?? '').' League'.now()->format('d-m-Y h:ma')),
                 ]);
             }
         }
@@ -132,20 +129,31 @@ class BuildMatch
         DetermineMatchDeck::run($match);
 
         $gameLog = GetGameLog::run($match->token);
-        $wins = $match->games->sum('won');
-        $losses = count($gameLog['results']) - $wins;
+        $logResults = $gameLog['results'] ?? [];
 
+        $wins = count(array_filter($logResults, fn ($r) => $r === true));
+        $losses = count(array_filter($logResults, fn ($r) => $r === false));
 
-        if ($wins == $losses || ! $losses) {
-            /**
-             * Did we concede from this game?
-             */
-            $conceded = $stateChanges->first(
-                fn (LogEvent $event) => str_contains($event->context, 'MatchConcedeReqState to MatchNotJoinedEventUnderwayState')
+        /**
+         * On MTGO, a match ends when one player wins 2 games (best-of-3).
+         * If fewer than 2 game results were recorded the match ended early —
+         * either the local player conceded the match or the opponent quit.
+         *
+         * MatchConcedeReqState → MatchNotJoinedEventUnderwayState only appears
+         * when the LOCAL player triggers the concede protocol; an opponent quitting
+         * MTGO entirely never generates that transition on our client.
+         */
+        if (($wins + $losses) < 2) {
+            $localConceded = $stateChanges->contains(
+                fn (LogEvent $event) => str_contains($event->context ?? '', 'MatchConcedeReqState to MatchNotJoinedEventUnderwayState')
             );
 
-            if ($conceded) {
-                $losses++;
+            if ($localConceded) {
+                // Local forfeited — opponent is awarded all remaining games
+                $losses = 2;
+            } else {
+                // Opponent quit/disconnected — local is awarded all remaining games
+                $wins = 2;
             }
         }
 
