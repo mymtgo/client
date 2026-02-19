@@ -5,9 +5,10 @@ import DecksIndexController from '@/actions/App/Http/Controllers/Decks/IndexCont
 import DecksShowController from '@/actions/App/Http/Controllers/Decks/ShowController';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { router } from '@inertiajs/vue3';
+import { Deferred, router } from '@inertiajs/vue3';
 import MatchupSpread from '@/pages/decks/partials/MatchupSpread.vue';
 import DeckMatches from '@/pages/decks/partials/DeckMatches.vue';
 import DeckLeagues from '@/pages/decks/partials/DeckLeagues.vue';
@@ -47,10 +48,6 @@ const props = defineProps<{
     period: string;
     maindeck: Record<string, App.Data.Front.CardData[]>;
     sideboard: App.Data.Front.CardData[];
-    matches: any;
-    leagues: App.Data.Front.LeagueData[];
-    archetypes: App.Data.Front.ArchetypeData[];
-    matchupSpread: any[];
     matchesWon: number;
     matchesLost: number;
     gamesWon: number;
@@ -64,9 +61,14 @@ const props = defineProps<{
     gamesOtdLost: number;
     otdRate: number;
     versions: VersionStats[];
-    versionDecklists: Record<string, VersionDecklist>;
     chartData: { date: string; winrate: string | null }[];
     chartGranularity: 'daily' | 'monthly';
+    // Deferred props — undefined until background request resolves
+    matches?: any;
+    leagues?: App.Data.Front.LeagueData[];
+    archetypes?: App.Data.Front.ArchetypeData[];
+    matchupSpread?: any[];
+    versionDecklists?: Record<string, VersionDecklist>;
 }>();
 
 const selectedVersionKey = ref<string>('all');
@@ -100,7 +102,7 @@ const activeDecklist = computed((): VersionDecklist => {
     const key = selectedVersionKey.value === 'all'
         ? String(latestVersionId.value)
         : selectedVersionKey.value;
-    return props.versionDecklists[key] ?? { maindeck: props.maindeck, sideboard: props.sideboard };
+    return props.versionDecklists?.[key] ?? { maindeck: props.maindeck, sideboard: props.sideboard };
 });
 
 // All-time stats for the header (from deck DTO)
@@ -211,13 +213,47 @@ const allTime = computed(() => props.versions[0]);
                         <TabsTrigger value="leagues">Leagues</TabsTrigger>
                     </TabsList>
                     <TabsContent value="matches">
-                        <DeckMatches :matches="matches" :archetypes="archetypes" />
+                        <Deferred :data="['matches', 'archetypes']">
+                            <template #fallback>
+                                <Card class="gap-0 overflow-hidden p-0">
+                                    <CardContent class="flex flex-col gap-2 px-4 py-4">
+                                        <Skeleton class="h-8 w-full" />
+                                        <Skeleton class="h-8 w-full" />
+                                        <Skeleton class="h-8 w-full" />
+                                        <Skeleton class="h-8 w-4/5" />
+                                    </CardContent>
+                                </Card>
+                            </template>
+                            <DeckMatches :matches="matches!" :archetypes="archetypes!" />
+                        </Deferred>
                     </TabsContent>
                     <TabsContent value="matchups">
-                        <MatchupSpread :matchup-spread="matchupSpread" />
+                        <Deferred data="matchupSpread">
+                            <template #fallback>
+                                <Card class="gap-0 overflow-hidden p-0">
+                                    <CardContent class="flex flex-col gap-2 px-4 py-4">
+                                        <Skeleton class="h-8 w-full" />
+                                        <Skeleton class="h-8 w-full" />
+                                        <Skeleton class="h-8 w-3/4" />
+                                    </CardContent>
+                                </Card>
+                            </template>
+                            <MatchupSpread :matchup-spread="matchupSpread!" />
+                        </Deferred>
                     </TabsContent>
                     <TabsContent value="leagues">
-                        <DeckLeagues :leagues="leagues" :archetypes="archetypes" />
+                        <Deferred :data="['leagues', 'archetypes']">
+                            <template #fallback>
+                                <Card class="gap-0 overflow-hidden p-0">
+                                    <CardContent class="flex flex-col gap-2 px-4 py-4">
+                                        <Skeleton class="h-8 w-full" />
+                                        <Skeleton class="h-8 w-full" />
+                                        <Skeleton class="h-8 w-2/3" />
+                                    </CardContent>
+                                </Card>
+                            </template>
+                            <DeckLeagues :leagues="leagues!" :archetypes="archetypes!" />
+                        </Deferred>
                     </TabsContent>
                 </Tabs>
             </div>
@@ -243,7 +279,18 @@ const allTime = computed(() => props.versions[0]);
                         </SelectContent>
                     </Select>
                 </div>
-                <DeckList :maindeck="activeDecklist.maindeck" :sideboard="activeDecklist.sideboard" />
+                <Deferred data="versionDecklists">
+                    <template #fallback>
+                        <div class="flex flex-col gap-2">
+                            <Skeleton class="h-4 w-2/3" />
+                            <Skeleton class="h-4 w-1/2" />
+                            <Skeleton class="h-4 w-3/4" />
+                            <Skeleton class="h-4 w-2/3" />
+                            <Skeleton class="h-4 w-1/2" />
+                        </div>
+                    </template>
+                    <DeckList :maindeck="activeDecklist.maindeck" :sideboard="activeDecklist.sideboard" />
+                </Deferred>
             </div>
         </div>
     </AppLayout>

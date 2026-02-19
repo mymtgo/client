@@ -13,9 +13,8 @@ defineProps<{
 
 const updatePage = (page: number) => {
     router.reload({
-        data: {
-            page,
-        },
+        data: { page },
+        only: ['matches'],
     });
 };
 
