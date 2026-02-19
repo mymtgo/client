@@ -6,6 +6,7 @@ use App\Actions\DetermineMatchArchetypes;
 use App\Actions\Util\ExtractJson;
 use App\Actions\Util\ExtractKeyValueBlock;
 use App\Enums\LogEventType;
+use App\Models\DeckVersion;
 use App\Models\League;
 use App\Models\LogEvent;
 use App\Models\MtgoMatch;
@@ -71,15 +72,9 @@ class BuildMatch
                 'name' => trim(($gameMeta['GameStructureCd'] ?? '').' League '.now()->format('d-m-Y h:ma')),
             ]);
         } else {
-            $league = League::where('format', $gameMeta['PlayFormatCd'])->latest()->first();
-            if (! $league || $league?->matches()->count() == 5) {
-                $league = League::create([
-                    'token' => Str::random(),
-                    'format' => $gameMeta['PlayFormatCd'],
-                    'started_at' => now(),
-                    'name' => 'Phantom '.trim(($gameMeta['GameStructureCd'] ?? '').' League'.now()->format('d-m-Y h:ma')),
-                ]);
-            }
+            // Phantom league assignment is deferred until after DetermineMatchDeck
+            // so we can match on deck identity. See below.
+            $league = null;
         }
 
         $lastEvent = $events->last();
@@ -127,6 +122,19 @@ class BuildMatch
         }
 
         DetermineMatchDeck::run($match);
+
+        // Assign phantom league now that we know which deck was used.
+        if (! $league) {
+            $match->refresh();
+
+            $deckId = $match->deck_version_id
+                ? DeckVersion::find($match->deck_version_id)?->deck_id
+                : null;
+
+            $league = self::findOrCreatePhantomLeague($gameMeta, $deckId);
+
+            $match->update(['league_id' => $league->id]);
+        }
 
         $gameLog = GetGameLog::run($match->token);
         $logResults = $gameLog['results'] ?? [];
@@ -178,5 +186,44 @@ class BuildMatch
             ]);
 
         return $match;
+    }
+
+    /**
+     * Find an existing phantom league for the given deck and format, or create a new one.
+     *
+     * We only append to a phantom league when:
+     *  - It belongs to the same deck (prevents cross-deck contamination)
+     *  - It is not already flagged as having a deck change
+     *  - It has fewer than 5 matches (league run limit)
+     *
+     * If the deck is unknown (DetermineMatchDeck found no signature match) we always
+     * create a fresh league rather than risk polluting an existing one.
+     */
+    private static function findOrCreatePhantomLeague(array $gameMeta, ?int $deckId): League
+    {
+        if ($deckId) {
+            $existing = League::where('format', $gameMeta['PlayFormatCd'])
+                ->where('phantom', true)
+                ->where('deck_change_detected', false)
+                ->has('matches', '<', 5)
+                ->whereHas('matches', fn ($q) => $q
+                    ->join('deck_versions as dv', 'dv.id', '=', 'matches.deck_version_id')
+                    ->where('dv.deck_id', $deckId)
+                )
+                ->latest('started_at')
+                ->first();
+
+            if ($existing) {
+                return $existing;
+            }
+        }
+
+        return League::create([
+            'token' => Str::random(),
+            'format' => $gameMeta['PlayFormatCd'],
+            'phantom' => true,
+            'started_at' => now(),
+            'name' => 'Phantom '.trim(($gameMeta['GameStructureCd'] ?? '').' League '.now()->format('d-m-Y h:ma')),
+        ]);
     }
 }
