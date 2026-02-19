@@ -8,15 +8,20 @@ use Illuminate\Support\Facades\DB;
 
 class GetArchetypeMatchupSpread
 {
-    public static function run(Deck $deck, Carbon $from, Carbon $to)
+    public static function run(Deck $deck, ?Carbon $from, ?Carbon $to)
     {
         $deckVersions = $deck->versions()->pluck('id');
 
-        return DB::table('matches as m')
+        $query = DB::table('matches as m')
             ->join('match_archetypes as ma', 'ma.mtgo_match_id', '=', 'm.id')
             ->join('archetypes as a', 'a.id', '=', 'ma.archetype_id')
-            ->whereIn('m.deck_version_id', $deckVersions->toArray())
-            ->whereBetween('m.started_at', [$from, $to])
+            ->whereIn('m.deck_version_id', $deckVersions->toArray());
+
+        if ($from && $to) {
+            $query->whereBetween('m.started_at', [$from, $to]);
+        }
+
+        return $query
             ->whereExists(function ($q) {
                 $q->selectRaw('1')
                     ->from('game_player as gp')
