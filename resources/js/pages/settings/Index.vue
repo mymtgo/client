@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { usePage } from '@inertiajs/vue3';
+import { usePage, router } from '@inertiajs/vue3';
 import AppLayout from '@/AppLayout.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
-import { router } from '@inertiajs/vue3';
+import { Spinner } from '@/components/ui/spinner';
 import UpdateLogPathController from '@/actions/App/Http/Controllers/Settings/UpdateLogPathController';
 import UpdateDataPathController from '@/actions/App/Http/Controllers/Settings/UpdateDataPathController';
 import UpdateWatcherController from '@/actions/App/Http/Controllers/Settings/UpdateWatcherController';
@@ -43,30 +43,38 @@ const errors = computed(() => usePage().props.errors as Record<string, string>);
 
 const { appearance, updateAppearance } = useAppearance();
 
-const opts = { preserveScroll: true };
+const processing = ref<string | null>(null);
+
+function withProcessing(key: string, method: 'patch' | 'post', url: string, data: Record<string, unknown> = {}) {
+    processing.value = key;
+    router[method](url, data, {
+        preserveScroll: true,
+        onFinish: () => { processing.value = null; },
+    });
+}
 
 function saveLogPath() {
-    router.patch(UpdateLogPathController.url(), { path: logPathInput.value }, opts);
+    withProcessing('logPath', 'patch', UpdateLogPathController.url(), { path: logPathInput.value });
 }
 
 function saveDataPath() {
-    router.patch(UpdateDataPathController.url(), { path: dataPathInput.value }, opts);
+    withProcessing('dataPath', 'patch', UpdateDataPathController.url(), { path: dataPathInput.value });
 }
 
 function toggleWatcher() {
-    router.patch(UpdateWatcherController.url(), { active: !props.watcherActive }, opts);
+    withProcessing('watcher', 'patch', UpdateWatcherController.url(), { active: !props.watcherActive });
 }
 
 function runIngest() {
-    router.post(RunIngestController.url(), {}, opts);
+    withProcessing('ingest', 'post', RunIngestController.url());
 }
 
 function runSync() {
-    router.post(RunSyncController.url(), {}, opts);
+    withProcessing('sync', 'post', RunSyncController.url());
 }
 
 function toggleAnonymousStats(checked: boolean | 'indeterminate') {
-    router.patch(UpdateAnonymousStatsController.url(), { enabled: checked === true }, opts);
+    withProcessing('stats', 'patch', UpdateAnonymousStatsController.url(), { enabled: checked === true });
 }
 </script>
 
@@ -86,8 +94,11 @@ function toggleAnonymousStats(checked: boolean | 'indeterminate') {
                     <Label>Log File Directory</Label>
                     <p class="text-sm text-muted-foreground">Contains <code>mtgo.log</code> files</p>
                     <div class="flex gap-2">
-                        <Input v-model="logPathInput" @keydown.enter="saveLogPath" />
-                        <Button variant="outline" @click="saveLogPath">Save</Button>
+                        <Input v-model="logPathInput" @keydown.enter="saveLogPath" :disabled="processing === 'logPath'" />
+                        <Button variant="outline" :disabled="processing === 'logPath'" @click="saveLogPath">
+                            <Spinner v-if="processing === 'logPath'" />
+                            {{ processing === 'logPath' ? 'Saving...' : 'Save' }}
+                        </Button>
                     </div>
                     <div v-if="logPath" class="flex items-center gap-2">
                         <div class="size-2 shrink-0 rounded-full" :class="logPathStatus.valid ? 'bg-primary' : 'bg-destructive'" />
@@ -103,8 +114,11 @@ function toggleAnonymousStats(checked: boolean | 'indeterminate') {
                     <Label>Game Data Directory</Label>
                     <p class="text-sm text-muted-foreground">Contains <code>Match_GameLog_*</code> and deck XML files</p>
                     <div class="flex gap-2">
-                        <Input v-model="dataPathInput" @keydown.enter="saveDataPath" />
-                        <Button variant="outline" @click="saveDataPath">Save</Button>
+                        <Input v-model="dataPathInput" @keydown.enter="saveDataPath" :disabled="processing === 'dataPath'" />
+                        <Button variant="outline" :disabled="processing === 'dataPath'" @click="saveDataPath">
+                            <Spinner v-if="processing === 'dataPath'" />
+                            {{ processing === 'dataPath' ? 'Saving...' : 'Save' }}
+                        </Button>
                     </div>
                     <div v-if="dataPath" class="flex items-center gap-2">
                         <div class="size-2 shrink-0 rounded-full" :class="dataPathStatus.valid ? 'bg-primary' : 'bg-destructive'" />
@@ -132,8 +146,9 @@ function toggleAnonymousStats(checked: boolean | 'indeterminate') {
                         <Badge :variant="watcherActive && pathsValid ? 'default' : 'secondary'">
                             {{ watcherActive && pathsValid ? 'Running' : 'Stopped' }}
                         </Badge>
-                        <Button variant="outline" size="sm" :disabled="!pathsValid" @click="toggleWatcher">
-                            {{ watcherActive && pathsValid ? 'Stop' : 'Start' }}
+                        <Button variant="outline" size="sm" :disabled="!pathsValid || processing === 'watcher'" @click="toggleWatcher">
+                            <Spinner v-if="processing === 'watcher'" />
+                            {{ processing === 'watcher' ? 'Processing...' : (watcherActive && pathsValid ? 'Stop' : 'Start') }}
                         </Button>
                     </div>
                 </div>
@@ -148,7 +163,10 @@ function toggleAnonymousStats(checked: boolean | 'indeterminate') {
                         </p>
                         <p v-if="errors.ingest" class="text-sm text-destructive">{{ errors.ingest }}</p>
                     </div>
-                    <Button variant="outline" size="sm" :disabled="!pathsValid" @click="runIngest">Run now</Button>
+                    <Button variant="outline" size="sm" :disabled="!pathsValid || processing === 'ingest'" @click="runIngest">
+                        <Spinner v-if="processing === 'ingest'" />
+                        {{ processing === 'ingest' ? 'Running...' : 'Run now' }}
+                    </Button>
                 </div>
 
                 <div class="flex items-center justify-between">
@@ -159,7 +177,10 @@ function toggleAnonymousStats(checked: boolean | 'indeterminate') {
                         </p>
                         <p v-if="errors.sync" class="text-sm text-destructive">{{ errors.sync }}</p>
                     </div>
-                    <Button variant="outline" size="sm" :disabled="!pathsValid" @click="runSync">Run now</Button>
+                    <Button variant="outline" size="sm" :disabled="!pathsValid || processing === 'sync'" @click="runSync">
+                        <Spinner v-if="processing === 'sync'" />
+                        {{ processing === 'sync' ? 'Running...' : 'Run now' }}
+                    </Button>
                 </div>
             </div>
 

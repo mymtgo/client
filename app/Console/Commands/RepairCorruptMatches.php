@@ -76,15 +76,19 @@ class RepairCorruptMatches extends Command
                 continue;
             }
 
-            $logResults = $gameLog['results'] ?? [];
+            $gameCount = $match->games()->count();
+            $logResults = array_slice($gameLog['results'] ?? [], 0, $gameCount);
             $logWins = count(array_filter($logResults, fn ($r) => $r === true));
             $logLosses = count(array_filter($logResults, fn ($r) => $r === false));
 
+            // BO5 if we already see 3+ wins either side, otherwise BO3
+            $winThreshold = $gameCount >= 3 && ($logWins >= 3 || $logLosses >= 3) ? 3 : 2;
+
             if ($localConceded) {
                 $newWins = $logWins;
-                $newLosses = 2;
+                $newLosses = $winThreshold;
             } else {
-                $newWins = 2;
+                $newWins = $winThreshold;
                 $newLosses = $logLosses;
             }
 
