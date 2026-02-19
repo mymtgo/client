@@ -60,22 +60,22 @@ class ShowController extends Controller
         $gamesotdWon = $gamesotd->clone()->where('won', 1)->count();
         $gamesotdLost = $gamesotd->clone()->where('won', 0)->count();
 
-        $matchWinrate = round(100 * ($wins / ($matchesQuery->count() ?: 1)));
+        $totalMatches = $matchesQuery->count();
+        $matchWinrate = round(100 * ($wins / ($totalMatches ?: 1)));
         $gameWinrate = round(100 * ($gamesWon / (($gamesWon + $gamesLost) ?: 1)));
         $otpRate = round(100 * ($gamesotpWon / (($gamesotpWon + $gamesotpLost) ?: 1)));
         $otdRate = round(100 * ($gamesotdWon / (($gamesotdWon + $gamesotdLost) ?: 1)));
+        $gamesotpCount = $gamesotpWon + $gamesotpLost;
+        $gamesotdCount = $gamesotdWon + $gamesotdLost;
 
-        $matchIdsInRange = $matchesQuery->clone()->pluck('matches.id');
-        $leagues = League::with(['matches' => fn ($q) => $q
-            ->whereIn('matches.id', $matchIdsInRange)
-            ->with(['opponentArchetypes.archetype', 'opponentArchetypes.player', 'league'])])
-            ->whereHas('matches', fn ($q) => $q->whereIn('matches.id', $matchIdsInRange))
-            ->get();
+        // Captured for use inside deferred closures
+        $matchIdsInRange = $matchIds;
 
         return Inertia::render('decks/Show', [
+            // ── Eager: needed for the initial render ─────────────────────────
             'deck' => DeckData::from($deck),
             'period' => $period,
-            'matchupSpread' => GetArchetypeMatchupSpread::run($deck, $from, $to),
+            'chartGranularity' => in_array($period, ['this_week', 'this_month']) ? 'daily' : 'monthly',
             'maindeck' => $mainDeck,
             'sideboard' => $sideboard,
             'matchesWon' => $wins,
@@ -84,26 +84,51 @@ class ShowController extends Controller
             'gamesLost' => $gamesLost,
             'matchWinrate' => $matchWinrate,
             'gameWinrate' => $gameWinrate,
-            'gamesOtp' => $gamesotp->count(),
+            'gamesOtp' => $gamesotpCount,
             'gamesOtpWon' => $gamesotpWon,
             'gamesOtpLost' => $gamesotpLost,
             'otpRate' => $otpRate,
-            'gamesOtd' => $gamesotd->count(),
+            'gamesOtd' => $gamesotdCount,
             'gamesOtdWon' => $gamesotdWon,
             'gamesOtdLost' => $gamesotdLost,
             'otdRate' => $otdRate,
-            'matches' => MatchData::collect(
+
+            // ── Lazy closures: skipped on partial reloads that exclude them ──
+            'chartData' => fn () => $this->buildDeckChartData($deck, $from, $to, $period),
+            'versions' => fn () => $this->buildVersionsList($deck, $wins, $losses, $gamesWon, $gamesLost, $matchWinrate, $gameWinrate, $gamesotpWon, $gamesotpLost, $otpRate, $gamesotdWon, $gamesotdLost, $otdRate),
+
+            // ── Deferred: auto-loaded in background after initial render ─────
+            // Default group — matches tab (loads immediately after paint)
+            'matches' => Inertia::defer(fn () => MatchData::collect(
                 $matchesQuery->clone()
                     ->with(['opponentArchetypes.archetype', 'opponentArchetypes.player', 'league'])
                     ->orderByDesc('started_at')
                     ->paginate(50)
+            )),
+            'archetypes' => Inertia::defer(
+                fn () => ArchetypeData::collect(Archetype::orderBy('name')->get())
             ),
-            'leagues' => LeagueData::collect($leagues),
-            'archetypes' => ArchetypeData::collect(Archetype::orderBy('name')->get()),
-            'versions' => $this->buildVersionsList($deck, $wins, $losses, $gamesWon, $gamesLost, $matchWinrate, $gameWinrate, $gamesotpWon, $gamesotpLost, $otpRate, $gamesotdWon, $gamesotdLost, $otdRate),
-            'versionDecklists' => $this->buildVersionDecklists($deck),
-            'chartData' => $this->buildDeckChartData($deck, $from, $to, $period),
-            'chartGranularity' => in_array($period, ['this_week', 'this_month']) ? 'daily' : 'monthly',
+
+            // Tabs group — matchups + leagues load together
+            'matchupSpread' => Inertia::defer(
+                fn () => GetArchetypeMatchupSpread::run($deck, $from, $to),
+                'tabs'
+            ),
+            'leagues' => Inertia::defer(function () use ($matchIdsInRange) {
+                $leagues = League::with(['matches' => fn ($q) => $q
+                    ->whereIn('matches.id', $matchIdsInRange)
+                    ->with(['opponentArchetypes.archetype', 'opponentArchetypes.player', 'league'])])
+                    ->whereHas('matches', fn ($q) => $q->whereIn('matches.id', $matchIdsInRange))
+                    ->get();
+
+                return LeagueData::collect($leagues);
+            }, 'tabs'),
+
+            // Versions group — sidebar deck version selector
+            'versionDecklists' => Inertia::defer(
+                fn () => $this->buildVersionDecklists($deck),
+                'versions'
+            ),
         ]);
     }
 
