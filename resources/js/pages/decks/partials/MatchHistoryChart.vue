@@ -1,25 +1,24 @@
 <script setup lang="ts">
 import type { ChartConfig } from '@/components/ui/chart';
-
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { ChartContainer } from '@/components/ui/chart';
+import { VisAxis, VisCrosshair, VisLine, VisScatter, VisTooltip, VisXYContainer } from '@unovis/vue';
+import { map } from 'lodash-es';
+import { computed } from 'vue';
 
 const props = defineProps<{
-    data: any[];
+    data: { date: string; winrate: string | null }[];
+    granularity: 'daily' | 'monthly';
 }>();
 
-import { ChartContainer } from '@/components/ui/chart';
-import { VisAxis, VisLine, VisXYContainer } from '@unovis/vue';
-import { TrendingUp } from 'lucide-vue-next';
-import { map } from 'lodash-es';
+type DataPoint = { date: Date; rate: number | null };
 
-type Data = { day: Date; rate: number };
+const chartData: DataPoint[] = map(props.data, (d) => ({
+    date: new Date(d.date),
+    rate: d.winrate !== null ? parseInt(d.winrate) : null,
+}));
 
-const chartData: Data[] = map(props.data, (data: any) => {
-    return {
-        date: new Date(data.date),
-        rate: parseInt(data.winrate),
-    };
-});
+// Only days where matches were actually played — used for scatter dots
+const actualPoints = computed(() => chartData.filter((d) => d.rate !== null));
 
 const chartConfig = {
     rate: {
@@ -28,17 +27,51 @@ const chartConfig = {
     },
 } satisfies ChartConfig;
 
-const formatDay = (ms: number) => new Date(ms).toLocaleDateString('en-GB', { weekday: 'short' });
+const formatTick = (ms: number) => {
+    if (props.granularity === 'daily') {
+        return new Date(ms).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+    }
+    return new Date(ms).toLocaleDateString('en-GB', { month: 'short', year: '2-digit' });
+};
+
+const xLabel = props.granularity === 'daily' ? 'Day' : 'Month';
+
+const tooltipTemplate = (d: DataPoint): string | null => {
+    if (d.rate === null) return null;
+    const label = props.granularity === 'daily'
+        ? d.date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+        : d.date.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+    return `<div style="padding:6px 10px;line-height:1.5">
+        <div style="font-size:11px;opacity:0.6">${label}</div>
+        <div style="font-weight:600;font-size:14px">${d.rate}% win rate</div>
+    </div>`;
+};
 </script>
 
 <template>
     <div>
         <h3 class="text-sm font-semibold tracking-tight">Deck winrate</h3>
-        <!-- Size is IMPORTANT -->
         <ChartContainer :config="chartConfig" class="mt-4 h-[400px] w-full">
-            <VisXYContainer :data="chartData">
-                <VisLine :x="(d) => d.date" :y="(d) => d.rate" :color="chartConfig.rate.color" />
-                <VisAxis type="x" label="Day" :tick-format="formatDay" />
+            <VisXYContainer :data="chartData" :y-domain="[0, 100]">
+                <!-- Line breaks at null gaps (no matches played that day/month) -->
+                <VisLine
+                    :x="(d: DataPoint) => d.date"
+                    :y="(d: DataPoint) => d.rate ?? 0"
+                    :defined="(d: DataPoint) => d.rate !== null"
+                    :color="chartConfig.rate.color"
+                />
+                <!-- Dots only on days where matches were actually played -->
+                <VisScatter
+                    :data="actualPoints"
+                    :x="(d: DataPoint) => d.date"
+                    :y="(d: DataPoint) => d.rate"
+                    :size="() => 8"
+                    :color="chartConfig.rate.color"
+                />
+                <!-- Hover crosshair + tooltip -->
+                <VisCrosshair :template="tooltipTemplate" />
+                <VisTooltip />
+                <VisAxis type="x" :label="xLabel" :tick-format="formatTick" />
                 <VisAxis type="y" label="Winrate %" />
             </VisXYContainer>
         </ChartContainer>

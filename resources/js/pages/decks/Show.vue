@@ -2,10 +2,12 @@
 import { ref, computed } from 'vue';
 import AppLayout from '@/AppLayout.vue';
 import DecksIndexController from '@/actions/App/Http/Controllers/Decks/IndexController';
+import DecksShowController from '@/actions/App/Http/Controllers/Decks/ShowController';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { router } from '@inertiajs/vue3';
 import MatchupSpread from '@/pages/decks/partials/MatchupSpread.vue';
 import DeckMatches from '@/pages/decks/partials/DeckMatches.vue';
 import DeckLeagues from '@/pages/decks/partials/DeckLeagues.vue';
@@ -42,6 +44,7 @@ type VersionDecklist = {
 
 const props = defineProps<{
     deck: App.Data.Front.DeckData;
+    period: string;
     maindeck: Record<string, App.Data.Front.CardData[]>;
     sideboard: App.Data.Front.CardData[];
     matches: any;
@@ -62,10 +65,27 @@ const props = defineProps<{
     otdRate: number;
     versions: VersionStats[];
     versionDecklists: Record<string, VersionDecklist>;
-    chartData: { date: string; winrate: string }[];
+    chartData: { date: string; winrate: string | null }[];
+    chartGranularity: 'daily' | 'monthly';
 }>();
 
 const selectedVersionKey = ref<string>('all');
+
+type Period = 'all_time' | 'this_year' | 'this_month' | 'this_week';
+const periodLabels: Record<Period, string> = {
+    all_time:   'All time',
+    this_year:  'This year',
+    this_month: 'This month',
+    this_week:  'This week',
+};
+const activePeriod = ref<Period>((props.period as Period) ?? 'all_time');
+
+const onPeriodChange = (value: string) => {
+    const options = value === 'all_time' ? {} : { query: { period: value } };
+    router.visit(DecksShowController({ deck: props.deck.id }, options).url, {
+        preserveScroll: true,
+    });
+};
 
 const activeVersion = computed((): VersionStats => {
     if (selectedVersionKey.value === 'all') return props.versions[0];
@@ -152,9 +172,36 @@ const allTime = computed(() => props.versions[0]);
                 <!-- Win rate chart -->
                 <Card v-if="chartData.length">
                     <CardContent class="pt-4">
-                        <MatchHistoryChart :data="chartData" />
+                        <div class="mb-3 flex items-center justify-between">
+                            <span class="text-muted-foreground text-xs font-medium uppercase tracking-wide">Win rate over time</span>
+                            <Select v-model="activePeriod" @update:model-value="onPeriodChange">
+                                <SelectTrigger class="h-7 w-32 text-xs">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem v-for="(label, key) in periodLabels" :key="key" :value="key" class="text-xs">
+                                        {{ label }}
+                                    </SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <MatchHistoryChart :data="chartData" :granularity="chartGranularity" />
                     </CardContent>
                 </Card>
+
+                <!-- No chart but still show period selector -->
+                <div v-else class="flex justify-end">
+                    <Select v-model="activePeriod" @update:model-value="onPeriodChange">
+                        <SelectTrigger class="h-7 w-32 text-xs">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem v-for="(label, key) in periodLabels" :key="key" :value="key" class="text-xs">
+                                {{ label }}
+                            </SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
 
                 <!-- Tabs -->
                 <Tabs default-value="matches">

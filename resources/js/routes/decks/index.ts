@@ -82,7 +82,7 @@ index.form = indexForm
 
 /**
 * @see \App\Http\Controllers\Decks\ShowController::__invoke
-* @see app/Http/Controllers/Decks/ShowController.php:24
+* @see app/Http/Controllers/Decks/ShowController.php:26
 * @route '/decks/{deck}'
 */
 export const show = (args: { deck: string | number | { id: string | number } } | [deck: string | number | { id: string | number } ] | string | number | { id: string | number }, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -97,7 +97,7 @@ show.definition = {
 
 /**
 * @see \App\Http\Controllers\Decks\ShowController::__invoke
-* @see app/Http/Controllers/Decks/ShowController.php:24
+* @see app/Http/Controllers/Decks/ShowController.php:26
 * @route '/decks/{deck}'
 */
 show.url = (args: { deck: string | number | { id: string | number } } | [deck: string | number | { id: string | number } ] | string | number | { id: string | number }, options?: RouteQueryOptions) => {
@@ -130,7 +130,7 @@ show.url = (args: { deck: string | number | { id: string | number } } | [deck: s
 
 /**
 * @see \App\Http\Controllers\Decks\ShowController::__invoke
-* @see app/Http/Controllers/Decks/ShowController.php:24
+* @see app/Http/Controllers/Decks/ShowController.php:26
 * @route '/decks/{deck}'
 */
 show.get = (args: { deck: string | number | { id: string | number } } | [deck: string | number | { id: string | number } ] | string | number | { id: string | number }, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -140,7 +140,7 @@ show.get = (args: { deck: string | number | { id: string | number } } | [deck: s
 
 /**
 * @see \App\Http\Controllers\Decks\ShowController::__invoke
-* @see app/Http/Controllers/Decks/ShowController.php:24
+* @see app/Http/Controllers/Decks/ShowController.php:26
 * @route '/decks/{deck}'
 */
 show.head = (args: { deck: string | number | { id: string | number } } | [deck: string | number | { id: string | number } ] | string | number | { id: string | number }, options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -150,7 +150,7 @@ show.head = (args: { deck: string | number | { id: string | number } } | [deck: 
 
 /**
 * @see \App\Http\Controllers\Decks\ShowController::__invoke
-* @see app/Http/Controllers/Decks/ShowController.php:24
+* @see app/Http/Controllers/Decks/ShowController.php:26
 * @route '/decks/{deck}'
 */
 const showForm = (args: { deck: string | number | { id: string | number } } | [deck: string | number | { id: string | number } ] | string | number | { id: string | number }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -160,7 +160,7 @@ const showForm = (args: { deck: string | number | { id: string | number } } | [d
 
 /**
 * @see \App\Http\Controllers\Decks\ShowController::__invoke
-* @see app/Http/Controllers/Decks/ShowController.php:24
+* @see app/Http/Controllers/Decks/ShowController.php:26
 * @route '/decks/{deck}'
 */
 showForm.get = (args: { deck: string | number | { id: string | number } } | [deck: string | number | { id: string | number } ] | string | number | { id: string | number }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -170,7 +170,7 @@ showForm.get = (args: { deck: string | number | { id: string | number } } | [dec
 
 /**
 * @see \App\Http\Controllers\Decks\ShowController::__invoke
-* @see app/Http/Controllers/Decks/ShowController.php:24
+* @see app/Http/Controllers/Decks/ShowController.php:26
 * @route '/decks/{deck}'
 */
 showForm.head = (args: { deck: string | number | { id: string | number } } | [deck: string | number | { id: string | number } ] | string | number | { id: string | number }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({

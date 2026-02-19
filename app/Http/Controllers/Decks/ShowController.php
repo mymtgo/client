@@ -16,6 +16,8 @@ use App\Models\DeckVersion;
 use App\Models\Game;
 use App\Models\League;
 use App\Models\MtgoMatch;
+use Carbon\Carbon;
+use Carbon\CarbonPeriod;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -34,16 +36,20 @@ class ShowController extends Controller
         $deckVersion = $deck->latestVersion;
         [$mainDeck, $sideboard] = $this->buildDecklist($deckVersion);
 
-        $from = now()->subYear()->startOfDay();
-        $to = now()->endOfDay();
-        $matchesQuery = $deck->matches()->whereBetween('started_at', [$from, $to])->whereNull('deleted_at');
+        $period = $request->input('period', 'all_time');
+        [$from, $to] = $this->resolveDateRange($period);
+
+        $matchesQuery = $deck->matches()->select('matches.*')->whereNull('deleted_at');
+        if ($from && $to) {
+            $matchesQuery->whereBetween('started_at', [$from, $to]);
+        }
 
         $losses = $matchesQuery->clone()->whereRaw('games_won < games_lost')->count();
         $wins = $matchesQuery->clone()->whereRaw('games_won > games_lost')->count();
         $gamesWon = $matchesQuery->clone()->sum('games_won');
         $gamesLost = $matchesQuery->clone()->sum('games_lost');
 
-        $matchIds = $deck->matches()->select('matches.id')->pluck('id');
+        $matchIds = $matchesQuery->clone()->select('matches.id')->pluck('matches.id');
         $matchGamesQuery = Game::whereHas('match', fn ($q) => $q->whereIn('match_id', $matchIds));
 
         $gamesotp = $matchGamesQuery->clone()->whereHas('localPlayers', fn ($q) => $q->where('on_play', 1));
@@ -60,12 +66,15 @@ class ShowController extends Controller
         $otdRate = round(100 * ($gamesotdWon / (($gamesotdWon + $gamesotdLost) ?: 1)));
 
         $matchIdsInRange = $matchesQuery->clone()->pluck('matches.id');
-        $leagues = League::with(['matches' => fn ($q) => $q->with(['opponentArchetypes.archetype', 'opponentArchetypes.player', 'league'])])
+        $leagues = League::with(['matches' => fn ($q) => $q
+            ->whereIn('matches.id', $matchIdsInRange)
+            ->with(['opponentArchetypes.archetype', 'opponentArchetypes.player', 'league'])])
             ->whereHas('matches', fn ($q) => $q->whereIn('matches.id', $matchIdsInRange))
             ->get();
 
         return Inertia::render('decks/Show', [
             'deck' => DeckData::from($deck),
+            'period' => $period,
             'matchupSpread' => GetArchetypeMatchupSpread::run($deck, $from, $to),
             'maindeck' => $mainDeck,
             'sideboard' => $sideboard,
@@ -84,8 +93,7 @@ class ShowController extends Controller
             'gamesOtdLost' => $gamesotdLost,
             'otdRate' => $otdRate,
             'matches' => MatchData::collect(
-                $deck->matches()
-                    ->whereBetween('started_at', [$from, $to])
+                $matchesQuery->clone()
                     ->with(['opponentArchetypes.archetype', 'opponentArchetypes.player', 'league'])
                     ->orderByDesc('started_at')
                     ->paginate(50)
@@ -94,8 +102,19 @@ class ShowController extends Controller
             'archetypes' => ArchetypeData::collect(Archetype::orderBy('name')->get()),
             'versions' => $this->buildVersionsList($deck, $wins, $losses, $gamesWon, $gamesLost, $matchWinrate, $gameWinrate, $gamesotpWon, $gamesotpLost, $otpRate, $gamesotdWon, $gamesotdLost, $otdRate),
             'versionDecklists' => $this->buildVersionDecklists($deck),
-            'chartData' => $this->buildDeckChartData($deck),
+            'chartData' => $this->buildDeckChartData($deck, $from, $to, $period),
+            'chartGranularity' => in_array($period, ['this_week', 'this_month']) ? 'daily' : 'monthly',
         ]);
+    }
+
+    private function resolveDateRange(string $period): array
+    {
+        return match ($period) {
+            'this_week' => [now()->startOfWeek(), now()->endOfDay()],
+            'this_month' => [now()->startOfMonth(), now()->endOfDay()],
+            'this_year' => [now()->startOfYear(), now()->endOfDay()],
+            default => [null, null],
+        };
     }
 
     private function buildDecklist(DeckVersion $deckVersion): array
@@ -265,20 +284,61 @@ class ShowController extends Controller
         return $result;
     }
 
-    private function buildDeckChartData(Deck $deck): array
+    private function buildDeckChartData(Deck $deck, ?Carbon $from, ?Carbon $to, string $periodKey): array
     {
         $versionIds = $deck->versions()->pluck('id');
+        $isDaily = in_array($periodKey, ['this_week', 'this_month']);
 
-        return MtgoMatch::query()
-            ->selectRaw("strftime('%Y-%m', started_at) as month, SUM(CASE WHEN games_won > games_lost THEN 1 ELSE 0 END) as wins, COUNT(*) as total")
+        $groupExpr = $isDaily
+            ? "strftime('%Y-%m-%d', started_at)"
+            : "strftime('%Y-%m', started_at)";
+
+        $query = MtgoMatch::query()
+            ->selectRaw("{$groupExpr} as period, SUM(CASE WHEN games_won > games_lost THEN 1 ELSE 0 END) as wins, COUNT(*) as total")
             ->whereIn('deck_version_id', $versionIds)
-            ->groupBy('month')
-            ->orderBy('month')
+            ->whereNull('deleted_at');
+
+        if ($from && $to) {
+            $query->whereBetween('started_at', [$from, $to]);
+        }
+
+        $results = $query
+            ->groupBy('period')
+            ->orderBy('period')
             ->get()
-            ->map(fn ($r) => [
-                'date' => $r->month.'-01',
-                'winrate' => (string) round($r->wins / $r->total * 100),
-            ])
-            ->toArray();
+            ->keyBy('period');
+
+        $firstMatch = MtgoMatch::whereIn('deck_version_id', $versionIds)
+            ->whereNull('deleted_at')
+            ->orderBy('started_at')
+            ->first();
+
+        if (! $firstMatch && $results->isEmpty()) {
+            return [];
+        }
+
+        if ($isDaily) {
+            $startDate = $from
+                ? $from->copy()->startOfDay()
+                : Carbon::parse($firstMatch->started_at)->startOfDay();
+            $endDate = $to ? $to->copy()->startOfDay() : now()->startOfDay();
+            $carbonPeriod = CarbonPeriod::between($startDate, $endDate)->days();
+        } else {
+            $startDate = $from
+                ? $from->copy()->startOfMonth()
+                : Carbon::parse($firstMatch->started_at)->startOfMonth();
+            $endDate = $to ? $to->copy()->startOfMonth() : now()->startOfMonth();
+            $carbonPeriod = CarbonPeriod::between($startDate, $endDate)->months();
+        }
+
+        return collect($carbonPeriod)->map(function (Carbon $point) use ($results, $isDaily) {
+            $key = $isDaily ? $point->format('Y-m-d') : $point->format('Y-m');
+            $row = $results->get($key);
+
+            return [
+                'date' => $isDaily ? $key : $key.'-01',
+                'winrate' => $row ? (string) round($row->wins / $row->total * 100) : null,
+            ];
+        })->toArray();
     }
 }
