@@ -278,44 +278,20 @@ function submitPendingMatches() {
                         <p class="text-sm text-muted-foreground">
                             Contribute match data to the community. Your deck, archetype, result, and format are submitted after each match.
                         </p>
-                        <p>{{ pendingMatches.length }} matches pending.</p>
-                    </div>
-                </div>
-            </div>
+                        <div class="flex justify-between items-center">
+                            <p>{{ pendingMatches.length }} matches pending.</p>
 
-            <!-- Pending Match Submissions -->
-            <div v-if="shareStats" class="flex flex-col gap-4 p-4 lg:p-6">
-                <div>
-                    <p class="font-semibold">Pending Match Submissions</p>
-                    <p class="text-sm text-muted-foreground">
-                        Matches waiting to be submitted. This includes matches where archetypes are still being resolved.
-                    </p>
-                </div>
-
-                <div v-if="pendingMatches.length === 0" class="text-sm text-muted-foreground">All matches submitted.</div>
-
-                <template v-else>
-                    <div class="flex flex-col divide-y rounded-md border">
-                        <div v-for="match in pendingMatches" :key="match.id" class="flex items-center justify-between px-3 py-2 text-sm">
-                            <div class="flex items-center gap-3">
-                                <Badge variant="outline" class="capitalize">{{ match.format }}</Badge>
-                                <span class="font-medium">{{ match.games_won }}–{{ match.games_lost }}</span>
-                                <span class="text-muted-foreground">{{ dayjs(match.started_at).fromNow() }}</span>
-                            </div>
+                            <Button variant="outline" size="sm" :disabled="processing === 'submitMatches' || !pendingMatches.length" @click="submitPendingMatches">
+                                <Spinner v-if="processing === 'submitMatches'" />
+                                {{
+                                    processing === 'submitMatches'
+                                        ? 'Submitting...'
+                                        : `Submit ${pendingMatches.length} match${pendingMatches.length === 1 ? '' : 'es'}`
+                                }}
+                            </Button>
                         </div>
                     </div>
-
-                    <div class="flex justify-end">
-                        <Button variant="outline" size="sm" :disabled="processing === 'submitMatches'" @click="submitPendingMatches">
-                            <Spinner v-if="processing === 'submitMatches'" />
-                            {{
-                                processing === 'submitMatches'
-                                    ? 'Submitting...'
-                                    : `Submit ${pendingMatches.length} match${pendingMatches.length === 1 ? '' : 'es'}`
-                            }}
-                        </Button>
-                    </div>
-                </template>
+                </div>
             </div>
         </div>
     </AppLayout>
