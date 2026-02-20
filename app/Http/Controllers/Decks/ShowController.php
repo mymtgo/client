@@ -119,6 +119,7 @@ class ShowController extends Controller
                     ->whereIn('matches.id', $matchIdsInRange)
                     ->with(['opponentArchetypes.archetype', 'opponentArchetypes.player', 'league'])])
                     ->whereHas('matches', fn ($q) => $q->whereIn('matches.id', $matchIdsInRange))
+                    ->latest('started_at')
                     ->get();
 
                 return LeagueData::collect($leagues);

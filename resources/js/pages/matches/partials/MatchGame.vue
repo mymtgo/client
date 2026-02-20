@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import ResultBadge from '@/components/matches/ResultBadge.vue';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
 import { SwordsIcon } from 'lucide-vue-next';
@@ -29,8 +29,7 @@ defineProps<{
         <CardHeader class="flex flex-row flex-wrap items-center gap-3 bg-muted px-4 py-3">
             <div class="flex items-center gap-2">
                 <span class="font-semibold">Game {{ game.number }}</span>
-                <Badge v-if="game.won" variant="default">Win</Badge>
-                <Badge v-else variant="destructive">Loss</Badge>
+                <ResultBadge :won="game.won" />
             </div>
             <div class="flex items-center gap-3 text-sm text-muted-foreground">
                 <span class="flex items-center gap-1">
