@@ -4,6 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import ResultBadge from '@/components/matches/ResultBadge.vue';
+import PhantomBadge from '@/components/leagues/PhantomBadge.vue';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import {
     DropdownMenu, DropdownMenuContent,
@@ -114,12 +115,6 @@ const kpis = computed(() => {
                 </CardContent>
             </Card>
 
-            <!-- Phantom explanation -->
-            <p class="text-muted-foreground -mt-2 text-sm">
-                <span class="inline-flex items-center gap-1 align-middle"><Ghost class="size-3.5" /></span>
-                <strong class="text-foreground font-medium">Phantom leagues</strong> are your last 5 casual games grouped together — showing what your record would have been if they were a real league run. They don't count toward your stats above.
-            </p>
-
             <!-- Toolbar -->
             <div class="flex flex-wrap items-center gap-2">
                 <!-- Format pills -->
@@ -182,10 +177,7 @@ const kpis = computed(() => {
                                 {{ run.deck.name }}
                             </span>
                             <!-- Phantom badge -->
-                            <Badge v-if="run.phantom" variant="outline" class="text-muted-foreground shrink-0 gap-1">
-                                <Ghost class="size-3" />
-                                Phantom
-                            </Badge>
+                            <PhantomBadge v-if="run.phantom" />
                         </div>
 
                         <!-- Right: record + pips -->

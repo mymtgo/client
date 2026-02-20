@@ -75,10 +75,10 @@ const selectedVersionKey = ref<string>('all');
 
 type Period = 'all_time' | 'this_year' | 'this_month' | 'this_week';
 const periodLabels: Record<Period, string> = {
-    all_time:   'All time',
-    this_year:  'This year',
+    all_time: 'All time',
+    this_year: 'This year',
     this_month: 'This month',
-    this_week:  'This week',
+    this_week: 'This week',
 };
 const activePeriod = ref<Period>((props.period as Period) ?? 'all_time');
 
@@ -99,9 +99,7 @@ const activeVersion = computed((): VersionStats => {
 const latestVersionId = computed(() => props.versions[props.versions.length - 1]?.id);
 
 const activeDecklist = computed((): VersionDecklist => {
-    const key = selectedVersionKey.value === 'all'
-        ? String(latestVersionId.value)
-        : selectedVersionKey.value;
+    const key = selectedVersionKey.value === 'all' ? String(latestVersionId.value) : selectedVersionKey.value;
     return props.versionDecklists?.[key] ?? { maindeck: props.maindeck, sideboard: props.sideboard };
 });
 
@@ -110,60 +108,63 @@ const allTime = computed(() => props.versions[0]);
 </script>
 
 <template>
-    <AppLayout
-        :title="deck.name"
-        :breadcrumbs="[{ label: 'Decks', href: DecksIndexController().url }, { label: deck.name }]"
-    >
+    <AppLayout :title="deck.name" :breadcrumbs="[{ label: 'Decks', href: DecksIndexController().url }, { label: deck.name }]">
         <div class="grid grow grid-cols-12 items-start">
             <!-- Main content -->
             <div class="col-span-8 flex flex-col gap-4 p-4 lg:p-6">
                 <!-- Deck header -->
-                <div class="flex flex-col gap-1">
-                    <div class="flex items-center gap-2">
-                        <h1 class="text-2xl font-bold tracking-tight">{{ deck.name }}</h1>
-                        <Badge variant="outline">{{ deck.format }}</Badge>
-                        <span
-                            class="text-lg font-semibold"
-                            :class="allTime.matchWinrate < 50 ? 'text-destructive' : ''"
-                        >{{ allTime.matchWinrate }}%</span>
-                        <span class="text-muted-foreground text-sm">
-                            {{ allTime.matchesWon + allTime.matchesLost }} matches
-                        </span>
+                <div class="flex justify-between items-center">
+                    <div class="flex flex-col gap-1">
+                        <div class="flex items-center gap-2">
+                            <h1 class="text-2xl font-bold tracking-tight">{{ deck.name }}</h1>
+                            <Badge variant="outline">{{ deck.format }}</Badge>
+                            <span class="text-lg font-semibold" :class="allTime.matchWinrate < 50 ? 'text-destructive' : ''"
+                                >{{ allTime.matchWinrate }}%</span
+                            >
+                            <span class="text-sm text-muted-foreground"> {{ allTime.matchesWon + allTime.matchesLost }} matches </span>
+                        </div>
+                        <p class="text-sm text-muted-foreground">
+                            Last played {{ deck.lastPlayedAt ? dayjs(deck.lastPlayedAt).fromNow() : 'never' }}
+                        </p>
                     </div>
-                    <p class="text-muted-foreground text-sm">
-                        Last played {{ deck.lastPlayedAt ? dayjs(deck.lastPlayedAt).fromNow() : 'never' }}
-                    </p>
+
+                    <Select v-model="activePeriod" @update:model-value="onPeriodChange">
+                        <SelectTrigger class="h-7 w-32 text-xs">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem v-for="(label, key) in periodLabels" :key="key" :value="key" class="text-xs">
+                                {{ label }}
+                            </SelectItem>
+                        </SelectContent>
+                    </Select>
                 </div>
 
                 <!-- Stats row (updates per selected version) -->
                 <Card>
                     <CardContent class="flex divide-x p-0">
-                        <div class="flex flex-1 flex-col gap-0.5 px-4 py-3">
-                            <span class="text-muted-foreground text-xs uppercase tracking-wide">Match W/L</span>
-                            <span class="text-lg font-semibold tabular-nums">
-                                {{ activeVersion.matchesWon }}–{{ activeVersion.matchesLost }}
-                            </span>
+                        <div class="flex flex-1 flex-col gap-0.5 px-4">
+                            <span class="text-xs tracking-wide text-muted-foreground uppercase">Match W/L</span>
+                            <span class="text-lg font-semibold tabular-nums"> {{ activeVersion.matchesWon }}–{{ activeVersion.matchesLost }} </span>
                         </div>
-                        <div class="flex flex-1 flex-col gap-0.5 px-4 py-3">
-                            <span class="text-muted-foreground text-xs uppercase tracking-wide">Game W/L</span>
-                            <span class="text-lg font-semibold tabular-nums">
-                                {{ activeVersion.gamesWon }}–{{ activeVersion.gamesLost }}
-                            </span>
+                        <div class="flex flex-1 flex-col gap-0.5 px-4">
+                            <span class="text-xs tracking-wide text-muted-foreground uppercase">Game W/L</span>
+                            <span class="text-lg font-semibold tabular-nums"> {{ activeVersion.gamesWon }}–{{ activeVersion.gamesLost }} </span>
                         </div>
-                        <div class="flex flex-1 flex-col gap-0.5 px-4 py-3">
-                            <span class="text-muted-foreground text-xs uppercase tracking-wide">On the Play</span>
+                        <div class="flex flex-1 flex-col gap-0.5 px-4">
+                            <span class="text-xs tracking-wide text-muted-foreground uppercase">On the Play</span>
                             <span class="text-lg font-semibold tabular-nums">
                                 {{ activeVersion.otpRate }}%
-                                <span class="text-muted-foreground text-xs font-normal">
+                                <span class="text-xs font-normal text-muted-foreground">
                                     {{ activeVersion.gamesOtpWon }}–{{ activeVersion.gamesOtpLost }}
                                 </span>
                             </span>
                         </div>
-                        <div class="flex flex-1 flex-col gap-0.5 px-4 py-3">
-                            <span class="text-muted-foreground text-xs uppercase tracking-wide">On the Draw</span>
+                        <div class="flex flex-1 flex-col gap-0.5 px-4">
+                            <span class="text-xs tracking-wide text-muted-foreground uppercase">On the Draw</span>
                             <span class="text-lg font-semibold tabular-nums">
                                 {{ activeVersion.otdRate }}%
-                                <span class="text-muted-foreground text-xs font-normal">
+                                <span class="text-xs font-normal text-muted-foreground">
                                     {{ activeVersion.gamesOtdWon }}–{{ activeVersion.gamesOtdLost }}
                                 </span>
                             </span>
@@ -173,20 +174,7 @@ const allTime = computed(() => props.versions[0]);
 
                 <!-- Win rate chart -->
                 <Card v-if="chartData.length">
-                    <CardContent class="pt-4">
-                        <div class="mb-3 flex items-center justify-between">
-                            <span class="text-muted-foreground text-xs font-medium uppercase tracking-wide">Win rate over time</span>
-                            <Select v-model="activePeriod" @update:model-value="onPeriodChange">
-                                <SelectTrigger class="h-7 w-32 text-xs">
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem v-for="(label, key) in periodLabels" :key="key" :value="key" class="text-xs">
-                                        {{ label }}
-                                    </SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
+                    <CardContent>
                         <MatchHistoryChart :data="chartData" :granularity="chartGranularity" />
                     </CardContent>
                 </Card>
@@ -259,7 +247,7 @@ const allTime = computed(() => props.versions[0]);
             </div>
 
             <!-- Sticky decklist sidebar -->
-            <div class="no-scrollbar col-span-4 sticky top-0  overflow-y-auto border-l p-4 lg:p-6">
+            <div class="no-scrollbar sticky top-0 col-span-4 overflow-y-auto border-l p-4 lg:p-6">
                 <div class="mb-4">
                     <Select v-model="selectedVersionKey">
                         <SelectTrigger class="w-full">
@@ -267,14 +255,10 @@ const allTime = computed(() => props.versions[0]);
                         </SelectTrigger>
                         <SelectContent>
                             <SelectItem value="all">All versions</SelectItem>
-                            <SelectItem
-                                v-for="version in versions.slice(1)"
-                                :key="version.id"
-                                :value="String(version.id)"
-                            >
+                            <SelectItem v-for="version in versions.slice(1)" :key="version.id" :value="String(version.id)">
                                 {{ version.label }}
-                                <span v-if="version.isCurrent" class="text-muted-foreground ml-1">· Current</span>
-                                <span v-if="version.dateLabel" class="text-muted-foreground ml-1">· {{ version.dateLabel }}</span>
+                                <span v-if="version.isCurrent" class="ml-1 text-muted-foreground">· Current</span>
+                                <span v-if="version.dateLabel" class="ml-1 text-muted-foreground">· {{ version.dateLabel }}</span>
                             </SelectItem>
                         </SelectContent>
                     </Select>

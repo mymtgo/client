@@ -119,11 +119,11 @@ const visibleFormats = computed(() => {
                                 class="cursor-pointer transition-colors hover:bg-accent"
                                 @click="router.visit(ShowController({ deck: deck.id }).url)"
                             >
-                                <CardContent class="flex flex-col gap-3 p-4">
+                                <CardContent class="flex flex-col gap-3">
                                     <!-- Name + meta -->
-                                    <div class="flex flex-col gap-1">
-                                        <span class="font-semibold leading-tight">{{ deck.name }}</span>
-                                        <div class="flex items-center gap-2 text-xs text-muted-foreground">
+                                    <div class="flex justify-between gap-1">
+                                        <span class="font-semibold leading-tight truncate">{{ deck.name }}</span>
+                                        <div class="flex items-center gap-2 text-xs text-muted-foreground shrink-0">
                                             <Badge variant="outline" class="text-xs py-0">{{ deck.format }}</Badge>
                                             <span>·</span>
                                             <span>Last played {{ deck.lastPlayedAt ? dayjs(deck.lastPlayedAt).fromNow() : 'never' }}</span>
@@ -147,7 +147,7 @@ const visibleFormats = computed(() => {
                                             </div>
                                             <div class="text-xs text-muted-foreground tabular-nums">
                                                 <span>{{ deck.matchesWon }}W</span>
-                                                <span class="mx-0.5">–</span>
+                                                <span class="mx-0.5">-</span>
                                                 <span class="text-destructive">{{ deck.matchesLost }}L</span>
                                             </div>
                                         </div>
