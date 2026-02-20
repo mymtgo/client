@@ -42,6 +42,5 @@ class BackfillMissingCards extends Command
         }
 
         CreateMissingCards::run($cards);
-
     }
 }

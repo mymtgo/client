@@ -39,6 +39,8 @@ class ShowController extends Controller
             fn ($player) => collect($player->pivot->deck_json)->pluck('mtgo_id')
         ))->unique();
 
+        dd($match->games->pluck('id'));
+
         $cardsByMtgoId = Card::whereIn('mtgo_id', $allMtgoIds)->get()->keyBy('mtgo_id');
 
         // Also need names for registered deck cards (keyed by oracle_id)
@@ -85,6 +87,8 @@ class ShowController extends Controller
             $cardsByOracleId,
         );
 
+        $localCardsPlayed = $this->parseLocalCardsPlayed($game, $localInstanceId, $cardsByMtgoId);
+
         $duration = null;
         if ($game->started_at && $game->ended_at) {
             $totalSeconds = abs($game->started_at->diffInSeconds($game->ended_at));
@@ -104,6 +108,7 @@ class ShowController extends Controller
             'mulliganedHands' => $handData['mulliganedHands'],
             'keptHand' => $handData['keptHand'],
             'sideboardChanges' => $sideboardChanges,
+            'localCardsPlayed' => $localCardsPlayed,
             'opponentCardsSeen' => $opponentCardsSeen,
         ];
     }
@@ -243,6 +248,36 @@ class ShowController extends Controller
     }
 
     /**
+     * Collect unique cards the local player played during the game.
+     *
+     * Scans all timeline snapshots for cards owned by the local player that appeared
+     * in Battlefield, Stack, or Graveyard zones — i.e. cards they actually cast or played,
+     * not just held in hand or kept in library.
+     */
+    private function parseLocalCardsPlayed(Game $game, int $localInstanceId, Collection $cardsByMtgoId): array
+    {
+        $seenCatalogIds = [];
+
+        foreach ($game->timeline->sortBy('timestamp') as $snapshot) {
+            foreach ($snapshot->content['Cards'] ?? [] as $card) {
+                if ((int) $card['Owner'] === $localInstanceId
+                    && in_array($card['Zone'], ['Battlefield', 'Stack', 'Graveyard'])
+                ) {
+                    $seenCatalogIds[(int) $card['CatalogID']] = true;
+                }
+            }
+        }
+
+        return collect(array_keys($seenCatalogIds))
+            ->map(fn ($catalogId) => [
+                'name' => $cardsByMtgoId->get($catalogId)?->name ?? "Unknown ({$catalogId})",
+                'image' => $cardsByMtgoId->get($catalogId)?->image,
+            ])
+            ->values()
+            ->toArray();
+    }
+
+    /**
      * Compute sideboard changes relative to the registered deck version.
      *
      * Compares maindeck card counts: cards with more copies in the game deck than the
@@ -281,6 +316,7 @@ class ShowController extends Controller
                     ?? $cardsByMtgoId->first(fn ($c) => $c->oracle_id === $oracleId);
                 $changes[] = [
                     'name' => $card?->name ?? 'Unknown',
+                    'image' => $card?->image,
                     'quantity' => $gameQty - $registeredQty,
                     'type' => 'in',
                 ];
@@ -295,6 +331,7 @@ class ShowController extends Controller
                     ?? $cardsByMtgoId->first(fn ($c) => $c->oracle_id === $oracleId);
                 $changes[] = [
                     'name' => $card?->name ?? 'Unknown',
+                    'image' => $card?->image,
                     'quantity' => $registeredQty - $gameQty,
                     'type' => 'out',
                 ];

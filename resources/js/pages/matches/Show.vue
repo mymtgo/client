@@ -24,7 +24,8 @@ type GameDetail = {
     opponentMulligans: number;
     mulliganedHands: { name: string; image: string | null }[][];
     keptHand: { name: string; image: string | null; bottomed: boolean }[];
-    sideboardChanges: { name: string; quantity: number; type: 'in' | 'out' }[];
+    sideboardChanges: { name: string; image: string | null; quantity: number; type: 'in' | 'out' }[];
+    localCardsPlayed: { name: string; image: string | null }[];
     opponentCardsSeen: { name: string; image: string | null }[];
 };
 
