@@ -6,6 +6,7 @@ use App\Actions\DetermineMatchArchetypes;
 use App\Actions\Util\ExtractJson;
 use App\Actions\Util\ExtractKeyValueBlock;
 use App\Enums\LogEventType;
+use App\Jobs\SubmitMatch;
 use App\Models\DeckVersion;
 use App\Models\League;
 use App\Models\LogEvent;
@@ -182,6 +183,8 @@ class BuildMatch
         DetermineMatchArchetypes::run($match);
 
         DB::commit();
+
+        SubmitMatch::dispatch($match->id);
 
         Notification::title('New match Recorded')
             ->message($match->deck?->name.' // '.$match->games_won.'-'.$match->games_lost)

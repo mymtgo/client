@@ -17,10 +17,11 @@ class NativeAppServiceProvider implements ProvidesPhpIni
         Window::open()->width(1600)->height(900)->minHeight(800)->minWidth(1200)->movable()->trafficLightsHidden();
 
         Mtgo::runInitialSetup();
+        Mtgo::retryUnsubmittedMatches();
 
         // DEBUG: remove after testing
 
-        // bump9
+        // bump10
     }
 
     /**

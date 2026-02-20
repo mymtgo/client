@@ -49,5 +49,7 @@ Route::group([], function (\Illuminate\Routing\Router $router) {
         $group->post('sync', \App\Http\Controllers\Settings\RunSyncController::class)->name('settings.sync');
         $group->post('populate-cards', \App\Http\Controllers\Settings\RunPopulateCardsController::class)->name('settings.populate-cards');
         $group->patch('anonymous-stats', \App\Http\Controllers\Settings\UpdateAnonymousStatsController::class)->name('settings.anonymous-stats');
+        $group->patch('share-stats', \App\Http\Controllers\Settings\UpdateShareStatsController::class)->name('settings.share-stats');
+        $group->post('submit-matches', \App\Http\Controllers\Settings\RunSubmitMatchesController::class)->name('settings.submit-matches');
     });
 });
