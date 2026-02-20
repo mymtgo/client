@@ -17,6 +17,8 @@ import RunIngestController from '@/actions/App/Http/Controllers/Settings/RunInge
 import RunSyncController from '@/actions/App/Http/Controllers/Settings/RunSyncController';
 import RunPopulateCardsController from '@/actions/App/Http/Controllers/Settings/RunPopulateCardsController';
 import UpdateAnonymousStatsController from '@/actions/App/Http/Controllers/Settings/UpdateAnonymousStatsController';
+import UpdateShareStatsController from '@/actions/App/Http/Controllers/Settings/UpdateShareStatsController';
+import RunSubmitMatchesController from '@/actions/App/Http/Controllers/Settings/RunSubmitMatchesController';
 import { useAppearance } from '@/composables/useAppearance';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
@@ -28,12 +30,14 @@ const props = defineProps<{
     dataPath: string;
     watcherActive: boolean;
     anonymousStats: boolean;
+    shareStats: boolean;
     dateFormat: 'DMY' | 'MDY';
     logPathStatus: { valid: boolean; fileCount: number; message: string };
     dataPathStatus: { valid: boolean; fileCount: number; message: string };
     lastIngestAt: string | null;
     lastSyncAt: string | null;
     missingCardCount: number;
+    pendingMatches: Array<{ id: number; format: string; games_won: number; games_lost: number; started_at: string }>;
 }>();
 
 const logPathInput = ref(props.logPath);
@@ -51,7 +55,9 @@ function withProcessing(key: string, method: 'patch' | 'post', url: string, data
     processing.value = key;
     router[method](url, data, {
         preserveScroll: true,
-        onFinish: () => { processing.value = null; },
+        onFinish: () => {
+            processing.value = null;
+        },
     });
 }
 
@@ -81,6 +87,14 @@ function runPopulateCards() {
 
 function toggleAnonymousStats(checked: boolean | 'indeterminate') {
     withProcessing('stats', 'patch', UpdateAnonymousStatsController.url(), { enabled: checked === true });
+}
+
+function toggleShareStats(checked: boolean | 'indeterminate') {
+    withProcessing('shareStats', 'patch', UpdateShareStatsController.url(), { enabled: checked === true });
+}
+
+function submitPendingMatches() {
+    withProcessing('submitMatches', 'post', RunSubmitMatchesController.url());
 }
 </script>
 
@@ -154,7 +168,7 @@ function toggleAnonymousStats(checked: boolean | 'indeterminate') {
                         </Badge>
                         <Button variant="outline" size="sm" :disabled="!pathsValid || processing === 'watcher'" @click="toggleWatcher">
                             <Spinner v-if="processing === 'watcher'" />
-                            {{ processing === 'watcher' ? 'Processing...' : (watcherActive && pathsValid ? 'Stop' : 'Start') }}
+                            {{ processing === 'watcher' ? 'Processing...' : watcherActive && pathsValid ? 'Stop' : 'Start' }}
                         </Button>
                     </div>
                 </div>
@@ -194,8 +208,10 @@ function toggleAnonymousStats(checked: boolean | 'indeterminate') {
                         <p class="text-sm font-medium">Populate Card Data</p>
                         <p class="text-sm text-muted-foreground">
                             Fetch names and images for any cards missing data.
-                            <span v-if="missingCardCount > 0" class="text-warning font-medium">{{ missingCardCount }} card{{ missingCardCount === 1 ? '' : 's' }} missing.</span>
-                            <span v-else class="text-success font-medium">All cards populated.</span>
+                            <span v-if="missingCardCount > 0" class="text-warning font-medium"
+                                >{{ missingCardCount }} card{{ missingCardCount === 1 ? '' : 's' }} missing.</span
+                            >
+                            <span v-else class="font-medium text-success">All cards populated.</span>
                         </p>
                         <p v-if="errors.populateCards" class="text-sm text-destructive">{{ errors.populateCards }}</p>
                     </div>
@@ -249,15 +265,57 @@ function toggleAnonymousStats(checked: boolean | 'indeterminate') {
                     <p class="font-semibold">Data &amp; Privacy</p>
                     <p class="text-sm text-muted-foreground">Control what data is collected from your use of the app.</p>
                 </div>
+
                 <div class="flex items-start gap-3">
-                    <Checkbox id="usage-tracking" :defaultValue="anonymousStats" @update:modelValue="toggleAnonymousStats" />
+                    <Checkbox
+                        id="share-stats"
+                        :defaultValue="shareStats"
+                        @update:modelValue="toggleShareStats"
+                        :disabled="processing === 'shareStats'"
+                    />
                     <div class="flex flex-col gap-1">
-                        <Label for="usage-tracking">Send anonymous usage statistics</Label>
+                        <Label for="share-stats">Share match stats</Label>
                         <p class="text-sm text-muted-foreground">
-                            Helps improve the app. No personal data, match results, usernames, or deck contents are ever sent.
+                            Contribute match data to the community. Your deck, archetype, result, and format are submitted after each match.
                         </p>
+                        <p>{{ pendingMatches.length }} matches pending.</p>
                     </div>
                 </div>
+            </div>
+
+            <!-- Pending Match Submissions -->
+            <div v-if="shareStats" class="flex flex-col gap-4 p-4 lg:p-6">
+                <div>
+                    <p class="font-semibold">Pending Match Submissions</p>
+                    <p class="text-sm text-muted-foreground">
+                        Matches waiting to be submitted. This includes matches where archetypes are still being resolved.
+                    </p>
+                </div>
+
+                <div v-if="pendingMatches.length === 0" class="text-sm text-muted-foreground">All matches submitted.</div>
+
+                <template v-else>
+                    <div class="flex flex-col divide-y rounded-md border">
+                        <div v-for="match in pendingMatches" :key="match.id" class="flex items-center justify-between px-3 py-2 text-sm">
+                            <div class="flex items-center gap-3">
+                                <Badge variant="outline" class="capitalize">{{ match.format }}</Badge>
+                                <span class="font-medium">{{ match.games_won }}–{{ match.games_lost }}</span>
+                                <span class="text-muted-foreground">{{ dayjs(match.started_at).fromNow() }}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end">
+                        <Button variant="outline" size="sm" :disabled="processing === 'submitMatches'" @click="submitPendingMatches">
+                            <Spinner v-if="processing === 'submitMatches'" />
+                            {{
+                                processing === 'submitMatches'
+                                    ? 'Submitting...'
+                                    : `Submit ${pendingMatches.length} match${pendingMatches.length === 1 ? '' : 'es'}`
+                            }}
+                        </Button>
+                    </div>
+                </template>
             </div>
         </div>
     </AppLayout>
