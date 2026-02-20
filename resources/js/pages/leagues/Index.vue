@@ -3,6 +3,7 @@ import AppLayout from '@/AppLayout.vue';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import ResultBadge from '@/components/matches/ResultBadge.vue';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import {
     DropdownMenu, DropdownMenuContent,
@@ -207,7 +208,7 @@ const kpis = computed(() => {
                                     :key="i"
                                     class="flex size-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold"
                                     :class="{
-                                        'bg-primary text-primary-foreground':                  result === 'W',
+                                        'bg-success text-success-foreground':                   result === 'W',
                                         'bg-destructive text-destructive-foreground':          result === 'L',
                                         'bg-muted text-muted-foreground border border-border': result === null,
                                     }"
@@ -239,9 +240,7 @@ const kpis = computed(() => {
                                     @click="router.visit(MatchShowController({ id: match.id }).url)"
                                 >
                                     <TableCell>
-                                        <Badge :variant="match.result === 'W' ? 'default' : 'destructive'">
-                                            {{ match.result === 'W' ? 'Win' : 'Loss' }}
-                                        </Badge>
+                                        <ResultBadge :won="match.result === 'W'" />
                                     </TableCell>
                                     <TableCell class="font-medium">
                                         <span v-if="match.opponentName">{{ match.opponentName }}</span>

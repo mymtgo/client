@@ -3,6 +3,7 @@ import { computed, ref } from 'vue';
 import AppLayout from '@/AppLayout.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import ResultBadge from '@/components/matches/ResultBadge.vue';
 import { Card, CardContent } from '@/components/ui/card';
 import ManaSymbols from '@/components/ManaSymbols.vue';
 import SetArchetypeDialog from '@/components/matches/SetArchetypeDialog.vue';
@@ -62,8 +63,7 @@ const opponentArchetype = computed(() => {
                         <!-- Left: result + opponent -->
                         <div class="flex items-start gap-4">
                             <div class="mt-0.5">
-                                <Badge v-if="isWin" variant="default">Win</Badge>
-                                <Badge v-else variant="destructive">Loss</Badge>
+                                <ResultBadge :won="isWin" />
                                 <p class="text-muted-foreground mt-1 text-center text-xs tabular-nums">
                                     {{ match.gamesWon }}–{{ match.gamesLost }}
                                 </p>

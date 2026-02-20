@@ -4,6 +4,7 @@ import { Pagination, PaginationContent, PaginationItem, PaginationNext, Paginati
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import ResultBadge from '@/components/matches/ResultBadge.vue';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from '@/components/ui/context-menu';
 import ManaSymbols from '@/components/ManaSymbols.vue';
@@ -67,8 +68,7 @@ const deleteMatch = (id: string | number) => {
                             <ContextMenuTrigger asChild>
                                 <TableRow>
                                     <TableCell>
-                                        <Badge variant="default" v-if="match.gamesWon > match.gamesLost"> Win </Badge>
-                                        <Badge variant="destructive" v-if="match.gamesWon < match.gamesLost"> Loss </Badge>
+                                        <ResultBadge :won="match.gamesWon > match.gamesLost" v-if="match.gamesWon !== match.gamesLost" />
                                     </TableCell>
                                     <TableCell>
                                         <span

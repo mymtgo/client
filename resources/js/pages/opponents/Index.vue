@@ -48,7 +48,7 @@ const allFormats = computed(() =>
 );
 
 const search = ref('');
-const sortBy = ref('most_played');
+const sortBy = ref('winrate_desc');
 const selectedFormat = ref<string | null>(null);
 
 const filtered = computed(() => {
