@@ -8,9 +8,12 @@ use App\Jobs\DownloadArchetypes;
 use App\Jobs\PopulateMissingCardData;
 use App\Jobs\ProcessLogEvents;
 use App\Jobs\StoreGameLogs;
+use App\Jobs\SubmitMatch;
 use App\Jobs\SyncDecks;
 use App\Models\Archetype;
 use App\Models\Deck;
+use App\Models\LogCursor;
+use App\Models\MtgoMatch;
 use Illuminate\Console\Scheduling\Schedule;
 use Native\Desktop\Facades\Settings;
 
@@ -74,7 +77,20 @@ class MtgoManager
 
     public function getUsername(): ?string
     {
-        return $this->username;
+        return LogCursor::first()->local_username;
+    }
+
+    public function retryUnsubmittedMatches(): void
+    {
+        if (! Settings::get('share_stats')) {
+            return;
+        }
+
+        MtgoMatch::whereNull('submitted_at')
+            ->whereNotNull('deck_version_id')
+            ->whereHas('archetypes')
+            ->get()
+            ->each(fn (MtgoMatch $match) => SubmitMatch::dispatch($match->id));
     }
 
     public function runInitialSetup()
@@ -143,6 +159,11 @@ class MtgoManager
 
     public function schedule(Schedule $schedule): void
     {
+        // Submit pending matches every minute — not gated by watcher state or path validity.
+        $schedule->call(
+            fn () => $this->retryUnsubmittedMatches()
+        )->everyMinute()->name('submit_matches')->withoutOverlapping(60);
+
         try {
             $pause = ! Settings::get('watcher_active', true) || ! $this->pathsAreValid();
         } catch (\Throwable) {

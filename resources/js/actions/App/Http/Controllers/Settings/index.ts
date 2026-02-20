@@ -6,6 +6,8 @@ import RunIngestController from './RunIngestController'
 import RunSyncController from './RunSyncController'
 import RunPopulateCardsController from './RunPopulateCardsController'
 import UpdateAnonymousStatsController from './UpdateAnonymousStatsController'
+import UpdateShareStatsController from './UpdateShareStatsController'
+import RunSubmitMatchesController from './RunSubmitMatchesController'
 
 const Settings = {
     IndexController: Object.assign(IndexController, IndexController),
@@ -16,6 +18,8 @@ const Settings = {
     RunSyncController: Object.assign(RunSyncController, RunSyncController),
     RunPopulateCardsController: Object.assign(RunPopulateCardsController, RunPopulateCardsController),
     UpdateAnonymousStatsController: Object.assign(UpdateAnonymousStatsController, UpdateAnonymousStatsController),
+    UpdateShareStatsController: Object.assign(UpdateShareStatsController, UpdateShareStatsController),
+    RunSubmitMatchesController: Object.assign(RunSubmitMatchesController, RunSubmitMatchesController),
 }
 
 export default Settings

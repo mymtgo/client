@@ -6,6 +6,7 @@ use App\Actions\Settings\ValidatePath;
 use App\Facades\Mtgo;
 use App\Http\Controllers\Controller;
 use App\Models\Card;
+use App\Models\MtgoMatch;
 use Illuminate\Support\Facades\Cache;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -30,6 +31,12 @@ class IndexController extends Controller
             'lastIngestAt' => Cache::get('settings.last_ingest_at'),
             'lastSyncAt' => Cache::get('settings.last_sync_at'),
             'missingCardCount' => Card::whereNull('scryfall_id')->count(),
+            'shareStats' => Settings::get('share_stats') === null ? false : (bool) Settings::get('share_stats'),
+            'pendingMatches' => MtgoMatch::whereNull('submitted_at')
+                ->whereNotNull('deck_version_id')
+                ->whereHas('archetypes')
+                ->latest('started_at')
+                ->get(['id', 'format', 'games_won', 'games_lost', 'started_at']),
         ]);
     }
 

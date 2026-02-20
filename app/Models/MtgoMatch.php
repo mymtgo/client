@@ -22,6 +22,7 @@ class MtgoMatch extends Model
         'games_lost' => 'integer',
         'started_at' => 'datetime',
         'ended_at' => 'datetime',
+        'submitted_at' => 'datetime',
     ];
 
     public function getTable()
@@ -80,6 +81,11 @@ class MtgoMatch extends Model
     public function getMatchTimeAttribute()
     {
         return $this->ended_at->diffForHumans($this->started_at, CarbonInterface::DIFF_ABSOLUTE);
+    }
+
+    public function deckVersion(): BelongsTo
+    {
+        return $this->belongsTo(DeckVersion::class, 'deck_version_id');
     }
 
     public function league(): BelongsTo

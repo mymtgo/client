@@ -1,7 +1,7 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition } from './../../wayfinder'
 /**
 * @see \App\Http\Controllers\Settings\IndexController::__invoke
-* @see app/Http/Controllers/Settings/IndexController.php:17
+* @see app/Http/Controllers/Settings/IndexController.php:18
 * @route '/settings'
 */
 export const index = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -16,7 +16,7 @@ index.definition = {
 
 /**
 * @see \App\Http\Controllers\Settings\IndexController::__invoke
-* @see app/Http/Controllers/Settings/IndexController.php:17
+* @see app/Http/Controllers/Settings/IndexController.php:18
 * @route '/settings'
 */
 index.url = (options?: RouteQueryOptions) => {
@@ -25,7 +25,7 @@ index.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\Settings\IndexController::__invoke
-* @see app/Http/Controllers/Settings/IndexController.php:17
+* @see app/Http/Controllers/Settings/IndexController.php:18
 * @route '/settings'
 */
 index.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -35,7 +35,7 @@ index.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 
 /**
 * @see \App\Http\Controllers\Settings\IndexController::__invoke
-* @see app/Http/Controllers/Settings/IndexController.php:17
+* @see app/Http/Controllers/Settings/IndexController.php:18
 * @route '/settings'
 */
 index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -45,7 +45,7 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 
 /**
 * @see \App\Http\Controllers\Settings\IndexController::__invoke
-* @see app/Http/Controllers/Settings/IndexController.php:17
+* @see app/Http/Controllers/Settings/IndexController.php:18
 * @route '/settings'
 */
 const indexForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -55,7 +55,7 @@ const indexForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => (
 
 /**
 * @see \App\Http\Controllers\Settings\IndexController::__invoke
-* @see app/Http/Controllers/Settings/IndexController.php:17
+* @see app/Http/Controllers/Settings/IndexController.php:18
 * @route '/settings'
 */
 indexForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -65,7 +65,7 @@ indexForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
 
 /**
 * @see \App\Http\Controllers\Settings\IndexController::__invoke
-* @see app/Http/Controllers/Settings/IndexController.php:17
+* @see app/Http/Controllers/Settings/IndexController.php:18
 * @route '/settings'
 */
 indexForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -512,6 +512,128 @@ anonymousStatsForm.patch = (options?: RouteQueryOptions): RouteFormDefinition<'p
 
 anonymousStats.form = anonymousStatsForm
 
+/**
+* @see \App\Http\Controllers\Settings\UpdateShareStatsController::__invoke
+* @see app/Http/Controllers/Settings/UpdateShareStatsController.php:12
+* @route '/settings/share-stats'
+*/
+export const shareStats = (options?: RouteQueryOptions): RouteDefinition<'patch'> => ({
+    url: shareStats.url(options),
+    method: 'patch',
+})
+
+shareStats.definition = {
+    methods: ["patch"],
+    url: '/settings/share-stats',
+} satisfies RouteDefinition<["patch"]>
+
+/**
+* @see \App\Http\Controllers\Settings\UpdateShareStatsController::__invoke
+* @see app/Http/Controllers/Settings/UpdateShareStatsController.php:12
+* @route '/settings/share-stats'
+*/
+shareStats.url = (options?: RouteQueryOptions) => {
+    return shareStats.definition.url + queryParams(options)
+}
+
+/**
+* @see \App\Http\Controllers\Settings\UpdateShareStatsController::__invoke
+* @see app/Http/Controllers/Settings/UpdateShareStatsController.php:12
+* @route '/settings/share-stats'
+*/
+shareStats.patch = (options?: RouteQueryOptions): RouteDefinition<'patch'> => ({
+    url: shareStats.url(options),
+    method: 'patch',
+})
+
+/**
+* @see \App\Http\Controllers\Settings\UpdateShareStatsController::__invoke
+* @see app/Http/Controllers/Settings/UpdateShareStatsController.php:12
+* @route '/settings/share-stats'
+*/
+const shareStatsForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+    action: shareStats.url({
+        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+            _method: 'PATCH',
+            ...(options?.query ?? options?.mergeQuery ?? {}),
+        }
+    }),
+    method: 'post',
+})
+
+/**
+* @see \App\Http\Controllers\Settings\UpdateShareStatsController::__invoke
+* @see app/Http/Controllers/Settings/UpdateShareStatsController.php:12
+* @route '/settings/share-stats'
+*/
+shareStatsForm.patch = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+    action: shareStats.url({
+        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+            _method: 'PATCH',
+            ...(options?.query ?? options?.mergeQuery ?? {}),
+        }
+    }),
+    method: 'post',
+})
+
+shareStats.form = shareStatsForm
+
+/**
+* @see \App\Http\Controllers\Settings\RunSubmitMatchesController::__invoke
+* @see app/Http/Controllers/Settings/RunSubmitMatchesController.php:13
+* @route '/settings/submit-matches'
+*/
+export const submitMatches = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
+    url: submitMatches.url(options),
+    method: 'post',
+})
+
+submitMatches.definition = {
+    methods: ["post"],
+    url: '/settings/submit-matches',
+} satisfies RouteDefinition<["post"]>
+
+/**
+* @see \App\Http\Controllers\Settings\RunSubmitMatchesController::__invoke
+* @see app/Http/Controllers/Settings/RunSubmitMatchesController.php:13
+* @route '/settings/submit-matches'
+*/
+submitMatches.url = (options?: RouteQueryOptions) => {
+    return submitMatches.definition.url + queryParams(options)
+}
+
+/**
+* @see \App\Http\Controllers\Settings\RunSubmitMatchesController::__invoke
+* @see app/Http/Controllers/Settings/RunSubmitMatchesController.php:13
+* @route '/settings/submit-matches'
+*/
+submitMatches.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
+    url: submitMatches.url(options),
+    method: 'post',
+})
+
+/**
+* @see \App\Http\Controllers\Settings\RunSubmitMatchesController::__invoke
+* @see app/Http/Controllers/Settings/RunSubmitMatchesController.php:13
+* @route '/settings/submit-matches'
+*/
+const submitMatchesForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+    action: submitMatches.url(options),
+    method: 'post',
+})
+
+/**
+* @see \App\Http\Controllers\Settings\RunSubmitMatchesController::__invoke
+* @see app/Http/Controllers/Settings/RunSubmitMatchesController.php:13
+* @route '/settings/submit-matches'
+*/
+submitMatchesForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+    action: submitMatches.url(options),
+    method: 'post',
+})
+
+submitMatches.form = submitMatchesForm
+
 const settings = {
     index: Object.assign(index, index),
     logPath: Object.assign(logPath, logPath),
@@ -521,6 +643,8 @@ const settings = {
     sync: Object.assign(sync, sync),
     populateCards: Object.assign(populateCards, populateCards),
     anonymousStats: Object.assign(anonymousStats, anonymousStats),
+    shareStats: Object.assign(shareStats, shareStats),
+    submitMatches: Object.assign(submitMatches, submitMatches),
 }
 
 export default settings
