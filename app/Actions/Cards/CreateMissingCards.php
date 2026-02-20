@@ -9,9 +9,11 @@ class CreateMissingCards
 {
     public static function run(array $cardIds)
     {
+        $cardIds = collect($cardIds)->unique()->values();
+
         $cardModels = Card::whereIn('mtgo_id', $cardIds)->get();
 
-        $newCards = collect($cardIds)->diff($cardModels->pluck('mtgo_id'));
+        $newCards = $cardIds->diff($cardModels->pluck('mtgo_id'));
 
         Card::insert(
             $newCards->map(

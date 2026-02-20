@@ -1,7 +1,7 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition } from './../../wayfinder'
 /**
 * @see \App\Http\Controllers\Settings\IndexController::__invoke
-* @see app/Http/Controllers/Settings/IndexController.php:16
+* @see app/Http/Controllers/Settings/IndexController.php:17
 * @route '/settings'
 */
 export const index = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -16,7 +16,7 @@ index.definition = {
 
 /**
 * @see \App\Http\Controllers\Settings\IndexController::__invoke
-* @see app/Http/Controllers/Settings/IndexController.php:16
+* @see app/Http/Controllers/Settings/IndexController.php:17
 * @route '/settings'
 */
 index.url = (options?: RouteQueryOptions) => {
@@ -25,7 +25,7 @@ index.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\Settings\IndexController::__invoke
-* @see app/Http/Controllers/Settings/IndexController.php:16
+* @see app/Http/Controllers/Settings/IndexController.php:17
 * @route '/settings'
 */
 index.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -35,7 +35,7 @@ index.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 
 /**
 * @see \App\Http\Controllers\Settings\IndexController::__invoke
-* @see app/Http/Controllers/Settings/IndexController.php:16
+* @see app/Http/Controllers/Settings/IndexController.php:17
 * @route '/settings'
 */
 index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -45,7 +45,7 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 
 /**
 * @see \App\Http\Controllers\Settings\IndexController::__invoke
-* @see app/Http/Controllers/Settings/IndexController.php:16
+* @see app/Http/Controllers/Settings/IndexController.php:17
 * @route '/settings'
 */
 const indexForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -55,7 +55,7 @@ const indexForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => (
 
 /**
 * @see \App\Http\Controllers\Settings\IndexController::__invoke
-* @see app/Http/Controllers/Settings/IndexController.php:16
+* @see app/Http/Controllers/Settings/IndexController.php:17
 * @route '/settings'
 */
 indexForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -65,7 +65,7 @@ indexForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
 
 /**
 * @see \App\Http\Controllers\Settings\IndexController::__invoke
-* @see app/Http/Controllers/Settings/IndexController.php:16
+* @see app/Http/Controllers/Settings/IndexController.php:17
 * @route '/settings'
 */
 indexForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -391,6 +391,62 @@ syncForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
 sync.form = syncForm
 
 /**
+* @see \App\Http\Controllers\Settings\RunPopulateCardsController::__invoke
+* @see app/Http/Controllers/Settings/RunPopulateCardsController.php:11
+* @route '/settings/populate-cards'
+*/
+export const populateCards = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
+    url: populateCards.url(options),
+    method: 'post',
+})
+
+populateCards.definition = {
+    methods: ["post"],
+    url: '/settings/populate-cards',
+} satisfies RouteDefinition<["post"]>
+
+/**
+* @see \App\Http\Controllers\Settings\RunPopulateCardsController::__invoke
+* @see app/Http/Controllers/Settings/RunPopulateCardsController.php:11
+* @route '/settings/populate-cards'
+*/
+populateCards.url = (options?: RouteQueryOptions) => {
+    return populateCards.definition.url + queryParams(options)
+}
+
+/**
+* @see \App\Http\Controllers\Settings\RunPopulateCardsController::__invoke
+* @see app/Http/Controllers/Settings/RunPopulateCardsController.php:11
+* @route '/settings/populate-cards'
+*/
+populateCards.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
+    url: populateCards.url(options),
+    method: 'post',
+})
+
+/**
+* @see \App\Http\Controllers\Settings\RunPopulateCardsController::__invoke
+* @see app/Http/Controllers/Settings/RunPopulateCardsController.php:11
+* @route '/settings/populate-cards'
+*/
+const populateCardsForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+    action: populateCards.url(options),
+    method: 'post',
+})
+
+/**
+* @see \App\Http\Controllers\Settings\RunPopulateCardsController::__invoke
+* @see app/Http/Controllers/Settings/RunPopulateCardsController.php:11
+* @route '/settings/populate-cards'
+*/
+populateCardsForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+    action: populateCards.url(options),
+    method: 'post',
+})
+
+populateCards.form = populateCardsForm
+
+/**
 * @see \App\Http\Controllers\Settings\UpdateAnonymousStatsController::__invoke
 * @see app/Http/Controllers/Settings/UpdateAnonymousStatsController.php:12
 * @route '/settings/anonymous-stats'
@@ -463,6 +519,7 @@ const settings = {
     watcher: Object.assign(watcher, watcher),
     ingest: Object.assign(ingest, ingest),
     sync: Object.assign(sync, sync),
+    populateCards: Object.assign(populateCards, populateCards),
     anonymousStats: Object.assign(anonymousStats, anonymousStats),
 }
 
