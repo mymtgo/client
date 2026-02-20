@@ -2,6 +2,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Trophy } from 'lucide-vue-next';
+import PhantomBadge from '@/components/leagues/PhantomBadge.vue';
 
 type League = {
     name: string;
@@ -38,6 +39,7 @@ const props = defineProps<{
                 <span class="text-lg font-semibold leading-tight">{{ league.deckName ?? league.name }}</span>
                 <div class="flex items-center gap-2">
                     <Badge variant="outline">{{ league.format }}</Badge>
+                    <PhantomBadge v-if="league.phantom" />
                     <span class="text-sm text-muted-foreground">
                         <span class="font-medium">{{ league.wins }}W</span>
                         <span class="mx-0.5">–</span>
