@@ -4,6 +4,7 @@ import UpdateDataPathController from './UpdateDataPathController'
 import UpdateWatcherController from './UpdateWatcherController'
 import RunIngestController from './RunIngestController'
 import RunSyncController from './RunSyncController'
+import RunPopulateCardsController from './RunPopulateCardsController'
 import UpdateAnonymousStatsController from './UpdateAnonymousStatsController'
 
 const Settings = {
@@ -13,6 +14,7 @@ const Settings = {
     UpdateWatcherController: Object.assign(UpdateWatcherController, UpdateWatcherController),
     RunIngestController: Object.assign(RunIngestController, RunIngestController),
     RunSyncController: Object.assign(RunSyncController, RunSyncController),
+    RunPopulateCardsController: Object.assign(RunPopulateCardsController, RunPopulateCardsController),
     UpdateAnonymousStatsController: Object.assign(UpdateAnonymousStatsController, UpdateAnonymousStatsController),
 }
 

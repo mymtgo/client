@@ -1,7 +1,7 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition } from './../../../../../wayfinder'
 /**
 * @see \App\Http\Controllers\Settings\IndexController::__invoke
-* @see app/Http/Controllers/Settings/IndexController.php:16
+* @see app/Http/Controllers/Settings/IndexController.php:17
 * @route '/settings'
 */
 const IndexController = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -16,7 +16,7 @@ IndexController.definition = {
 
 /**
 * @see \App\Http\Controllers\Settings\IndexController::__invoke
-* @see app/Http/Controllers/Settings/IndexController.php:16
+* @see app/Http/Controllers/Settings/IndexController.php:17
 * @route '/settings'
 */
 IndexController.url = (options?: RouteQueryOptions) => {
@@ -25,7 +25,7 @@ IndexController.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\Settings\IndexController::__invoke
-* @see app/Http/Controllers/Settings/IndexController.php:16
+* @see app/Http/Controllers/Settings/IndexController.php:17
 * @route '/settings'
 */
 IndexController.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -35,7 +35,7 @@ IndexController.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => (
 
 /**
 * @see \App\Http\Controllers\Settings\IndexController::__invoke
-* @see app/Http/Controllers/Settings/IndexController.php:16
+* @see app/Http/Controllers/Settings/IndexController.php:17
 * @route '/settings'
 */
 IndexController.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -45,7 +45,7 @@ IndexController.head = (options?: RouteQueryOptions): RouteDefinition<'head'> =>
 
 /**
 * @see \App\Http\Controllers\Settings\IndexController::__invoke
-* @see app/Http/Controllers/Settings/IndexController.php:16
+* @see app/Http/Controllers/Settings/IndexController.php:17
 * @route '/settings'
 */
 const IndexControllerForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -55,7 +55,7 @@ const IndexControllerForm = (options?: RouteQueryOptions): RouteFormDefinition<'
 
 /**
 * @see \App\Http\Controllers\Settings\IndexController::__invoke
-* @see app/Http/Controllers/Settings/IndexController.php:16
+* @see app/Http/Controllers/Settings/IndexController.php:17
 * @route '/settings'
 */
 IndexControllerForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -65,7 +65,7 @@ IndexControllerForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'ge
 
 /**
 * @see \App\Http\Controllers\Settings\IndexController::__invoke
-* @see app/Http/Controllers/Settings/IndexController.php:16
+* @see app/Http/Controllers/Settings/IndexController.php:17
 * @route '/settings'
 */
 IndexControllerForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Settings;
 use App\Actions\Settings\ValidatePath;
 use App\Facades\Mtgo;
 use App\Http\Controllers\Controller;
+use App\Models\Card;
 use Illuminate\Support\Facades\Cache;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -28,6 +29,7 @@ class IndexController extends Controller
             'dataPathStatus' => ValidatePath::forData($dataPath),
             'lastIngestAt' => Cache::get('settings.last_ingest_at'),
             'lastSyncAt' => Cache::get('settings.last_sync_at'),
+            'missingCardCount' => Card::whereNull('scryfall_id')->count(),
         ]);
     }
 

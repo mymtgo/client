@@ -15,6 +15,7 @@ import UpdateDataPathController from '@/actions/App/Http/Controllers/Settings/Up
 import UpdateWatcherController from '@/actions/App/Http/Controllers/Settings/UpdateWatcherController';
 import RunIngestController from '@/actions/App/Http/Controllers/Settings/RunIngestController';
 import RunSyncController from '@/actions/App/Http/Controllers/Settings/RunSyncController';
+import RunPopulateCardsController from '@/actions/App/Http/Controllers/Settings/RunPopulateCardsController';
 import UpdateAnonymousStatsController from '@/actions/App/Http/Controllers/Settings/UpdateAnonymousStatsController';
 import { useAppearance } from '@/composables/useAppearance';
 import dayjs from 'dayjs';
@@ -32,6 +33,7 @@ const props = defineProps<{
     dataPathStatus: { valid: boolean; fileCount: number; message: string };
     lastIngestAt: string | null;
     lastSyncAt: string | null;
+    missingCardCount: number;
 }>();
 
 const logPathInput = ref(props.logPath);
@@ -71,6 +73,10 @@ function runIngest() {
 
 function runSync() {
     withProcessing('sync', 'post', RunSyncController.url());
+}
+
+function runPopulateCards() {
+    withProcessing('populateCards', 'post', RunPopulateCardsController.url());
 }
 
 function toggleAnonymousStats(checked: boolean | 'indeterminate') {
@@ -180,6 +186,22 @@ function toggleAnonymousStats(checked: boolean | 'indeterminate') {
                     <Button variant="outline" size="sm" :disabled="!pathsValid || processing === 'sync'" @click="runSync">
                         <Spinner v-if="processing === 'sync'" />
                         {{ processing === 'sync' ? 'Running...' : 'Run now' }}
+                    </Button>
+                </div>
+
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium">Populate Card Data</p>
+                        <p class="text-sm text-muted-foreground">
+                            Fetch names and images for any cards missing data.
+                            <span v-if="missingCardCount > 0" class="text-warning font-medium">{{ missingCardCount }} card{{ missingCardCount === 1 ? '' : 's' }} missing.</span>
+                            <span v-else class="text-success font-medium">All cards populated.</span>
+                        </p>
+                        <p v-if="errors.populateCards" class="text-sm text-destructive">{{ errors.populateCards }}</p>
+                    </div>
+                    <Button variant="outline" size="sm" :disabled="processing === 'populateCards'" @click="runPopulateCards">
+                        <Spinner v-if="processing === 'populateCards'" />
+                        {{ processing === 'populateCards' ? 'Running...' : 'Run now' }}
                     </Button>
                 </div>
             </div>

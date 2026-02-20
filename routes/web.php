@@ -47,6 +47,7 @@ Route::group([], function (\Illuminate\Routing\Router $router) {
         $group->patch('watcher', \App\Http\Controllers\Settings\UpdateWatcherController::class)->name('settings.watcher');
         $group->post('ingest', \App\Http\Controllers\Settings\RunIngestController::class)->name('settings.ingest');
         $group->post('sync', \App\Http\Controllers\Settings\RunSyncController::class)->name('settings.sync');
+        $group->post('populate-cards', \App\Http\Controllers\Settings\RunPopulateCardsController::class)->name('settings.populate-cards');
         $group->patch('anonymous-stats', \App\Http\Controllers\Settings\UpdateAnonymousStatsController::class)->name('settings.anonymous-stats');
     });
 });
