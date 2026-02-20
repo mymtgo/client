@@ -27,19 +27,13 @@ class BackfillMissingCards extends Command
      */
     public function handle()
     {
-        $gamePlayers = DB::table('game_player')->select('deck_json')->get();
-
-        $cards = [];
-
-        foreach ($gamePlayers as $gamePlayer) {
-            $deck = collect(json_decode($gamePlayer->deck_json, true))->map(
-                fn ($card) => $card['mtgo_id']
-            );
-            $cards = [
-                ...$cards,
-                ...$deck,
-            ];
-        }
+        $cards = DB::table('game_player')
+            ->select('deck_json')
+            ->get()
+            ->flatMap(fn ($gp) => collect(json_decode($gp->deck_json, true))->pluck('mtgo_id'))
+            ->unique()
+            ->values()
+            ->toArray();
 
         CreateMissingCards::run($cards);
     }

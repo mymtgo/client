@@ -34,12 +34,19 @@ class ShowController extends Controller
         $deckVersion = DeckVersion::find($match->deck_version_id);
         $registeredCards = $deckVersion?->cards ?? [];
 
-        // Batch all mtgo_ids across every game player deck_json
-        $allMtgoIds = $match->games->flatMap(fn ($game) => $game->players->flatMap(
+        // Batch all mtgo_ids: deck_json entries + timeline CatalogIDs (covers DFC back faces
+        // and any card that appears in play but not in the registered deck_json)
+        $deckMtgoIds = $match->games->flatMap(fn ($game) => $game->players->flatMap(
             fn ($player) => collect($player->pivot->deck_json)->pluck('mtgo_id')
-        ))->unique();
+        ));
 
-        dd($match->games->pluck('id'));
+        $timelineCatalogIds = $match->games->flatMap(
+            fn ($game) => $game->timeline->flatMap(
+                fn ($snapshot) => collect($snapshot->content['Cards'] ?? [])->pluck('CatalogID')
+            )
+        );
+
+        $allMtgoIds = $deckMtgoIds->merge($timelineCatalogIds)->unique();
 
         $cardsByMtgoId = Card::whereIn('mtgo_id', $allMtgoIds)->get()->keyBy('mtgo_id');
 
