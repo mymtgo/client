@@ -111,7 +111,7 @@ const allTime = computed(() => props.versions[0]);
     <AppLayout :title="deck.name" :breadcrumbs="[{ label: 'Decks', href: DecksIndexController().url }, { label: deck.name }]">
         <div class="grid grow grid-cols-12 items-start">
             <!-- Main content -->
-            <div class="col-span-8 flex flex-col gap-4 p-4 lg:p-6">
+            <div class="col-span-9 flex flex-col gap-4 p-4 lg:p-6">
                 <!-- Deck header -->
                 <div class="flex justify-between items-center">
                     <div class="flex flex-col gap-1">
@@ -247,7 +247,7 @@ const allTime = computed(() => props.versions[0]);
             </div>
 
             <!-- Sticky decklist sidebar -->
-            <div class="no-scrollbar sticky top-0 col-span-4 overflow-y-auto border-l p-4 lg:p-6">
+            <div class="no-scrollbar sticky top-0 col-span-3 overflow-y-auto border-l p-4 lg:p-6">
                 <div class="mb-4">
                     <Select v-model="selectedVersionKey">
                         <SelectTrigger class="w-full">
