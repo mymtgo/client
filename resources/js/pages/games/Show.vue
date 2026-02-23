@@ -11,7 +11,6 @@ defineProps<{
 <template>
     <AppLayout>
         <h1 class="text-2xl font-bold tracking-tight">Game Replay</h1>
-
         <GameReplay :timeline="timeline" />
     </AppLayout>
 </template>

@@ -110,6 +110,7 @@ class ShowController extends Controller
             'won' => (bool) $game->won,
             'onThePlay' => (bool) ($localPlayer?->pivot->on_play ?? false),
             'duration' => $duration,
+            'turns' => $this->estimateTurns($game, $cardsByMtgoId),
             'localMulligans' => $handData['localMulligans'],
             'opponentMulligans' => $handData['opponentMulligans'],
             'mulliganedHands' => $handData['mulliganedHands'],
@@ -277,11 +278,43 @@ class ShowController extends Controller
 
         return collect(array_keys($seenCatalogIds))
             ->map(fn ($catalogId) => [
+                'id' => $catalogId,
                 'name' => $cardsByMtgoId->get($catalogId)?->name ?? "Unknown ({$catalogId})",
                 'image' => $cardsByMtgoId->get($catalogId)?->image,
             ])
+            ->unique('id')
             ->values()
             ->toArray();
+    }
+
+    /**
+     * Estimate game length in turns by counting lands on the battlefield in the final snapshot.
+     *
+     * Each player may play at most one land per turn, so total lands on the battlefield
+     * at game end is a reliable lower bound for total turns taken. This is the most
+     * defensible heuristic available from snapshot-based timeline data, since MTGO logs
+     * do not emit explicit turn-start/end events.
+     *
+     * Returns null if no timeline data is available.
+     */
+    private function estimateTurns(Game $game, Collection $cardsByMtgoId): ?int
+    {
+        $lastSnapshot = $game->timeline->sortBy('timestamp')->last();
+
+        if (! $lastSnapshot) {
+            return null;
+        }
+
+        $landCount = collect($lastSnapshot->content['Cards'] ?? [])
+            ->filter(fn ($card) => $card['Zone'] === 'Battlefield')
+            ->filter(function ($card) use ($cardsByMtgoId) {
+                $type = $cardsByMtgoId->get((int) $card['CatalogID'])?->type ?? '';
+
+                return str_contains($type, 'Land');
+            })
+            ->count();
+
+        return $landCount > 0 ? $landCount : null;
     }
 
     /**

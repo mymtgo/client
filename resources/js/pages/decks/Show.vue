@@ -16,6 +16,8 @@ import DeckList from '@/pages/decks/partials/DeckList.vue';
 import MatchHistoryChart from '@/pages/decks/partials/MatchHistoryChart.vue';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 
 dayjs.extend(relativeTime);
 
@@ -72,6 +74,7 @@ const props = defineProps<{
 }>();
 
 const selectedVersionKey = ref<string>('all');
+const showDeck = ref<boolean>(false);
 
 type Period = 'all_time' | 'this_year' | 'this_month' | 'this_week';
 const periodLabels: Record<Period, string> = {
@@ -109,11 +112,11 @@ const allTime = computed(() => props.versions[0]);
 
 <template>
     <AppLayout :title="deck.name" :breadcrumbs="[{ label: 'Decks', href: DecksIndexController().url }, { label: deck.name }]">
-        <div class="grid grow grid-cols-12 items-start">
+        <div>
             <!-- Main content -->
-            <div class="col-span-9 flex flex-col gap-4 p-4 lg:p-6">
+            <div class="p-4 lg:p-6">
                 <!-- Deck header -->
-                <div class="flex justify-between items-center">
+                <div class="flex items-center justify-between">
                     <div class="flex flex-col gap-1">
                         <div class="flex items-center gap-2">
                             <h1 class="text-2xl font-bold tracking-tight">{{ deck.name }}</h1>
@@ -128,153 +131,151 @@ const allTime = computed(() => props.versions[0]);
                         </p>
                     </div>
 
-                    <Select v-model="activePeriod" @update:model-value="onPeriodChange">
-                        <SelectTrigger class="h-7 w-32 text-xs">
-                            <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem v-for="(label, key) in periodLabels" :key="key" :value="key" class="text-xs">
-                                {{ label }}
-                            </SelectItem>
-                        </SelectContent>
-                    </Select>
+                    <div class="flex items-center gap-2">
+                        <Select v-model="activePeriod" @update:model-value="onPeriodChange">
+                            <SelectTrigger class="h-7 w-32 text-xs">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem v-for="(label, key) in periodLabels" :key="key" :value="key" class="text-xs">
+                                    {{ label }}
+                                </SelectItem>
+                            </SelectContent>
+                        </Select>
+
+                        <Select v-model="selectedVersionKey">
+                            <SelectTrigger>
+                                <SelectValue placeholder="All versions" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">All versions</SelectItem>
+                                <SelectItem v-for="version in versions.slice(1)" :key="version.id" :value="String(version.id)">
+                                    {{ version.label }}
+                                    <span v-if="version.isCurrent" class="ml-1 text-muted-foreground">· Current</span>
+                                    <span v-if="version.dateLabel" class="ml-1 text-muted-foreground">· {{ version.dateLabel }}</span>
+                                </SelectItem>
+                            </SelectContent>
+                        </Select>
+
+                        <Label>
+                            <span>View deck</span>
+                            <Switch v-model="showDeck" />
+                        </Label>
+                    </div>
                 </div>
 
-                <!-- Stats row (updates per selected version) -->
-                <Card>
-                    <CardContent class="flex divide-x p-0">
-                        <div class="flex flex-1 flex-col gap-0.5 px-4">
-                            <span class="text-xs tracking-wide text-muted-foreground uppercase">Match W/L</span>
-                            <span class="text-lg font-semibold tabular-nums"> {{ activeVersion.matchesWon }}–{{ activeVersion.matchesLost }} </span>
-                        </div>
-                        <div class="flex flex-1 flex-col gap-0.5 px-4">
-                            <span class="text-xs tracking-wide text-muted-foreground uppercase">Game W/L</span>
-                            <span class="text-lg font-semibold tabular-nums"> {{ activeVersion.gamesWon }}–{{ activeVersion.gamesLost }} </span>
-                        </div>
-                        <div class="flex flex-1 flex-col gap-0.5 px-4">
-                            <span class="text-xs tracking-wide text-muted-foreground uppercase">On the Play</span>
-                            <span class="text-lg font-semibold tabular-nums">
-                                {{ activeVersion.otpRate }}%
-                                <span class="text-xs font-normal text-muted-foreground">
-                                    {{ activeVersion.gamesOtpWon }}–{{ activeVersion.gamesOtpLost }}
-                                </span>
-                            </span>
-                        </div>
-                        <div class="flex flex-1 flex-col gap-0.5 px-4">
-                            <span class="text-xs tracking-wide text-muted-foreground uppercase">On the Draw</span>
-                            <span class="text-lg font-semibold tabular-nums">
-                                {{ activeVersion.otdRate }}%
-                                <span class="text-xs font-normal text-muted-foreground">
-                                    {{ activeVersion.gamesOtdWon }}–{{ activeVersion.gamesOtdLost }}
-                                </span>
-                            </span>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                <!-- Win rate chart -->
-                <Card v-if="chartData.length">
-                    <CardContent>
-                        <MatchHistoryChart :data="chartData" :granularity="chartGranularity" />
-                    </CardContent>
-                </Card>
-
-                <!-- No chart but still show period selector -->
-                <div v-else class="flex justify-end">
-                    <Select v-model="activePeriod" @update:model-value="onPeriodChange">
-                        <SelectTrigger class="h-7 w-32 text-xs">
-                            <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem v-for="(label, key) in periodLabels" :key="key" :value="key" class="text-xs">
-                                {{ label }}
-                            </SelectItem>
-                        </SelectContent>
-                    </Select>
-                </div>
-
-                <!-- Tabs -->
-                <Tabs default-value="matches">
-                    <TabsList>
-                        <TabsTrigger value="matches">Matches</TabsTrigger>
-                        <TabsTrigger value="matchups">Matchups</TabsTrigger>
-                        <TabsTrigger value="leagues">Leagues</TabsTrigger>
-                    </TabsList>
-                    <TabsContent value="matches">
-                        <Deferred :data="['matches', 'archetypes']">
-                            <template #fallback>
-                                <Card class="gap-0 overflow-hidden p-0">
-                                    <CardContent class="flex flex-col gap-2 px-4 py-4">
-                                        <Skeleton class="h-8 w-full" />
-                                        <Skeleton class="h-8 w-full" />
-                                        <Skeleton class="h-8 w-full" />
-                                        <Skeleton class="h-8 w-4/5" />
-                                    </CardContent>
-                                </Card>
-                            </template>
-                            <DeckMatches :matches="matches!" :archetypes="archetypes!" />
-                        </Deferred>
-                    </TabsContent>
-                    <TabsContent value="matchups">
-                        <Deferred data="matchupSpread">
-                            <template #fallback>
-                                <Card class="gap-0 overflow-hidden p-0">
-                                    <CardContent class="flex flex-col gap-2 px-4 py-4">
-                                        <Skeleton class="h-8 w-full" />
-                                        <Skeleton class="h-8 w-full" />
-                                        <Skeleton class="h-8 w-3/4" />
-                                    </CardContent>
-                                </Card>
-                            </template>
-                            <MatchupSpread :matchup-spread="matchupSpread!" />
-                        </Deferred>
-                    </TabsContent>
-                    <TabsContent value="leagues">
-                        <Deferred :data="['leagues', 'archetypes']">
-                            <template #fallback>
-                                <Card class="gap-0 overflow-hidden p-0">
-                                    <CardContent class="flex flex-col gap-2 px-4 py-4">
-                                        <Skeleton class="h-8 w-full" />
-                                        <Skeleton class="h-8 w-full" />
-                                        <Skeleton class="h-8 w-2/3" />
-                                    </CardContent>
-                                </Card>
-                            </template>
-                            <DeckLeagues :leagues="leagues!" :archetypes="archetypes!" />
-                        </Deferred>
-                    </TabsContent>
-                </Tabs>
-            </div>
-
-            <!-- Sticky decklist sidebar -->
-            <div class="no-scrollbar sticky top-0 col-span-3 overflow-y-auto border-l p-4 lg:p-6">
-                <div class="mb-4">
-                    <Select v-model="selectedVersionKey">
-                        <SelectTrigger class="w-full">
-                            <SelectValue placeholder="All versions" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">All versions</SelectItem>
-                            <SelectItem v-for="version in versions.slice(1)" :key="version.id" :value="String(version.id)">
-                                {{ version.label }}
-                                <span v-if="version.isCurrent" class="ml-1 text-muted-foreground">· Current</span>
-                                <span v-if="version.dateLabel" class="ml-1 text-muted-foreground">· {{ version.dateLabel }}</span>
-                            </SelectItem>
-                        </SelectContent>
-                    </Select>
-                </div>
-                <Deferred data="versionDecklists">
-                    <template #fallback>
-                        <div class="flex flex-col gap-2">
-                            <Skeleton class="h-4 w-2/3" />
-                            <Skeleton class="h-4 w-1/2" />
-                            <Skeleton class="h-4 w-3/4" />
-                            <Skeleton class="h-4 w-2/3" />
-                            <Skeleton class="h-4 w-1/2" />
-                        </div>
-                    </template>
+                <div v-if="showDeck" class="mt-8">
                     <DeckList :maindeck="activeDecklist.maindeck" :sideboard="activeDecklist.sideboard" />
-                </Deferred>
+                </div>
+
+                <div v-show="!showDeck" class="space-y-4 mt-8">
+                    <!-- Stats row (updates per selected version) -->
+                    <Card>
+                        <CardContent class="flex divide-x p-0">
+                            <div class="flex flex-1 flex-col gap-0.5 px-4">
+                                <span class="text-xs tracking-wide text-muted-foreground uppercase">Match W/L</span>
+                                <span class="text-lg font-semibold tabular-nums">
+                                    {{ activeVersion.matchesWon }}–{{ activeVersion.matchesLost }}
+                                </span>
+                            </div>
+                            <div class="flex flex-1 flex-col gap-0.5 px-4">
+                                <span class="text-xs tracking-wide text-muted-foreground uppercase">Game W/L</span>
+                                <span class="text-lg font-semibold tabular-nums"> {{ activeVersion.gamesWon }}–{{ activeVersion.gamesLost }} </span>
+                            </div>
+                            <div class="flex flex-1 flex-col gap-0.5 px-4">
+                                <span class="text-xs tracking-wide text-muted-foreground uppercase">On the Play</span>
+                                <span class="text-lg font-semibold tabular-nums">
+                                    {{ activeVersion.otpRate }}%
+                                    <span class="text-xs font-normal text-muted-foreground">
+                                        {{ activeVersion.gamesOtpWon }}–{{ activeVersion.gamesOtpLost }}
+                                    </span>
+                                </span>
+                            </div>
+                            <div class="flex flex-1 flex-col gap-0.5 px-4">
+                                <span class="text-xs tracking-wide text-muted-foreground uppercase">On the Draw</span>
+                                <span class="text-lg font-semibold tabular-nums">
+                                    {{ activeVersion.otdRate }}%
+                                    <span class="text-xs font-normal text-muted-foreground">
+                                        {{ activeVersion.gamesOtdWon }}–{{ activeVersion.gamesOtdLost }}
+                                    </span>
+                                </span>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    <!-- Win rate chart -->
+                    <Card v-if="chartData.length">
+                        <CardContent>
+                            <MatchHistoryChart :data="chartData" :granularity="chartGranularity" />
+                        </CardContent>
+                    </Card>
+
+                    <!-- No chart but still show period selector -->
+                    <div v-else class="flex justify-end">
+                        <Select v-model="activePeriod" @update:model-value="onPeriodChange">
+                            <SelectTrigger class="h-7 w-32 text-xs">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem v-for="(label, key) in periodLabels" :key="key" :value="key" class="text-xs">
+                                    {{ label }}
+                                </SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    <!-- Tabs -->
+                    <Tabs default-value="matches">
+                        <TabsList>
+                            <TabsTrigger value="matches">Matches</TabsTrigger>
+                            <TabsTrigger value="matchups">Matchups</TabsTrigger>
+                            <TabsTrigger value="leagues">Leagues</TabsTrigger>
+                        </TabsList>
+                        <TabsContent value="matches">
+                            <Deferred :data="['matches', 'archetypes']">
+                                <template #fallback>
+                                    <Card class="gap-0 overflow-hidden p-0">
+                                        <CardContent class="flex flex-col gap-2 px-4 py-4">
+                                            <Skeleton class="h-8 w-full" />
+                                            <Skeleton class="h-8 w-full" />
+                                            <Skeleton class="h-8 w-full" />
+                                            <Skeleton class="h-8 w-4/5" />
+                                        </CardContent>
+                                    </Card>
+                                </template>
+                                <DeckMatches :matches="matches!" :archetypes="archetypes!" />
+                            </Deferred>
+                        </TabsContent>
+                        <TabsContent value="matchups">
+                            <Deferred data="matchupSpread">
+                                <template #fallback>
+                                    <Card class="gap-0 overflow-hidden p-0">
+                                        <CardContent class="flex flex-col gap-2 px-4 py-4">
+                                            <Skeleton class="h-8 w-full" />
+                                            <Skeleton class="h-8 w-full" />
+                                            <Skeleton class="h-8 w-3/4" />
+                                        </CardContent>
+                                    </Card>
+                                </template>
+                                <MatchupSpread :matchup-spread="matchupSpread!" />
+                            </Deferred>
+                        </TabsContent>
+                        <TabsContent value="leagues">
+                            <Deferred :data="['leagues', 'archetypes']">
+                                <template #fallback>
+                                    <Card class="gap-0 overflow-hidden p-0">
+                                        <CardContent class="flex flex-col gap-2 px-4 py-4">
+                                            <Skeleton class="h-8 w-full" />
+                                            <Skeleton class="h-8 w-full" />
+                                            <Skeleton class="h-8 w-2/3" />
+                                        </CardContent>
+                                    </Card>
+                                </template>
+                                <DeckLeagues :leagues="leagues!" :archetypes="archetypes!" />
+                            </Deferred>
+                        </TabsContent>
+                    </Tabs>
+                </div>
             </div>
         </div>
     </AppLayout>

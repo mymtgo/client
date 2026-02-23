@@ -10,10 +10,10 @@ defineProps<{
 </script>
 
 <template>
-    <div>
-        <Card class="gap-4 overflow-hidden" v-for="(league, idx) in leagues" :key="`league_${idx}`">
-            <CardHeader class="flex items-center gap-2">
-                {{ league.name }}
+    <div class="space-y-4">
+        <Card class="gap-0 p-0 overflow-hidden" v-for="(league, idx) in leagues" :key="`league_${idx}`">
+            <CardHeader class="flex items-center p-2 justify-between">
+                <span class="text-sm">{{ league.name }}</span>
                 <PhantomBadge v-if="league.phantom" />
             </CardHeader>
             <CardContent class="px-0">

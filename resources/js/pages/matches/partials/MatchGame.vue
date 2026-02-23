@@ -4,6 +4,7 @@ import ResultBadge from '@/components/matches/ResultBadge.vue';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
 import { SwordsIcon } from 'lucide-vue-next';
+import DeckListCard from '@/pages/decks/partials/DeckListCard.vue';
 
 defineProps<{
     game: {
@@ -12,6 +13,7 @@ defineProps<{
         won: boolean;
         onThePlay: boolean;
         duration: string | null;
+        turns: number | null;
         localMulligans: number;
         opponentMulligans: number;
         mulliganedHands: { name: string; image: string | null }[][];
@@ -38,12 +40,13 @@ defineProps<{
                     {{ game.onThePlay ? 'On the play' : 'On the draw' }}
                 </span>
                 <span>{{ game.duration }}</span>
+                <span v-if="game.turns !== null">{{ game.turns }} turns</span>
                 <span v-if="game.localMulligans > 0">You mulliganed {{ game.localMulligans }}×</span>
                 <span v-if="game.opponentMulligans > 0">{{ opponentName }} mulliganed {{ game.opponentMulligans }}×</span>
             </div>
         </CardHeader>
 
-        <CardContent >
+        <CardContent>
             <!-- Left: hands + sideboard + replay -->
             <div class="flex min-w-0 flex-1 flex-col gap-4">
                 <!-- Kept hand -->
@@ -77,11 +80,7 @@ defineProps<{
                 <div v-for="(hand, hi) in game.mulliganedHands" :key="`mull_${hi}`">
                     <p class="mb-2 text-xs font-medium tracking-wide text-muted-foreground uppercase">Hand {{ hi + 1 }} — Shuffled Back</p>
                     <div class="grid grid-cols-8 gap-2">
-                        <div
-                            v-for="(card, ci) in hand"
-                            :key="`mull_${hi}_${ci}`"
-                            class="shrink-0 overflow-hidden border-2 border-transparent"
-                        >
+                        <div v-for="(card, ci) in hand" :key="`mull_${hi}_${ci}`" class="shrink-0 overflow-hidden border-2 border-transparent">
                             <img v-if="card.image" :src="card.image" :alt="card.name" class="h-full w-full object-cover" />
                             <div v-else class="flex h-full w-full items-center justify-center bg-muted p-1.5 text-center">
                                 <span class="text-xs leading-tight text-muted-foreground">{{ card.name }}</span>
@@ -106,8 +105,10 @@ defineProps<{
                             </div>
                             <!-- In/out badge -->
                             <div
-                                class="absolute bottom-0 left-0 right-0 py-0.5 text-center text-xs font-bold"
-                                :class="change.type === 'in' ? 'bg-success/85 text-success-foreground' : 'bg-destructive/85 text-destructive-foreground'"
+                                class="absolute right-0 bottom-0 left-0 py-0.5 text-center text-xs font-bold"
+                                :class="
+                                    change.type === 'in' ? 'bg-success/85 text-success-foreground' : 'bg-destructive/85 text-destructive-foreground'
+                                "
                             >
                                 {{ change.type === 'in' ? '+' : '−' }}{{ change.quantity }}
                             </div>
@@ -124,21 +125,10 @@ defineProps<{
                 <!-- Local cards played -->
                 <div class="shrink-0">
                     <p class="mb-2 text-xs font-medium tracking-wide text-muted-foreground uppercase">Cards Played</p>
-                    <div v-if="game.localCardsPlayed.length" class="grid grid-cols-8 gap-1.5">
-                        <HoverCard v-for="(card, i) in game.localCardsPlayed" :key="`local_${i}`" :open-delay="100">
-                            <HoverCardTrigger>
-                                <div class="w-full cursor-pointer overflow-hidden rounded-md border border-border shadow-sm transition-opacity hover:opacity-90">
-                                    <img v-if="card.image" :src="card.image" :alt="card.name" class="h-full w-full object-cover" />
-                                    <div v-else class="flex h-full w-full items-center justify-center bg-muted p-1">
-                                        <span class="text-center text-xs leading-tight text-muted-foreground">{{ card.name }}</span>
-                                    </div>
-                                </div>
-                            </HoverCardTrigger>
-                            <HoverCardContent side="left" class="w-auto p-0">
-                                <img v-if="card.image" :src="card.image" :alt="card.name" class="w-48 rounded-xl" />
-                                <div v-else class="px-3 py-2 text-sm font-medium">{{ card.name }}</div>
-                            </HoverCardContent>
-                        </HoverCard>
+                    <div v-if="game.localCardsPlayed.length" class="grid grid-cols-10 gap-1">
+                        <div v-for="(card, i) in game.localCardsPlayed" :key="`local_${i}`" :open-delay="100">
+                            <img :src="card.image" class="rounded-[7px]" />
+                        </div>
                     </div>
                     <p v-else class="text-sm text-muted-foreground">None recorded</p>
                 </div>
@@ -146,22 +136,9 @@ defineProps<{
                 <!-- Opponent cards seen -->
                 <div class="shrink-0">
                     <p class="mb-2 text-xs font-medium tracking-wide text-muted-foreground uppercase">Opponent Cards Seen</p>
-                    <div v-if="game.opponentCardsSeen.length" class="grid grid-cols-8 gap-1.5">
+                    <div v-if="game.opponentCardsSeen.length" class="grid grid-cols-10 gap-1">
                         <HoverCard v-for="(card, i) in game.opponentCardsSeen" :key="`opp_${i}`" :open-delay="100">
-                            <HoverCardTrigger>
-                                <div
-                                    class=" w-full cursor-pointer overflow-hidden rounded-md border border-border shadow-sm transition-opacity hover:opacity-90"
-                                >
-                                    <img v-if="card.image" :src="card.image" :alt="card.name" class="h-full w-full object-cover" />
-                                    <div v-else class="flex h-full w-full items-center justify-center bg-muted p-1">
-                                        <span class="text-center text-xs leading-tight text-muted-foreground">{{ card.name }}</span>
-                                    </div>
-                                </div>
-                            </HoverCardTrigger>
-                            <HoverCardContent side="left" class="w-auto p-0">
-                                <img v-if="card.image" :src="card.image" :alt="card.name" class="w-48 rounded-xl" />
-                                <div v-else class="px-3 py-2 text-sm font-medium">{{ card.name }}</div>
-                            </HoverCardContent>
+                            <img :src="card.image" class="rounded-[7px]" />
                         </HoverCard>
                     </div>
                     <p v-else class="text-sm text-muted-foreground">None recorded</p>
