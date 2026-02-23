@@ -20,6 +20,7 @@ type GameDetail = {
     won: boolean;
     onThePlay: boolean;
     duration: string | null;
+    turns: number | null;
     localMulligans: number;
     opponentMulligans: number;
     mulliganedHands: { name: string; image: string | null }[][];
