@@ -60,7 +60,7 @@ const opponentHand = computed(() => {
 </script>
 
 <template>
-    <div class="rounded-lg border bg-card">
+    <div class="border bg-card">
         <div class="flex">
             <div class="border-r">
                 <div>

@@ -164,7 +164,7 @@ const filtered = computed(() => {
                                     <div class="flex flex-wrap gap-1">
                                         <Tooltip v-for="archetype in opp.archetypes" :key="archetype.name">
                                             <TooltipTrigger>
-                                                <div class="flex items-center gap-1 rounded-full border px-2 py-0.5">
+                                                <div class="flex items-center gap-1 border px-2 py-0.5">
                                                     <ManaSymbols :symbols="archetype.colorIdentity" />
                                                 </div>
                                             </TooltipTrigger>

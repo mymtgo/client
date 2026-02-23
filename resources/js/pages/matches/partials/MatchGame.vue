@@ -80,7 +80,7 @@ defineProps<{
                         <div
                             v-for="(card, ci) in hand"
                             :key="`mull_${hi}_${ci}`"
-                            class="shrink-0 overflow-hidden rounded-lg border-2 border-transparent shadow-sm"
+                            class="shrink-0 overflow-hidden border-2 border-transparent"
                         >
                             <img v-if="card.image" :src="card.image" :alt="card.name" class="h-full w-full object-cover" />
                             <div v-else class="flex h-full w-full items-center justify-center bg-muted p-1.5 text-center">
@@ -97,7 +97,7 @@ defineProps<{
                         <div
                             v-for="change in game.sideboardChanges"
                             :key="`${change.type}_${change.name}`"
-                            class="relative overflow-hidden rounded-lg border-2 shadow-sm"
+                            class="relative overflow-hidden border-2"
                             :class="change.type === 'in' ? 'border-success' : 'border-destructive'"
                         >
                             <img v-if="change.image" :src="change.image" :alt="change.name" class="h-full w-full object-cover" />

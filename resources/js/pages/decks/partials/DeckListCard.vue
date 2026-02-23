@@ -43,7 +43,7 @@ const gradientClass = computed(() => {
                 </div>
             </div>
         </HoverCardTrigger>
-        <HoverCardContent side="right" avoidCollisions class="overflow-hidden rounded-xl p-0">
+        <HoverCardContent side="right" avoidCollisions class="overflow-hidden p-0">
             <img :src="card.image" class="w-64" />
         </HoverCardContent>
     </HoverCard>

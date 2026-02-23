@@ -121,7 +121,7 @@ function submitPendingMatches() {
                         </Button>
                     </div>
                     <div v-if="logPath" class="flex items-center gap-2">
-                        <div class="size-2 shrink-0 rounded-full" :class="logPathStatus.valid ? 'bg-primary' : 'bg-destructive'" />
+                        <div class="size-2 shrink-0" :class="logPathStatus.valid ? 'bg-primary' : 'bg-destructive'" />
                         <span class="text-sm" :class="logPathStatus.valid ? 'text-muted-foreground' : 'text-destructive'">
                             {{ logPathStatus.message }}
                         </span>
@@ -141,7 +141,7 @@ function submitPendingMatches() {
                         </Button>
                     </div>
                     <div v-if="dataPath" class="flex items-center gap-2">
-                        <div class="size-2 shrink-0 rounded-full" :class="dataPathStatus.valid ? 'bg-primary' : 'bg-destructive'" />
+                        <div class="size-2 shrink-0" :class="dataPathStatus.valid ? 'bg-primary' : 'bg-destructive'" />
                         <span class="text-sm" :class="dataPathStatus.valid ? 'text-muted-foreground' : 'text-destructive'">
                             {{ dataPathStatus.message }}
                         </span>
