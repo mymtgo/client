@@ -198,7 +198,7 @@ const kpis = computed(() => {
                                 <div
                                     v-for="(result, i) in run.results"
                                     :key="i"
-                                    class="flex size-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold"
+                                    class="flex size-5 shrink-0 items-center justify-center text-[10px] font-bold"
                                     :class="{
                                         'bg-success text-success-foreground':                   result === 'W',
                                         'bg-destructive text-destructive-foreground':          result === 'L',

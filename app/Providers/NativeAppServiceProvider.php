@@ -14,14 +14,21 @@ class NativeAppServiceProvider implements ProvidesPhpIni
      */
     public function boot(): void
     {
-        Window::open()->width(1600)->height(900)->minHeight(800)->minWidth(1200)->movable()->trafficLightsHidden();
+        Window::open()->width(1600)
+            ->height(900)
+            ->minHeight(800)
+            ->minWidth(1200)
+            ->movable()
+            ->title('mymtgo')
+            ->hideMenu()
+            ->trafficLightsHidden();
 
         Mtgo::runInitialSetup();
         Mtgo::retryUnsubmittedMatches();
 
         // DEBUG: remove after testing
 
-        // bump10
+        // bump13
     }
 
     /**

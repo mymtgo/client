@@ -23,7 +23,7 @@ const speeds = [0.5, 1, 1.5, 2, 4]
 </script>
 
 <template>
-    <div class="flex flex-wrap items-center justify-between gap-4 rounded-lg border bg-card p-3">
+    <div class="flex flex-wrap items-center justify-between gap-4 border bg-card p-3">
         <!-- Playback controls -->
         <div class="flex items-center gap-2">
             <Button

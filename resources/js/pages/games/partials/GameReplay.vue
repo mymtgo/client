@@ -140,7 +140,7 @@ onUnmounted(() => {
 <template>
     <div class="flex flex-col gap-4">
         <!-- Empty state -->
-        <div v-if="!hasEvents" class="rounded-lg border border-dashed p-8 text-center text-muted-foreground">
+        <div v-if="!hasEvents" class="border border-dashed p-8 text-center text-muted-foreground">
             No timeline events available for replay.
         </div>
 

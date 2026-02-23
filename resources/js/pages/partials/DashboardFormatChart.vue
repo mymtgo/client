@@ -43,7 +43,7 @@ const yTickFormat = (v: number) => `${v}%`;
                 <!-- Legend -->
                 <div class="flex items-center gap-4">
                     <div v-for="f in formats" :key="f.key" class="flex items-center gap-1.5">
-                        <span class="size-2.5 rounded-full" :style="{ backgroundColor: f.color }" />
+                        <span class="size-2.5" :style="{ backgroundColor: f.color }" />
                         <span class="text-xs text-muted-foreground">{{ f.label }}</span>
                     </div>
                 </div>

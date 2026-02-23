@@ -63,7 +63,7 @@ function setTimeframe(value: string) {
     <AppLayout title="Dashboard">
         <div class="flex flex-col gap-6 p-4 lg:p-6">
             <!-- Timeframe selector -->
-            <div class="flex items-center gap-1 self-start rounded-lg border p-1">
+            <div class="flex items-center gap-1 self-start border p-1">
                 <Button
                     v-for="tf in timeframes"
                     :key="tf.value"

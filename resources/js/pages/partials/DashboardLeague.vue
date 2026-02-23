@@ -53,7 +53,7 @@ const props = defineProps<{
             <div class="flex items-center gap-1.5">
                 <template v-for="(result, i) in league.results" :key="i">
                     <div
-                        class="size-7 rounded-full flex items-center justify-center text-xs font-bold"
+                        class="size-7 flex items-center justify-center text-xs font-bold"
                         :class="{
                             'bg-primary text-primary-foreground': result === 'W',
                             'bg-destructive text-destructive-foreground': result === 'L',

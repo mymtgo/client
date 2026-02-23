@@ -48,7 +48,7 @@ function handleMarkerClick(index: number, event: MouseEvent) {
 </script>
 
 <template>
-    <div class="rounded-lg border bg-card p-3">
+    <div class="border bg-card p-3">
         <!-- Timeline track -->
         <div
             ref="trackRef"
