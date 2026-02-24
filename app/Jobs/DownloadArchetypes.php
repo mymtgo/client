@@ -24,7 +24,7 @@ class DownloadArchetypes implements ShouldQueue
      */
     public function handle(): void
     {
-        $response = Http::withoutVerifying()->get('https://api.test/api/archetypes');
+        $response = Http::get(config('mymtgo_api.url').'/api/archetypes');
 
         foreach ($response->json() as $archetype) {
             $model = Archetype::where('uuid', $archetype['uuid'])->first() ?: new Archetype([
