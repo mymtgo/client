@@ -1,13 +1,27 @@
 <script setup lang="ts">
-import { Badge } from '@/components/ui/badge';
-
 defineProps<{
     won: boolean;
+    showText?: boolean;
 }>();
 </script>
 
 <template>
-    <Badge :variant="won ? 'success' : 'destructive'">
-        {{ won ? 'Win' : 'Loss' }}
-    </Badge>
+    <div
+        class="text-sm flex items-center gap-2 font-medium"
+        :class="{
+            'text-success': won,
+            'text-destructive': !won,
+        }"
+    >
+        <div
+            class="bevel block h-2 w-2 rounded-full"
+            :class="{
+                'bg-success': won,
+                'bg-destructive': !won,
+            }"
+        ></div>
+        <div :class="{
+            'sr-only': !showText
+        }">{{ won ? 'Win' : 'Loss' }}</div>
+    </div>
 </template>

@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Trophy } from 'lucide-vue-next';
 import PhantomBadge from '@/components/leagues/PhantomBadge.vue';
+import ResultBadge from '@/components/matches/ResultBadge.vue';
 
 type League = {
     name: string;
@@ -17,7 +18,7 @@ type League = {
     matchesRemaining: number;
 };
 
-const props = defineProps<{
+defineProps<{
     league: League | null;
 }>();
 </script>
@@ -52,16 +53,7 @@ const props = defineProps<{
             <!-- Right: pip indicators -->
             <div class="flex items-center gap-1.5">
                 <template v-for="(result, i) in league.results" :key="i">
-                    <div
-                        class="size-7 flex items-center justify-center text-xs font-bold"
-                        :class="{
-                            'bg-primary text-primary-foreground': result === 'W',
-                            'bg-destructive text-destructive-foreground': result === 'L',
-                            'bg-muted text-muted-foreground border border-border': result === null,
-                        }"
-                    >
-                        <span v-if="result !== null">{{ result }}</span>
-                    </div>
+                    <ResultBadge :won="result === 'W'" />
                 </template>
             </div>
         </CardContent>
