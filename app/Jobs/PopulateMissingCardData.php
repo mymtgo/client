@@ -6,6 +6,7 @@ use App\Models\Card;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Http;
+use Native\Desktop\Facades\Settings;
 
 class PopulateMissingCardData implements ShouldQueue
 {
@@ -28,7 +29,10 @@ class PopulateMissingCardData implements ShouldQueue
 
         $ids = $cards->pluck('mtgo_id');
 
-        $response = Http::post(config('mymtgo_api.url').'/api/cards', [
+        $response = Http::withHeaders([
+            'X-Device-Id' => Settings::get('device_id'),
+            'X-Api-Key' => Settings::get('api_key'),
+        ])->post(config('mymtgo_api.url').'/api/cards', [
             'ids' => $ids,
         ]);
 

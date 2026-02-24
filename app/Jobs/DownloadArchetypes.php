@@ -6,6 +6,7 @@ use App\Models\Archetype;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Http;
+use Native\Desktop\Facades\Settings;
 
 class DownloadArchetypes implements ShouldQueue
 {
@@ -24,7 +25,10 @@ class DownloadArchetypes implements ShouldQueue
      */
     public function handle(): void
     {
-        $response = Http::get(config('mymtgo_api.url').'/api/archetypes');
+        $response = Http::withHeaders([
+            'X-Device-Id' => Settings::get('device_id'),
+            'X-Api-Key' => Settings::get('api_key'),
+        ])->get(config('mymtgo_api.url').'/api/archetypes');
 
         foreach ($response->json() as $archetype) {
             $model = Archetype::where('uuid', $archetype['uuid'])->first() ?: new Archetype([

@@ -65,7 +65,7 @@ const opponentArchetype = computed(() => {
                         <!-- Left: result + opponent -->
                         <div class="flex items-start gap-4">
                             <div class="mt-0.5">
-                                <ResultBadge :won="isWin" />
+                                <ResultBadge :won="isWin" :showText="true" />
                                 <p class="text-muted-foreground mt-1 text-center text-xs tabular-nums">
                                     {{ match.gamesWon }}–{{ match.gamesLost }}
                                 </p>

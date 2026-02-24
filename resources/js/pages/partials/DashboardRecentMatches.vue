@@ -7,6 +7,7 @@ import { router } from '@inertiajs/vue3';
 import ShowController from '@/actions/App/Http/Controllers/Matches/ShowController';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
+import ResultBadge from '@/components/matches/ResultBadge.vue';
 
 dayjs.extend(relativeTime);
 
@@ -40,15 +41,11 @@ const props = defineProps<{
                 </TableHeader>
                 <TableBody>
                     <TableRow v-if="matches.data.length === 0">
-                        <TableCell colspan="8" class="py-8 text-center text-sm text-muted-foreground">
-                            No matches in this timeframe.
-                        </TableCell>
+                        <TableCell colspan="8" class="py-8 text-center text-sm text-muted-foreground"> No matches in this timeframe. </TableCell>
                     </TableRow>
                     <TableRow v-for="match in matches.data" :key="match.id">
                         <TableCell>
-                            <Badge :variant="match.result === 'won' ? 'default' : 'destructive'">
-                                {{ match.result === 'won' ? 'Win' : 'Loss' }}
-                            </Badge>
+                            <ResultBadge :won="match.result === 'won'" :showText="true" />
                         </TableCell>
                         <TableCell class="font-medium">{{ match.deck?.name ?? '—' }}</TableCell>
                         <TableCell>

@@ -25,10 +25,6 @@ class NativeAppServiceProvider implements ProvidesPhpIni
 
         Mtgo::runInitialSetup();
         Mtgo::retryUnsubmittedMatches();
-
-        // DEBUG: remove after testing
-
-        // bump13
     }
 
     /**
