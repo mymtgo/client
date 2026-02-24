@@ -73,18 +73,7 @@ const isTrophy = (r: LeagueRun) => runWins(r) === 5 && isComplete(r) && !r.phant
 
                 <!-- Pips -->
                 <div class="flex items-center gap-1">
-                    <div
-                        v-for="(result, i) in league.results"
-                        :key="i"
-                        class="flex size-5 shrink-0 items-center justify-center text-[10px] font-bold"
-                        :class="{
-                            'bg-success text-success-foreground': result === 'W',
-                            'bg-destructive text-destructive-foreground': result === 'L',
-                            'border border-border bg-muted text-muted-foreground': result === null,
-                        }"
-                    >
-                        <span v-if="result !== null">{{ result }}</span>
-                    </div>
+                    <ResultBadge :won="result === 'W'" v-for="(result, i) in league.results" :key="i" />
                 </div>
             </div>
         </div>
@@ -110,7 +99,7 @@ const isTrophy = (r: LeagueRun) => runWins(r) === 5 && isComplete(r) && !r.phant
                         @click="router.visit(MatchShowController({ id: match.id }).url)"
                     >
                         <TableCell>
-                            <ResultBadge :won="match.result === 'W'" />
+                            <ResultBadge :won="match.result === 'W'" :showText="true" />
                         </TableCell>
                         <TableCell class="font-medium">
                             <span v-if="match.opponentName">{{ match.opponentName }}</span>

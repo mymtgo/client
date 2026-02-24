@@ -67,7 +67,7 @@ const clearArchetype = (matchId: number) => {
                     <ContextMenuTrigger asChild>
                         <TableRow class="cursor-pointer" @click="router.visit(ShowController({ id: match.id }).url)">
                             <TableCell>
-                                <ResultBadge :won="match.gamesWon > match.gamesLost" v-if="match.gamesWon !== match.gamesLost" />
+                                <ResultBadge :won="match.gamesWon > match.gamesLost" v-if="match.gamesWon !== match.gamesLost" :showText="true" />
                             </TableCell>
                             <TableCell>
                                 <span v-if="match.leagueGame">League</span>

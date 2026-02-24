@@ -176,3 +176,36 @@
         @apply bg-background text-foreground font-sans;
     }
 }
+
+@layer {
+    .noise-bg {
+        background-image: url('../images/noise-bg.jpg');
+        background-size: 50%;
+        @apply bg-slate-900;
+        background-blend-mode: multiply;
+    }
+
+    .bevel {
+        @apply relative;
+        @apply after:shadow-[0_1px_0_0_rgba(0,0,0,0.1)];
+        @apply after:bg-transparent;
+        @apply after:content-[''];
+        @apply after:block;
+        @apply after:inset-0;
+        @apply after:absolute;
+        @apply after:bottom-0;
+        @apply after:rounded-[inherit];
+        @apply before:shadow-[0_-1px_0_0_rgba(255,255,255,0.1)];
+        @apply before:bg-transparent;
+        @apply before:content-[''];
+        @apply before:block;
+        @apply before:inset-0;
+        @apply before:absolute;
+        @apply before:bottom-0;
+        @apply before:rounded-[inherit];
+        @apply after:translate-y-[-1px];
+        @apply before:translate-y-[1px];
+        @apply active:translate-y-[1px];
+        @apply active:translate-x-[1px];
+    }
+}
