@@ -9,7 +9,6 @@ use App\Models\MtgoMatch;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Native\Desktop\Facades\Settings;
 
 class SubmitMatchToApi
 {
@@ -96,7 +95,7 @@ class SubmitMatchToApi
     {
         return Http::withHeaders([
             'X-Device-Id' => Settings::get('device_id'),
-            'X-Api-Key' => Settings::get('api_key'),
+            'X-Api-Key' => RegisterDevice::retrieveKey(),
         ]);
     }
 

@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Facades\Mtgo;
+use Illuminate\Support\Facades\Log;
 use Native\Desktop\Contracts\ProvidesPhpIni;
 use Native\Desktop\Facades\Window;
 
@@ -14,6 +15,11 @@ class NativeAppServiceProvider implements ProvidesPhpIni
      */
     public function boot(): void
     {
+        if (! str_starts_with(config('mymtgo_api.url'), 'https://')) {
+            Log::critical('MYMTGO_API_URL must use HTTPS — aborting');
+            abort(500, 'API URL must use HTTPS.');
+        }
+
         Window::open()->width(1600)
             ->height(900)
             ->minHeight(800)
@@ -33,6 +39,11 @@ class NativeAppServiceProvider implements ProvidesPhpIni
     public function phpIni(): array
     {
         return [
+            'expose_php' => '0',
+            'display_errors' => '0',
+            'session.use_strict_mode' => '1',
+            'session.cookie_httponly' => '1',
+            'session.cookie_secure' => '1',
         ];
     }
 }
