@@ -3,6 +3,7 @@
 namespace App\Managers;
 
 use App\Actions\Logs\GetLogFilePaths;
+use App\Actions\RegisterDevice;
 use App\Actions\Settings\ValidatePath;
 use App\Jobs\DownloadArchetypes;
 use App\Jobs\PopulateMissingCardData;
@@ -102,6 +103,10 @@ class MtgoManager
 
         if (! Settings::get('log_data_path')) {
             Settings::set('log_data_path', $this->defaultDataPath());
+        }
+
+        if (! Settings::get('api_key')) {
+            RegisterDevice::run();
         }
 
         if (! Archetype::count()) {

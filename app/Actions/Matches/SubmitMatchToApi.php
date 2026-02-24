@@ -2,9 +2,11 @@
 
 namespace App\Actions\Matches;
 
+use App\Actions\RegisterDevice;
 use App\Models\Card;
 use App\Models\DeckVersion;
 use App\Models\MtgoMatch;
+use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Native\Desktop\Facades\Settings;
@@ -64,8 +66,14 @@ class SubmitMatchToApi
         ];
 
         try {
-            $response = Http::withHeader('X-App-Secret', config('mymtgo_api.secret'))
+            $response = self::authenticatedRequest()
                 ->post(config('mymtgo_api.url').'/api/matches/report', $payload);
+
+            if ($response->status() === 401) {
+                RegisterDevice::run();
+                $response = self::authenticatedRequest()
+                    ->post(config('mymtgo_api.url').'/api/matches/report', $payload);
+            }
 
             if ($response->successful()) {
                 $match->update(['submitted_at' => now()]);
@@ -82,6 +90,14 @@ class SubmitMatchToApi
                 'error' => $e->getMessage(),
             ]);
         }
+    }
+
+    private static function authenticatedRequest(): PendingRequest
+    {
+        return Http::withHeaders([
+            'X-Device-Id' => Settings::get('device_id'),
+            'X-Api-Key' => Settings::get('api_key'),
+        ]);
     }
 
     private static function buildDeckPayload(?DeckVersion $deckVersion): array

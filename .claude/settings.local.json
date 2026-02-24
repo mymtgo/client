@@ -32,7 +32,9 @@
       "Bash(php artisan:*)",
       "mcp__laravel-boost__database-connections",
       "mcp__laravel-boost__last-error",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "mcp__laravel-boost__search-docs",
+      "mcp__laravel-boost__get-config"
     ]
   },
   "enabledMcpjsonServers": [
