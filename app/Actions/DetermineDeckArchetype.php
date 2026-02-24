@@ -6,6 +6,7 @@ use App\Models\Archetype;
 use App\Models\ArchetypeMatchAttempt;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
+use Native\Desktop\Facades\Settings;
 
 class DetermineDeckArchetype
 {
@@ -16,7 +17,10 @@ class DetermineDeckArchetype
             'cards' => $cards->values(),
         ];
 
-        $response = Http::post(config('mymtgo_api.url').'/api/archetypes/estimate', $payload);
+        $response = Http::withHeaders([
+            'X-Device-Id' => Settings::get('device_id'),
+            'X-Api-Key' => Settings::get('api_key'),
+        ])->post(config('mymtgo_api.url').'/api/archetypes/estimate', $payload);
 
         $archetypes = $response->json();
 
@@ -46,7 +50,7 @@ class DetermineDeckArchetype
                 'confidence' => $result['confidence'] ?? null,
             ]);
         } catch (\Throwable $e) {
-            \Log::warning('Failed to log archetype attempt: ' . $e->getMessage());
+            \Log::warning('Failed to log archetype attempt: '.$e->getMessage());
         }
 
         return $result;
