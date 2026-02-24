@@ -105,7 +105,10 @@ class MtgoManager
             Settings::set('log_data_path', $this->defaultDataPath());
         }
 
-        if (! Settings::get('api_key')) {
+        $expiresAt = Settings::get('api_key_expires_at');
+        $expired = $expiresAt && now()->isAfter($expiresAt);
+
+        if (! RegisterDevice::retrieveKey() || $expired) {
             RegisterDevice::run();
         }
 

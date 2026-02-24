@@ -2,6 +2,7 @@
 
 namespace App\Actions;
 
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -24,7 +25,8 @@ class RegisterDevice
             ]);
 
             if ($response->successful()) {
-                Settings::set('api_key', $response->json('api_key'));
+                self::storeKey($response->json('api_key'));
+                Settings::set('api_key_expires_at', now()->addHours(47)->toIso8601String());
 
                 return true;
             }
@@ -40,5 +42,19 @@ class RegisterDevice
         }
 
         return false;
+    }
+
+    public static function retrieveKey(): ?string
+    {
+        try {
+            return Crypt::decrypt(Settings::get('api_key'));
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    private static function storeKey(string $plain): void
+    {
+        Settings::set('api_key', Crypt::encrypt($plain));
     }
 }

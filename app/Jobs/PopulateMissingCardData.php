@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Actions\RegisterDevice;
 use App\Models\Card;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -31,7 +32,7 @@ class PopulateMissingCardData implements ShouldQueue
 
         $response = Http::withHeaders([
             'X-Device-Id' => Settings::get('device_id'),
-            'X-Api-Key' => Settings::get('api_key'),
+            'X-Api-Key' => RegisterDevice::retrieveKey(),
         ])->post(config('mymtgo_api.url').'/api/cards', [
             'ids' => $ids,
         ]);
