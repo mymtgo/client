@@ -65,7 +65,6 @@ class SubmitMatchToApi
 
         try {
             $response = Http::withHeader('X-App-Secret', config('mymtgo_api.secret'))
-                ->withoutVerifying()
                 ->post(config('mymtgo_api.url').'/api/matches/report', $payload);
 
             if ($response->successful()) {

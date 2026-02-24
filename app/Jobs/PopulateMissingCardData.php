@@ -28,7 +28,7 @@ class PopulateMissingCardData implements ShouldQueue
 
         $ids = $cards->pluck('mtgo_id');
 
-        $response = Http::withoutVerifying()->post('https://api.test/api/cards', [
+        $response = Http::post(config('mymtgo_api.url').'/api/cards', [
             'ids' => $ids,
         ]);
 
