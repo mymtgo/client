@@ -16,7 +16,7 @@ class DetermineDeckArchetype
             'cards' => $cards->values(),
         ];
 
-        $response = Http::withoutVerifying()->post('https://api.test/api/archetypes/estimate', $payload);
+        $response = Http::post(config('mymtgo_api.url').'/api/archetypes/estimate', $payload);
 
         $archetypes = $response->json();
 
