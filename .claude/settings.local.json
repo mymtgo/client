@@ -31,7 +31,8 @@
       "Bash(LC_ALL=C sed:*)",
       "Bash(php artisan:*)",
       "mcp__laravel-boost__database-connections",
-      "mcp__laravel-boost__last-error"
+      "mcp__laravel-boost__last-error",
+      "Bash(find:*)"
     ]
   },
   "enabledMcpjsonServers": [
