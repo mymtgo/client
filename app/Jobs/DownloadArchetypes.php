@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Actions\RegisterDevice;
 use App\Models\Archetype;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -27,7 +28,7 @@ class DownloadArchetypes implements ShouldQueue
     {
         $response = Http::withHeaders([
             'X-Device-Id' => Settings::get('device_id'),
-            'X-Api-Key' => Settings::get('api_key'),
+            'X-Api-Key' => RegisterDevice::retrieveKey(),
         ])->get(config('mymtgo_api.url').'/api/archetypes');
 
         foreach ($response->json() as $archetype) {
