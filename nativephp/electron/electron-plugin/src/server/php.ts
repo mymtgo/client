@@ -38,15 +38,8 @@ function shouldMigrateDatabase(store) {
 }
 
 function shouldOptimize(store) {
-    /*
-     * For some weird reason,
-     * the cached config is not picked up on subsequent launches,
-     * so we'll just rebuilt it every time for now
-     */
-
-    return process.env.NODE_ENV !== 'development';
-    // return runningSecureBuild();
-    // return runningSecureBuild() && store.get('optimized_version') !== app.getVersion();
+    return process.env.NODE_ENV !== 'development'
+        && store.get('optimized_version') !== app.getVersion();
 }
 
 async function getPhpPort() {
