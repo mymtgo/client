@@ -34,7 +34,9 @@
       "mcp__laravel-boost__last-error",
       "Bash(find:*)",
       "mcp__laravel-boost__search-docs",
-      "mcp__laravel-boost__get-config"
+      "mcp__laravel-boost__get-config",
+      "mcp__laravel-boost__list-available-env-vars",
+      "Bash(sort:*)"
     ]
   },
   "enabledMcpjsonServers": [

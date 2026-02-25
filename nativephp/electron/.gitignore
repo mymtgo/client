@@ -1,6 +1,0 @@
-.idea
-node_modules
-out
-*.log
-!build
-dist
