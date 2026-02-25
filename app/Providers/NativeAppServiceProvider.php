@@ -15,11 +15,6 @@ class NativeAppServiceProvider implements ProvidesPhpIni
      */
     public function boot(): void
     {
-        if (! str_starts_with(config('mymtgo_api.url'), 'https://')) {
-            Log::critical('MYMTGO_API_URL must use HTTPS — aborting');
-            abort(500, 'API URL must use HTTPS.');
-        }
-
         Window::open()->width(1600)
             ->height(900)
             ->minHeight(800)
@@ -27,10 +22,11 @@ class NativeAppServiceProvider implements ProvidesPhpIni
             ->movable()
             ->title('mymtgo')
             ->hideMenu()
+            ->afterOpen(function () {
+                Mtgo::runInitialSetup();
+                Mtgo::retryUnsubmittedMatches();
+            })
             ->trafficLightsHidden();
-
-        Mtgo::runInitialSetup();
-        Mtgo::retryUnsubmittedMatches();
     }
 
     /**
