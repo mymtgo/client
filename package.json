@@ -1,5 +1,10 @@
 {
     "$schema": "https://www.schemastore.org/package.json",
+    "version": "0.1.0",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/mymtgo/client.git"
+    },
     "private": true,
     "type": "module",
     "scripts": {
@@ -9,7 +14,7 @@
     "devDependencies": {
         "@laravel/vite-plugin-wayfinder": "^0.1.7",
         "@tailwindcss/vite": "^4.1.18",
-        "axios": "^1.11.0",
+        "axios": "1.13.5",
         "concurrently": "^9.2.1",
         "laravel-vite-plugin": "^2.0.1",
         "tailwindcss": "^4.1.18",
