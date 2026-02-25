@@ -113,14 +113,14 @@ class MtgoManager
         }
 
         if (! Archetype::count()) {
-            $this->downloadArchetypes(sync: true);
+            $this->downloadArchetypes(sync: false);
         }
 
         if (! Deck::count()) {
-            $this->syncDecks(sync: true);
+            $this->syncDecks(sync: false);
         }
 
-        $this->ingestGameLogs(sync: true);
+        $this->ingestGameLogs(sync: false);
     }
 
     public function syncDecks(bool $sync = false): void
