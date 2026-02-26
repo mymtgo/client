@@ -3,7 +3,6 @@
 namespace App\Providers;
 
 use App\Facades\Mtgo;
-use Illuminate\Support\Facades\Log;
 use Native\Desktop\Contracts\ProvidesPhpIni;
 use Native\Desktop\Facades\Window;
 
@@ -35,11 +34,11 @@ class NativeAppServiceProvider implements ProvidesPhpIni
     public function phpIni(): array
     {
         return [
-            'expose_php' => '0',
-            'display_errors' => '0',
-            'session.use_strict_mode' => '1',
-            'session.cookie_httponly' => '1',
-            'session.cookie_secure' => '1',
+            //            'expose_php' => '0',
+            //            'display_errors' => '0',
+            //            'session.use_strict_mode' => '1',
+            //            'session.cookie_httponly' => '1',
+            //            'session.cookie_secure' => '1',
         ];
     }
 }
