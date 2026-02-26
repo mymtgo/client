@@ -123,8 +123,21 @@ class MtgoManager
         $this->ingestGameLogs(sync: false);
     }
 
+    public function canRun(): bool
+    {
+        try {
+            return Settings::get('watcher_active', true) && $this->pathsAreValid();
+        } catch (\Throwable) {
+            return false;
+        }
+    }
+
     public function syncDecks(bool $sync = false): void
     {
+        if (! $this->canRun()) {
+            return;
+        }
+
         $sync ? SyncDecks::dispatchSync() : SyncDecks::dispatch();
     }
 
@@ -135,6 +148,10 @@ class MtgoManager
 
     public function ingestLogs(): void
     {
+        if (! $this->canRun()) {
+            return;
+        }
+
         \App\Actions\Logs\IngestLog::run(
             \App\Actions\Logs\FindMtgoLogPath::run()
         );
@@ -142,11 +159,19 @@ class MtgoManager
 
     public function ingestGameLogs(bool $sync = false): void
     {
+        if (! $this->canRun()) {
+            return;
+        }
+
         $sync ? StoreGameLogs::dispatchSync() : StoreGameLogs::dispatch();
     }
 
     public function processLogEvents(bool $force = false, bool $sync = false): void
     {
+        if (! $this->canRun()) {
+            return;
+        }
+
         if (Deck::count() || $force) {
             $sync ? ProcessLogEvents::dispatchSync() : ProcessLogEvents::dispatch();
         }
@@ -172,19 +197,8 @@ class MtgoManager
             fn () => $this->retryUnsubmittedMatches()
         )->everyMinute()->name('submit_matches')->withoutOverlapping(60);
 
-        try {
-            $pause = ! Settings::get('watcher_active', true) || ! $this->pathsAreValid();
-        } catch (\Throwable) {
-            // NativePHP Settings API not yet available — default to paused.
-            return;
-        }
-
-        if ($pause) {
-            return;
-        }
-
         $schedule->call(
-            fn () => \App\Jobs\SyncDecks::dispatch()
+            fn () => $this->syncDecks()
         )->everyMinute()->name('sync_decks')->withoutOverlapping(60);
 
         $schedule->call(
