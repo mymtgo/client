@@ -1,0 +1,14 @@
+--- a/vendor/nativephp/desktop/resources/electron/electron-plugin/src/server/php.ts
++++ b/vendor/nativephp/desktop/resources/electron/electron-plugin/src/server/php.ts
+@@ -171,7 +171,9 @@ function callPhpSync(args, options, phpIniSettings = {}) {
+         {
+             cwd: options.cwd,
+             env: {
+                 ...process.env,
+                 ...options.env
+-            }
++            },
++            stdio: 'pipe',
++            windowsHide: true,
+         }
+     );

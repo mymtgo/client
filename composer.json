@@ -64,9 +64,13 @@
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
             "@php artisan package:discover --ansi"
         ],
+        "post-install-cmd": [
+            "@php scripts/apply-patches.php"
+        ],
         "post-update-cmd": [
             "@php artisan vendor:publish --tag=laravel-assets --ansi --force",
-            "@php artisan native:install --force --quiet --publish"
+            "@php artisan native:install --force --quiet --publish",
+            "@php scripts/apply-patches.php"
         ],
         "post-root-package-install": [
             "y"
