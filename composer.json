@@ -8,6 +8,12 @@
         "framework"
     ],
     "license": "MIT",
+    "repositories": [
+        {
+            "type": "git",
+            "url": "https://github.com/alecritson/desktop.git"
+        }
+    ],
     "require": {
         "php": "^8.4",
         "halaxa/json-machine": "^1.2",
@@ -15,7 +21,7 @@
         "laravel/framework": "^12.0",
         "laravel/tinker": "^2.10.1",
         "laravel/wayfinder": "^0.1.12",
-        "nativephp/desktop": "^2.0",
+        "nativephp/desktop": "dev-main",
         "spatie/file-system-watcher": "^1.2",
         "spatie/laravel-data": "^4.18",
         "spatie/laravel-typescript-transformer": "^2.5"
@@ -102,6 +108,6 @@
             "php-http/discovery": true
         }
     },
-    "minimum-stability": "stable",
+    "minimum-stability": "dev",
     "prefer-stable": true
 }
