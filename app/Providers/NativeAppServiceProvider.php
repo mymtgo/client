@@ -21,11 +21,10 @@ class NativeAppServiceProvider implements ProvidesPhpIni
             ->movable()
             ->title('mymtgo')
             ->hideMenu()
-            ->afterOpen(function () {
-                Mtgo::runInitialSetup();
-                Mtgo::retryUnsubmittedMatches();
-            })
             ->trafficLightsHidden();
+
+        Mtgo::runInitialSetup();
+        Mtgo::retryUnsubmittedMatches();
     }
 
     /**
