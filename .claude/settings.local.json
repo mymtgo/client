@@ -37,7 +37,10 @@
       "mcp__laravel-boost__get-config",
       "mcp__laravel-boost__list-available-env-vars",
       "Bash(sort:*)",
-      "Bash(php:*)"
+      "Bash(php:*)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(curl:*)"
     ]
   },
   "enabledMcpjsonServers": [
