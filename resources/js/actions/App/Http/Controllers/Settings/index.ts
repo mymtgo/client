@@ -8,17 +8,18 @@ import RunPopulateCardsController from './RunPopulateCardsController'
 import UpdateAnonymousStatsController from './UpdateAnonymousStatsController'
 import UpdateShareStatsController from './UpdateShareStatsController'
 import RunSubmitMatchesController from './RunSubmitMatchesController'
+
 const Settings = {
     IndexController: Object.assign(IndexController, IndexController),
-UpdateLogPathController: Object.assign(UpdateLogPathController, UpdateLogPathController),
-UpdateDataPathController: Object.assign(UpdateDataPathController, UpdateDataPathController),
-UpdateWatcherController: Object.assign(UpdateWatcherController, UpdateWatcherController),
-RunIngestController: Object.assign(RunIngestController, RunIngestController),
-RunSyncController: Object.assign(RunSyncController, RunSyncController),
-RunPopulateCardsController: Object.assign(RunPopulateCardsController, RunPopulateCardsController),
-UpdateAnonymousStatsController: Object.assign(UpdateAnonymousStatsController, UpdateAnonymousStatsController),
-UpdateShareStatsController: Object.assign(UpdateShareStatsController, UpdateShareStatsController),
-RunSubmitMatchesController: Object.assign(RunSubmitMatchesController, RunSubmitMatchesController),
+    UpdateLogPathController: Object.assign(UpdateLogPathController, UpdateLogPathController),
+    UpdateDataPathController: Object.assign(UpdateDataPathController, UpdateDataPathController),
+    UpdateWatcherController: Object.assign(UpdateWatcherController, UpdateWatcherController),
+    RunIngestController: Object.assign(RunIngestController, RunIngestController),
+    RunSyncController: Object.assign(RunSyncController, RunSyncController),
+    RunPopulateCardsController: Object.assign(RunPopulateCardsController, RunPopulateCardsController),
+    UpdateAnonymousStatsController: Object.assign(UpdateAnonymousStatsController, UpdateAnonymousStatsController),
+    UpdateShareStatsController: Object.assign(UpdateShareStatsController, UpdateShareStatsController),
+    RunSubmitMatchesController: Object.assign(RunSubmitMatchesController, RunSubmitMatchesController),
 }
 
 export default Settings
