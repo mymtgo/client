@@ -152,6 +152,7 @@ class MtgoManager
             return;
         }
 
+
         \App\Actions\Logs\IngestLog::run(
             \App\Actions\Logs\FindMtgoLogPath::run()
         );
