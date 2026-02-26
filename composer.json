@@ -8,12 +8,6 @@
         "framework"
     ],
     "license": "MIT",
-    "repositories": [
-        {
-            "type": "git",
-            "url": "https://github.com/alecritson/desktop.git"
-        }
-    ],
     "require": {
         "php": "^8.4",
         "halaxa/json-machine": "^1.2",
@@ -23,7 +17,7 @@
         "laravel/wayfinder": "^0.1.12",
         "spatie/laravel-data": "^4.18",
         "spatie/laravel-typescript-transformer": "^2.5",
-        "nativephp/desktop": "dev-main"
+        "nativephp/desktop": "^2.0.0"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",
@@ -73,11 +67,9 @@
         ],
         "post-update-cmd": [
             "@php artisan vendor:publish --tag=laravel-assets --ansi --force",
-            "@php artisan native:install --force --quiet --publish",
-            "@php scripts/apply-patches.php"
+            "@php artisan native:install --force --quiet --publish"
         ],
         "post-root-package-install": [
-            "y"
         ],
         "post-create-project-cmd": [
             "@php artisan key:generate --ansi",
@@ -106,6 +98,6 @@
             "php-http/discovery": true
         }
     },
-    "minimum-stability": "dev",
+    "minimum-stability": "stable",
     "prefer-stable": true
 }
