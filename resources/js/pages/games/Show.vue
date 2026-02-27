@@ -16,7 +16,9 @@ defineProps<{
             { label: 'Game Replay' },
         ]"
     >
-        <h1 class="text-2xl font-bold tracking-tight">Game Replay</h1>
-        <GameReplay :timeline="timeline" />
+        <div class="flex flex-col gap-4 p-3 lg:p-4">
+            <h1 class="text-2xl font-bold tracking-tight">Game Replay</h1>
+            <GameReplay :timeline="timeline" />
+        </div>
     </AppLayout>
 </template>

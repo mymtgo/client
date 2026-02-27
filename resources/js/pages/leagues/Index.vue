@@ -78,7 +78,7 @@ const kpis = computed(() => {
 
 <template>
     <AppLayout title="Leagues">
-        <div class="flex flex-col gap-6 p-4 lg:p-6">
+        <div class="flex flex-col gap-4 p-3 lg:p-4">
             <!-- KPI bar (real leagues only) -->
             <Card>
                 <CardContent class="grid grid-cols-4 divide-x divide-border p-0">
@@ -139,7 +139,11 @@ const kpis = computed(() => {
             </div>
 
             <!-- Empty state -->
-            <p v-if="filteredRuns.length === 0" class="py-12 text-center text-sm text-muted-foreground">No league runs recorded yet.</p>
+            <div v-if="filteredRuns.length === 0" class="flex flex-col items-center gap-2 py-16 text-center">
+                <Trophy class="size-10 text-muted-foreground/40" />
+                <p class="font-medium">No league runs yet</p>
+                <p class="text-sm text-muted-foreground">League runs will appear here once matches are ingested from MTGO.</p>
+            </div>
 
             <!-- League run cards -->
             <div v-if="filteredRuns.length" class="flex flex-col gap-4">
