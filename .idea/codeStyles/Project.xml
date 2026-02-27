@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectCodeStyleConfiguration">
+    <code_scheme name="Project" version="173">
+      <option name="RIGHT_MARGIN" value="150" />
+      <option name="WRAP_WHEN_TYPING_REACHES_RIGHT_MARGIN" value="false" />
+      <codeStyleSettings language="JavaScript">
+        <option name="INDENT_SIZE" value="4" />
+        <option name="TAB_SIZE" value="4" />
+        <option name="USE_TAB_CHARACTER" value="false" />
+      </codeStyleSettings>
+      <codeStyleSettings language="TypeScript">
+        <option name="INDENT_SIZE" value="4" />
+        <option name="TAB_SIZE" value="4" />
+        <option name="USE_TAB_CHARACTER" value="false" />
+      </codeStyleSettings>
+      <codeStyleSettings language="Vue">
+        <option name="INDENT_SIZE" value="4" />
+        <option name="TAB_SIZE" value="4" />
+        <option name="USE_TAB_CHARACTER" value="false" />
+      </codeStyleSettings>
+      <codeStyleSettings language="PHP">
+        <option name="INDENT_SIZE" value="4" />
+        <option name="TAB_SIZE" value="4" />
+        <option name="USE_TAB_CHARACTER" value="false" />
+        <option name="CONTINUATION_INDENT_SIZE" value="4" />
+      </codeStyleSettings>
+    </code_scheme>
+  </component>
+</project>
