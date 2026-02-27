@@ -2,6 +2,7 @@
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import ManaSymbols from '@/components/ManaSymbols.vue';
+import WinRateBar from '@/components/WinRateBar.vue';
 
 defineProps<{
     matchupSpread: any[]
@@ -36,26 +37,12 @@ defineProps<{
                                 <ManaSymbols :symbols="matchup.color_identity" />
                             </TableCell>
                             <TableCell> {{ matchup.match_record }}</TableCell>
-                            <TableCell>
-                                <span
-                                    :class="{
-                                        'text-destructive': !matchup.match_winrate || matchup.match_winrate < 50,
-                                        'text-muted-foreground': matchup.match_winrate && matchup.match_winrate === 50,
-                                    }"
-                                >
-                                    {{ matchup.match_winrate }}%
-                                </span>
+                            <TableCell class="min-w-32">
+                                <WinRateBar :winrate="matchup.match_winrate ?? 0" size="sm" />
                             </TableCell>
                             <TableCell> {{ matchup.game_record }}</TableCell>
-                            <TableCell>
-                                <span
-                                    :class="{
-                                        'text-destructive': !matchup.game_winrate || matchup.game_winrate < 50,
-                                        'text-muted-foreground': matchup.game_winrate && matchup.game_winrate === 50,
-                                    }"
-                                >
-                                    {{ matchup.game_winrate }}%
-                                </span>
+                            <TableCell class="min-w-32">
+                                <WinRateBar :winrate="matchup.game_winrate ?? 0" size="sm" />
                             </TableCell>
                         </TableRow>
                     </TableBody>

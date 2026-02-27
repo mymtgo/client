@@ -7,6 +7,7 @@ import RunSyncController from './RunSyncController'
 import RunPopulateCardsController from './RunPopulateCardsController'
 import UpdateAnonymousStatsController from './UpdateAnonymousStatsController'
 import UpdateShareStatsController from './UpdateShareStatsController'
+import UpdateHidePhantomController from './UpdateHidePhantomController'
 import RunSubmitMatchesController from './RunSubmitMatchesController'
 
 const Settings = {
@@ -19,6 +20,7 @@ const Settings = {
     RunPopulateCardsController: Object.assign(RunPopulateCardsController, RunPopulateCardsController),
     UpdateAnonymousStatsController: Object.assign(UpdateAnonymousStatsController, UpdateAnonymousStatsController),
     UpdateShareStatsController: Object.assign(UpdateShareStatsController, UpdateShareStatsController),
+    UpdateHidePhantomController: Object.assign(UpdateHidePhantomController, UpdateHidePhantomController),
     RunSubmitMatchesController: Object.assign(RunSubmitMatchesController, RunSubmitMatchesController),
 }
 

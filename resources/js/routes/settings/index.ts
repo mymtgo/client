@@ -579,6 +579,72 @@ shareStatsForm.patch = (options?: RouteQueryOptions): RouteFormDefinition<'post'
 shareStats.form = shareStatsForm
 
 /**
+* @see \App\Http\Controllers\Settings\UpdateHidePhantomController::__invoke
+* @see app/Http/Controllers/Settings/UpdateHidePhantomController.php:12
+* @route '/settings/hide-phantom'
+*/
+export const hidePhantom = (options?: RouteQueryOptions): RouteDefinition<'patch'> => ({
+    url: hidePhantom.url(options),
+    method: 'patch',
+})
+
+hidePhantom.definition = {
+    methods: ["patch"],
+    url: '/settings/hide-phantom',
+} satisfies RouteDefinition<["patch"]>
+
+/**
+* @see \App\Http\Controllers\Settings\UpdateHidePhantomController::__invoke
+* @see app/Http/Controllers/Settings/UpdateHidePhantomController.php:12
+* @route '/settings/hide-phantom'
+*/
+hidePhantom.url = (options?: RouteQueryOptions) => {
+    return hidePhantom.definition.url + queryParams(options)
+}
+
+/**
+* @see \App\Http\Controllers\Settings\UpdateHidePhantomController::__invoke
+* @see app/Http/Controllers/Settings/UpdateHidePhantomController.php:12
+* @route '/settings/hide-phantom'
+*/
+hidePhantom.patch = (options?: RouteQueryOptions): RouteDefinition<'patch'> => ({
+    url: hidePhantom.url(options),
+    method: 'patch',
+})
+
+/**
+* @see \App\Http\Controllers\Settings\UpdateHidePhantomController::__invoke
+* @see app/Http/Controllers/Settings/UpdateHidePhantomController.php:12
+* @route '/settings/hide-phantom'
+*/
+const hidePhantomForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+    action: hidePhantom.url({
+        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+            _method: 'PATCH',
+            ...(options?.query ?? options?.mergeQuery ?? {}),
+        }
+    }),
+    method: 'post',
+})
+
+/**
+* @see \App\Http\Controllers\Settings\UpdateHidePhantomController::__invoke
+* @see app/Http/Controllers/Settings/UpdateHidePhantomController.php:12
+* @route '/settings/hide-phantom'
+*/
+hidePhantomForm.patch = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+    action: hidePhantom.url({
+        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+            _method: 'PATCH',
+            ...(options?.query ?? options?.mergeQuery ?? {}),
+        }
+    }),
+    method: 'post',
+})
+
+hidePhantom.form = hidePhantomForm
+
+/**
 * @see \App\Http\Controllers\Settings\RunSubmitMatchesController::__invoke
 * @see app/Http/Controllers/Settings/RunSubmitMatchesController.php:13
 * @route '/settings/submit-matches'
@@ -644,6 +710,7 @@ const settings = {
     populateCards: Object.assign(populateCards, populateCards),
     anonymousStats: Object.assign(anonymousStats, anonymousStats),
     shareStats: Object.assign(shareStats, shareStats),
+    hidePhantom: Object.assign(hidePhantom, hidePhantom),
     submitMatches: Object.assign(submitMatches, submitMatches),
 }
 

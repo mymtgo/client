@@ -14,6 +14,7 @@ use App\Models\MtgoMatch;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Native\Desktop\Facades\Notification;
+use Native\Desktop\Facades\Settings;
 
 class BuildMatch
 {
@@ -125,7 +126,8 @@ class BuildMatch
         DetermineMatchDeck::run($match);
 
         // Assign phantom league now that we know which deck was used.
-        if (! $league) {
+        // Skip if the user has opted out of phantom league creation.
+        if (! $league && ! Settings::get('hide_phantom_leagues')) {
             $match->refresh();
 
             $deckId = $match->deck_version_id

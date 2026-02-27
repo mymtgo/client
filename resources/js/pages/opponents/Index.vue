@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import ManaSymbols from '@/components/ManaSymbols.vue';
+import WinRateBar from '@/components/WinRateBar.vue';
 import { Swords } from 'lucide-vue-next';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
@@ -182,11 +183,8 @@ const filtered = computed(() => {
                             <TableCell class="tabular-nums">
                                 {{ opp.matchesWon }}W – {{ opp.matchesLost }}L
                             </TableCell>
-                            <TableCell
-                                class="font-semibold tabular-nums"
-                                :class="winrate(opp) < 50 ? 'text-destructive' : ''"
-                            >
-                                {{ winrate(opp) }}%
+                            <TableCell class="min-w-32">
+                                <WinRateBar :winrate="winrate(opp)" size="sm" />
                             </TableCell>
                             <TableCell class="text-muted-foreground whitespace-nowrap text-sm">
                                 {{ dayjs(opp.lastPlayedAt).fromNow() }}

@@ -1,6 +1,6 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition, applyUrlDefaults } from './../../../wayfinder'
 /**
-* @see [serialized-closure]:2
+* @see vendor/laravel/framework/src/Illuminate/Filesystem/FilesystemServiceProvider.php:106
 * @route '/storage/{path}'
 */
 export const upload = (args: { path: string | number } | [path: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'put'> => ({
@@ -14,7 +14,7 @@ upload.definition = {
 } satisfies RouteDefinition<["put"]>
 
 /**
-* @see [serialized-closure]:2
+* @see vendor/laravel/framework/src/Illuminate/Filesystem/FilesystemServiceProvider.php:106
 * @route '/storage/{path}'
 */
 upload.url = (args: { path: string | number } | [path: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -40,7 +40,7 @@ upload.url = (args: { path: string | number } | [path: string | number ] | strin
 }
 
 /**
-* @see [serialized-closure]:2
+* @see vendor/laravel/framework/src/Illuminate/Filesystem/FilesystemServiceProvider.php:106
 * @route '/storage/{path}'
 */
 upload.put = (args: { path: string | number } | [path: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'put'> => ({
@@ -49,7 +49,7 @@ upload.put = (args: { path: string | number } | [path: string | number ] | strin
 })
 
 /**
-* @see [serialized-closure]:2
+* @see vendor/laravel/framework/src/Illuminate/Filesystem/FilesystemServiceProvider.php:106
 * @route '/storage/{path}'
 */
 const uploadForm = (args: { path: string | number } | [path: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -63,7 +63,7 @@ const uploadForm = (args: { path: string | number } | [path: string | number ] |
 })
 
 /**
-* @see [serialized-closure]:2
+* @see vendor/laravel/framework/src/Illuminate/Filesystem/FilesystemServiceProvider.php:106
 * @route '/storage/{path}'
 */
 uploadForm.put = (args: { path: string | number } | [path: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({

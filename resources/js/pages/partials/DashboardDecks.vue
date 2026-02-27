@@ -2,6 +2,7 @@
 import { computed } from 'vue';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import WinRateBar from '@/components/WinRateBar.vue';
 import { TrendingUp, TrendingDown } from 'lucide-vue-next';
 
 const props = defineProps<{
@@ -34,7 +35,9 @@ const worstDeck = computed(() => sorted.value[sorted.value.length - 1] ?? null);
                         <span class="text-xs text-muted-foreground">{{ bestDeck.matchesCount }} matches</span>
                     </div>
                 </div>
-                <span class="text-4xl font-bold tabular-nums">{{ bestDeck.winrate }}%</span>
+                <div class="w-32 shrink-0">
+                    <WinRateBar :winrate="bestDeck.winrate" />
+                </div>
             </CardContent>
         </Card>
 
@@ -54,7 +57,9 @@ const worstDeck = computed(() => sorted.value[sorted.value.length - 1] ?? null);
                         <span class="text-xs text-muted-foreground">{{ worstDeck.matchesCount }} matches</span>
                     </div>
                 </div>
-                <span class="text-4xl font-bold tabular-nums text-destructive">{{ worstDeck.winrate }}%</span>
+                <div class="w-32 shrink-0">
+                    <WinRateBar :winrate="worstDeck.winrate" />
+                </div>
             </CardContent>
         </Card>
     </div>

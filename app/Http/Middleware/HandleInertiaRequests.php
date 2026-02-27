@@ -3,8 +3,11 @@
 namespace App\Http\Middleware;
 
 use App\Data\Front\DeckData;
+use App\Facades\Mtgo;
 use App\Models\Deck;
+use App\Models\MtgoMatch;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
@@ -47,6 +50,14 @@ class HandleInertiaRequests extends Middleware
             ...parent::share($request),
             'decks' => $decks,
             'currentDeck' => $request->route()->parameter('deck'),
+            'status' => fn () => [
+                'watcherRunning' => Mtgo::canRun(),
+                'lastIngestAt' => Cache::get('settings.last_ingest_at'),
+                'pendingMatchCount' => MtgoMatch::whereNull('submitted_at')
+                    ->whereNotNull('deck_version_id')
+                    ->whereHas('archetypes')
+                    ->count(),
+            ],
         ];
     }
 }
