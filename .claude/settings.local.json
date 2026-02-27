@@ -48,7 +48,8 @@
       "WebFetch(domain:api.github.com)",
       "WebFetch(domain:radix.shadcn-vue.com)",
       "Bash(npx vue-tsc:*)",
-      "Bash(xargs basename:*)"
+      "Bash(xargs basename:*)",
+      "Bash(git stash:*)"
     ]
   },
   "enabledMcpjsonServers": [
