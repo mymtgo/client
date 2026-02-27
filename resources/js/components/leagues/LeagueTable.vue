@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import DeckShowController from '@/actions/App/Http/Controllers/Decks/ShowController';
 import MatchShowController from '@/actions/App/Http/Controllers/Matches/ShowController';
+import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { router } from '@inertiajs/vue3';
 import dayjs from 'dayjs';
@@ -79,46 +80,50 @@ const isTrophy = (r: LeagueRun) => runWins(r) === 5 && isComplete(r) && !r.phant
         </div>
 
         <!-- Matches table -->
-        <CardContent class="px-0 pb-0">
-            <Table>
-                <TableHeader class="bg-muted/20">
-                    <TableRow>
-                        <TableHead>Result</TableHead>
-                        <TableHead>Opponent</TableHead>
-                        <TableHead>Archetype</TableHead>
-                        <TableHead>Games</TableHead>
-                        <TableHead>When</TableHead>
-                        <TableHead></TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    <TableRow
-                        v-for="match in league.matches"
-                        :key="match.id"
-                        class="cursor-pointer"
-                        @click="router.visit(MatchShowController({ id: match.id }).url)"
-                    >
-                        <TableCell>
-                            <ResultBadge :won="match.result === 'W'" :showText="true" />
-                        </TableCell>
-                        <TableCell class="font-medium">
-                            <span v-if="match.opponentName">{{ match.opponentName }}</span>
-                            <span v-else class="text-xs text-muted-foreground">—</span>
-                        </TableCell>
-                        <TableCell>
-                            <span v-if="match.opponentArchetype" class="text-sm">{{ match.opponentArchetype }}</span>
-                            <span v-else class="text-xs text-muted-foreground">Unknown</span>
-                        </TableCell>
-                        <TableCell class="text-sm tabular-nums">{{ match.games }}</TableCell>
-                        <TableCell class="text-xs whitespace-nowrap text-muted-foreground">
-                            {{ dayjs(match.startedAt).fromNow() }}
-                        </TableCell>
-                        <TableCell>
-                            <Button size="sm" variant="ghost" @click.stop="router.visit(MatchShowController({ id: match.id }).url)"> View </Button>
-                        </TableCell>
-                    </TableRow>
-                </TableBody>
-            </Table>
-        </CardContent>
+        <div class="p-2">
+            <CardContent class="overflow-hidden rounded-lg border border-accent/40 px-0 pb-0 shadow-md">
+                <Table>
+                    <TableHeader class="bg-muted/20">
+                        <TableRow>
+                            <TableHead>Result</TableHead>
+                            <TableHead>Opponent</TableHead>
+                            <TableHead>Archetype</TableHead>
+                            <TableHead>Games</TableHead>
+                            <TableHead>When</TableHead>
+                            <TableHead></TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        <TableRow
+                            v-for="match in league.matches"
+                            :key="match.id"
+                            class="cursor-pointer"
+                            @click="router.visit(MatchShowController({ id: match.id }).url)"
+                        >
+                            <TableCell>
+                                <ResultBadge :won="match.result === 'W'" :showText="true" />
+                            </TableCell>
+                            <TableCell class="font-medium">
+                                <span v-if="match.opponentName">{{ match.opponentName }}</span>
+                                <span v-else class="text-xs text-muted-foreground">—</span>
+                            </TableCell>
+                            <TableCell>
+                                <span v-if="match.opponentArchetype" class="text-sm">{{ match.opponentArchetype }}</span>
+                                <span v-else class="text-xs text-muted-foreground">Unknown</span>
+                            </TableCell>
+                            <TableCell class="text-sm tabular-nums">{{ match.games }}</TableCell>
+                            <TableCell class="text-xs whitespace-nowrap text-muted-foreground">
+                                {{ dayjs(match.startedAt).fromNow() }}
+                            </TableCell>
+                            <TableCell>
+                                <Button size="sm" variant="ghost" @click.stop="router.visit(MatchShowController({ id: match.id }).url)">
+                                    View
+                                </Button>
+                            </TableCell>
+                        </TableRow>
+                    </TableBody>
+                </Table>
+            </CardContent>
+        </div>
     </Card>
 </template>

@@ -57,7 +57,7 @@ const opponentArchetype = computed(() => {
             { label: `vs ${match.opponentName ?? 'Unknown'}` },
         ]"
     >
-        <div class="flex flex-col gap-4 p-4 lg:p-6">
+        <div class="flex flex-col gap-4 p-3 lg:p-4">
             <!-- Match summary -->
             <Card>
                 <CardContent class="pt-5">

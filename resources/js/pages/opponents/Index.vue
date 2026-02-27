@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import ManaSymbols from '@/components/ManaSymbols.vue';
+import { Swords } from 'lucide-vue-next';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 
@@ -78,7 +79,7 @@ const filtered = computed(() => {
 
 <template>
     <AppLayout title="Opponents">
-        <div class="flex flex-col gap-4 p-4 lg:p-6">
+        <div class="flex flex-col gap-4 p-3 lg:p-4">
 
             <!-- Toolbar -->
             <div class="flex flex-wrap items-center gap-3">
@@ -132,8 +133,12 @@ const filtered = computed(() => {
                     <TableBody>
                         <template v-if="filtered.length === 0">
                             <TableRow>
-                                <TableCell colspan="5" class="text-muted-foreground py-12 text-center text-sm">
-                                    No opponents found.
+                                <TableCell colspan="5" class="py-12 text-center">
+                                    <div class="flex flex-col items-center gap-2">
+                                        <Swords class="size-10 text-muted-foreground/40" />
+                                        <p class="font-medium">No opponents found</p>
+                                        <p class="text-sm text-muted-foreground">Play some matches and your opponents will show up here.</p>
+                                    </div>
                                 </TableCell>
                             </TableRow>
                         </template>

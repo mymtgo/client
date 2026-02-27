@@ -46,7 +46,8 @@
       "WebFetch(domain:www.shadcn-vue.com)",
       "WebSearch",
       "WebFetch(domain:api.github.com)",
-      "WebFetch(domain:radix.shadcn-vue.com)"
+      "WebFetch(domain:radix.shadcn-vue.com)",
+      "Bash(npx vue-tsc:*)"
     ]
   },
   "enabledMcpjsonServers": [

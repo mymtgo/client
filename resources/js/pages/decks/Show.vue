@@ -112,7 +112,7 @@ const allTime = computed(() => props.versions[0]);
     <AppLayout :title="deck.name" :breadcrumbs="[{ label: 'Decks', href: DecksIndexController().url }, { label: deck.name }]">
         <div>
             <!-- Main content -->
-            <div class="p-4 lg:p-6">
+            <div class="p-3 lg:p-4">
                 <!-- Deck header -->
                 <div class="flex items-center justify-between">
                     <div class="flex flex-col gap-1">
@@ -172,17 +172,17 @@ const allTime = computed(() => props.versions[0]);
                     <!-- Stats row (updates per selected version) -->
                     <Card>
                         <CardContent class="flex divide-x p-0">
-                            <div class="flex flex-1 flex-col gap-0.5 px-4">
+                            <div class="flex flex-1 flex-col gap-0.5 px-4 py-3">
                                 <span class="text-xs tracking-wide text-muted-foreground uppercase">Match W/L</span>
                                 <span class="text-lg font-semibold tabular-nums">
                                     {{ activeVersion.matchesWon }}–{{ activeVersion.matchesLost }}
                                 </span>
                             </div>
-                            <div class="flex flex-1 flex-col gap-0.5 px-4">
+                            <div class="flex flex-1 flex-col gap-0.5 px-4 py-3">
                                 <span class="text-xs tracking-wide text-muted-foreground uppercase">Game W/L</span>
                                 <span class="text-lg font-semibold tabular-nums"> {{ activeVersion.gamesWon }}–{{ activeVersion.gamesLost }} </span>
                             </div>
-                            <div class="flex flex-1 flex-col gap-0.5 px-4">
+                            <div class="flex flex-1 flex-col gap-0.5 px-4 py-3">
                                 <span class="text-xs tracking-wide text-muted-foreground uppercase">On the Play</span>
                                 <span class="text-lg font-semibold tabular-nums">
                                     {{ activeVersion.otpRate }}%
@@ -191,7 +191,7 @@ const allTime = computed(() => props.versions[0]);
                                     </span>
                                 </span>
                             </div>
-                            <div class="flex flex-1 flex-col gap-0.5 px-4">
+                            <div class="flex flex-1 flex-col gap-0.5 px-4 py-3">
                                 <span class="text-xs tracking-wide text-muted-foreground uppercase">On the Draw</span>
                                 <span class="text-lg font-semibold tabular-nums">
                                     {{ activeVersion.otdRate }}%

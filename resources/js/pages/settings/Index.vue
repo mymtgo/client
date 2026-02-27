@@ -38,6 +38,7 @@ const props = defineProps<{
     lastSyncAt: string | null;
     missingCardCount: number;
     pendingMatches: Array<{ id: number; format: string; games_won: number; games_lost: number; started_at: string }>;
+    appVersion: string;
 }>();
 
 const logPathInput = ref(props.logPath);
@@ -102,7 +103,7 @@ function submitPendingMatches() {
     <AppLayout title="Settings">
         <div class="max-w-2xl divide-y">
             <!-- File Paths -->
-            <div class="flex flex-col gap-4 p-4 lg:p-6">
+            <div class="flex flex-col gap-4 p-3 lg:p-4">
                 <div>
                     <p class="font-semibold">File Paths</p>
                     <p class="text-sm text-muted-foreground">
@@ -121,7 +122,7 @@ function submitPendingMatches() {
                         </Button>
                     </div>
                     <div v-if="logPath" class="flex items-center gap-2">
-                        <div class="size-2 shrink-0" :class="logPathStatus.valid ? 'bg-primary' : 'bg-destructive'" />
+                        <div class="size-2 shrink-0 rounded-full" :class="logPathStatus.valid ? 'bg-primary' : 'bg-destructive'" />
                         <span class="text-sm" :class="logPathStatus.valid ? 'text-muted-foreground' : 'text-destructive'">
                             {{ logPathStatus.message }}
                         </span>
@@ -141,7 +142,7 @@ function submitPendingMatches() {
                         </Button>
                     </div>
                     <div v-if="dataPath" class="flex items-center gap-2">
-                        <div class="size-2 shrink-0" :class="dataPathStatus.valid ? 'bg-primary' : 'bg-destructive'" />
+                        <div class="size-2 shrink-0 rounded-full" :class="dataPathStatus.valid ? 'bg-primary' : 'bg-destructive'" />
                         <span class="text-sm" :class="dataPathStatus.valid ? 'text-muted-foreground' : 'text-destructive'">
                             {{ dataPathStatus.message }}
                         </span>
@@ -150,7 +151,7 @@ function submitPendingMatches() {
             </div>
 
             <!-- Watcher & Ingestion -->
-            <div class="flex flex-col gap-4 p-4 lg:p-6">
+            <div class="flex flex-col gap-4 p-3 lg:p-4">
                 <div>
                     <p class="font-semibold">Watcher &amp; Ingestion</p>
                     <p class="text-sm text-muted-foreground">Control the file system watcher and manually trigger operations.</p>
@@ -223,7 +224,7 @@ function submitPendingMatches() {
             </div>
 
             <!-- Display -->
-            <div class="flex flex-col gap-4 p-4 lg:p-6">
+            <div class="flex flex-col gap-4 p-3 lg:p-4">
                 <div>
                     <p class="font-semibold">Display</p>
                     <p class="text-sm text-muted-foreground">Appearance preferences.</p>
@@ -260,7 +261,7 @@ function submitPendingMatches() {
             </div>
 
             <!-- Data & Privacy -->
-            <div class="flex flex-col gap-4 p-4 lg:p-6">
+            <div class="flex flex-col gap-4 p-3 lg:p-4">
                 <div>
                     <p class="font-semibold">Data &amp; Privacy</p>
                     <p class="text-sm text-muted-foreground">Control what data is collected from your use of the app.</p>
@@ -292,6 +293,11 @@ function submitPendingMatches() {
                         </div>
                     </div>
                 </div>
+            </div>
+
+            <!-- App Version -->
+            <div class="p-3 lg:p-4">
+                <p class="text-sm text-muted-foreground">mymtgo v{{ appVersion }}</p>
             </div>
         </div>
     </AppLayout>

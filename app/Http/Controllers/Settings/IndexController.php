@@ -37,6 +37,7 @@ class IndexController extends Controller
                 ->whereHas('archetypes')
                 ->latest('started_at')
                 ->get(['id', 'format', 'games_won', 'games_lost', 'started_at']),
+            'appVersion' => config('nativephp.version'),
         ]);
     }
 

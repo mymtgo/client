@@ -57,7 +57,7 @@ const visibleFormats = computed(() => {
 
 <template>
     <AppLayout title="Decks">
-        <div class="flex flex-col gap-6 p-4 lg:p-6">
+        <div class="flex flex-col gap-4 p-3 lg:p-4">
 
             <!-- Empty state -->
             <div v-if="decks.length === 0" class="flex flex-col items-center gap-2 py-16 text-center">
