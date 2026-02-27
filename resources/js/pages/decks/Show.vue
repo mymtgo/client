@@ -16,8 +16,6 @@ import DeckList from '@/pages/decks/partials/DeckList.vue';
 import MatchHistoryChart from '@/pages/decks/partials/MatchHistoryChart.vue';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
 
 dayjs.extend(relativeTime);
 
@@ -73,8 +71,8 @@ const props = defineProps<{
     versionDecklists?: Record<string, VersionDecklist>;
 }>();
 
-const selectedVersionKey = ref<string>('all');
-const showDeck = ref<boolean>(false);
+const currentVersion = computed(() => props.versions.find((v) => v.isCurrent));
+const selectedVersionKey = ref<string>(currentVersion.value?.id ? String(currentVersion.value.id) : 'all');
 
 type Period = 'all_time' | 'this_year' | 'this_month' | 'this_week';
 const periodLabels: Record<Period, string> = {
@@ -157,18 +155,20 @@ const allTime = computed(() => props.versions[0]);
                             </SelectContent>
                         </Select>
 
-                        <Label>
-                            <span>View deck</span>
-                            <Switch v-model="showDeck" />
-                        </Label>
                     </div>
                 </div>
 
-                <div v-if="showDeck" class="mt-8">
-                    <DeckList :maindeck="activeDecklist.maindeck" :sideboard="activeDecklist.sideboard" />
-                </div>
+                <Tabs default-value="stats" class="mt-8">
+                    <TabsList>
+                        <TabsTrigger value="stats">Stats</TabsTrigger>
+                        <TabsTrigger value="decklist">Decklist</TabsTrigger>
+                    </TabsList>
 
-                <div v-show="!showDeck" class="space-y-4 mt-8">
+                    <TabsContent value="decklist">
+                        <DeckList :maindeck="activeDecklist.maindeck" :sideboard="activeDecklist.sideboard" />
+                    </TabsContent>
+
+                    <TabsContent value="stats" class="space-y-4">
                     <!-- Stats row (updates per selected version) -->
                     <Card>
                         <CardContent class="flex divide-x p-0">
@@ -275,7 +275,8 @@ const allTime = computed(() => props.versions[0]);
                             </Deferred>
                         </TabsContent>
                     </Tabs>
-                </div>
+                    </TabsContent>
+                </Tabs>
             </div>
         </div>
     </AppLayout>

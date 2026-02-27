@@ -42,7 +42,11 @@
       "WebFetch(domain:raw.githubusercontent.com)",
       "Bash(curl:*)",
       "Bash(\"C:/Users/Alec/.config/herd/bin/php.bat\":*)",
-      "Bash(xargs grep:*)"
+      "Bash(xargs grep:*)",
+      "WebFetch(domain:www.shadcn-vue.com)",
+      "WebSearch",
+      "WebFetch(domain:api.github.com)",
+      "WebFetch(domain:radix.shadcn-vue.com)"
     ]
   },
   "enabledMcpjsonServers": [
