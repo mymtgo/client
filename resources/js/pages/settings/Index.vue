@@ -18,6 +18,7 @@ import RunSyncController from '@/actions/App/Http/Controllers/Settings/RunSyncCo
 import RunPopulateCardsController from '@/actions/App/Http/Controllers/Settings/RunPopulateCardsController';
 import UpdateAnonymousStatsController from '@/actions/App/Http/Controllers/Settings/UpdateAnonymousStatsController';
 import UpdateShareStatsController from '@/actions/App/Http/Controllers/Settings/UpdateShareStatsController';
+import UpdateHidePhantomController from '@/actions/App/Http/Controllers/Settings/UpdateHidePhantomController';
 import RunSubmitMatchesController from '@/actions/App/Http/Controllers/Settings/RunSubmitMatchesController';
 import { useAppearance } from '@/composables/useAppearance';
 import dayjs from 'dayjs';
@@ -37,6 +38,7 @@ const props = defineProps<{
     lastIngestAt: string | null;
     lastSyncAt: string | null;
     missingCardCount: number;
+    hidePhantomLeagues: boolean;
     pendingMatches: Array<{ id: number; format: string; games_won: number; games_lost: number; started_at: string }>;
     appVersion: string;
 }>();
@@ -92,6 +94,10 @@ function toggleAnonymousStats(checked: boolean | 'indeterminate') {
 
 function toggleShareStats(checked: boolean | 'indeterminate') {
     withProcessing('shareStats', 'patch', UpdateShareStatsController.url(), { enabled: checked === true });
+}
+
+function toggleHidePhantom(checked: boolean | 'indeterminate') {
+    withProcessing('hidePhantom', 'patch', UpdateHidePhantomController.url(), { enabled: checked === true });
 }
 
 function submitPendingMatches() {
@@ -257,6 +263,23 @@ function submitPendingMatches() {
                     <span class="text-sm text-muted-foreground">
                         {{ dateFormat === 'DMY' ? 'DD/MM/YYYY' : 'MM/DD/YYYY' }}
                     </span>
+                </div>
+
+                <Separator />
+
+                <div class="flex items-start gap-3">
+                    <Checkbox
+                        id="hide-phantom"
+                        :defaultValue="hidePhantomLeagues"
+                        @update:modelValue="toggleHidePhantom"
+                        :disabled="processing === 'hidePhantom'"
+                    />
+                    <div class="flex flex-col gap-1">
+                        <Label for="hide-phantom">Hide phantom leagues</Label>
+                        <p class="text-sm text-muted-foreground">
+                            Exclude phantom league runs from the Leagues page and dashboard stats.
+                        </p>
+                    </div>
                 </div>
             </div>
 

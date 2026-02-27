@@ -8,12 +8,18 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
+use Native\Desktop\Facades\Settings;
 
 class IndexController extends Controller
 {
     public function __invoke(): Response
     {
-        $leagues = League::orderByDesc('started_at')->get();
+        $hidePhantom = (bool) Settings::get('hide_phantom_leagues');
+
+        $leagues = League::query()
+            ->when($hidePhantom, fn ($q) => $q->where('phantom', false))
+            ->orderByDesc('started_at')
+            ->get();
 
         if ($leagues->isEmpty()) {
             return Inertia::render('leagues/Index', ['leagues' => []]);
@@ -99,6 +105,9 @@ class IndexController extends Controller
             ];
         })->values()->all();
 
-        return Inertia::render('leagues/Index', ['leagues' => $runs]);
+        return Inertia::render('leagues/Index', [
+            'leagues' => $runs,
+            'hidePhantomLeagues' => $hidePhantom,
+        ]);
     }
 }

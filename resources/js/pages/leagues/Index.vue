@@ -33,6 +33,7 @@ type LeagueRun = {
 
 const props = defineProps<{
     leagues: LeagueRun[];
+    hidePhantomLeagues: boolean;
 }>();
 
 type PhantomFilter = 'include' | 'exclude' | 'only';
@@ -119,8 +120,8 @@ const kpis = computed(() => {
                     </Button>
                 </div>
 
-                <!-- Phantom filter -->
-                <DropdownMenu>
+                <!-- Phantom filter (hidden when global "Hide phantom leagues" setting is on) -->
+                <DropdownMenu v-if="!hidePhantomLeagues">
                     <DropdownMenuTrigger as-child>
                         <Button variant="outline" size="sm" class="ml-auto gap-1.5">
                             <Ghost class="size-3.5" />
