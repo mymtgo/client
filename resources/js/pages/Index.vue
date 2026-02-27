@@ -2,10 +2,13 @@
 import { router } from '@inertiajs/vue3';
 import AppLayout from '@/AppLayout.vue';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import DashboardLeague from '@/pages/partials/DashboardLeague.vue';
 import DashboardFormatChart from '@/pages/partials/DashboardFormatChart.vue';
 import DashboardDecks from '@/pages/partials/DashboardDecks.vue';
 import DashboardRecentMatches from '@/pages/partials/DashboardRecentMatches.vue';
+import { LayoutDashboard } from 'lucide-vue-next';
+import { computed } from 'vue';
 
 type ActiveLeague = {
     name: string;
@@ -54,6 +57,8 @@ const timeframes = [
     { value: 'alltime', label: 'All time' },
 ];
 
+const hasData = computed(() => props.matchesWon + props.matchesLost > 0);
+
 function setTimeframe(value: string) {
     router.get('/', { timeframe: value }, { preserveScroll: true });
 }
@@ -61,9 +66,9 @@ function setTimeframe(value: string) {
 
 <template>
     <AppLayout title="Dashboard">
-        <div class="flex flex-col gap-6 p-4 lg:p-6">
+        <div class="flex flex-col gap-4 p-3 lg:p-4">
             <!-- Timeframe selector -->
-            <div class="flex items-center gap-1 self-start border p-1">
+            <div class="flex items-center gap-1 self-start rounded-md border p-1">
                 <Button
                     v-for="tf in timeframes"
                     :key="tf.value"
@@ -76,10 +81,41 @@ function setTimeframe(value: string) {
                 </Button>
             </div>
 
-            <DashboardLeague :league="activeLeague" />
-            <DashboardFormatChart :format-chart="formatChart" />
-            <DashboardDecks :deck-stats="deckStats" />
-            <DashboardRecentMatches :matches="recentMatches" />
+            <!-- Empty state -->
+            <div v-if="!hasData" class="flex flex-col items-center gap-2 py-16 text-center">
+                <LayoutDashboard class="size-10 text-muted-foreground/40" />
+                <p class="font-medium">No match data yet</p>
+                <p class="text-sm text-muted-foreground">Start the file watcher in Settings to begin tracking your MTGO matches.</p>
+            </div>
+
+            <template v-else>
+                <!-- KPI row -->
+                <Card>
+                    <CardContent class="grid grid-cols-4 divide-x divide-border p-0">
+                        <div class="flex flex-col items-center gap-1 px-4 py-3">
+                            <span class="text-3xl font-bold tabular-nums" :class="matchWinrate < 50 ? 'text-destructive' : ''">{{ matchWinrate }}%</span>
+                            <span class="text-xs text-muted-foreground">Match Win Rate</span>
+                        </div>
+                        <div class="flex flex-col items-center gap-1 px-4 py-3">
+                            <span class="text-3xl font-bold tabular-nums" :class="gameWinrate < 50 ? 'text-destructive' : ''">{{ gameWinrate }}%</span>
+                            <span class="text-xs text-muted-foreground">Game Win Rate</span>
+                        </div>
+                        <div class="flex flex-col items-center gap-1 px-4 py-3">
+                            <span class="text-3xl font-bold tabular-nums">{{ matchesWon + matchesLost }}</span>
+                            <span class="text-xs text-muted-foreground tabular-nums">{{ matchesWon }}W – {{ matchesLost }}L</span>
+                        </div>
+                        <div class="flex flex-col items-center gap-1 px-4 py-3">
+                            <span class="text-3xl font-bold tabular-nums">{{ gamesWon + gamesLost }}</span>
+                            <span class="text-xs text-muted-foreground tabular-nums">{{ gamesWon }}W – {{ gamesLost }}L</span>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <DashboardLeague :league="activeLeague" />
+                <DashboardFormatChart :format-chart="formatChart" />
+                <DashboardDecks :deck-stats="deckStats" />
+                <DashboardRecentMatches :matches="recentMatches" />
+            </template>
         </div>
     </AppLayout>
 </template>

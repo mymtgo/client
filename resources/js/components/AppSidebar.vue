@@ -9,8 +9,7 @@ import {
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { Link, usePage } from '@inertiajs/vue3';
-import { LayoutDashboard, Layers, Trophy, Swords, Settings, Sun, Moon } from 'lucide-vue-next';
-import { useAppearance } from '@/composables/useAppearance';
+import { LayoutDashboard, Layers, Trophy, Swords, Settings } from 'lucide-vue-next';
 import DashboardController from '@/actions/App/Http/Controllers/IndexController';
 import DecksIndexController from '@/actions/App/Http/Controllers/Decks/IndexController';
 import LeaguesIndexController from '@/actions/App/Http/Controllers/Leagues/IndexController';
@@ -31,8 +30,7 @@ const isActive = (href: string) => {
     return page.url.startsWith(href);
 };
 
-const { resolvedAppearance, updateAppearance } = useAppearance();
-const toggleTheme = () => updateAppearance(resolvedAppearance.value === 'dark' ? 'light' : 'dark');
+
 </script>
 
 <template>
@@ -70,13 +68,6 @@ const toggleTheme = () => updateAppearance(resolvedAppearance.value === 'dark' ?
                             <Settings class="size-4" />
                             <span>Settings</span>
                         </Link>
-                    </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                    <SidebarMenuButton @click="toggleTheme">
-                        <Sun v-if="resolvedAppearance === 'dark'" class="size-4" />
-                        <Moon v-else class="size-4" />
-                        <span>{{ resolvedAppearance === 'dark' ? 'Light mode' : 'Dark mode' }}</span>
                     </SidebarMenuButton>
                 </SidebarMenuItem>
             </SidebarMenu>
