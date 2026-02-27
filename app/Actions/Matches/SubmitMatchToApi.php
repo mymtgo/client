@@ -19,7 +19,7 @@ class SubmitMatchToApi
             return;
         }
 
-        $match = MtgoMatch::with(['league', 'archetypes.archetype'])->find($matchId);
+        $match = MtgoMatch::with(['league', 'archetypes.archetype', 'games.timeline', 'games.players'])->find($matchId);
 
         if (! $match) {
             return;
@@ -51,6 +51,15 @@ class SubmitMatchToApi
         $deckVersion = DeckVersion::find($match->deck_version_id);
         $deck = self::buildDeckPayload($deckVersion);
 
+        $gamesPayload = $match->games
+            ->sortBy('started_at')
+            ->values()
+            ->map(fn ($game, $index) => [
+                'game_number' => $index + 1,
+                ...ExtractGameHandData::run($game),
+            ])
+            ->toArray();
+
         $payload = [
             'match_token' => $match->token,
             'username' => $match->games->first()->localPlayers->first()->username,
@@ -63,6 +72,7 @@ class SubmitMatchToApi
             'challenge_token' => null,
             'played_at' => $match->started_at->toIso8601String(),
             'deck' => $deck,
+            'games' => $gamesPayload,
         ];
 
         try {
