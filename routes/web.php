@@ -23,6 +23,7 @@ Route::group([], function (\Illuminate\Routing\Router $router) {
         'prefix' => 'leagues',
     ], function (\Illuminate\Routing\Router $group) {
         $group->get('/', \App\Http\Controllers\Leagues\IndexController::class)->name('leagues.index');
+        $group->delete('{league}', \App\Http\Controllers\Leagues\AbandonController::class)->name('leagues.abandon');
     });
 
     $router->group([
@@ -50,6 +51,7 @@ Route::group([], function (\Illuminate\Routing\Router $router) {
         $group->post('populate-cards', \App\Http\Controllers\Settings\RunPopulateCardsController::class)->name('settings.populate-cards');
         $group->patch('anonymous-stats', \App\Http\Controllers\Settings\UpdateAnonymousStatsController::class)->name('settings.anonymous-stats');
         $group->patch('share-stats', \App\Http\Controllers\Settings\UpdateShareStatsController::class)->name('settings.share-stats');
+        $group->patch('hide-phantom', \App\Http\Controllers\Settings\UpdateHidePhantomController::class)->name('settings.hide-phantom');
         $group->post('submit-matches', \App\Http\Controllers\Settings\RunSubmitMatchesController::class)->name('settings.submit-matches');
     });
 });

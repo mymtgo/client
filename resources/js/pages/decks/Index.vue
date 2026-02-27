@@ -7,6 +7,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenu
 import { router } from '@inertiajs/vue3';
 import ShowController from '@/actions/App/Http/Controllers/Decks/ShowController';
 import { ChevronDown, Layers } from 'lucide-vue-next';
+import WinRateBar from '@/components/WinRateBar.vue';
 import { computed, ref } from 'vue';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
@@ -131,15 +132,10 @@ const visibleFormats = computed(() => {
                                     </div>
 
                                     <!-- Stats -->
-                                    <div class="flex items-end justify-between">
-                                        <div class="flex flex-col">
-                                            <span
-                                                class="text-3xl font-bold tabular-nums leading-none"
-                                                :class="deck.winrate < 50 ? 'text-destructive' : ''"
-                                            >
-                                                {{ deck.winrate }}%
-                                            </span>
-                                            <span class="text-xs text-muted-foreground mt-0.5">win rate</span>
+                                    <div class="flex items-end justify-between gap-4">
+                                        <div class="flex flex-col gap-1 flex-1">
+                                            <span class="text-xs text-muted-foreground">win rate</span>
+                                            <WinRateBar :winrate="deck.winrate" />
                                         </div>
                                         <div class="text-right">
                                             <div class="text-sm font-medium tabular-nums">

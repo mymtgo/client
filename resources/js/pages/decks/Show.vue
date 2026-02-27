@@ -13,6 +13,7 @@ import MatchupSpread from '@/pages/decks/partials/MatchupSpread.vue';
 import DeckMatches from '@/pages/decks/partials/DeckMatches.vue';
 import DeckLeagues from '@/pages/decks/partials/DeckLeagues.vue';
 import DeckList from '@/pages/decks/partials/DeckList.vue';
+import WinRateBar from '@/components/WinRateBar.vue';
 import MatchHistoryChart from '@/pages/decks/partials/MatchHistoryChart.vue';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
@@ -119,9 +120,9 @@ const allTime = computed(() => props.versions[0]);
                         <div class="flex items-center gap-2">
                             <h1 class="text-2xl font-bold tracking-tight">{{ deck.name }}</h1>
                             <Badge variant="outline">{{ deck.format }}</Badge>
-                            <span class="text-lg font-semibold" :class="allTime.matchWinrate < 50 ? 'text-destructive' : ''"
-                                >{{ allTime.matchWinrate }}%</span
-                            >
+                            <div class="w-28">
+                                <WinRateBar :winrate="allTime.matchWinrate" size="sm" />
+                            </div>
                             <span class="text-sm text-muted-foreground"> {{ allTime.matchesWon + allTime.matchesLost }} matches </span>
                         </div>
                         <p class="text-sm text-muted-foreground">
