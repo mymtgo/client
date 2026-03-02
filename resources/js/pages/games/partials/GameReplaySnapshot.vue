@@ -76,7 +76,7 @@ const hasOpenPanels = computed(() => openPanels.value.size > 0);
         No event selected.
     </div>
 
-    <div v-else class="flex overflow-hidden rounded-lg border bg-card">
+    <div v-else class="flex max-h-[80vh] overflow-hidden rounded-lg border bg-card">
         <!-- Left sidebar: player info + stack -->
         <div class="flex w-56 shrink-0 flex-col border-r">
             <!-- Opponent info -->
@@ -163,11 +163,11 @@ const hasOpenPanels = computed(() => openPanels.value.size > 0);
         </div>
 
         <!-- Zone panels (graveyard/exile) — shown to the right of sidebar when toggled -->
-        <div v-if="hasOpenPanels" class="flex shrink-0 border-r">
+        <div v-if="hasOpenPanels" class="flex min-h-0 shrink-0 border-r">
             <div
                 v-for="panel in visiblePanels"
                 :key="panel.key"
-                class="flex w-40 flex-col border-r last:border-r-0"
+                class="flex w-40 min-h-0 flex-col border-r last:border-r-0"
             >
                 <div class="flex items-center justify-between gap-1 border-b bg-muted/30 px-2 py-1.5">
                     <span class="truncate text-xs font-medium">{{ panel.label }}</span>
