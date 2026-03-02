@@ -48,6 +48,8 @@ class ShowController extends Controller
                 );
 
                 $content['Cards'][$cardIndex]['image'] = $cardModel?->image;
+                $content['Cards'][$cardIndex]['type'] = $cardModel?->type;
+                $content['Cards'][$cardIndex]['name'] = $cardModel?->name;
             }
 
             $events[] = new GameTimelineData(
