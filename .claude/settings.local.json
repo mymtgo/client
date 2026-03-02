@@ -50,7 +50,8 @@
       "Bash(npx vue-tsc:*)",
       "Bash(xargs basename:*)",
       "Bash(git stash:*)",
-      "Bash(npx vite:*)"
+      "Bash(npx vite:*)",
+      "Bash(grep:*)"
     ]
   },
   "enabledMcpjsonServers": [
