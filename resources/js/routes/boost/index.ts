@@ -1,6 +1,6 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition } from './../../wayfinder'
 /**
-* @see vendor/laravel/boost/src/BoostServiceProvider.php:117
+* @see [serialized-closure]:2
 * @route '/_boost/browser-logs'
 */
 export const browserLogs = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -14,7 +14,7 @@ browserLogs.definition = {
 } satisfies RouteDefinition<["post"]>
 
 /**
-* @see vendor/laravel/boost/src/BoostServiceProvider.php:117
+* @see [serialized-closure]:2
 * @route '/_boost/browser-logs'
 */
 browserLogs.url = (options?: RouteQueryOptions) => {
@@ -22,7 +22,7 @@ browserLogs.url = (options?: RouteQueryOptions) => {
 }
 
 /**
-* @see vendor/laravel/boost/src/BoostServiceProvider.php:117
+* @see [serialized-closure]:2
 * @route '/_boost/browser-logs'
 */
 browserLogs.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -31,7 +31,7 @@ browserLogs.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
 })
 
 /**
-* @see vendor/laravel/boost/src/BoostServiceProvider.php:117
+* @see [serialized-closure]:2
 * @route '/_boost/browser-logs'
 */
 const browserLogsForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -40,7 +40,7 @@ const browserLogsForm = (options?: RouteQueryOptions): RouteFormDefinition<'post
 })
 
 /**
-* @see vendor/laravel/boost/src/BoostServiceProvider.php:117
+* @see [serialized-closure]:2
 * @route '/_boost/browser-logs'
 */
 browserLogsForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({

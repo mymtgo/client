@@ -1,16 +1,13 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import AppLayout from '@/AppLayout.vue';
-import { Badge } from '@/components/ui/badge';
+import BackLink from '@/components/BackLink.vue';
 import { Button } from '@/components/ui/button';
 import ResultBadge from '@/components/matches/ResultBadge.vue';
-import { Card, CardContent } from '@/components/ui/card';
 import ManaSymbols from '@/components/ManaSymbols.vue';
 import SetArchetypeDialog from '@/components/matches/SetArchetypeDialog.vue';
 import MatchGame from '@/pages/matches/partials/MatchGame.vue';
-import DecksIndexController from '@/actions/App/Http/Controllers/Decks/IndexController';
 import DeckShowController from '@/actions/App/Http/Controllers/Decks/ShowController';
-import { router } from '@inertiajs/vue3';
 import { PencilIcon } from 'lucide-vue-next';
 import dayjs from 'dayjs';
 
@@ -26,8 +23,6 @@ type GameDetail = {
     mulliganedHands: { name: string; image: string | null }[][];
     keptHand: { name: string; image: string | null; bottomed: boolean }[];
     sideboardChanges: { name: string; image: string | null; quantity: number; type: 'in' | 'out' }[];
-    localCardsPlayed: { name: string; image: string | null }[];
-    opponentCardsSeen: { name: string; image: string | null }[];
 };
 
 const props = defineProps<{
@@ -49,75 +44,65 @@ const opponentArchetype = computed(() => {
 <template>
     <SetArchetypeDialog ref="archetypeDialog" :archetypes="archetypes" />
 
-    <AppLayout
-        :title="`vs ${match.opponentName ?? 'Unknown'}`"
-        :breadcrumbs="[
-            { label: 'Decks', href: DecksIndexController().url },
-            { label: deck?.name ?? '—', href: deck ? DeckShowController({ deck: deck.id }).url : undefined },
-            { label: `vs ${match.opponentName ?? 'Unknown'}` },
-        ]"
-    >
+    <AppLayout :title="`vs ${match.opponentName ?? 'Unknown'}`">
         <div class="flex flex-col gap-4 p-3 lg:p-4">
-            <!-- Match summary -->
-            <Card>
-                <CardContent class="pt-5">
-                    <div class="flex items-start justify-between gap-4">
-                        <!-- Left: result + opponent -->
-                        <div class="flex items-start gap-4">
-                            <div class="mt-0.5">
-                                <ResultBadge :won="isWin" :showText="true" />
-                                <p class="text-muted-foreground mt-1 text-center text-xs tabular-nums">
-                                    {{ match.gamesWon }}–{{ match.gamesLost }}
-                                </p>
-                            </div>
+            <!-- Back link -->
+            <BackLink
+                v-if="deck"
+                :href="DeckShowController({ deck: deck.id }).url"
+                :label="deck.name"
+            />
 
-                            <div class="flex flex-col gap-1">
-                                <p class="text-lg font-semibold leading-tight">
-                                    vs {{ match.opponentName ?? 'Unknown' }}
-                                </p>
-
-                                <!-- Opponent archetype -->
-                                <div class="flex items-center gap-1.5">
-                                    <template v-if="opponentArchetype?.archetype">
-                                        <span class="text-sm">{{ opponentArchetype.archetype.name }}</span>
-                                        <ManaSymbols :symbols="opponentArchetype.archetype.colorIdentity" />
-                                    </template>
-                                    <span v-else class="text-muted-foreground text-sm">Unknown archetype</span>
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        class="h-5 w-5 text-muted-foreground"
-                                        @click="archetypeDialog?.openForMatch(match.id, match.format)"
-                                    >
-                                        <PencilIcon :size="11" />
-                                    </Button>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Right: metadata -->
-                        <div class="text-muted-foreground flex flex-col items-end gap-1 text-sm">
-                            <div v-if="deck" class="flex items-center gap-1.5">
-                                <span
-                                    class="cursor-pointer font-medium hover:underline"
-                                    @click="router.visit(DeckShowController({ deck: deck.id }).url)"
-                                >{{ deck.name }}</span>
-                                <Badge variant="outline" class="text-xs">{{ match.format }}</Badge>
-                            </div>
-                            <p>{{ dayjs(match.startedAt).format('MMM D, YYYY [at] h:mma') }} · {{ match.matchTime }}</p>
-                            <p v-if="match.leagueName">{{ match.leagueName }}</p>
-                        </div>
+            <!-- Match header -->
+            <div class="flex flex-col gap-1">
+                <!-- Result + opponent -->
+                <div class="flex items-center gap-3">
+                    <div class="flex items-center gap-2">
+                        <ResultBadge :won="isWin" :showText="true" />
+                        <span class="text-sm font-semibold tabular-nums">
+                            {{ match.gamesWon }}–{{ match.gamesLost }}
+                        </span>
                     </div>
-                </CardContent>
-            </Card>
+                    <div class="h-4 w-px bg-border" />
+                    <h1 class="text-sm font-semibold">vs {{ match.opponentName ?? 'Unknown' }}</h1>
+                </div>
+
+                <!-- Archetype -->
+                <div class="flex items-center gap-1.5">
+                    <template v-if="opponentArchetype?.archetype">
+                        <span class="text-sm">{{ opponentArchetype.archetype.name }}</span>
+                        <ManaSymbols :symbols="opponentArchetype.archetype.colorIdentity" />
+                    </template>
+                    <span v-else class="text-sm text-muted-foreground">Unknown archetype</span>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        class="h-5 w-5 text-muted-foreground"
+                        @click="archetypeDialog?.openForMatch(match.id, match.format)"
+                    >
+                        <PencilIcon :size="11" />
+                    </Button>
+                </div>
+
+                <!-- Metadata line -->
+                <p class="text-sm text-muted-foreground">
+                    <template v-if="deck">{{ deck.name }} · </template>
+                    {{ match.format }}
+                    · {{ dayjs(match.startedAt).format('MMM D, YYYY [at] h:mma') }}
+                    · {{ match.matchTime }}
+                    <template v-if="match.leagueName"> · {{ match.leagueName }}</template>
+                </p>
+            </div>
 
             <!-- Per-game sections -->
-            <MatchGame
-                v-for="game in games"
-                :key="game.id"
-                :game="game"
-                :opponent-name="(match.opponentName as string) ?? 'Opponent'"
-            />
+            <div class="flex flex-col gap-3">
+                <MatchGame
+                    v-for="game in games"
+                    :key="game.id"
+                    :game="game"
+                    :opponent-name="(match.opponentName as string) ?? 'Opponent'"
+                />
+            </div>
         </div>
     </AppLayout>
 </template>

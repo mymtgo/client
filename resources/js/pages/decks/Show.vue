@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import AppLayout from '@/AppLayout.vue';
-import DecksIndexController from '@/actions/App/Http/Controllers/Decks/IndexController';
 import DecksShowController from '@/actions/App/Http/Controllers/Decks/ShowController';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
@@ -110,7 +109,7 @@ const allTime = computed(() => props.versions[0]);
 </script>
 
 <template>
-    <AppLayout :title="deck.name" :breadcrumbs="[{ label: 'Decks', href: DecksIndexController().url }, { label: deck.name }]">
+    <AppLayout :title="deck.name">
         <div>
             <!-- Main content -->
             <div class="p-3 lg:p-4">
