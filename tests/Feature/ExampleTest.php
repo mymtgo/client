@@ -6,9 +6,8 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 uses(RefreshDatabase::class);
 
 test('the application returns a successful response', function () {
-    Mtgo::shouldReceive('syncDecks')
-        ->once()
-        ->andReturn(null);
+    Mtgo::shouldReceive('canRun')
+        ->andReturn(false);
 
     $this->withoutVite();
 

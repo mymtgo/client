@@ -208,8 +208,6 @@ const hasOpenPanels = computed(() => openPanels.value.size > 0);
                 <div class="p-2">
                     <div v-if="opponentZones.other.length" class="flex flex-wrap gap-1">
                         <HoverCard v-for="card in opponentZones.other" :key="card.Id">
-                            {{ card }}
-
                             <HoverCardTrigger as-child>
                                 <img :src="card.image" :alt="card.name ?? 'card'" class="w-20 cursor-pointer rounded-[7px]" />
                             </HoverCardTrigger>

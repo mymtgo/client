@@ -6,7 +6,9 @@ use App\Actions\Decks\GetDeckFiles;
 use App\Actions\Decks\SyncDecks;
 use App\Models\Card;
 use App\Models\Deck;
+use Illuminate\Filesystem\Filesystem;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 class SyncDecksTest extends TestCase
@@ -23,11 +25,14 @@ class SyncDecksTest extends TestCase
         ]]);
 
         $path = storage_path('framework/testing/disks/user_home/AppData/Local/Apps/2.0');
-        if (! file_exists($path)) {
-            mkdir($path, 0777, true);
-        }
+
+        (new Filesystem)->cleanDirectory(storage_path('framework/testing/disks/user_home'));
+        mkdir($path, 0777, true);
 
         \App\Facades\Mtgo::shouldReceive('getLogPath')->andReturn($path)->byDefault();
+        \App\Facades\Mtgo::shouldReceive('getLogDataPath')->andReturn($path.'/Data')->byDefault();
+
+        Http::fake();
     }
 
     public function test_it_soft_deletes_decks_that_are_no_longer_present_in_files()
