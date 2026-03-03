@@ -3,7 +3,7 @@ const props = defineProps<{
     symbols: string;
 }>();
 
-const symbolsArray = props.symbols.split(',');
+const symbolsArray = props.symbols?.split(',') || [];
 </script>
 
 <template>
@@ -59,7 +59,7 @@ const symbolsArray = props.symbols.split(',');
             />
         </svg>
 
-        <svg class="w-4" viewBox="0 0 100 100" v-if="symbolsArray.includes('C')">
+        <svg class="w-4" viewBox="0 0 100 100" v-if="symbolsArray.includes('C') || !symbolsArray.length">
             <path cx="300" cy="300" r="300" fill="#ccc2c0" d="M100 50A50 50 0 0 1 50 100A50 50 0 0 1 0 50A50 50 0 0 1 100 50z" />
             <path
                 d="M50 10a83.333 83.333 0 0 0 40 40 83.333 83.333 0 0 0 -40 40A83.333 83.333 0 0 0 10 50 83.333 83.333 0 0 0 50 10m0 15a50 50 0 0 1 -25 25 50 50 0 0 1 25 25 50 50 0 0 1 25 -25 50 50 0 0 1 -25 -25"
