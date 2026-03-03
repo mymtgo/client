@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CardSet id="TOK" age="4" cardsetType="MTGO_ONLY">
+  <DigitalObject DigitalObjectCatalogID="DOC_1001">
+    <CARDNAME_STRING id="ID259_100"/>
+    <COLOR id="ID518_15"/>
+    <CREATURE_TYPE_STRING0 id="ID780_50"/>
+    <DIGITAL_OBJECT_TYPE_CODE_STRING value="TOKN"/>
+    <IS_CREATURE value="1"/>
+    <IS_TOKEN value="1"/>
+    <POWER value="1"/>
+    <TOUGHNESS value="1"/>
+  </DigitalObject>
+  <DigitalObject DigitalObjectCatalogID="DOC_1002">
+    <CARDTEXTURE_NUMBER value="89"/>
+    <CLONE_ID value="1001"/>
+    <IS_FOIL/>
+  </DigitalObject>
+  <DigitalObject DigitalObjectCatalogID="DOC_1003">
+    <CARDNAME_STRING id="ID259_200"/>
+    <COLOR id="ID518_1"/>
+    <CREATURE_TYPE_STRING0 id="ID780_60"/>
+    <DIGITAL_OBJECT_TYPE_CODE_STRING value="TOKN"/>
+    <IS_CREATURE value="1"/>
+    <IS_TOKEN value="1"/>
+    <POWER value="2"/>
+    <TOUGHNESS value="2"/>
+  </DigitalObject>
+  <DigitalObject DigitalObjectCatalogID="DOC_1004">
+    <CARDNAME_STRING id="ID259_300"/>
+    <COLOR id="ID518_13"/>
+    <DIGITAL_OBJECT_TYPE_CODE_STRING value="TOKN"/>
+    <IS_ARTIFACT value="1"/>
+    <IS_TOKEN value="1"/>
+  </DigitalObject>
+  <DigitalObject DigitalObjectCatalogID="DOC_1005">
+    <CARDNAME_STRING id="ID259_400"/>
+    <COLOR id="ID518_13"/>
+    <DIGITAL_OBJECT_TYPE_CODE_STRING value="TOKN"/>
+    <IS_ARTIFACT value="1"/>
+    <IS_TOKEN value="1"/>
+  </DigitalObject>
+  <DigitalObject DigitalObjectCatalogID="DOC_1006">
+    <CARDNAME_STRING id="ID259_500"/>
+    <COLOR id="ID518_22"/>
+    <CREATURE_TYPE_STRING0 id="ID780_50"/>
+    <DIGITAL_OBJECT_TYPE_CODE_STRING value="TOKN"/>
+    <IS_ENCHANTMENT value="1"/>
+    <IS_CREATURE value="1"/>
+    <IS_TOKEN value="1"/>
+    <POWER value="1"/>
+    <TOUGHNESS value="1"/>
+  </DigitalObject>
+</CardSet>
