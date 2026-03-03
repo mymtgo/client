@@ -1,7 +1,7 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition } from './../../../../../wayfinder'
 /**
 * @see \App\Http\Controllers\Settings\RunSyncController::__invoke
-* @see app/Http/Controllers/Settings/RunSyncController.php:14
+* @see app/Http/Controllers/Settings/RunSyncController.php:13
 * @route '/settings/sync'
 */
 const RunSyncController = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -16,7 +16,7 @@ RunSyncController.definition = {
 
 /**
 * @see \App\Http\Controllers\Settings\RunSyncController::__invoke
-* @see app/Http/Controllers/Settings/RunSyncController.php:14
+* @see app/Http/Controllers/Settings/RunSyncController.php:13
 * @route '/settings/sync'
 */
 RunSyncController.url = (options?: RouteQueryOptions) => {
@@ -25,7 +25,7 @@ RunSyncController.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\Settings\RunSyncController::__invoke
-* @see app/Http/Controllers/Settings/RunSyncController.php:14
+* @see app/Http/Controllers/Settings/RunSyncController.php:13
 * @route '/settings/sync'
 */
 RunSyncController.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -35,7 +35,7 @@ RunSyncController.post = (options?: RouteQueryOptions): RouteDefinition<'post'> 
 
 /**
 * @see \App\Http\Controllers\Settings\RunSyncController::__invoke
-* @see app/Http/Controllers/Settings/RunSyncController.php:14
+* @see app/Http/Controllers/Settings/RunSyncController.php:13
 * @route '/settings/sync'
 */
 const RunSyncControllerForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -45,7 +45,7 @@ const RunSyncControllerForm = (options?: RouteQueryOptions): RouteFormDefinition
 
 /**
 * @see \App\Http\Controllers\Settings\RunSyncController::__invoke
-* @see app/Http/Controllers/Settings/RunSyncController.php:14
+* @see app/Http/Controllers/Settings/RunSyncController.php:13
 * @route '/settings/sync'
 */
 RunSyncControllerForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({

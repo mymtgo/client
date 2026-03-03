@@ -1,7 +1,7 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition } from './../../../../../wayfinder'
 /**
 * @see \App\Http\Controllers\Settings\RunIngestController::__invoke
-* @see app/Http/Controllers/Settings/RunIngestController.php:14
+* @see app/Http/Controllers/Settings/RunIngestController.php:13
 * @route '/settings/ingest'
 */
 const RunIngestController = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -16,7 +16,7 @@ RunIngestController.definition = {
 
 /**
 * @see \App\Http\Controllers\Settings\RunIngestController::__invoke
-* @see app/Http/Controllers/Settings/RunIngestController.php:14
+* @see app/Http/Controllers/Settings/RunIngestController.php:13
 * @route '/settings/ingest'
 */
 RunIngestController.url = (options?: RouteQueryOptions) => {
@@ -25,7 +25,7 @@ RunIngestController.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\Settings\RunIngestController::__invoke
-* @see app/Http/Controllers/Settings/RunIngestController.php:14
+* @see app/Http/Controllers/Settings/RunIngestController.php:13
 * @route '/settings/ingest'
 */
 RunIngestController.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -35,7 +35,7 @@ RunIngestController.post = (options?: RouteQueryOptions): RouteDefinition<'post'
 
 /**
 * @see \App\Http\Controllers\Settings\RunIngestController::__invoke
-* @see app/Http/Controllers/Settings/RunIngestController.php:14
+* @see app/Http/Controllers/Settings/RunIngestController.php:13
 * @route '/settings/ingest'
 */
 const RunIngestControllerForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -45,7 +45,7 @@ const RunIngestControllerForm = (options?: RouteQueryOptions): RouteFormDefiniti
 
 /**
 * @see \App\Http\Controllers\Settings\RunIngestController::__invoke
-* @see app/Http/Controllers/Settings/RunIngestController.php:14
+* @see app/Http/Controllers/Settings/RunIngestController.php:13
 * @route '/settings/ingest'
 */
 RunIngestControllerForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
