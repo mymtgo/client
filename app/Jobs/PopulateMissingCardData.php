@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Actions\Cards\CreateMissingCardsFromTimelines;
 use App\Actions\Cards\PopulateTokensFromXml;
 use App\Actions\RegisterDevice;
 use App\Models\Card;
@@ -27,11 +28,16 @@ class PopulateMissingCardData implements ShouldQueue
      */
     public function handle(): void
     {
+        // Create stubs for any CatalogIDs in timelines that don't have Card records yet
+        // (tokens and other permanents that only appear in game state, not deck lists)
+        CreateMissingCardsFromTimelines::run();
+
         $cards = Card::whereNull('name')->get();
 
         if ($cards->isEmpty()) {
             return;
         }
+
 
         // First pass: identify tokens from local MTGO XMLs
         PopulateTokensFromXml::run($cards);
@@ -58,9 +64,10 @@ class PopulateMissingCardData implements ShouldQueue
 
             $cardsResponse = collect($response->json());
 
+
             foreach ($regularCards as $card) {
                 $cardData = $cardsResponse->first(
-                    fn ($data) => $data['value'] == $card->mtgo_id
+                    fn ($data) => ($data['value'] ?? null) == $card->mtgo_id
                 );
 
                 if (! $cardData) {
@@ -101,7 +108,8 @@ class PopulateMissingCardData implements ShouldQueue
                     'image' => $cardData['image'],
                 ]);
             }
-        } catch (\Throwable) {
+        } catch (\Throwable $e) {
+            dd($e);
             // Network failure — tokens still have name/type from XML, API cards will retry next run
         }
     }

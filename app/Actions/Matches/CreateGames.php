@@ -39,8 +39,6 @@ class CreateGames
         $playerModels = collect();
         $playerModelMapping = [];
 
-        $cardIds = [];
-
         foreach ($players as $player) {
             $playerModel = Player::where('username', $player['Name'])->firstOrCreate([
                 'username' => $player['Name'],
@@ -74,11 +72,6 @@ class CreateGames
                         'sideboard' => false,
                     ];
                 })->values()->toArray();
-
-                $cardIds = [
-                    ...$cardIds,
-                    ...collect($deck)->keys(),
-                ];
             }
 
             $onPlay = $gameLog['on_play'][$gameIndex] ?? false;
@@ -93,20 +86,26 @@ class CreateGames
             $playerModels->push($playerModel);
         }
 
-        CreateMissingCards::run($cardIds);
-
         $gameModel->players()->sync($playerModelMapping);
 
         $events = [];
+        $timelineCatalogIds = [];
 
         foreach ($gameStateEvents as $event) {
+            $content = ExtractJson::run($event->raw_text)->first();
+
+            foreach ($content['Cards'] ?? [] as $card) {
+                $timelineCatalogIds[] = $card['CatalogID'];
+            }
+
             $events[] = [
                 'game_id' => $gameModel->id,
-                'content' => json_encode(ExtractJson::run($event->raw_text)->first()),
+                'content' => json_encode($content),
                 'timestamp' => $event->timestamp,
             ];
         }
 
+        CreateMissingCards::run(array_unique($timelineCatalogIds));
         GameTimeline::insert($events);
     }
 }
