@@ -53,7 +53,8 @@
       "Bash(npx vite:*)",
       "Bash(grep:*)",
       "Bash(python3:*)",
-      "Bash(\"C:/Users/Alec/.config/herd/bin/php.bat\" artisan:*)"
+      "Bash(\"C:/Users/Alec/.config/herd/bin/php.bat\" artisan:*)",
+      "Bash(cat:*)"
     ]
   },
   "enabledMcpjsonServers": [
