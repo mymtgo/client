@@ -6,8 +6,9 @@ use App\Actions\Settings\ValidatePath;
 use App\Facades\Mtgo;
 use App\Http\Controllers\Controller;
 use App\Models\Card;
+use App\Models\Deck;
+use App\Models\LogEvent;
 use App\Models\MtgoMatch;
-use Illuminate\Support\Facades\Cache;
 use Inertia\Inertia;
 use Inertia\Response;
 use Locale;
@@ -28,8 +29,8 @@ class IndexController extends Controller
             'dateFormat' => Settings::get('date_format') ?? $this->detectAndStoreDateFormat(),
             'logPathStatus' => ValidatePath::forLogs($logPath),
             'dataPathStatus' => ValidatePath::forData($dataPath),
-            'lastIngestAt' => Cache::get('settings.last_ingest_at'),
-            'lastSyncAt' => Cache::get('settings.last_sync_at'),
+            'lastIngestAt' => LogEvent::max('ingested_at'),
+            'lastSyncAt' => Deck::max('updated_at'),
             'missingCardCount' => Card::whereNull('name')->count(),
             'shareStats' => Settings::get('share_stats') === null ? false : (bool) Settings::get('share_stats'),
             'pendingMatches' => MtgoMatch::whereNull('submitted_at')
