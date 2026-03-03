@@ -38,7 +38,6 @@ class PopulateMissingCardData implements ShouldQueue
             return;
         }
 
-
         // First pass: identify tokens from local MTGO XMLs
         PopulateTokensFromXml::run($cards);
 
@@ -63,7 +62,6 @@ class PopulateMissingCardData implements ShouldQueue
             ]);
 
             $cardsResponse = collect($response->json());
-
 
             foreach ($regularCards as $card) {
                 $cardData = $cardsResponse->first(
