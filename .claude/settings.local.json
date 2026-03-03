@@ -54,7 +54,9 @@
       "Bash(grep:*)",
       "Bash(python3:*)",
       "Bash(\"C:/Users/Alec/.config/herd/bin/php.bat\" artisan:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(gh run:*)",
+      "mcp__laravel-boost__list-routes"
     ]
   },
   "enabledMcpjsonServers": [

@@ -1,7 +1,7 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition } from './../../wayfinder'
 /**
 * @see \App\Http\Controllers\Settings\IndexController::__invoke
-* @see app/Http/Controllers/Settings/IndexController.php:18
+* @see app/Http/Controllers/Settings/IndexController.php:19
 * @route '/settings'
 */
 export const index = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -16,7 +16,7 @@ index.definition = {
 
 /**
 * @see \App\Http\Controllers\Settings\IndexController::__invoke
-* @see app/Http/Controllers/Settings/IndexController.php:18
+* @see app/Http/Controllers/Settings/IndexController.php:19
 * @route '/settings'
 */
 index.url = (options?: RouteQueryOptions) => {
@@ -25,7 +25,7 @@ index.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\Settings\IndexController::__invoke
-* @see app/Http/Controllers/Settings/IndexController.php:18
+* @see app/Http/Controllers/Settings/IndexController.php:19
 * @route '/settings'
 */
 index.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -35,7 +35,7 @@ index.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 
 /**
 * @see \App\Http\Controllers\Settings\IndexController::__invoke
-* @see app/Http/Controllers/Settings/IndexController.php:18
+* @see app/Http/Controllers/Settings/IndexController.php:19
 * @route '/settings'
 */
 index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -45,7 +45,7 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 
 /**
 * @see \App\Http\Controllers\Settings\IndexController::__invoke
-* @see app/Http/Controllers/Settings/IndexController.php:18
+* @see app/Http/Controllers/Settings/IndexController.php:19
 * @route '/settings'
 */
 const indexForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -55,7 +55,7 @@ const indexForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => (
 
 /**
 * @see \App\Http\Controllers\Settings\IndexController::__invoke
-* @see app/Http/Controllers/Settings/IndexController.php:18
+* @see app/Http/Controllers/Settings/IndexController.php:19
 * @route '/settings'
 */
 indexForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -65,7 +65,7 @@ indexForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
 
 /**
 * @see \App\Http\Controllers\Settings\IndexController::__invoke
-* @see app/Http/Controllers/Settings/IndexController.php:18
+* @see app/Http/Controllers/Settings/IndexController.php:19
 * @route '/settings'
 */
 indexForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -280,7 +280,7 @@ watcher.form = watcherForm
 
 /**
 * @see \App\Http\Controllers\Settings\RunIngestController::__invoke
-* @see app/Http/Controllers/Settings/RunIngestController.php:14
+* @see app/Http/Controllers/Settings/RunIngestController.php:13
 * @route '/settings/ingest'
 */
 export const ingest = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -295,7 +295,7 @@ ingest.definition = {
 
 /**
 * @see \App\Http\Controllers\Settings\RunIngestController::__invoke
-* @see app/Http/Controllers/Settings/RunIngestController.php:14
+* @see app/Http/Controllers/Settings/RunIngestController.php:13
 * @route '/settings/ingest'
 */
 ingest.url = (options?: RouteQueryOptions) => {
@@ -304,7 +304,7 @@ ingest.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\Settings\RunIngestController::__invoke
-* @see app/Http/Controllers/Settings/RunIngestController.php:14
+* @see app/Http/Controllers/Settings/RunIngestController.php:13
 * @route '/settings/ingest'
 */
 ingest.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -314,7 +314,7 @@ ingest.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
 
 /**
 * @see \App\Http\Controllers\Settings\RunIngestController::__invoke
-* @see app/Http/Controllers/Settings/RunIngestController.php:14
+* @see app/Http/Controllers/Settings/RunIngestController.php:13
 * @route '/settings/ingest'
 */
 const ingestForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -324,7 +324,7 @@ const ingestForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> =>
 
 /**
 * @see \App\Http\Controllers\Settings\RunIngestController::__invoke
-* @see app/Http/Controllers/Settings/RunIngestController.php:14
+* @see app/Http/Controllers/Settings/RunIngestController.php:13
 * @route '/settings/ingest'
 */
 ingestForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -336,7 +336,7 @@ ingest.form = ingestForm
 
 /**
 * @see \App\Http\Controllers\Settings\RunSyncController::__invoke
-* @see app/Http/Controllers/Settings/RunSyncController.php:14
+* @see app/Http/Controllers/Settings/RunSyncController.php:13
 * @route '/settings/sync'
 */
 export const sync = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -351,7 +351,7 @@ sync.definition = {
 
 /**
 * @see \App\Http\Controllers\Settings\RunSyncController::__invoke
-* @see app/Http/Controllers/Settings/RunSyncController.php:14
+* @see app/Http/Controllers/Settings/RunSyncController.php:13
 * @route '/settings/sync'
 */
 sync.url = (options?: RouteQueryOptions) => {
@@ -360,7 +360,7 @@ sync.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\Settings\RunSyncController::__invoke
-* @see app/Http/Controllers/Settings/RunSyncController.php:14
+* @see app/Http/Controllers/Settings/RunSyncController.php:13
 * @route '/settings/sync'
 */
 sync.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -370,7 +370,7 @@ sync.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
 
 /**
 * @see \App\Http\Controllers\Settings\RunSyncController::__invoke
-* @see app/Http/Controllers/Settings/RunSyncController.php:14
+* @see app/Http/Controllers/Settings/RunSyncController.php:13
 * @route '/settings/sync'
 */
 const syncForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -380,7 +380,7 @@ const syncForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => (
 
 /**
 * @see \App\Http\Controllers\Settings\RunSyncController::__invoke
-* @see app/Http/Controllers/Settings/RunSyncController.php:14
+* @see app/Http/Controllers/Settings/RunSyncController.php:13
 * @route '/settings/sync'
 */
 syncForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
