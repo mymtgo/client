@@ -108,6 +108,10 @@ class MtgoManager
         $expiresAt = Settings::get('api_key_expires_at');
         $expired = $expiresAt && now()->isAfter($expiresAt);
 
+        if (is_null(Settings::get('share_stats'))) {
+            Settings::set('share_stats', true);
+        }
+
         if (! RegisterDevice::retrieveKey() || $expired) {
             RegisterDevice::run();
         }
