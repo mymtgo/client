@@ -21,4 +21,21 @@ class CardFactory extends Factory
             'name' => $this->faker->word(),
         ];
     }
+
+    /**
+     * A stub card with only an mtgo_id — as created by CreateMissingCards before enrichment.
+     */
+    public function stub(): static
+    {
+        return $this->state(fn () => [
+            'name' => null,
+            'scryfall_id' => null,
+            'oracle_id' => null,
+            'type' => null,
+            'sub_type' => null,
+            'rarity' => null,
+            'color_identity' => null,
+            'image' => null,
+        ]);
+    }
 }

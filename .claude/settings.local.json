@@ -51,7 +51,9 @@
       "Bash(xargs basename:*)",
       "Bash(git stash:*)",
       "Bash(npx vite:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(python3:*)",
+      "Bash(\"C:/Users/Alec/.config/herd/bin/php.bat\" artisan:*)"
     ]
   },
   "enabledMcpjsonServers": [

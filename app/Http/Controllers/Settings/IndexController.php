@@ -30,7 +30,7 @@ class IndexController extends Controller
             'dataPathStatus' => ValidatePath::forData($dataPath),
             'lastIngestAt' => Cache::get('settings.last_ingest_at'),
             'lastSyncAt' => Cache::get('settings.last_sync_at'),
-            'missingCardCount' => Card::whereNull('scryfall_id')->count(),
+            'missingCardCount' => Card::whereNull('name')->count(),
             'shareStats' => Settings::get('share_stats') === null ? false : (bool) Settings::get('share_stats'),
             'pendingMatches' => MtgoMatch::whereNull('submitted_at')
                 ->whereNotNull('deck_version_id')
