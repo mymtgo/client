@@ -32,17 +32,14 @@ class DownloadArchetypes implements ShouldQueue
         ])->get(config('mymtgo_api.url').'/api/archetypes');
 
         foreach ($response->json() as $archetype) {
-            $model = Archetype::where('uuid', $archetype['uuid'])->first() ?: new Archetype([
-                'name' => $archetype['name'],
-                'uuid' => $archetype['uuid'],
-                'format' => strtolower($archetype['format']),
-            ]);
-
-            $model->save();
-
-            $model->update([
-                'color_identity' => $archetype['colorIdentity'],
-            ]);
+            Archetype::updateOrCreate(
+                ['uuid' => $archetype['uuid']],
+                [
+                    'name' => $archetype['name'],
+                    'format' => strtolower($archetype['format']),
+                    'color_identity' => $archetype['colorIdentity'] ?? null,
+                ],
+            );
         }
     }
 }

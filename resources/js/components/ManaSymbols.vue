@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 const props = defineProps<{
-    symbols: string;
+    symbols: string | null;
 }>();
 
 const symbolsArray = props.symbols?.split(',') || [];
