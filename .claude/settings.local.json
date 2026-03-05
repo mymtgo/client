@@ -56,7 +56,9 @@
       "Bash(\"C:/Users/Alec/.config/herd/bin/php.bat\" artisan:*)",
       "Bash(cat:*)",
       "Bash(gh run:*)",
-      "mcp__laravel-boost__list-routes"
+      "mcp__laravel-boost__list-routes",
+      "WebFetch(domain:www.mtggoldfish.com)",
+      "Bash(ls:*)"
     ]
   },
   "enabledMcpjsonServers": [

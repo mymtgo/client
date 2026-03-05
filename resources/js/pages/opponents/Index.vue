@@ -22,7 +22,7 @@ type Opponent = {
     matchesWon: number;
     matchesLost: number;
     formats: string[];
-    archetypes: { name: string; colorIdentity: string }[];
+    archetypes: { name: string; colorIdentity: string | null }[];
     lastPlayedAt: string;
 };
 
