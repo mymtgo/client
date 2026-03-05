@@ -4,8 +4,8 @@ namespace App\Http\Controllers\Leagues;
 
 use App\Http\Controllers\Controller;
 use App\Models\League;
+use App\Models\MtgoMatch;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 use Native\Desktop\Facades\Settings;
@@ -96,7 +96,7 @@ class IndexController extends Controller
             return [
                 'id' => $league->id,
                 'name' => $league->name,
-                'format' => Str::title(strtolower(substr($league->format, 1))),
+                'format' => MtgoMatch::displayFormat($league->format),
                 'phantom' => (bool) $league->phantom,
                 'startedAt' => $league->started_at,
                 'deck' => $deck,

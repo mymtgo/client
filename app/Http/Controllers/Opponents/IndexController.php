@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\Opponents;
 
 use App\Http\Controllers\Controller;
+use App\Models\MtgoMatch;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -43,7 +43,7 @@ class IndexController extends Controller
                     ->pluck('match_id')->unique()->count();
 
                 $formats = $rows->pluck('format')->unique()
-                    ->map(fn ($f) => Str::title(strtolower(substr($f, 1))))
+                    ->map(fn ($f) => MtgoMatch::displayFormat($f))
                     ->sort()->values()->all();
 
                 $archetypes = ($archetypesByPlayer[$playerId] ?? collect())

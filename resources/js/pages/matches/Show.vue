@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import AppLayout from '@/AppLayout.vue';
 import BackLink from '@/components/BackLink.vue';
 import { Button } from '@/components/ui/button';
 import ResultBadge from '@/components/matches/ResultBadge.vue';
@@ -44,8 +43,7 @@ const opponentArchetype = computed(() => {
 <template>
     <SetArchetypeDialog ref="archetypeDialog" :archetypes="archetypes" />
 
-    <AppLayout :title="`vs ${match.opponentName ?? 'Unknown'}`">
-        <div class="flex flex-col gap-4 p-3 lg:p-4">
+    <div class="flex flex-col gap-4 p-3 lg:p-4">
             <!-- Back link -->
             <BackLink
                 v-if="deck"
@@ -103,6 +101,5 @@ const opponentArchetype = computed(() => {
                     :opponent-name="(match.opponentName as string) ?? 'Opponent'"
                 />
             </div>
-        </div>
-    </AppLayout>
+    </div>
 </template>

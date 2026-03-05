@@ -22,7 +22,7 @@ class Deck extends Model
 
     public function latestVersion(): HasOne
     {
-        return $this->hasOne(DeckVersion::class, 'deck_id');
+        return $this->hasOne(DeckVersion::class, 'deck_id')->latestOfMany('modified_at');
     }
 
     public function matches(): HasManyThrough
@@ -38,18 +38,5 @@ class Deck extends Model
     public function wonMatches(): HasManyThrough
     {
         return $this->matches()->whereRaw('games_lost < games_won');
-    }
-
-    public function getWinrateAttribute()
-    {
-        $wins = $this->matches->filter(
-            fn ($match) => $match->games_won > $match->games_lost
-        )->count();
-
-        $losses = $this->matches->filter(
-            fn ($match) => $match->games_won < $match->games_lost
-        )->count();
-
-        return ($wins ? $wins / ($wins + $losses) : 0) * 100;
     }
 }

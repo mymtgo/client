@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { usePage, router } from '@inertiajs/vue3';
-import AppLayout from '@/AppLayout.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -106,8 +105,7 @@ function submitPendingMatches() {
 </script>
 
 <template>
-    <AppLayout title="Settings">
-        <div class="max-w-2xl divide-y">
+    <div class="max-w-2xl divide-y">
             <!-- File Paths -->
             <div class="flex flex-col gap-4 p-3 lg:p-4">
                 <div>
@@ -322,6 +320,5 @@ function submitPendingMatches() {
             <div class="p-3 lg:p-4">
                 <p class="text-sm text-muted-foreground">mymtgo v{{ appVersion }}</p>
             </div>
-        </div>
-    </AppLayout>
+    </div>
 </template>
