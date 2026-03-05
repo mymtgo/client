@@ -3,8 +3,8 @@
 namespace App\Data\Front;
 
 use App\Models\Deck;
+use App\Models\MtgoMatch;
 use Carbon\Carbon;
-use Illuminate\Support\Str;
 use Spatie\LaravelData\Data;
 use Spatie\LaravelData\Lazy;
 
@@ -36,7 +36,7 @@ class DeckData extends Data
         return new self(
             id: $deck->id,
             name: $deck->name,
-            format: Str::title(strtolower(substr($deck->format, 1))),
+            format: MtgoMatch::displayFormat($deck->format),
             matchesCount: $deck->matches_count ?: 0,
             matchesWon: $deck->won_matches_count ?: 0,
             matchesLost: $deck->lost_matches_count ?: 0,

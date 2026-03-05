@@ -5,7 +5,6 @@ namespace App\Data\Front;
 use App\Models\MtgoMatch;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Str;
 use Spatie\LaravelData\Data;
 use Spatie\LaravelData\Lazy;
 
@@ -33,7 +32,7 @@ class MatchData extends Data
     {
         return new self(
             id: $match->id,
-            format: Str::title(strtolower(substr($match->format, 1))),
+            format: MtgoMatch::displayFormat($match->format),
             matchType: $match->match_type,
             leagueGame: $match->league_id !== null && ! ($match->league?->phantom ?? true),
             gamesWon: $match->games_won,

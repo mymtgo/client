@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { Separator } from '@/components/ui/separator';
-import { sumBy } from 'lodash';
 import DeckListCard from '@/pages/decks/partials/DeckListCard.vue';
 
 const props = defineProps<{
@@ -9,7 +8,7 @@ const props = defineProps<{
     sideboard: App.Data.Front.CardData[];
 }>();
 
-const getCount = (cards: App.Data.Front.CardData[]) => sumBy(cards, 'quantity');
+const getCount = (cards: App.Data.Front.CardData[]) => cards.reduce((sum, c) => sum + c.quantity, 0);
 
 // Canonical MTG permanent/spell types in display order.
 // The first match wins, so Creature beats Artifact for "Artifact Creature".

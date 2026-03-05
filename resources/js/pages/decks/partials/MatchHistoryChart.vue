@@ -2,7 +2,6 @@
 import type { ChartConfig } from '@/components/ui/chart';
 import { ChartContainer } from '@/components/ui/chart';
 import { VisAxis, VisCrosshair, VisLine, VisScatter, VisTooltip, VisXYContainer } from '@unovis/vue';
-import { map } from 'lodash-es';
 import { computed } from 'vue';
 
 const props = defineProps<{
@@ -12,7 +11,7 @@ const props = defineProps<{
 
 type DataPoint = { date: Date; rate: number | null };
 
-const chartData: DataPoint[] = map(props.data, (d) => ({
+const chartData: DataPoint[] = props.data.map((d) => ({
     date: new Date(d.date),
     rate: d.winrate !== null ? parseInt(d.winrate) : null,
 }));

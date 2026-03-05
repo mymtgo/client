@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import AppLayout from '@/AppLayout.vue';
 import LeagueTable from '@/components/leagues/LeagueTable.vue';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -78,8 +77,7 @@ const kpis = computed(() => {
 </script>
 
 <template>
-    <AppLayout title="Leagues">
-        <div class="flex flex-col gap-4 p-3 lg:p-4">
+    <div class="flex flex-col gap-4 p-3 lg:p-4">
             <!-- KPI bar (real leagues only) -->
             <Card>
                 <CardContent class="grid grid-cols-4 divide-x divide-border p-0">
@@ -150,6 +148,5 @@ const kpis = computed(() => {
             <div v-if="filteredRuns.length" class="flex flex-col gap-4">
                 <LeagueTable :league="league" :key="`league_${league.id}`" v-for="league in filteredRuns" />
             </div>
-        </div>
-    </AppLayout>
+    </div>
 </template>

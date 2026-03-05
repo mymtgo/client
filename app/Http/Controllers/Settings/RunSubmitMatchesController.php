@@ -13,9 +13,7 @@ class RunSubmitMatchesController extends Controller
     public function __invoke(): RedirectResponse
     {
         if (Settings::get('share_stats')) {
-            MtgoMatch::whereNull('submitted_at')
-                ->whereNotNull('deck_version_id')
-                ->whereHas('archetypes')
+            MtgoMatch::submittable()
                 ->get()
                 ->each(fn (MtgoMatch $match) => SubmitMatch::dispatchSync($match->id));
         }

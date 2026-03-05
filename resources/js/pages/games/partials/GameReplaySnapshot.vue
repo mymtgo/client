@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { Button } from '@/components/ui/button';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
-import { filter, find } from 'lodash';
 import { BookOpen, Hand, Heart, X } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 import type { GameTimelineEvent } from './GameReplay.vue';
@@ -10,14 +9,14 @@ const props = defineProps<{
     event: GameTimelineEvent | null;
 }>();
 
-const player = computed(() => find(props.event?.content.Players, (p: any) => p.IsLocal));
-const opponent = computed(() => find(props.event?.content.Players, (p: any) => !p.IsLocal));
+const player = computed(() => props.event?.content.Players?.find((p: any) => p.IsLocal));
+const opponent = computed(() => props.event?.content.Players?.find((p: any) => !p.IsLocal));
 
 const cards = computed(() => props.event?.content.Cards || []);
 
-const playerBattlefield = computed(() => filter(cards.value, (c) => c.Zone === 'Battlefield' && c.Controller == player.value?.Id));
-const opponentBattlefield = computed(() => filter(cards.value, (c) => c.Zone === 'Battlefield' && c.Controller != player.value?.Id));
-const stack = computed(() => filter(cards.value, (c) => c.Zone === 'Stack'));
+const playerBattlefield = computed(() => cards.value.filter((c) => c.Zone === 'Battlefield' && c.Controller == player.value?.Id));
+const opponentBattlefield = computed(() => cards.value.filter((c) => c.Zone === 'Battlefield' && c.Controller != player.value?.Id));
+const stack = computed(() => cards.value.filter((c) => c.Zone === 'Stack'));
 
 const isLand = (c: any) => (c.type ?? '').includes('Land');
 const isCreature = (c: any) => (c.type ?? '').includes('Creature');
@@ -26,19 +25,19 @@ const isOther = (c: any) => !isLand(c) && !isCreature(c) && !isPlaneswalker(c);
 
 function splitBattlefield(bf: any[]) {
     return {
-        creatures: filter(bf, (c) => isCreature(c) || isPlaneswalker(c)),
-        lands: filter(bf, isLand),
-        other: filter(bf, (c) => isOther(c) && !isPlaneswalker(c)),
+        creatures: bf.filter((c) => isCreature(c) || isPlaneswalker(c)),
+        lands: bf.filter(isLand),
+        other: bf.filter((c) => isOther(c) && !isPlaneswalker(c)),
     };
 }
 
 const playerZones = computed(() => splitBattlefield(playerBattlefield.value));
 const opponentZones = computed(() => splitBattlefield(opponentBattlefield.value));
-const playerHand = computed(() => filter(cards.value, (c) => c.Zone === 'Hand' && c.Owner == player.value?.Id));
-const playerGraveyard = computed(() => filter(cards.value, (c) => c.Zone === 'Graveyard' && c.Owner == player.value?.Id));
-const opponentGraveyard = computed(() => filter(cards.value, (c) => c.Zone === 'Graveyard' && c.Owner != player.value?.Id));
-const playerExile = computed(() => filter(cards.value, (c) => c.Zone === 'Exile' && c.Owner == player.value?.Id));
-const opponentExile = computed(() => filter(cards.value, (c) => c.Zone === 'Exile' && c.Owner != player.value?.Id));
+const playerHand = computed(() => cards.value.filter((c) => c.Zone === 'Hand' && c.Owner == player.value?.Id));
+const playerGraveyard = computed(() => cards.value.filter((c) => c.Zone === 'Graveyard' && c.Owner == player.value?.Id));
+const opponentGraveyard = computed(() => cards.value.filter((c) => c.Zone === 'Graveyard' && c.Owner != player.value?.Id));
+const playerExile = computed(() => cards.value.filter((c) => c.Zone === 'Exile' && c.Owner == player.value?.Id));
+const opponentExile = computed(() => cards.value.filter((c) => c.Zone === 'Exile' && c.Owner != player.value?.Id));
 
 type ZonePanel = 'opp-graveyard' | 'opp-exile' | 'player-graveyard' | 'player-exile';
 const openPanels = ref<Set<ZonePanel>>(new Set());

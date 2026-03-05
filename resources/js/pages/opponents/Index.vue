@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import AppLayout from '@/AppLayout.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -79,8 +78,7 @@ const filtered = computed(() => {
 </script>
 
 <template>
-    <AppLayout title="Opponents">
-        <div class="flex flex-col gap-4 p-3 lg:p-4">
+    <div class="flex flex-col gap-4 p-3 lg:p-4">
 
             <!-- Toolbar -->
             <div class="flex flex-wrap items-center gap-3">
@@ -193,6 +191,5 @@ const filtered = computed(() => {
                     </TableBody>
                 </Table>
             </Card>
-        </div>
-    </AppLayout>
+    </div>
 </template>

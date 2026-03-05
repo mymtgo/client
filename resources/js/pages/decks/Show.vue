@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import AppLayout from '@/AppLayout.vue';
 import DecksShowController from '@/actions/App/Http/Controllers/Decks/ShowController';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
@@ -109,8 +108,7 @@ const allTime = computed(() => props.versions[0]);
 </script>
 
 <template>
-    <AppLayout :title="deck.name">
-        <div>
+    <div>
             <!-- Main content -->
             <div class="p-3 lg:p-4">
                 <!-- Deck header -->
@@ -278,6 +276,5 @@ const allTime = computed(() => props.versions[0]);
                     </TabsContent>
                 </Tabs>
             </div>
-        </div>
-    </AppLayout>
+    </div>
 </template>

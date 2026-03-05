@@ -87,9 +87,7 @@ class MtgoManager
             return;
         }
 
-        MtgoMatch::whereNull('submitted_at')
-            ->whereNotNull('deck_version_id')
-            ->whereHas('archetypes')
+        MtgoMatch::submittable()
             ->get()
             ->each(fn (MtgoMatch $match) => SubmitMatch::dispatch($match->id));
     }

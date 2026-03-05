@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import AppLayout from '@/AppLayout.vue';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -57,8 +56,7 @@ const visibleFormats = computed(() => {
 </script>
 
 <template>
-    <AppLayout title="Decks">
-        <div class="flex flex-col gap-4 p-3 lg:p-4">
+    <div class="flex flex-col gap-4 p-3 lg:p-4">
 
             <!-- Empty state -->
             <div v-if="decks.length === 0" class="flex flex-col items-center gap-2 py-16 text-center">
@@ -155,6 +153,5 @@ const visibleFormats = computed(() => {
                 </template>
             </template>
 
-        </div>
-    </AppLayout>
+    </div>
 </template>

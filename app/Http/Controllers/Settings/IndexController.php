@@ -33,9 +33,7 @@ class IndexController extends Controller
             'lastSyncAt' => Deck::max('updated_at'),
             'missingCardCount' => Card::whereNull('name')->count(),
             'shareStats' => Settings::get('share_stats') === null ? false : (bool) Settings::get('share_stats'),
-            'pendingMatches' => MtgoMatch::whereNull('submitted_at')
-                ->whereNotNull('deck_version_id')
-                ->whereHas('archetypes')
+            'pendingMatches' => MtgoMatch::submittable()
                 ->latest('started_at')
                 ->get(['id', 'format', 'games_won', 'games_lost', 'started_at']),
             'hidePhantomLeagues' => (bool) Settings::get('hide_phantom_leagues'),
