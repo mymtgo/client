@@ -12,7 +12,7 @@ class ArchetypeData extends Data
         public int $id,
         public string $name,
         public string $format,
-        public string $colorIdentity,
+        public ?string $colorIdentity,
     ) {}
 
     public static function fromModel(Archetype $archetype): self

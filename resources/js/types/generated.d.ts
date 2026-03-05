@@ -3,7 +3,7 @@ export type ArchetypeData = {
 id: number;
 name: string;
 format: string;
-colorIdentity: string;
+colorIdentity: string | null;
 };
 export type CardData = {
 mtgoId: number | null;
