@@ -29,6 +29,7 @@ const deleteMatch = (id: string | number) => {
     deleteForm.id = id;
 
     deleteForm.submit(DeleteController({ id }), {
+        preserveScroll: true,
         onSuccess: () => deleteForm.reset(),
     });
 };
@@ -62,7 +63,7 @@ const clearArchetype = (matchId: number) => {
             </TableRow>
         </TableHeader>
         <TableBody>
-            <template v-for="(match, idx) in matches" :key="`match_${idx}`">
+            <template v-for="match in matches" :key="match.id">
                 <ContextMenu>
                     <ContextMenuTrigger asChild>
                         <TableRow class="cursor-pointer" @click="router.visit(ShowController({ id: match.id }).url)">

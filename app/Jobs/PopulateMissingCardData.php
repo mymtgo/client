@@ -107,8 +107,7 @@ class PopulateMissingCardData implements ShouldQueue
                 ]);
             }
         } catch (\Throwable $e) {
-            dd($e);
-            // Network failure — tokens still have name/type from XML, API cards will retry next run
+            report($e);
         }
     }
 }

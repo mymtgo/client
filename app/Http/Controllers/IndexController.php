@@ -8,7 +8,6 @@ use App\Models\Deck;
 use App\Models\League;
 use App\Models\MtgoMatch;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
 use Inertia\Inertia;
 
 class IndexController extends Controller
@@ -18,12 +17,18 @@ class IndexController extends Controller
         $timeframe = $request->input('timeframe', 'week');
         [$start, $end] = $this->getTimeRange($timeframe);
 
-        // Overall stats
-        $matchesQuery = MtgoMatch::whereBetween('started_at', [$start, $end]);
-        $wins = $matchesQuery->clone()->whereRaw('games_won > games_lost')->count();
-        $losses = $matchesQuery->clone()->whereRaw('games_won <= games_lost')->count();
-        $gamesWon = $matchesQuery->clone()->sum('games_won');
-        $gamesLost = $matchesQuery->clone()->sum('games_lost');
+        // Overall stats (single query)
+        $stats = MtgoMatch::whereBetween('started_at', [$start, $end])
+            ->selectRaw('SUM(CASE WHEN games_won > games_lost THEN 1 ELSE 0 END) as wins')
+            ->selectRaw('SUM(CASE WHEN games_won <= games_lost THEN 1 ELSE 0 END) as losses')
+            ->selectRaw('SUM(games_won) as games_won')
+            ->selectRaw('SUM(games_lost) as games_lost')
+            ->first();
+
+        $wins = (int) $stats->wins;
+        $losses = (int) $stats->losses;
+        $gamesWon = (int) $stats->games_won;
+        $gamesLost = (int) $stats->games_lost;
 
         // Recent matches (paginated)
         $recentMatches = MtgoMatch::with(['deck', 'opponentArchetypes.archetype', 'opponentArchetypes.player', 'league'])
@@ -77,7 +82,7 @@ class IndexController extends Controller
 
         return [
             'name' => $league->name,
-            'format' => Str::title(strtolower(substr($league->format, 1))),
+            'format' => MtgoMatch::displayFormat($league->format),
             'phantom' => $league->phantom,
             'isActive' => $matches->count() < 5,
             'isTrophy' => $wins === 5,
@@ -102,7 +107,7 @@ class IndexController extends Controller
             ->get()
             ->map(fn ($r) => [
                 'month' => $r->month,
-                'format' => Str::title(strtolower(substr($r->format, 1))),
+                'format' => MtgoMatch::displayFormat($r->format),
                 'winrate' => round($r->wins / $r->total * 100),
             ]);
 

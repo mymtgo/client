@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { router } from '@inertiajs/vue3';
-import AppLayout from '@/AppLayout.vue';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import DashboardLeague from '@/pages/partials/DashboardLeague.vue';
@@ -65,8 +64,7 @@ function setTimeframe(value: string) {
 </script>
 
 <template>
-    <AppLayout title="Dashboard">
-        <div class="flex flex-col gap-4 p-3 lg:p-4">
+    <div class="flex flex-col gap-4 p-3 lg:p-4">
             <!-- Timeframe selector -->
             <div class="flex items-center gap-1 self-start rounded-md border p-1">
                 <Button
@@ -116,6 +114,5 @@ function setTimeframe(value: string) {
                 <DashboardDecks :deck-stats="deckStats" />
                 <DashboardRecentMatches :matches="recentMatches" />
             </template>
-        </div>
-    </AppLayout>
+    </div>
 </template>

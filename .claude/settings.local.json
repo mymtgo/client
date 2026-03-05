@@ -58,7 +58,11 @@
       "Bash(gh run:*)",
       "mcp__laravel-boost__list-routes",
       "WebFetch(domain:www.mtggoldfish.com)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(while read f)",
+      "Bash(do echo \"=== $f ===\")",
+      "Read(//Volumes/Dev/mymtgo/client/**)",
+      "Bash(done)"
     ]
   },
   "enabledMcpjsonServers": [

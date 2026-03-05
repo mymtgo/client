@@ -3,13 +3,12 @@
 namespace App\Models;
 
 use Carbon\CarbonInterface;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\Relations\HasOneThrough;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Native\Desktop\Facades\Settings;
 
 class MtgoMatch extends Model
 {
@@ -47,14 +46,6 @@ class MtgoMatch extends Model
         );
     }
 
-    public function opponentDecks(): HasManyThrough
-    {
-        return $this->hasManyThrough(GameDeck::class, Game::class, 'match_id', 'game_id', 'id', 'id')
-            ->whereHas('player', function ($query) {
-                $query->where('username', '!=', Settings::get('mtgo_username'));
-            });
-    }
-
     public function archetypes(): HasMany
     {
         return $this->hasMany(MatchArchetype::class);
@@ -71,6 +62,18 @@ class MtgoMatch extends Model
                     ->where('gp.is_local', false)
                     ->distinct();
             });
+    }
+
+    public function scopeSubmittable(Builder $query): Builder
+    {
+        return $query->whereNull('submitted_at')
+            ->whereNotNull('deck_version_id')
+            ->whereHas('archetypes');
+    }
+
+    public static function displayFormat(string $format): string
+    {
+        return \Illuminate\Support\Str::title(strtolower(substr($format, 1)));
     }
 
     public function isCompleted(): bool
