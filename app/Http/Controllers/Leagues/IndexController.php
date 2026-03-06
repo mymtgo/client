@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Leagues;
 
 use App\Http\Controllers\Controller;
+use App\Models\Account;
 use App\Models\League;
 use App\Models\MtgoMatch;
 use Illuminate\Support\Facades\DB;
@@ -15,6 +16,7 @@ class IndexController extends Controller
     public function __invoke(): Response
     {
         $hidePhantom = (bool) Settings::get('hide_phantom_leagues');
+        $activeAccountId = Account::active()->value('id');
 
         $leagues = League::query()
             ->when($hidePhantom, fn ($q) => $q->where('phantom', false))
@@ -34,6 +36,7 @@ class IndexController extends Controller
             ->whereIn('m.league_id', $leagueIds)
             ->whereNull('m.deleted_at')
             ->where('m.state', 'complete')
+            ->when($activeAccountId, fn ($q, $id) => $q->where('d.account_id', $id))
             ->select('m.id', 'm.league_id', 'm.games_won', 'm.games_lost', 'm.started_at', 'd.id as deck_id', 'd.name as deck_name')
             ->orderBy('m.started_at')
             ->get();

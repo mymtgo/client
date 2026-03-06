@@ -3,8 +3,10 @@
 namespace App\Models;
 
 use App\Enums\MatchState;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\Relations\HasOne;
@@ -39,5 +41,21 @@ class Deck extends Model
     public function wonMatches(): HasManyThrough
     {
         return $this->matches()->whereRaw('games_lost < games_won');
+    }
+
+    public function account(): BelongsTo
+    {
+        return $this->belongsTo(Account::class);
+    }
+
+    public function scopeForActiveAccount(Builder $query): Builder
+    {
+        $accountId = Account::active()->value('id');
+
+        if ($accountId) {
+            return $query->where('account_id', $accountId);
+        }
+
+        return $query;
     }
 }
