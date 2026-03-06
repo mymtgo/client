@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\MatchState;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -22,6 +23,7 @@ class MtgoMatch extends Model
         'started_at' => 'datetime',
         'ended_at' => 'datetime',
         'submitted_at' => 'datetime',
+        'state' => MatchState::class,
     ];
 
     public function getTable()
@@ -66,9 +68,20 @@ class MtgoMatch extends Model
 
     public function scopeSubmittable(Builder $query): Builder
     {
-        return $query->whereNull('submitted_at')
+        return $query->where('state', MatchState::Complete)
+            ->whereNull('submitted_at')
             ->whereNotNull('deck_version_id')
             ->whereHas('archetypes');
+    }
+
+    public function scopeComplete(Builder $query): Builder
+    {
+        return $query->where('state', MatchState::Complete);
+    }
+
+    public function scopeIncomplete(Builder $query): Builder
+    {
+        return $query->where('state', '!=', MatchState::Complete);
     }
 
     public static function displayFormat(string $format): string
@@ -78,7 +91,7 @@ class MtgoMatch extends Model
 
     public function isCompleted(): bool
     {
-        return $this->status != 'in_progress';
+        return $this->state === MatchState::Complete;
     }
 
     public function getMatchTimeAttribute()
