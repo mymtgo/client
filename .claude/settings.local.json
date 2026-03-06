@@ -62,7 +62,8 @@
       "Bash(while read f)",
       "Bash(do echo \"=== $f ===\")",
       "Read(//Volumes/Dev/mymtgo/client/**)",
-      "Bash(done)"
+      "Bash(done)",
+      "Bash(git checkout:*)"
     ]
   },
   "enabledMcpjsonServers": [
