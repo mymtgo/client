@@ -3,6 +3,7 @@
 namespace App\Actions\Logs;
 
 use App\Events\LogEventsIngested;
+use App\Models\Account;
 use App\Models\LogCursor;
 use App\Models\LogEvent;
 use Carbon\Carbon;
@@ -103,11 +104,12 @@ class IngestLog
                             if ($row) {
                                 $rows[] = $row;
 
-                                // Learn username once per log instance
-                                if (! $cursor->local_username && $row['category'] === 'UI' && $row['context'] === 'LastLoginName') {
-                                    $u = static::extractUsername($row['raw_text']);
+                                // Detect login events — always update (accounts can switch mid-session)
+                                if ($row['category'] === 'Login' && $row['context'] === 'MtGO Login Success') {
+                                    $u = static::extractLoginUsername($row['raw_text']);
                                     if ($u) {
                                         $cursor->local_username = $u;
+                                        Account::registerAndActivate($u);
                                     }
                                 }
                             }
@@ -140,11 +142,12 @@ class IngestLog
                     if ($row) {
                         $rows[] = $row;
 
-                        // Learn username once per log instance
-                        if (! $cursor->local_username && $row['category'] === 'UI' && $row['context'] === 'LastLoginName') {
-                            $u = static::extractUsername($row['raw_text']);
+                        // Detect login events — always update (accounts can switch mid-session)
+                        if ($row['category'] === 'Login' && $row['context'] === 'MtGO Login Success') {
+                            $u = static::extractLoginUsername($row['raw_text']);
                             if ($u) {
                                 $cursor->local_username = $u;
+                                Account::registerAndActivate($u);
                             }
                         }
                     }
@@ -181,6 +184,15 @@ class IngestLog
     protected static function extractUsername(string $raw): ?string
     {
         if (preg_match('/\bUsername=([^\s]+)/', $raw, $m)) {
+            return $m[1];
+        }
+
+        return null;
+    }
+
+    protected static function extractLoginUsername(string $raw): ?string
+    {
+        if (preg_match('/Username:\s*(\S+)/', $raw, $m)) {
             return $m[1];
         }
 
