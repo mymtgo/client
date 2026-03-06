@@ -10,6 +10,8 @@
       <sourceFolder url="file://$MODULE_DIR$/nativephp/electron/dist/win-unpacked/resources/build/app/database/factories" isTestSource="false" packagePrefix="Database\Factories\" />
       <sourceFolder url="file://$MODULE_DIR$/nativephp/electron/dist/win-unpacked/resources/build/app/database/seeders" isTestSource="false" packagePrefix="Database\Seeders\" />
       <sourceFolder url="file://$MODULE_DIR$/nativephp/electron/dist/win-unpacked/resources/build/app/tests" isTestSource="true" packagePrefix="Tests\" />
+      <sourceFolder url="file://$MODULE_DIR$/tests/Feature" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/tests/Unit" isTestSource="true" />
       <excludeFolder url="file://$MODULE_DIR$/vendor/brianium/paratest" />
       <excludeFolder url="file://$MODULE_DIR$/vendor/brick/math" />
       <excludeFolder url="file://$MODULE_DIR$/vendor/carbonphp/carbon-doctrine-types" />
@@ -150,36 +152,6 @@
       <excludeFolder url="file://$MODULE_DIR$/vendor/phpunit/phpunit" />
       <excludeFolder url="file://$MODULE_DIR$/vendor/symfony/finder" />
       <excludeFolder url="file://$MODULE_DIR$/vendor/symfony/http-kernel" />
-      <excludeFolder url="file://$MODULE_DIR$/nativephp/electron/dist/win-unpacked/resources/build/app/vendor/brick/math" />
-      <excludeFolder url="file://$MODULE_DIR$/nativephp/electron/dist/win-unpacked/resources/build/app/vendor/carbonphp/carbon-doctrine-types" />
-      <excludeFolder url="file://$MODULE_DIR$/nativephp/electron/dist/win-unpacked/resources/build/app/vendor/composer" />
-      <excludeFolder url="file://$MODULE_DIR$/nativephp/electron/dist/win-unpacked/resources/build/app/vendor/dflydev/dot-access-data" />
-      <excludeFolder url="file://$MODULE_DIR$/nativephp/electron/dist/win-unpacked/resources/build/app/vendor/doctrine/deprecations" />
-      <excludeFolder url="file://$MODULE_DIR$/nativephp/electron/dist/win-unpacked/resources/build/app/vendor/doctrine/inflector" />
-      <excludeFolder url="file://$MODULE_DIR$/nativephp/electron/dist/win-unpacked/resources/build/app/vendor/doctrine/lexer" />
-      <excludeFolder url="file://$MODULE_DIR$/nativephp/electron/dist/win-unpacked/resources/build/app/vendor/dragonmantank/cron-expression" />
-      <excludeFolder url="file://$MODULE_DIR$/nativephp/electron/dist/win-unpacked/resources/build/app/vendor/egulias/email-validator" />
-      <excludeFolder url="file://$MODULE_DIR$/nativephp/electron/dist/win-unpacked/resources/build/app/vendor/fruitcake/php-cors" />
-      <excludeFolder url="file://$MODULE_DIR$/nativephp/electron/dist/win-unpacked/resources/build/app/vendor/graham-campbell/result-type" />
-      <excludeFolder url="file://$MODULE_DIR$/nativephp/electron/dist/win-unpacked/resources/build/app/vendor/guzzlehttp/guzzle" />
-      <excludeFolder url="file://$MODULE_DIR$/nativephp/electron/dist/win-unpacked/resources/build/app/vendor/guzzlehttp/promises" />
-      <excludeFolder url="file://$MODULE_DIR$/nativephp/electron/dist/win-unpacked/resources/build/app/vendor/guzzlehttp/psr7" />
-      <excludeFolder url="file://$MODULE_DIR$/nativephp/electron/dist/win-unpacked/resources/build/app/vendor/guzzlehttp/uri-template" />
-      <excludeFolder url="file://$MODULE_DIR$/nativephp/electron/dist/win-unpacked/resources/build/app/vendor/halaxa/json-machine" />
-      <excludeFolder url="file://$MODULE_DIR$/nativephp/electron/dist/win-unpacked/resources/build/app/vendor/inertiajs/inertia-laravel" />
-      <excludeFolder url="file://$MODULE_DIR$/nativephp/electron/dist/win-unpacked/resources/build/app/vendor/laravel/framework" />
-      <excludeFolder url="file://$MODULE_DIR$/nativephp/electron/dist/win-unpacked/resources/build/app/vendor/laravel/prompts" />
-      <excludeFolder url="file://$MODULE_DIR$/nativephp/electron/dist/win-unpacked/resources/build/app/vendor/laravel/serializable-closure" />
-      <excludeFolder url="file://$MODULE_DIR$/nativephp/electron/dist/win-unpacked/resources/build/app/vendor/laravel/tinker" />
-      <excludeFolder url="file://$MODULE_DIR$/nativephp/electron/dist/win-unpacked/resources/build/app/vendor/laravel/wayfinder" />
-      <excludeFolder url="file://$MODULE_DIR$/nativephp/electron/dist/win-unpacked/resources/build/app/vendor/league/commonmark" />
-      <excludeFolder url="file://$MODULE_DIR$/nativephp/electron/dist/win-unpacked/resources/build/app/vendor/league/config" />
-      <excludeFolder url="file://$MODULE_DIR$/nativephp/electron/dist/win-unpacked/resources/build/app/vendor/league/flysystem" />
-      <excludeFolder url="file://$MODULE_DIR$/nativephp/electron/dist/win-unpacked/resources/build/app/vendor/league/flysystem-local" />
-      <excludeFolder url="file://$MODULE_DIR$/nativephp/electron/dist/win-unpacked/resources/build/app/vendor/league/mime-type-detection" />
-      <excludeFolder url="file://$MODULE_DIR$/nativephp/electron/dist/win-unpacked/resources/build/app/vendor/league/uri" />
-      <excludeFolder url="file://$MODULE_DIR$/nativephp/electron/dist/win-unpacked/resources/build/app/vendor/league/uri-interfaces" />
-      <excludeFolder url="file://$MODULE_DIR$/nativephp/electron/dist/win-unpacked/resources/build/app/vendor/monolog/monolog" />
       <excludeFolder url="file://$MODULE_DIR$/nativephp/electron/dist/win-unpacked/resources/build/app/vendor/nativephp/desktop" />
       <excludeFolder url="file://$MODULE_DIR$/nativephp/electron/dist/win-unpacked/resources/build/app/vendor/nesbot/carbon" />
       <excludeFolder url="file://$MODULE_DIR$/nativephp/electron/dist/win-unpacked/resources/build/app/vendor/nette/schema" />

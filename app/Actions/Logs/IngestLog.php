@@ -2,6 +2,7 @@
 
 namespace App\Actions\Logs;
 
+use App\Events\LogEventsIngested;
 use App\Models\LogCursor;
 use App\Models\LogEvent;
 use Carbon\Carbon;
@@ -161,6 +162,8 @@ class IngestLog
                 foreach (array_chunk($rows, 500) as $chunk) {
                     LogEvent::query()->insertOrIgnore($chunk);
                 }
+
+                LogEventsIngested::dispatch();
             }
 
             $cursor->byte_offset = $safeOffset;

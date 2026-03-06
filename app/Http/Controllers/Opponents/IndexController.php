@@ -19,6 +19,7 @@ class IndexController extends Controller
             ->join('matches as m', 'm.id', '=', 'g.match_id')
             ->where('gp.is_local', false)
             ->whereNull('m.deleted_at')
+            ->where('m.state', 'complete')
             ->select('p.id as player_id', 'p.username', 'm.id as match_id', 'm.games_won', 'm.games_lost', 'm.format', 'm.started_at')
             ->distinct()
             ->get();

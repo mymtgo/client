@@ -213,7 +213,7 @@ class MtgoManager
 
         $schedule->call(
             fn () => $this->processLogEvents()
-        )->everyThirtySeconds()->name('process_log_events')->withoutOverlapping(30);
+        )->everyMinute()->name('process_log_events_fallback')->withoutOverlapping(60);
 
         $schedule->call(
             fn () => $this->downloadArchetypes()
