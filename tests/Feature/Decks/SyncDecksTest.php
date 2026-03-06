@@ -77,6 +77,9 @@ class SyncDecksTest extends TestCase
         $logFile = $activePath.'/mtgo.log';
         file_put_contents($logFile, 'dummy log content');
 
+        // Mark this as the active data directory via user_settings
+        file_put_contents($activeDataPath.'/user_settings', '');
+
         // Ensure Cache doesn't interfere
         \Illuminate\Support\Facades\Cache::forget('mtgo.active_log_path');
 
