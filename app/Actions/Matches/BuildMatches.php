@@ -3,6 +3,7 @@
 namespace App\Actions\Matches;
 
 use App\Facades\Mtgo;
+use App\Models\Account;
 use App\Models\LogCursor;
 use App\Models\LogEvent;
 use App\Models\MtgoMatch;
@@ -18,6 +19,12 @@ class BuildMatches
         }
 
         Mtgo::setUsername($username);
+
+        $account = Account::where('username', $username)->first();
+
+        if ($account && ! $account->tracked) {
+            return;
+        }
 
         // 1. New match detection — find unprocessed match tokens
         $matchTokens = LogEvent::whereNotNull('match_id')
