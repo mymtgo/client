@@ -18,7 +18,7 @@ class IndexController extends Controller
         [$start, $end] = $this->getTimeRange($timeframe);
 
         // Overall stats (single query)
-        $stats = MtgoMatch::whereBetween('started_at', [$start, $end])
+        $stats = MtgoMatch::complete()->whereBetween('started_at', [$start, $end])
             ->selectRaw('SUM(CASE WHEN games_won > games_lost THEN 1 ELSE 0 END) as wins')
             ->selectRaw('SUM(CASE WHEN games_won <= games_lost THEN 1 ELSE 0 END) as losses')
             ->selectRaw('SUM(games_won) as games_won')
@@ -31,7 +31,7 @@ class IndexController extends Controller
         $gamesLost = (int) $stats->games_lost;
 
         // Recent matches (paginated)
-        $recentMatches = MtgoMatch::with(['deck', 'opponentArchetypes.archetype', 'opponentArchetypes.player', 'league'])
+        $recentMatches = MtgoMatch::complete()->with(['deck', 'opponentArchetypes.archetype', 'opponentArchetypes.player', 'league'])
             ->whereBetween('started_at', [$start, $end])
             ->orderByDesc('started_at')
             ->paginate(25);
@@ -69,7 +69,7 @@ class IndexController extends Controller
             return null;
         }
 
-        $matches = MtgoMatch::where('league_id', $league->id)
+        $matches = MtgoMatch::complete()->where('league_id', $league->id)
             ->with(['deck'])
             ->latest('started_at')
             ->take(5)
@@ -100,7 +100,7 @@ class IndexController extends Controller
 
     private function buildFormatChart(): array
     {
-        $rows = MtgoMatch::query()
+        $rows = MtgoMatch::complete()
             ->selectRaw("strftime('%Y-%m', started_at) as month, format, SUM(CASE WHEN games_won > games_lost THEN 1 ELSE 0 END) as wins, COUNT(*) as total")
             ->where('started_at', '>=', now()->subMonths(6)->startOfMonth())
             ->groupBy('month', 'format')

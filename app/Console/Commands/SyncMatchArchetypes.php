@@ -27,7 +27,7 @@ class SyncMatchArchetypes extends Command
      */
     public function handle()
     {
-        $matches = MtgoMatch::get();
+        $matches = MtgoMatch::complete()->get();
 
         foreach ($matches as $match) {
             DetermineMatchArchetypes::run($match);

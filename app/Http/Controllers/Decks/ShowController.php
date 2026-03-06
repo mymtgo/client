@@ -319,7 +319,7 @@ class ShowController extends Controller
             ? "strftime('%Y-%m-%d', started_at)"
             : "strftime('%Y-%m', started_at)";
 
-        $query = MtgoMatch::query()
+        $query = MtgoMatch::complete()
             ->selectRaw("{$groupExpr} as period, SUM(CASE WHEN games_won > games_lost THEN 1 ELSE 0 END) as wins, COUNT(*) as total")
             ->whereIn('deck_version_id', $versionIds)
             ->whereNull('deleted_at');
@@ -334,7 +334,7 @@ class ShowController extends Controller
             ->get()
             ->keyBy('period');
 
-        $firstMatch = MtgoMatch::whereIn('deck_version_id', $versionIds)
+        $firstMatch = MtgoMatch::complete()->whereIn('deck_version_id', $versionIds)
             ->whereNull('deleted_at')
             ->orderBy('started_at')
             ->first();
