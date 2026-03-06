@@ -4,7 +4,7 @@ Status: **Approved design**
 
 ## Overview
 
-The app discovers MTGO accounts automatically from log events. Each account's data (decks, matches, leagues, stats) is scoped via a `username` column on decks. Users can switch between accounts via a dropdown in the header, and the app auto-switches when a new login is detected.
+The app discovers MTGO accounts automatically from log events. Each account's data (decks, matches, leagues, stats) is scoped via an `account_id` foreign key on decks. Users can switch between accounts via a dropdown in the header, and the app auto-switches when a new login is detected.
 
 ## Account Discovery
 
@@ -27,22 +27,32 @@ Parsed via regex: `Username: (\S+)`
 - Users can manually toggle accounts to untracked (`false`) in Settings if desired
 - When a new account is detected, push a desktop notification: "New account detected: {username}" — clicking navigates to Settings page
 
-### Active Account
+### Active Account vs Logged-In Account
 
-- `active_username` stored in NativePHP Settings
-- Auto-updated when a login event is detected
+These are two distinct concepts:
+
+- **Logged-in account** — derived from `LogCursor.local_username`, set by login events. This is who MTGO says is playing. Used by all **pipeline actions** (SyncDecks, DetermineMatchDeck, BuildMatches gate).
+- **Active account** — the `active` flag on the `accounts` table. This is the UI viewing context. Used by all **consumer queries** (dashboard, decks, leagues, opponents). Auto-updated on login, but can also be manually switched via header dropdown.
+
+When a login event fires:
+- `LogCursor.local_username` is updated (logged-in account)
+- `Account.active` is updated (active/viewing account)
 - Toast notification shown: "Switched to {username}"
-- Switches regardless of tracked status (the user is actively playing on that account)
+
+When a user manually switches via the dropdown:
+- Only `Account.active` is updated (viewing context changes)
+- `LogCursor.local_username` stays as-is (MTGO is still logged in as whoever)
+- Pipeline actions continue to use the actual logged-in account
 
 ## Data Scoping
 
 ### Deck-Level Scoping
 
-Add `username` column to `decks` table. `SyncDecks` tags each deck with the currently active username when syncing XML files from the per-account hash directories.
+Add `account_id` foreign key to `decks` table. `SyncDecks` tags each deck with the active account's ID when syncing XML files from the per-account hash directories.
 
 Everything downstream cascades naturally:
 
-- **Decks** — filtered by `active_username`
+- **Decks** — filtered by active account's `id`
 - **Matches** — tied to decks via `deck_version_id`, naturally scoped
 - **Leagues** — tied to matches, naturally scoped
 - **Opponents** — queried through match joins, naturally scoped
@@ -50,9 +60,9 @@ Everything downstream cascades naturally:
 
 ### Consumer Query Changes
 
-All existing queries that start from `Deck` or join through decks will pick up the scoping automatically if the `Deck` model's default query or relationships are scoped. Alternatively, a `scopeForUser($username)` can be applied at the controller level.
+All existing queries that start from `Deck` or join through decks will pick up the scoping automatically if the `Deck` model uses a `scopeForActiveAccount` scope. Alternatively, `where('account_id', $accountId)` can be applied at the controller level.
 
-Queries that go directly to `matches` (like the dashboard stats) need to join through to deck and filter by username.
+Queries that go directly to `matches` (like the dashboard stats) need to join through to deck and filter by `account_id`.
 
 ## Context Switching
 
@@ -105,13 +115,13 @@ There is no direct mapping from hash directory to username in the filesystem. Th
 
 ## Database Changes
 
-### Migration: add username to decks
+### Migration: add account_id to decks
 
 ```sql
-ALTER TABLE decks ADD COLUMN username VARCHAR NULL;
+ALTER TABLE decks ADD COLUMN account_id INTEGER NULL REFERENCES accounts(id);
 ```
 
-Existing decks get backfilled with the current `LogCursor.local_username`.
+Existing decks get backfilled with the account created from the current `LogCursor.local_username`.
 
 ## What Doesn't Change
 
@@ -126,8 +136,8 @@ Existing decks get backfilled with the current `LogCursor.local_username`.
 - Test username detection from `MtGO Login Success` events
 - Test account auto-registration in settings
 - Test match building gate for tracked vs untracked accounts
-- Test deck scoping by username
-- Test context switching updates active_username
+- Test deck scoping by account_id
+- Test context switching updates active account
 - Test consumer queries only return data for active account
 
 ## Dependencies
