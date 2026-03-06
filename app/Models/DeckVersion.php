@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\MatchState;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
@@ -32,6 +33,6 @@ class DeckVersion extends Model
 
     public function matches(): HasMany
     {
-        return $this->hasMany(MtgoMatch::class, 'deck_version_id');
+        return $this->hasMany(MtgoMatch::class, 'deck_version_id')->where('state', MatchState::Complete);
     }
 }
