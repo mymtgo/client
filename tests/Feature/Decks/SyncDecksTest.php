@@ -31,6 +31,7 @@ class SyncDecksTest extends TestCase
 
         \App\Facades\Mtgo::shouldReceive('getLogPath')->andReturn($path)->byDefault();
         \App\Facades\Mtgo::shouldReceive('getLogDataPath')->andReturn($path.'/Data')->byDefault();
+        \App\Facades\Mtgo::shouldReceive('getUsername')->andReturn(null)->byDefault();
 
         Http::fake();
     }
