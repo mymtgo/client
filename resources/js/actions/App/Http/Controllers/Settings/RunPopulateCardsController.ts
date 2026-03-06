@@ -1,4 +1,4 @@
-import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition } from './../../../../../wayfinder'
+import { queryParams, type RouteQueryOptions, type RouteDefinition } from './../../../../../wayfinder'
 /**
 * @see \App\Http\Controllers\Settings\RunPopulateCardsController::__invoke
 * @see app/Http/Controllers/Settings/RunPopulateCardsController.php:11
@@ -32,27 +32,5 @@ RunPopulateCardsController.post = (options?: RouteQueryOptions): RouteDefinition
     url: RunPopulateCardsController.url(options),
     method: 'post',
 })
-
-/**
-* @see \App\Http\Controllers\Settings\RunPopulateCardsController::__invoke
-* @see app/Http/Controllers/Settings/RunPopulateCardsController.php:11
-* @route '/settings/populate-cards'
-*/
-const RunPopulateCardsControllerForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-    action: RunPopulateCardsController.url(options),
-    method: 'post',
-})
-
-/**
-* @see \App\Http\Controllers\Settings\RunPopulateCardsController::__invoke
-* @see app/Http/Controllers/Settings/RunPopulateCardsController.php:11
-* @route '/settings/populate-cards'
-*/
-RunPopulateCardsControllerForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-    action: RunPopulateCardsController.url(options),
-    method: 'post',
-})
-
-RunPopulateCardsController.form = RunPopulateCardsControllerForm
 
 export default RunPopulateCardsController

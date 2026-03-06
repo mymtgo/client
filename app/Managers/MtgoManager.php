@@ -123,6 +123,12 @@ class MtgoManager
         }
 
         $this->ingestGameLogs(sync: false);
+
+        // Register account from existing cursor data (upgrade path)
+        if ($this->getUsername() && ! \App\Models\Account::exists()) {
+            $account = \App\Models\Account::registerAndActivate($this->getUsername());
+            \App\Models\Deck::whereNull('account_id')->update(['account_id' => $account->id]);
+        }
     }
 
     public function canRun(): bool

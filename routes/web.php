@@ -53,5 +53,7 @@ Route::group([], function (\Illuminate\Routing\Router $router) {
         $group->patch('share-stats', \App\Http\Controllers\Settings\UpdateShareStatsController::class)->name('settings.share-stats');
         $group->patch('hide-phantom', \App\Http\Controllers\Settings\UpdateHidePhantomController::class)->name('settings.hide-phantom');
         $group->post('submit-matches', \App\Http\Controllers\Settings\RunSubmitMatchesController::class)->name('settings.submit-matches');
+        $group->patch('switch-account', \App\Http\Controllers\Settings\SwitchAccountController::class)->name('settings.switch-account');
+        $group->patch('account-tracking', \App\Http\Controllers\Settings\UpdateAccountTrackingController::class)->name('settings.account-tracking');
     });
 });

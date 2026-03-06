@@ -1,4 +1,4 @@
-import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition, applyUrlDefaults } from './../../../../../wayfinder'
+import { queryParams, type RouteQueryOptions, type RouteDefinition, applyUrlDefaults } from './../../../../../wayfinder'
 /**
 * @see \App\Http\Controllers\Decks\ShowController::__invoke
 * @see app/Http/Controllers/Decks/ShowController.php:26
@@ -66,42 +66,5 @@ ShowController.head = (args: { deck: string | number | { id: string | number } }
     url: ShowController.url(args, options),
     method: 'head',
 })
-
-/**
-* @see \App\Http\Controllers\Decks\ShowController::__invoke
-* @see app/Http/Controllers/Decks/ShowController.php:26
-* @route '/decks/{deck}'
-*/
-const ShowControllerForm = (args: { deck: string | number | { id: string | number } } | [deck: string | number | { id: string | number } ] | string | number | { id: string | number }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-    action: ShowController.url(args, options),
-    method: 'get',
-})
-
-/**
-* @see \App\Http\Controllers\Decks\ShowController::__invoke
-* @see app/Http/Controllers/Decks/ShowController.php:26
-* @route '/decks/{deck}'
-*/
-ShowControllerForm.get = (args: { deck: string | number | { id: string | number } } | [deck: string | number | { id: string | number } ] | string | number | { id: string | number }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-    action: ShowController.url(args, options),
-    method: 'get',
-})
-
-/**
-* @see \App\Http\Controllers\Decks\ShowController::__invoke
-* @see app/Http/Controllers/Decks/ShowController.php:26
-* @route '/decks/{deck}'
-*/
-ShowControllerForm.head = (args: { deck: string | number | { id: string | number } } | [deck: string | number | { id: string | number } ] | string | number | { id: string | number }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-    action: ShowController.url(args, {
-        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-            _method: 'HEAD',
-            ...(options?.query ?? options?.mergeQuery ?? {}),
-        }
-    }),
-    method: 'get',
-})
-
-ShowController.form = ShowControllerForm
 
 export default ShowController

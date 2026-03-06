@@ -1,7 +1,7 @@
-import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition } from './../../wayfinder'
+import { queryParams, type RouteQueryOptions, type RouteDefinition } from './../../wayfinder'
 /**
 * @see \App\Http\Controllers\Settings\IndexController::__invoke
-* @see app/Http/Controllers/Settings/IndexController.php:19
+* @see app/Http/Controllers/Settings/IndexController.php:20
 * @route '/settings'
 */
 export const index = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -16,7 +16,7 @@ index.definition = {
 
 /**
 * @see \App\Http\Controllers\Settings\IndexController::__invoke
-* @see app/Http/Controllers/Settings/IndexController.php:19
+* @see app/Http/Controllers/Settings/IndexController.php:20
 * @route '/settings'
 */
 index.url = (options?: RouteQueryOptions) => {
@@ -25,7 +25,7 @@ index.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\Settings\IndexController::__invoke
-* @see app/Http/Controllers/Settings/IndexController.php:19
+* @see app/Http/Controllers/Settings/IndexController.php:20
 * @route '/settings'
 */
 index.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -35,50 +35,13 @@ index.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 
 /**
 * @see \App\Http\Controllers\Settings\IndexController::__invoke
-* @see app/Http/Controllers/Settings/IndexController.php:19
+* @see app/Http/Controllers/Settings/IndexController.php:20
 * @route '/settings'
 */
 index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     url: index.url(options),
     method: 'head',
 })
-
-/**
-* @see \App\Http\Controllers\Settings\IndexController::__invoke
-* @see app/Http/Controllers/Settings/IndexController.php:19
-* @route '/settings'
-*/
-const indexForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-    action: index.url(options),
-    method: 'get',
-})
-
-/**
-* @see \App\Http\Controllers\Settings\IndexController::__invoke
-* @see app/Http/Controllers/Settings/IndexController.php:19
-* @route '/settings'
-*/
-indexForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-    action: index.url(options),
-    method: 'get',
-})
-
-/**
-* @see \App\Http\Controllers\Settings\IndexController::__invoke
-* @see app/Http/Controllers/Settings/IndexController.php:19
-* @route '/settings'
-*/
-indexForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-    action: index.url({
-        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-            _method: 'HEAD',
-            ...(options?.query ?? options?.mergeQuery ?? {}),
-        }
-    }),
-    method: 'get',
-})
-
-index.form = indexForm
 
 /**
 * @see \App\Http\Controllers\Settings\UpdateLogPathController::__invoke
@@ -115,38 +78,6 @@ logPath.patch = (options?: RouteQueryOptions): RouteDefinition<'patch'> => ({
 })
 
 /**
-* @see \App\Http\Controllers\Settings\UpdateLogPathController::__invoke
-* @see app/Http/Controllers/Settings/UpdateLogPathController.php:13
-* @route '/settings/log-path'
-*/
-const logPathForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-    action: logPath.url({
-        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-            _method: 'PATCH',
-            ...(options?.query ?? options?.mergeQuery ?? {}),
-        }
-    }),
-    method: 'post',
-})
-
-/**
-* @see \App\Http\Controllers\Settings\UpdateLogPathController::__invoke
-* @see app/Http/Controllers/Settings/UpdateLogPathController.php:13
-* @route '/settings/log-path'
-*/
-logPathForm.patch = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-    action: logPath.url({
-        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-            _method: 'PATCH',
-            ...(options?.query ?? options?.mergeQuery ?? {}),
-        }
-    }),
-    method: 'post',
-})
-
-logPath.form = logPathForm
-
-/**
 * @see \App\Http\Controllers\Settings\UpdateDataPathController::__invoke
 * @see app/Http/Controllers/Settings/UpdateDataPathController.php:13
 * @route '/settings/data-path'
@@ -179,38 +110,6 @@ dataPath.patch = (options?: RouteQueryOptions): RouteDefinition<'patch'> => ({
     url: dataPath.url(options),
     method: 'patch',
 })
-
-/**
-* @see \App\Http\Controllers\Settings\UpdateDataPathController::__invoke
-* @see app/Http/Controllers/Settings/UpdateDataPathController.php:13
-* @route '/settings/data-path'
-*/
-const dataPathForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-    action: dataPath.url({
-        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-            _method: 'PATCH',
-            ...(options?.query ?? options?.mergeQuery ?? {}),
-        }
-    }),
-    method: 'post',
-})
-
-/**
-* @see \App\Http\Controllers\Settings\UpdateDataPathController::__invoke
-* @see app/Http/Controllers/Settings/UpdateDataPathController.php:13
-* @route '/settings/data-path'
-*/
-dataPathForm.patch = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-    action: dataPath.url({
-        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-            _method: 'PATCH',
-            ...(options?.query ?? options?.mergeQuery ?? {}),
-        }
-    }),
-    method: 'post',
-})
-
-dataPath.form = dataPathForm
 
 /**
 * @see \App\Http\Controllers\Settings\UpdateWatcherController::__invoke
@@ -247,38 +146,6 @@ watcher.patch = (options?: RouteQueryOptions): RouteDefinition<'patch'> => ({
 })
 
 /**
-* @see \App\Http\Controllers\Settings\UpdateWatcherController::__invoke
-* @see app/Http/Controllers/Settings/UpdateWatcherController.php:13
-* @route '/settings/watcher'
-*/
-const watcherForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-    action: watcher.url({
-        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-            _method: 'PATCH',
-            ...(options?.query ?? options?.mergeQuery ?? {}),
-        }
-    }),
-    method: 'post',
-})
-
-/**
-* @see \App\Http\Controllers\Settings\UpdateWatcherController::__invoke
-* @see app/Http/Controllers/Settings/UpdateWatcherController.php:13
-* @route '/settings/watcher'
-*/
-watcherForm.patch = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-    action: watcher.url({
-        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-            _method: 'PATCH',
-            ...(options?.query ?? options?.mergeQuery ?? {}),
-        }
-    }),
-    method: 'post',
-})
-
-watcher.form = watcherForm
-
-/**
 * @see \App\Http\Controllers\Settings\RunIngestController::__invoke
 * @see app/Http/Controllers/Settings/RunIngestController.php:13
 * @route '/settings/ingest'
@@ -311,28 +178,6 @@ ingest.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     url: ingest.url(options),
     method: 'post',
 })
-
-/**
-* @see \App\Http\Controllers\Settings\RunIngestController::__invoke
-* @see app/Http/Controllers/Settings/RunIngestController.php:13
-* @route '/settings/ingest'
-*/
-const ingestForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-    action: ingest.url(options),
-    method: 'post',
-})
-
-/**
-* @see \App\Http\Controllers\Settings\RunIngestController::__invoke
-* @see app/Http/Controllers/Settings/RunIngestController.php:13
-* @route '/settings/ingest'
-*/
-ingestForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-    action: ingest.url(options),
-    method: 'post',
-})
-
-ingest.form = ingestForm
 
 /**
 * @see \App\Http\Controllers\Settings\RunSyncController::__invoke
@@ -369,28 +214,6 @@ sync.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
 })
 
 /**
-* @see \App\Http\Controllers\Settings\RunSyncController::__invoke
-* @see app/Http/Controllers/Settings/RunSyncController.php:13
-* @route '/settings/sync'
-*/
-const syncForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-    action: sync.url(options),
-    method: 'post',
-})
-
-/**
-* @see \App\Http\Controllers\Settings\RunSyncController::__invoke
-* @see app/Http/Controllers/Settings/RunSyncController.php:13
-* @route '/settings/sync'
-*/
-syncForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-    action: sync.url(options),
-    method: 'post',
-})
-
-sync.form = syncForm
-
-/**
 * @see \App\Http\Controllers\Settings\RunPopulateCardsController::__invoke
 * @see app/Http/Controllers/Settings/RunPopulateCardsController.php:11
 * @route '/settings/populate-cards'
@@ -423,28 +246,6 @@ populateCards.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => (
     url: populateCards.url(options),
     method: 'post',
 })
-
-/**
-* @see \App\Http\Controllers\Settings\RunPopulateCardsController::__invoke
-* @see app/Http/Controllers/Settings/RunPopulateCardsController.php:11
-* @route '/settings/populate-cards'
-*/
-const populateCardsForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-    action: populateCards.url(options),
-    method: 'post',
-})
-
-/**
-* @see \App\Http\Controllers\Settings\RunPopulateCardsController::__invoke
-* @see app/Http/Controllers/Settings/RunPopulateCardsController.php:11
-* @route '/settings/populate-cards'
-*/
-populateCardsForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-    action: populateCards.url(options),
-    method: 'post',
-})
-
-populateCards.form = populateCardsForm
 
 /**
 * @see \App\Http\Controllers\Settings\UpdateAnonymousStatsController::__invoke
@@ -481,38 +282,6 @@ anonymousStats.patch = (options?: RouteQueryOptions): RouteDefinition<'patch'> =
 })
 
 /**
-* @see \App\Http\Controllers\Settings\UpdateAnonymousStatsController::__invoke
-* @see app/Http/Controllers/Settings/UpdateAnonymousStatsController.php:12
-* @route '/settings/anonymous-stats'
-*/
-const anonymousStatsForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-    action: anonymousStats.url({
-        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-            _method: 'PATCH',
-            ...(options?.query ?? options?.mergeQuery ?? {}),
-        }
-    }),
-    method: 'post',
-})
-
-/**
-* @see \App\Http\Controllers\Settings\UpdateAnonymousStatsController::__invoke
-* @see app/Http/Controllers/Settings/UpdateAnonymousStatsController.php:12
-* @route '/settings/anonymous-stats'
-*/
-anonymousStatsForm.patch = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-    action: anonymousStats.url({
-        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-            _method: 'PATCH',
-            ...(options?.query ?? options?.mergeQuery ?? {}),
-        }
-    }),
-    method: 'post',
-})
-
-anonymousStats.form = anonymousStatsForm
-
-/**
 * @see \App\Http\Controllers\Settings\UpdateShareStatsController::__invoke
 * @see app/Http/Controllers/Settings/UpdateShareStatsController.php:12
 * @route '/settings/share-stats'
@@ -545,38 +314,6 @@ shareStats.patch = (options?: RouteQueryOptions): RouteDefinition<'patch'> => ({
     url: shareStats.url(options),
     method: 'patch',
 })
-
-/**
-* @see \App\Http\Controllers\Settings\UpdateShareStatsController::__invoke
-* @see app/Http/Controllers/Settings/UpdateShareStatsController.php:12
-* @route '/settings/share-stats'
-*/
-const shareStatsForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-    action: shareStats.url({
-        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-            _method: 'PATCH',
-            ...(options?.query ?? options?.mergeQuery ?? {}),
-        }
-    }),
-    method: 'post',
-})
-
-/**
-* @see \App\Http\Controllers\Settings\UpdateShareStatsController::__invoke
-* @see app/Http/Controllers/Settings/UpdateShareStatsController.php:12
-* @route '/settings/share-stats'
-*/
-shareStatsForm.patch = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-    action: shareStats.url({
-        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-            _method: 'PATCH',
-            ...(options?.query ?? options?.mergeQuery ?? {}),
-        }
-    }),
-    method: 'post',
-})
-
-shareStats.form = shareStatsForm
 
 /**
 * @see \App\Http\Controllers\Settings\UpdateHidePhantomController::__invoke
@@ -613,38 +350,6 @@ hidePhantom.patch = (options?: RouteQueryOptions): RouteDefinition<'patch'> => (
 })
 
 /**
-* @see \App\Http\Controllers\Settings\UpdateHidePhantomController::__invoke
-* @see app/Http/Controllers/Settings/UpdateHidePhantomController.php:12
-* @route '/settings/hide-phantom'
-*/
-const hidePhantomForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-    action: hidePhantom.url({
-        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-            _method: 'PATCH',
-            ...(options?.query ?? options?.mergeQuery ?? {}),
-        }
-    }),
-    method: 'post',
-})
-
-/**
-* @see \App\Http\Controllers\Settings\UpdateHidePhantomController::__invoke
-* @see app/Http/Controllers/Settings/UpdateHidePhantomController.php:12
-* @route '/settings/hide-phantom'
-*/
-hidePhantomForm.patch = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-    action: hidePhantom.url({
-        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-            _method: 'PATCH',
-            ...(options?.query ?? options?.mergeQuery ?? {}),
-        }
-    }),
-    method: 'post',
-})
-
-hidePhantom.form = hidePhantomForm
-
-/**
 * @see \App\Http\Controllers\Settings\RunSubmitMatchesController::__invoke
 * @see app/Http/Controllers/Settings/RunSubmitMatchesController.php:13
 * @route '/settings/submit-matches'
@@ -679,26 +384,72 @@ submitMatches.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => (
 })
 
 /**
-* @see \App\Http\Controllers\Settings\RunSubmitMatchesController::__invoke
-* @see app/Http/Controllers/Settings/RunSubmitMatchesController.php:13
-* @route '/settings/submit-matches'
+* @see \App\Http\Controllers\Settings\SwitchAccountController::__invoke
+* @see app/Http/Controllers/Settings/SwitchAccountController.php:12
+* @route '/settings/switch-account'
 */
-const submitMatchesForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-    action: submitMatches.url(options),
-    method: 'post',
+export const switchAccount = (options?: RouteQueryOptions): RouteDefinition<'patch'> => ({
+    url: switchAccount.url(options),
+    method: 'patch',
+})
+
+switchAccount.definition = {
+    methods: ["patch"],
+    url: '/settings/switch-account',
+} satisfies RouteDefinition<["patch"]>
+
+/**
+* @see \App\Http\Controllers\Settings\SwitchAccountController::__invoke
+* @see app/Http/Controllers/Settings/SwitchAccountController.php:12
+* @route '/settings/switch-account'
+*/
+switchAccount.url = (options?: RouteQueryOptions) => {
+    return switchAccount.definition.url + queryParams(options)
+}
+
+/**
+* @see \App\Http\Controllers\Settings\SwitchAccountController::__invoke
+* @see app/Http/Controllers/Settings/SwitchAccountController.php:12
+* @route '/settings/switch-account'
+*/
+switchAccount.patch = (options?: RouteQueryOptions): RouteDefinition<'patch'> => ({
+    url: switchAccount.url(options),
+    method: 'patch',
 })
 
 /**
-* @see \App\Http\Controllers\Settings\RunSubmitMatchesController::__invoke
-* @see app/Http/Controllers/Settings/RunSubmitMatchesController.php:13
-* @route '/settings/submit-matches'
+* @see \App\Http\Controllers\Settings\UpdateAccountTrackingController::__invoke
+* @see app/Http/Controllers/Settings/UpdateAccountTrackingController.php:12
+* @route '/settings/account-tracking'
 */
-submitMatchesForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-    action: submitMatches.url(options),
-    method: 'post',
+export const accountTracking = (options?: RouteQueryOptions): RouteDefinition<'patch'> => ({
+    url: accountTracking.url(options),
+    method: 'patch',
 })
 
-submitMatches.form = submitMatchesForm
+accountTracking.definition = {
+    methods: ["patch"],
+    url: '/settings/account-tracking',
+} satisfies RouteDefinition<["patch"]>
+
+/**
+* @see \App\Http\Controllers\Settings\UpdateAccountTrackingController::__invoke
+* @see app/Http/Controllers/Settings/UpdateAccountTrackingController.php:12
+* @route '/settings/account-tracking'
+*/
+accountTracking.url = (options?: RouteQueryOptions) => {
+    return accountTracking.definition.url + queryParams(options)
+}
+
+/**
+* @see \App\Http\Controllers\Settings\UpdateAccountTrackingController::__invoke
+* @see app/Http/Controllers/Settings/UpdateAccountTrackingController.php:12
+* @route '/settings/account-tracking'
+*/
+accountTracking.patch = (options?: RouteQueryOptions): RouteDefinition<'patch'> => ({
+    url: accountTracking.url(options),
+    method: 'patch',
+})
 
 const settings = {
     index: Object.assign(index, index),
@@ -712,6 +463,8 @@ const settings = {
     shareStats: Object.assign(shareStats, shareStats),
     hidePhantom: Object.assign(hidePhantom, hidePhantom),
     submitMatches: Object.assign(submitMatches, submitMatches),
+    switchAccount: Object.assign(switchAccount, switchAccount),
+    accountTracking: Object.assign(accountTracking, accountTracking),
 }
 
 export default settings
