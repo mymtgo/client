@@ -3,24 +3,18 @@
 namespace App\Jobs;
 
 use App\Actions\Matches\BuildMatches;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 
-class ProcessLogEvents implements ShouldQueue
+class ProcessLogEvents implements ShouldBeUnique, ShouldQueue
 {
     use Queueable;
 
-    /**
-     * Create a new job instance.
-     */
-    public function __construct()
-    {
-        //
-    }
+    public int $uniqueFor = 10;
 
-    /**
-     * Execute the job.
-     */
+    public function __construct() {}
+
     public function handle(): void
     {
         BuildMatches::run();
