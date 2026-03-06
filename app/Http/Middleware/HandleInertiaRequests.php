@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Facades\Mtgo;
+use App\Models\Account;
 use App\Models\LogEvent;
 use App\Models\MtgoMatch;
 use Illuminate\Http\Request;
@@ -29,6 +30,8 @@ class HandleInertiaRequests extends Middleware
                 'lastIngestAt' => LogEvent::max('ingested_at'),
                 'pendingMatchCount' => MtgoMatch::submittable()->count(),
             ],
+            'activeAccount' => fn () => Account::active()->first()?->username,
+            'accounts' => fn () => Account::tracked()->orderBy('username')->get(['id', 'username', 'active']),
         ];
     }
 }
