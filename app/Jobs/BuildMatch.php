@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Actions\Matches\AdvanceMatchState;
 use App\Facades\Mtgo;
 use App\Models\LogCursor;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -11,20 +12,14 @@ class BuildMatch implements ShouldQueue
 {
     use Queueable;
 
-    /**
-     * Create a new job instance.
-     */
-    public function __construct(protected string $matchToken, protected string $matchId)
-    {
-        //
-    }
+    public function __construct(
+        protected string $matchToken,
+        protected int|string $matchId,
+    ) {}
 
-    /**
-     * Execute the job.
-     */
     public function handle(): void
     {
         Mtgo::setUsername(LogCursor::first()->local_username);
-        \App\Actions\Matches\BuildMatch::run($this->matchToken, $this->matchId);
+        AdvanceMatchState::run($this->matchToken, $this->matchId);
     }
 }

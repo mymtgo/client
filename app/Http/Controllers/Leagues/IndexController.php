@@ -33,6 +33,7 @@ class IndexController extends Controller
             ->join('decks as d', 'd.id', '=', 'dv.deck_id')
             ->whereIn('m.league_id', $leagueIds)
             ->whereNull('m.deleted_at')
+            ->where('m.state', 'complete')
             ->select('m.id', 'm.league_id', 'm.games_won', 'm.games_lost', 'm.started_at', 'd.id as deck_id', 'd.name as deck_name')
             ->orderBy('m.started_at')
             ->get();
