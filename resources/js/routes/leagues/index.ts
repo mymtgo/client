@@ -1,7 +1,7 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, applyUrlDefaults } from './../../wayfinder'
 /**
 * @see \App\Http\Controllers\Leagues\IndexController::__invoke
-* @see app/Http/Controllers/Leagues/IndexController.php:15
+* @see app/Http/Controllers/Leagues/IndexController.php:16
 * @route '/leagues'
 */
 export const index = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -16,7 +16,7 @@ index.definition = {
 
 /**
 * @see \App\Http\Controllers\Leagues\IndexController::__invoke
-* @see app/Http/Controllers/Leagues/IndexController.php:15
+* @see app/Http/Controllers/Leagues/IndexController.php:16
 * @route '/leagues'
 */
 index.url = (options?: RouteQueryOptions) => {
@@ -25,7 +25,7 @@ index.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\Leagues\IndexController::__invoke
-* @see app/Http/Controllers/Leagues/IndexController.php:15
+* @see app/Http/Controllers/Leagues/IndexController.php:16
 * @route '/leagues'
 */
 index.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -35,7 +35,7 @@ index.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 
 /**
 * @see \App\Http\Controllers\Leagues\IndexController::__invoke
-* @see app/Http/Controllers/Leagues/IndexController.php:15
+* @see app/Http/Controllers/Leagues/IndexController.php:16
 * @route '/leagues'
 */
 index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
