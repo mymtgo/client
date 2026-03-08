@@ -22,17 +22,16 @@ const isActive = (href: string) => {
 </script>
 
 <template>
-    <nav class="flex shrink-0 items-center gap-1 border-b bg-background px-4 py-2">
+    <nav class="flex shrink-0 items-center gap-1 border-b border-black/60 bg-background px-4 py-2 shadow shadow-black/20">
         <Link
             content=""
             v-for="item in nav"
             :key="item.label"
             :href="item.href"
-            class="relative inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium text-white transition-colors"
+            class="relative inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm font-medium text-white transition-colors"
             :class="{
-                'bg-accent before:absolute before:-bottom-0.5 before:left-1/2 before:h-1 before:w-8 before:-translate-x-1/2 before:rounded-full before:bg-indigo-500 before:content-[attr(before)]':
-                    isActive(item.href),
-                'text-red-500 hover:bg-accent/50 hover:text-accent-foreground': !isActive(item.href),
+                'border-black bg-black/50 shadow-inner shadow-black outline-[1px] outline-white/2': isActive(item.href),
+                'bevel border-black/60 hover:bg-accent/50 hover:text-accent-foreground': !isActive(item.href),
             }"
         >
             <component :is="item.icon" class="size-4" />
