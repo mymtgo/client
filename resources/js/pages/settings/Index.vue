@@ -20,6 +20,11 @@ import UpdateShareStatsController from '@/actions/App/Http/Controllers/Settings/
 import UpdateHidePhantomController from '@/actions/App/Http/Controllers/Settings/UpdateHidePhantomController';
 import RunSubmitMatchesController from '@/actions/App/Http/Controllers/Settings/RunSubmitMatchesController';
 import UpdateAccountTrackingController from '@/actions/App/Http/Controllers/Settings/UpdateAccountTrackingController';
+import UpdateOverlaySettingsController from '@/actions/App/Http/Controllers/Settings/UpdateOverlaySettingsController';
+import { Switch } from '@/components/ui/switch';
+import LeagueTracker from '@/components/leagues/LeagueTracker.vue';
+import type { LeagueData } from '@/components/leagues/LeagueTracker.vue';
+import { ColorPicker } from '@vuelor/picker';
 import { useAppearance } from '@/composables/useAppearance';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
@@ -41,6 +46,11 @@ const props = defineProps<{
     hidePhantomLeagues: boolean;
     pendingMatches: Array<{ id: number; format: string; games_won: number; games_lost: number; started_at: string }>;
     accounts: Array<{ id: number; username: string; tracked: boolean; active: boolean }>;
+    overlayEnabled: boolean;
+    overlayAlwaysShow: boolean;
+    overlayFont: string;
+    overlayTextColor: string;
+    overlayBgColor: string;
     appVersion: string;
 }>();
 
@@ -54,6 +64,29 @@ const errors = computed(() => usePage().props.errors as Record<string, string>);
 const { appearance, updateAppearance } = useAppearance();
 
 const processing = ref<string | null>(null);
+
+const overlayEnabled = ref(props.overlayEnabled);
+const overlayAlwaysShow = ref(props.overlayAlwaysShow);
+const overlayFont = ref(props.overlayFont);
+const overlayTextColor = ref(props.overlayTextColor);
+const overlayBgColor = ref(props.overlayBgColor);
+
+const sampleLeague: LeagueData = {
+    id: 0,
+    name: 'Sample League',
+    format: 'Modern',
+    phantom: false,
+    wins: 3,
+    losses: 1,
+    totalMatches: 4,
+    deckName: 'Eldrazi Tron',
+    hasActiveMatch: true,
+    games: [
+        { won: true, ended: true },
+        { won: false, ended: true },
+        { won: null, ended: false },
+    ],
+};
 
 function withProcessing(key: string, method: 'patch' | 'post', url: string, data: Record<string, unknown> = {}) {
     processing.value = key;
@@ -107,6 +140,16 @@ function submitPendingMatches() {
 
 function toggleAccountTracking(username: string, tracked: boolean) {
     withProcessing(`account-${username}`, 'patch', UpdateAccountTrackingController.url(), { username, tracked });
+}
+
+function saveOverlaySettings() {
+    withProcessing('overlay', 'post', UpdateOverlaySettingsController.url(), {
+        overlay_enabled: overlayEnabled.value,
+        overlay_always_show: overlayAlwaysShow.value,
+        overlay_font: overlayFont.value,
+        overlay_text_color: overlayTextColor.value,
+        overlay_bg_color: overlayBgColor.value,
+    });
 }
 </script>
 
@@ -257,6 +300,95 @@ function toggleAccountTracking(username: string, tracked: boolean) {
                         {{ processing === 'populateCards' ? 'Running...' : 'Run now' }}
                     </Button>
                 </div>
+            </div>
+
+            <!-- League Tracker -->
+            <div class="flex flex-col gap-4 p-3 lg:p-4">
+                <div>
+                    <p class="font-semibold">League Tracker</p>
+                    <p class="text-sm text-muted-foreground">
+                        Overlay window that shows your current league run on top of MTGO.
+                    </p>
+                </div>
+
+                <div class="flex items-center justify-between">
+                    <div>
+                        <Label>Enabled</Label>
+                        <p class="text-sm text-muted-foreground">Show the league tracker overlay.</p>
+                    </div>
+                    <Switch v-model:checked="overlayEnabled" @update:checked="saveOverlaySettings" />
+                </div>
+
+                <template v-if="overlayEnabled">
+                    <Separator />
+
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <Label>Always show</Label>
+                            <p class="text-sm text-muted-foreground">Keep the overlay open at all times, not just during matches.</p>
+                        </div>
+                        <Switch v-model:checked="overlayAlwaysShow" @update:checked="saveOverlaySettings" />
+                    </div>
+
+                    <Separator />
+
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <Label>Font</Label>
+                            <p class="text-sm text-muted-foreground">Font used in the overlay.</p>
+                        </div>
+                        <Select v-model="overlayFont" @update:model-value="saveOverlaySettings">
+                            <SelectTrigger class="w-44">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="Segoe UI">Segoe UI</SelectItem>
+                                <SelectItem value="Arial">Arial</SelectItem>
+                                <SelectItem value="Consolas">Consolas</SelectItem>
+                                <SelectItem value="Cascadia Code">Cascadia Code</SelectItem>
+                                <SelectItem value="Tahoma">Tahoma</SelectItem>
+                                <SelectItem value="Verdana">Verdana</SelectItem>
+                                <SelectItem value="Trebuchet MS">Trebuchet MS</SelectItem>
+                                <SelectItem value="Calibri">Calibri</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    <Separator />
+
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <Label>Text colour</Label>
+                            <p class="text-sm text-muted-foreground">Colour of overlay text.</p>
+                        </div>
+                        <ColorPicker v-model="overlayTextColor" @update:model-value="saveOverlaySettings" />
+                    </div>
+
+                    <Separator />
+
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <Label>Background colour</Label>
+                            <p class="text-sm text-muted-foreground">Colour of overlay background.</p>
+                        </div>
+                        <ColorPicker v-model="overlayBgColor" @update:model-value="saveOverlaySettings" />
+                    </div>
+
+                    <Separator />
+
+                    <!-- Preview -->
+                    <div>
+                        <Label class="mb-2 block">Preview</Label>
+                        <div class="overflow-hidden rounded-lg border">
+                            <LeagueTracker
+                                :league="sampleLeague"
+                                :font="overlayFont"
+                                :text-color="overlayTextColor"
+                                :bg-color="overlayBgColor"
+                            />
+                        </div>
+                    </div>
+                </template>
             </div>
 
             <!-- Display -->
