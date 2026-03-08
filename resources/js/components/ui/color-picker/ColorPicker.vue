@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ColorPickerRoot, ColorPickerCanvas, ColorPickerSliderHue, ColorPickerInputHex } from '@vuelor/picker';
-import '@vuelor/picker/dist/style.css';
+import '@vuelor/picker/style.css';
 import { ref, watch } from 'vue';
 
 const props = defineProps<{
