@@ -95,6 +95,57 @@ it('detects an active match in the league', function () {
     );
 });
 
+it('includes game results for the active match', function () {
+    $league = League::create([
+        'token' => 'game-results-league-token',
+        'format' => 'Modern',
+        'name' => 'Game Results League',
+        'started_at' => now(),
+    ]);
+
+    $match = MtgoMatch::create([
+        'mtgo_id' => '400001',
+        'token' => 'match-token-games',
+        'league_id' => $league->id,
+        'format' => 'Modern',
+        'match_type' => 'League',
+        'state' => MatchState::InProgress,
+        'games_won' => 1,
+        'games_lost' => 0,
+        'started_at' => now(),
+        'ended_at' => now(),
+    ]);
+
+    \App\Models\Game::create([
+        'match_id' => $match->id,
+        'mtgo_id' => '500001',
+        'started_at' => now()->subMinutes(10),
+        'ended_at' => now()->subMinutes(5),
+        'won' => true,
+    ]);
+
+    \App\Models\Game::create([
+        'match_id' => $match->id,
+        'mtgo_id' => '500002',
+        'started_at' => now()->subMinutes(4),
+        'ended_at' => null,
+        'won' => null,
+    ]);
+
+    $response = $this->get(route('leagues.overlay'));
+
+    $response->assertOk();
+    $response->assertInertia(fn ($page) => $page
+        ->component('leagues/Overlay')
+        ->where('league.hasActiveMatch', true)
+        ->has('league.games', 2)
+        ->where('league.games.0.won', true)
+        ->where('league.games.0.ended', true)
+        ->where('league.games.1.won', null)
+        ->where('league.games.1.ended', false)
+    );
+});
+
 it('excludes completed leagues with 5 matches', function () {
     $league = League::create([
         'token' => 'completed-league-token',
