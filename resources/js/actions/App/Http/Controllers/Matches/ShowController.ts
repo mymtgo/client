@@ -1,4 +1,4 @@
-import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition, applyUrlDefaults } from './../../../../../wayfinder'
+import { queryParams, type RouteQueryOptions, type RouteDefinition, applyUrlDefaults } from './../../../../../wayfinder'
 /**
 * @see \App\Http\Controllers\Matches\ShowController::__invoke
  * @see app/Http/Controllers/Matches/ShowController.php:19
@@ -60,40 +60,4 @@ ShowController.head = (args: { id: string | number } | [id: string | number ] | 
     url: ShowController.url(args, options),
     method: 'head',
 })
-
-    /**
-* @see \App\Http\Controllers\Matches\ShowController::__invoke
- * @see app/Http/Controllers/Matches/ShowController.php:19
- * @route '/matches/{id}'
- */
-    const ShowControllerForm = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-        action: ShowController.url(args, options),
-        method: 'get',
-    })
-
-            /**
-* @see \App\Http\Controllers\Matches\ShowController::__invoke
- * @see app/Http/Controllers/Matches/ShowController.php:19
- * @route '/matches/{id}'
- */
-        ShowControllerForm.get = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-            action: ShowController.url(args, options),
-            method: 'get',
-        })
-            /**
-* @see \App\Http\Controllers\Matches\ShowController::__invoke
- * @see app/Http/Controllers/Matches/ShowController.php:19
- * @route '/matches/{id}'
- */
-        ShowControllerForm.head = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-            action: ShowController.url(args, {
-                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-                            _method: 'HEAD',
-                            ...(options?.query ?? options?.mergeQuery ?? {}),
-                        }
-                    }),
-            method: 'get',
-        })
-    
-    ShowController.form = ShowControllerForm
 export default ShowController

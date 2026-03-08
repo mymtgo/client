@@ -1,4 +1,4 @@
-import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition } from './../../../../../wayfinder'
+import { queryParams, type RouteQueryOptions, type RouteDefinition } from './../../../../../wayfinder'
 /**
 * @see \App\Http\Controllers\Settings\UpdateDataPathController::__invoke
  * @see app/Http/Controllers/Settings/UpdateDataPathController.php:13
@@ -32,36 +32,4 @@ UpdateDataPathController.patch = (options?: RouteQueryOptions): RouteDefinition<
     url: UpdateDataPathController.url(options),
     method: 'patch',
 })
-
-    /**
-* @see \App\Http\Controllers\Settings\UpdateDataPathController::__invoke
- * @see app/Http/Controllers/Settings/UpdateDataPathController.php:13
- * @route '/settings/data-path'
- */
-    const UpdateDataPathControllerForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-        action: UpdateDataPathController.url({
-                    [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-                        _method: 'PATCH',
-                        ...(options?.query ?? options?.mergeQuery ?? {}),
-                    }
-                }),
-        method: 'post',
-    })
-
-            /**
-* @see \App\Http\Controllers\Settings\UpdateDataPathController::__invoke
- * @see app/Http/Controllers/Settings/UpdateDataPathController.php:13
- * @route '/settings/data-path'
- */
-        UpdateDataPathControllerForm.patch = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-            action: UpdateDataPathController.url({
-                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-                            _method: 'PATCH',
-                            ...(options?.query ?? options?.mergeQuery ?? {}),
-                        }
-                    }),
-            method: 'post',
-        })
-    
-    UpdateDataPathController.form = UpdateDataPathControllerForm
 export default UpdateDataPathController

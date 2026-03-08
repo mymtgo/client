@@ -1,4 +1,4 @@
-import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition } from './../../../../../wayfinder'
+import { queryParams, type RouteQueryOptions, type RouteDefinition } from './../../../../../wayfinder'
 /**
 * @see \App\Http\Controllers\Settings\RunSubmitMatchesController::__invoke
  * @see app/Http/Controllers/Settings/RunSubmitMatchesController.php:13
@@ -32,26 +32,4 @@ RunSubmitMatchesController.post = (options?: RouteQueryOptions): RouteDefinition
     url: RunSubmitMatchesController.url(options),
     method: 'post',
 })
-
-    /**
-* @see \App\Http\Controllers\Settings\RunSubmitMatchesController::__invoke
- * @see app/Http/Controllers/Settings/RunSubmitMatchesController.php:13
- * @route '/settings/submit-matches'
- */
-    const RunSubmitMatchesControllerForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-        action: RunSubmitMatchesController.url(options),
-        method: 'post',
-    })
-
-            /**
-* @see \App\Http\Controllers\Settings\RunSubmitMatchesController::__invoke
- * @see app/Http/Controllers/Settings/RunSubmitMatchesController.php:13
- * @route '/settings/submit-matches'
- */
-        RunSubmitMatchesControllerForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-            action: RunSubmitMatchesController.url(options),
-            method: 'post',
-        })
-    
-    RunSubmitMatchesController.form = RunSubmitMatchesControllerForm
 export default RunSubmitMatchesController

@@ -1,4 +1,4 @@
-import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition, applyUrlDefaults } from './../../../../../wayfinder'
+import { queryParams, type RouteQueryOptions, type RouteDefinition, applyUrlDefaults } from './../../../../../wayfinder'
 /**
 * @see \App\Http\Controllers\Leagues\AbandonController::__invoke
  * @see app/Http/Controllers/Leagues/AbandonController.php:11
@@ -56,36 +56,4 @@ AbandonController.delete = (args: { league: number | { id: number } } | [league:
     url: AbandonController.url(args, options),
     method: 'delete',
 })
-
-    /**
-* @see \App\Http\Controllers\Leagues\AbandonController::__invoke
- * @see app/Http/Controllers/Leagues/AbandonController.php:11
- * @route '/leagues/{league}'
- */
-    const AbandonControllerForm = (args: { league: number | { id: number } } | [league: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-        action: AbandonController.url(args, {
-                    [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-                        _method: 'DELETE',
-                        ...(options?.query ?? options?.mergeQuery ?? {}),
-                    }
-                }),
-        method: 'post',
-    })
-
-            /**
-* @see \App\Http\Controllers\Leagues\AbandonController::__invoke
- * @see app/Http/Controllers/Leagues/AbandonController.php:11
- * @route '/leagues/{league}'
- */
-        AbandonControllerForm.delete = (args: { league: number | { id: number } } | [league: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-            action: AbandonController.url(args, {
-                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-                            _method: 'DELETE',
-                            ...(options?.query ?? options?.mergeQuery ?? {}),
-                        }
-                    }),
-            method: 'post',
-        })
-    
-    AbandonController.form = AbandonControllerForm
 export default AbandonController

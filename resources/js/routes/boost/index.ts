@@ -1,4 +1,4 @@
-import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition } from './../../wayfinder'
+import { queryParams, type RouteQueryOptions, type RouteDefinition } from './../../wayfinder'
 /**
  * @see vendor/laravel/boost/src/BoostServiceProvider.php:114
  * @route '/_boost/browser-logs'
@@ -29,26 +29,6 @@ browserLogs.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     url: browserLogs.url(options),
     method: 'post',
 })
-
-    /**
- * @see vendor/laravel/boost/src/BoostServiceProvider.php:114
- * @route '/_boost/browser-logs'
- */
-    const browserLogsForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-        action: browserLogs.url(options),
-        method: 'post',
-    })
-
-            /**
- * @see vendor/laravel/boost/src/BoostServiceProvider.php:114
- * @route '/_boost/browser-logs'
- */
-        browserLogsForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-            action: browserLogs.url(options),
-            method: 'post',
-        })
-    
-    browserLogs.form = browserLogsForm
 const boost = {
     browserLogs: Object.assign(browserLogs, browserLogs),
 }

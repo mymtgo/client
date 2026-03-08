@@ -1,4 +1,4 @@
-import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition } from './../../../../../wayfinder'
+import { queryParams, type RouteQueryOptions, type RouteDefinition } from './../../../../../wayfinder'
 /**
 * @see \App\Http\Controllers\Settings\UpdateWatcherController::__invoke
  * @see app/Http/Controllers/Settings/UpdateWatcherController.php:13
@@ -32,36 +32,4 @@ UpdateWatcherController.patch = (options?: RouteQueryOptions): RouteDefinition<'
     url: UpdateWatcherController.url(options),
     method: 'patch',
 })
-
-    /**
-* @see \App\Http\Controllers\Settings\UpdateWatcherController::__invoke
- * @see app/Http/Controllers/Settings/UpdateWatcherController.php:13
- * @route '/settings/watcher'
- */
-    const UpdateWatcherControllerForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-        action: UpdateWatcherController.url({
-                    [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-                        _method: 'PATCH',
-                        ...(options?.query ?? options?.mergeQuery ?? {}),
-                    }
-                }),
-        method: 'post',
-    })
-
-            /**
-* @see \App\Http\Controllers\Settings\UpdateWatcherController::__invoke
- * @see app/Http/Controllers/Settings/UpdateWatcherController.php:13
- * @route '/settings/watcher'
- */
-        UpdateWatcherControllerForm.patch = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-            action: UpdateWatcherController.url({
-                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-                            _method: 'PATCH',
-                            ...(options?.query ?? options?.mergeQuery ?? {}),
-                        }
-                    }),
-            method: 'post',
-        })
-    
-    UpdateWatcherController.form = UpdateWatcherControllerForm
 export default UpdateWatcherController
