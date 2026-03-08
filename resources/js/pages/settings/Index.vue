@@ -347,7 +347,7 @@ function setOverlayAlwaysShow(val: boolean | 'indeterminate') {
                                 <Label>Text colour</Label>
                                 <p class="text-sm text-muted-foreground">Colour of overlay text.</p>
                             </div>
-                            <ColorPicker v-model="overlayTextColor" @update:model-value="() => saveOverlaySettings()" />
+                            <ColorPicker v-model="overlayTextColor" @change="() => saveOverlaySettings()" />
                         </div>
 
                         <Separator />
@@ -357,7 +357,7 @@ function setOverlayAlwaysShow(val: boolean | 'indeterminate') {
                                 <Label>Background colour</Label>
                                 <p class="text-sm text-muted-foreground">Colour of overlay background.</p>
                             </div>
-                            <ColorPicker v-model="overlayBgColor" @update:model-value="() => saveOverlaySettings()" />
+                            <ColorPicker v-model="overlayBgColor" @change="() => saveOverlaySettings()" />
                         </div>
 
                         <Separator />
