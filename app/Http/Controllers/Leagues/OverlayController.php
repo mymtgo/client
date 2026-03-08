@@ -33,6 +33,13 @@ class OverlayController extends Controller
             ->where('state', '!=', MatchState::Complete)
             ->first();
 
+        $games = $currentMatch
+            ? $currentMatch->games()->orderBy('started_at')->get()->map(fn ($game) => [
+                'won' => $game->won,
+                'ended' => $game->ended_at !== null,
+            ])->values()->all()
+            : [];
+
         $deckName = $league->matches()
             ->whereNotNull('deck_version_id')
             ->with('deck')
@@ -50,6 +57,7 @@ class OverlayController extends Controller
                 'phantom' => (bool) $league->phantom,
                 'deckName' => $deckName,
                 'hasActiveMatch' => $currentMatch !== null,
+                'games' => $games,
             ],
         ]);
     }
