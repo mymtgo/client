@@ -4,7 +4,7 @@ namespace App\Http\Middleware;
 
 use App\Facades\Mtgo;
 use App\Models\Account;
-use App\Models\LogEvent;
+use App\Models\LogCursor;
 use App\Models\MtgoMatch;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
@@ -27,8 +27,8 @@ class HandleInertiaRequests extends Middleware
         return [
             ...parent::share($request),
             'status' => fn () => [
-                'watcherRunning' => Mtgo::canRun(),
-                'lastIngestAt' => LogEvent::max('ingested_at'),
+                'watcherRunning' => (bool) \Native\Desktop\Facades\Settings::get('watcher_active', true),
+                'lastIngestAt' => LogCursor::first()?->updated_at,
                 'pendingMatchCount' => MtgoMatch::submittable()->count(),
             ],
             'activeAccount' => fn () => Account::active()->first()?->username,
