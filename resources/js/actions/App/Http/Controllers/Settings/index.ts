@@ -11,6 +11,7 @@ import UpdateHidePhantomController from './UpdateHidePhantomController'
 import RunSubmitMatchesController from './RunSubmitMatchesController'
 import SwitchAccountController from './SwitchAccountController'
 import UpdateAccountTrackingController from './UpdateAccountTrackingController'
+import UpdateOverlaySettingsController from './UpdateOverlaySettingsController'
 const Settings = {
     IndexController: Object.assign(IndexController, IndexController),
 UpdateLogPathController: Object.assign(UpdateLogPathController, UpdateLogPathController),
@@ -25,6 +26,7 @@ UpdateHidePhantomController: Object.assign(UpdateHidePhantomController, UpdateHi
 RunSubmitMatchesController: Object.assign(RunSubmitMatchesController, RunSubmitMatchesController),
 SwitchAccountController: Object.assign(SwitchAccountController, SwitchAccountController),
 UpdateAccountTrackingController: Object.assign(UpdateAccountTrackingController, UpdateAccountTrackingController),
+UpdateOverlaySettingsController: Object.assign(UpdateOverlaySettingsController, UpdateOverlaySettingsController),
 }
 
 export default Settings

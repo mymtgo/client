@@ -817,6 +817,61 @@ accountTracking.patch = (options?: RouteQueryOptions): RouteDefinition<'patch'> 
         })
     
     accountTracking.form = accountTrackingForm
+/**
+* @see \App\Http\Controllers\Settings\UpdateOverlaySettingsController::__invoke
+ * @see app/Http/Controllers/Settings/UpdateOverlaySettingsController.php:23
+ * @route '/settings/overlay'
+ */
+export const overlay = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
+    url: overlay.url(options),
+    method: 'post',
+})
+
+overlay.definition = {
+    methods: ["post"],
+    url: '/settings/overlay',
+} satisfies RouteDefinition<["post"]>
+
+/**
+* @see \App\Http\Controllers\Settings\UpdateOverlaySettingsController::__invoke
+ * @see app/Http/Controllers/Settings/UpdateOverlaySettingsController.php:23
+ * @route '/settings/overlay'
+ */
+overlay.url = (options?: RouteQueryOptions) => {
+    return overlay.definition.url + queryParams(options)
+}
+
+/**
+* @see \App\Http\Controllers\Settings\UpdateOverlaySettingsController::__invoke
+ * @see app/Http/Controllers/Settings/UpdateOverlaySettingsController.php:23
+ * @route '/settings/overlay'
+ */
+overlay.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
+    url: overlay.url(options),
+    method: 'post',
+})
+
+    /**
+* @see \App\Http\Controllers\Settings\UpdateOverlaySettingsController::__invoke
+ * @see app/Http/Controllers/Settings/UpdateOverlaySettingsController.php:23
+ * @route '/settings/overlay'
+ */
+    const overlayForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+        action: overlay.url(options),
+        method: 'post',
+    })
+
+            /**
+* @see \App\Http\Controllers\Settings\UpdateOverlaySettingsController::__invoke
+ * @see app/Http/Controllers/Settings/UpdateOverlaySettingsController.php:23
+ * @route '/settings/overlay'
+ */
+        overlayForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+            action: overlay.url(options),
+            method: 'post',
+        })
+    
+    overlay.form = overlayForm
 const settings = {
     index: Object.assign(index, index),
 logPath: Object.assign(logPath, logPath),
@@ -831,6 +886,7 @@ hidePhantom: Object.assign(hidePhantom, hidePhantom),
 submitMatches: Object.assign(submitMatches, submitMatches),
 switchAccount: Object.assign(switchAccount, switchAccount),
 accountTracking: Object.assign(accountTracking, accountTracking),
+overlay: Object.assign(overlay, overlay),
 }
 
 export default settings

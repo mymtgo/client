@@ -1,7 +1,7 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition } from './../../../wayfinder'
 /**
 * @see \App\Http\Controllers\Leagues\ToggleOverlayController::__invoke
- * @see app/Http/Controllers/Leagues/ToggleOverlayController.php:11
+ * @see app/Http/Controllers/Leagues/ToggleOverlayController.php:12
  * @route '/leagues/overlay/toggle'
  */
 export const toggle = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -16,7 +16,7 @@ toggle.definition = {
 
 /**
 * @see \App\Http\Controllers\Leagues\ToggleOverlayController::__invoke
- * @see app/Http/Controllers/Leagues/ToggleOverlayController.php:11
+ * @see app/Http/Controllers/Leagues/ToggleOverlayController.php:12
  * @route '/leagues/overlay/toggle'
  */
 toggle.url = (options?: RouteQueryOptions) => {
@@ -25,7 +25,7 @@ toggle.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\Leagues\ToggleOverlayController::__invoke
- * @see app/Http/Controllers/Leagues/ToggleOverlayController.php:11
+ * @see app/Http/Controllers/Leagues/ToggleOverlayController.php:12
  * @route '/leagues/overlay/toggle'
  */
 toggle.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -35,7 +35,7 @@ toggle.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
 
     /**
 * @see \App\Http\Controllers\Leagues\ToggleOverlayController::__invoke
- * @see app/Http/Controllers/Leagues/ToggleOverlayController.php:11
+ * @see app/Http/Controllers/Leagues/ToggleOverlayController.php:12
  * @route '/leagues/overlay/toggle'
  */
     const toggleForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -45,7 +45,7 @@ toggle.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
 
             /**
 * @see \App\Http\Controllers\Leagues\ToggleOverlayController::__invoke
- * @see app/Http/Controllers/Leagues/ToggleOverlayController.php:11
+ * @see app/Http/Controllers/Leagues/ToggleOverlayController.php:12
  * @route '/leagues/overlay/toggle'
  */
         toggleForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({

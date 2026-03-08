@@ -1,7 +1,7 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition } from './../../../../../wayfinder'
 /**
 * @see \App\Http\Controllers\Leagues\ToggleOverlayController::__invoke
- * @see app/Http/Controllers/Leagues/ToggleOverlayController.php:11
+ * @see app/Http/Controllers/Leagues/ToggleOverlayController.php:12
  * @route '/leagues/overlay/toggle'
  */
 const ToggleOverlayController = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -16,7 +16,7 @@ ToggleOverlayController.definition = {
 
 /**
 * @see \App\Http\Controllers\Leagues\ToggleOverlayController::__invoke
- * @see app/Http/Controllers/Leagues/ToggleOverlayController.php:11
+ * @see app/Http/Controllers/Leagues/ToggleOverlayController.php:12
  * @route '/leagues/overlay/toggle'
  */
 ToggleOverlayController.url = (options?: RouteQueryOptions) => {
@@ -25,7 +25,7 @@ ToggleOverlayController.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\Leagues\ToggleOverlayController::__invoke
- * @see app/Http/Controllers/Leagues/ToggleOverlayController.php:11
+ * @see app/Http/Controllers/Leagues/ToggleOverlayController.php:12
  * @route '/leagues/overlay/toggle'
  */
 ToggleOverlayController.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -35,7 +35,7 @@ ToggleOverlayController.post = (options?: RouteQueryOptions): RouteDefinition<'p
 
     /**
 * @see \App\Http\Controllers\Leagues\ToggleOverlayController::__invoke
- * @see app/Http/Controllers/Leagues/ToggleOverlayController.php:11
+ * @see app/Http/Controllers/Leagues/ToggleOverlayController.php:12
  * @route '/leagues/overlay/toggle'
  */
     const ToggleOverlayControllerForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -45,7 +45,7 @@ ToggleOverlayController.post = (options?: RouteQueryOptions): RouteDefinition<'p
 
             /**
 * @see \App\Http\Controllers\Leagues\ToggleOverlayController::__invoke
- * @see app/Http/Controllers/Leagues/ToggleOverlayController.php:11
+ * @see app/Http/Controllers/Leagues/ToggleOverlayController.php:12
  * @route '/leagues/overlay/toggle'
  */
         ToggleOverlayControllerForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({

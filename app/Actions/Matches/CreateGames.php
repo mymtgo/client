@@ -31,7 +31,7 @@ class CreateGames
             'match_id' => $match->id,
             'mtgo_id' => $gameId,
         ], [
-            'won' => $gameLog['results'][$gameIndex] ?? false,
+            'won' => $gameLog['results'][$gameIndex] ?? null,
             'started_at' => now()->parse($firstStateEvent->logged_at)->setTimeFromTimeString($firstStateEvent->timestamp),
             'ended_at' => now()->parse($lastStateEvent->logged_at)->setTimeFromTimeString($lastStateEvent->timestamp),
         ]);
