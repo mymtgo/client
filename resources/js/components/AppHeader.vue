@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { Link, usePage, router } from '@inertiajs/vue3';
-import { Settings, ChevronDown, PanelTop } from 'lucide-vue-next';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import DashboardController from '@/actions/App/Http/Controllers/IndexController';
+import ToggleOverlayController from '@/actions/App/Http/Controllers/Leagues/ToggleOverlayController';
 import SettingsIndexController from '@/actions/App/Http/Controllers/Settings/IndexController';
 import SwitchAccountController from '@/actions/App/Http/Controllers/Settings/SwitchAccountController';
-import ToggleOverlayController from '@/actions/App/Http/Controllers/Leagues/ToggleOverlayController';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Link, router, usePage } from '@inertiajs/vue3';
+import { ChevronDown, PanelTop, Settings } from 'lucide-vue-next';
 
 const page = usePage<{
     activeAccount: string | null;
@@ -14,21 +14,25 @@ const page = usePage<{
 }>();
 
 function switchAccount(username: string) {
-    router.patch(SwitchAccountController.url(), { username }, {
-        preserveScroll: false,
-    });
+    router.patch(
+        SwitchAccountController.url(),
+        { username },
+        {
+            preserveScroll: false,
+        },
+    );
 }
 </script>
 
 <template>
-    <header class="flex h-12 shrink-0 items-center justify-between bg-sidebar px-4 text-sidebar-foreground">
-        <Link :href="DashboardController.url()" class="text-base font-semibold tracking-tight">
-            mymtgo
-        </Link>
+    <header class="flex h-12 shrink-0 items-center justify-between border-b border-black/80 bg-black/10 px-4 text-sidebar-foreground">
+        <Link :href="DashboardController.url()" class="text-base font-semibold tracking-tight"> mymtgo </Link>
 
         <div class="flex items-center gap-2">
             <DropdownMenu v-if="page.props.accounts && page.props.accounts.length > 1">
-                <DropdownMenuTrigger class="inline-flex items-center gap-1 rounded-md px-2 py-1 text-sm text-sidebar-foreground/70 transition-colors hover:text-sidebar-foreground">
+                <DropdownMenuTrigger
+                    class="inline-flex items-center gap-1 rounded-md px-2 py-1 text-sm text-sidebar-foreground/70 transition-colors hover:text-sidebar-foreground"
+                >
                     {{ page.props.activeAccount ?? 'No account' }}
                     <ChevronDown class="size-3" />
                 </DropdownMenuTrigger>
