@@ -2,9 +2,11 @@
 
 namespace App\Providers;
 
+use App\Actions\Leagues\OpenOverlayWindow;
 use App\Facades\Mtgo;
 use Native\Desktop\Contracts\ProvidesPhpIni;
 use Native\Desktop\Facades\Menu;
+use Native\Desktop\Facades\Settings;
 use Native\Desktop\Facades\Window;
 
 class NativeAppServiceProvider implements ProvidesPhpIni
@@ -30,6 +32,10 @@ class NativeAppServiceProvider implements ProvidesPhpIni
 
         Mtgo::runInitialSetup();
         Mtgo::retryUnsubmittedMatches();
+
+        if (Settings::get('overlay_enabled') && Settings::get('overlay_always_show')) {
+            OpenOverlayWindow::run();
+        }
     }
 
     /**

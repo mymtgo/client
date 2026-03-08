@@ -11,6 +11,7 @@ const page = usePage<{
     activeAccount: string | null;
     accounts: Array<{ id: number; username: string; active: boolean }>;
     overlayOpen: boolean;
+    overlayEnabled: boolean;
 }>();
 
 function switchAccount(username: string) {
@@ -53,6 +54,7 @@ function switchAccount(username: string) {
             </span>
 
             <button
+                v-if="page.props.overlayEnabled"
                 @click="router.post(ToggleOverlayController.url())"
                 class="inline-flex h-8 w-8 items-center justify-center rounded-md transition-colors hover:text-sidebar-foreground"
                 :class="page.props.overlayOpen ? 'text-sidebar-foreground' : 'text-sidebar-foreground/70'"
