@@ -31,6 +31,7 @@ class SyncDecksTest extends TestCase
 
         \App\Facades\Mtgo::shouldReceive('getLogPath')->andReturn($path)->byDefault();
         \App\Facades\Mtgo::shouldReceive('getLogDataPath')->andReturn($path.'/Data')->byDefault();
+        \App\Facades\Mtgo::shouldReceive('getUsername')->andReturn(null)->byDefault();
 
         Http::fake();
     }
@@ -75,6 +76,9 @@ class SyncDecksTest extends TestCase
         // Create a dummy log file to make it the "active" path
         $logFile = $activePath.'/mtgo.log';
         file_put_contents($logFile, 'dummy log content');
+
+        // Mark this as the active data directory via user_settings
+        file_put_contents($activeDataPath.'/user_settings', '');
 
         // Ensure Cache doesn't interfere
         \Illuminate\Support\Facades\Cache::forget('mtgo.active_log_path');

@@ -15,44 +15,48 @@ class GetDeckFiles
             return [];
         }
 
+        $activeDir = static::findActiveDirectory($basePath);
+
+        if (! $activeDir) {
+            return [];
+        }
+
+        $finder = Finder::create()
+            ->files()
+            ->in($activeDir)
+            ->ignoreUnreadableDirs()
+            ->depth(0)
+            ->name('/^grouping ([0-9a-f-]{36})\.xml$/i');
+
+        $files = [];
+
+        foreach ($finder as $file) {
+            if (preg_match('/^grouping ([0-9a-f-]{36})\.xml$/i', $file->getFilename())) {
+                $files[] = $file->getPathname();
+            }
+        }
+
+        return $files;
+    }
+
+    /**
+     * Find the active account's hash directory by looking for the most
+     * recently modified user_settings file across all subdirectories.
+     */
+    protected static function findActiveDirectory(string $basePath): ?string
+    {
         $finder = Finder::create()
             ->files()
             ->in($basePath)
             ->ignoreUnreadableDirs()
-            ->name('/^grouping ([0-9a-f-]{36})\.xml$/i');
-
-        $latest = []; // deckUuid => ['path', 'mtime', 'size']
+            ->name('user_settings')
+            ->sortByModifiedTime()
+            ->reverseSorting();
 
         foreach ($finder as $file) {
-            if (! preg_match('/^grouping ([0-9a-f-]{36})\.xml$/i', $file->getFilename(), $m)) {
-                continue;
-            }
-
-            $deckUuid = strtolower($m[1]);
-
-            $candidate = [
-                'path' => $file->getPathname(),
-                'mtime' => $file->getMTime(),
-                'size' => $file->getSize(),
-            ];
-
-            if (! isset($latest[$deckUuid])) {
-                $latest[$deckUuid] = $candidate;
-
-                continue;
-            }
-
-            $current = $latest[$deckUuid];
-
-            // newest mtime wins; size breaks rare ties
-            if (
-                $candidate['mtime'] > $current['mtime'] ||
-                ($candidate['mtime'] === $current['mtime'] && $candidate['size'] > $current['size'])
-            ) {
-                $latest[$deckUuid] = $candidate;
-            }
+            return $file->getPath();
         }
 
-        return array_values(array_map(fn ($v) => $v['path'], $latest));
+        return null;
     }
 }

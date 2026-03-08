@@ -2,6 +2,12 @@
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Ghost } from 'lucide-vue-next';
+
+withDefaults(defineProps<{
+    label?: boolean;
+}>(), {
+    label: true,
+});
 </script>
 
 <template>
@@ -10,7 +16,7 @@ import { Ghost } from 'lucide-vue-next';
             <TooltipTrigger as-child>
                 <Badge variant="outline" class="text-muted-foreground shrink-0 cursor-default gap-1">
                     <Ghost class="size-3" />
-                    Phantom
+                    <span v-if="label">Phantom</span>
                 </Badge>
             </TooltipTrigger>
             <TooltipContent class="max-w-64">

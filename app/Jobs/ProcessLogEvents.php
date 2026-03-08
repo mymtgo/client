@@ -11,7 +11,7 @@ class ProcessLogEvents implements ShouldBeUnique, ShouldQueue
 {
     use Queueable;
 
-    public int $uniqueFor = 10;
+    public int $uniqueFor = 2;
 
     public function __construct() {}
 

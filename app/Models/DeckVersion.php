@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\MatchState;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class DeckVersion extends Model
@@ -29,6 +30,11 @@ class DeckVersion extends Model
                 'sideboard' => $parts[2],
             ];
         })->toArray();
+    }
+
+    public function deck(): BelongsTo
+    {
+        return $this->belongsTo(Deck::class);
     }
 
     public function matches(): HasMany

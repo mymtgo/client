@@ -9,6 +9,6 @@ class DispatchProcessLogEvents
 {
     public function handle(LogEventsIngested $event): void
     {
-        ProcessLogEvents::dispatch();
+        ProcessLogEvents::dispatchSync();
     }
 }

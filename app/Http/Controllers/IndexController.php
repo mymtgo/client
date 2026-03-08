@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Data\Front\DeckData;
 use App\Data\Front\MatchData;
+use App\Models\Account;
 use App\Models\Deck;
 use App\Models\League;
 use App\Models\MtgoMatch;
@@ -18,7 +19,11 @@ class IndexController extends Controller
         [$start, $end] = $this->getTimeRange($timeframe);
 
         // Overall stats (single query)
-        $stats = MtgoMatch::complete()->whereBetween('started_at', [$start, $end])
+        $stats = MtgoMatch::complete()
+            ->when($this->activeAccountId(), fn ($q, $id) => $q
+                ->whereHas('deckVersion', fn ($q2) => $q2->whereHas('deck', fn ($q3) => $q3->where('account_id', $id)))
+            )
+            ->whereBetween('started_at', [$start, $end])
             ->selectRaw('SUM(CASE WHEN games_won > games_lost THEN 1 ELSE 0 END) as wins')
             ->selectRaw('SUM(CASE WHEN games_won <= games_lost THEN 1 ELSE 0 END) as losses')
             ->selectRaw('SUM(games_won) as games_won')
@@ -31,13 +36,17 @@ class IndexController extends Controller
         $gamesLost = (int) $stats->games_lost;
 
         // Recent matches (paginated)
-        $recentMatches = MtgoMatch::complete()->with(['deck', 'opponentArchetypes.archetype', 'opponentArchetypes.player', 'league'])
+        $recentMatches = MtgoMatch::complete()
+            ->when($this->activeAccountId(), fn ($q, $id) => $q
+                ->whereHas('deckVersion', fn ($q2) => $q2->whereHas('deck', fn ($q3) => $q3->where('account_id', $id)))
+            )
+            ->with(['deck', 'opponentArchetypes.archetype', 'opponentArchetypes.player', 'league'])
             ->whereBetween('started_at', [$start, $end])
             ->orderByDesc('started_at')
             ->paginate(25);
 
         // Deck performance summary - only include decks with matches in timeframe
-        $deckStats = Deck::withCount([
+        $deckStats = Deck::forActiveAccount()->withCount([
             'wonMatches' => fn ($query) => $query->whereBetween('started_at', [$start, $end]),
             'lostMatches' => fn ($query) => $query->whereBetween('started_at', [$start, $end]),
             'matches' => fn ($query) => $query->whereBetween('started_at', [$start, $end]),
@@ -63,7 +72,12 @@ class IndexController extends Controller
 
     private function buildActiveLeague(): ?array
     {
-        $league = League::whereHas('matches')->latest('started_at')->first();
+        $league = League::whereHas('matches', function ($q) {
+            $q->complete();
+            if ($id = $this->activeAccountId()) {
+                $q->whereHas('deckVersion', fn ($q2) => $q2->whereHas('deck', fn ($q3) => $q3->where('account_id', $id)));
+            }
+        })->latest('started_at')->first();
 
         if (! $league) {
             return null;
@@ -101,6 +115,9 @@ class IndexController extends Controller
     private function buildFormatChart(): array
     {
         $rows = MtgoMatch::complete()
+            ->when($this->activeAccountId(), fn ($q, $id) => $q
+                ->whereHas('deckVersion', fn ($q2) => $q2->whereHas('deck', fn ($q3) => $q3->where('account_id', $id)))
+            )
             ->selectRaw("strftime('%Y-%m', started_at) as month, format, SUM(CASE WHEN games_won > games_lost THEN 1 ELSE 0 END) as wins, COUNT(*) as total")
             ->where('started_at', '>=', now()->subMonths(6)->startOfMonth())
             ->groupBy('month', 'format')
@@ -127,6 +144,11 @@ class IndexController extends Controller
         })->values()->toArray();
 
         return compact('months', 'formats', 'data');
+    }
+
+    private function activeAccountId(): ?int
+    {
+        return Account::active()->value('id');
     }
 
     /**

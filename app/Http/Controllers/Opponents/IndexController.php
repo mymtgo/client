@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Opponents;
 
 use App\Http\Controllers\Controller;
+use App\Models\Account;
 use App\Models\MtgoMatch;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -12,14 +13,19 @@ class IndexController extends Controller
 {
     public function __invoke(): Response
     {
+        $activeAccountId = Account::active()->value('id');
+
         // All matches each opponent appeared in (distinct per player+match)
         $opponentMatches = DB::table('game_player as gp')
             ->join('players as p', 'p.id', '=', 'gp.player_id')
             ->join('games as g', 'g.id', '=', 'gp.game_id')
             ->join('matches as m', 'm.id', '=', 'g.match_id')
+            ->join('deck_versions as dv', 'dv.id', '=', 'm.deck_version_id')
+            ->join('decks as d', 'd.id', '=', 'dv.deck_id')
             ->where('gp.is_local', false)
             ->whereNull('m.deleted_at')
             ->where('m.state', 'complete')
+            ->when($activeAccountId, fn ($q, $id) => $q->where('d.account_id', $id))
             ->select('p.id as player_id', 'p.username', 'm.id as match_id', 'm.games_won', 'm.games_lost', 'm.format', 'm.started_at')
             ->distinct()
             ->get();

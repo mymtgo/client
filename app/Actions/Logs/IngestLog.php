@@ -3,6 +3,7 @@
 namespace App\Actions\Logs;
 
 use App\Events\LogEventsIngested;
+use App\Models\Account;
 use App\Models\LogCursor;
 use App\Models\LogEvent;
 use Carbon\Carbon;
@@ -16,160 +17,158 @@ class IngestLog
 
     public static function run(?string $logPath): void
     {
-        $lock = cache()->lock('mtgo:ingest:mtgo.log', 10);
-
-        if (! $lock->get()) {
+        if (! $logPath || ! is_file($logPath)) {
             return;
         }
 
+        $size = @filesize($logPath);
+        $mtime = @filemtime($logPath) ?: time();
+
+        if ($size === false) {
+            return;
+        }
+
+        // compute head_hash (first 4KB)
+        $headHash = null;
+        $fhHead = @fopen($logPath, 'rb');
+        if ($fhHead) {
+            $head = (string) @fread($fhHead, 4096);
+            @fclose($fhHead);
+            if ($head !== '') {
+                $headHash = sha1($head);
+            }
+        }
+
+        $cursor = LogCursor::firstOrCreate(
+            ['file_path' => $logPath],
+            ['byte_offset' => 0]
+        );
+
+        $truncated = $cursor->byte_offset > $size;
+        $replaced = $cursor->head_hash && $headHash && $cursor->head_hash !== $headHash;
+        $mtimeBackwards = $cursor->file_mtime && $mtime < $cursor->file_mtime;
+
+        if ($truncated || $replaced || $mtimeBackwards) {
+            $cursor->byte_offset = 0;
+            $cursor->local_username = null; // clean slate for new log instance
+        }
+
+        $cursor->file_mtime = $mtime;
+        $cursor->file_size = $size;
+        $cursor->head_hash = $headHash;
+        $cursor->save();
+
+        // Nothing new since last time.
+        if ($cursor->byte_offset >= $size) {
+            return;
+        }
+
+        $logDate = Carbon::createFromTimestamp($mtime);
+
+        $fh = @fopen($logPath, 'rb');
+        if (! $fh) {
+            return;
+        }
+
+        $rows = [];
+        $safeOffset = $cursor->byte_offset;
+
         try {
-            if (! $logPath || ! is_file($logPath)) {
-                return;
-            }
+            fseek($fh, $cursor->byte_offset);
 
-            $size = @filesize($logPath);
-            $mtime = @filemtime($logPath) ?: time();
+            $currentEvent = null;
+            $eventStartOffset = $cursor->byte_offset;
 
-            if ($size === false) {
-                return;
-            }
+            while (($line = fgets($fh)) !== false) {
+                $lineEndOffset = ftell($fh);
+                $lineStartOffset = $lineEndOffset - strlen($line);
 
-            // compute head_hash (first 4KB)
-            $headHash = null;
-            $fhHead = @fopen($logPath, 'rb');
-            if ($fhHead) {
-                $head = (string) @fread($fhHead, 4096);
-                @fclose($fhHead);
-                if ($head !== '') {
-                    $headHash = sha1($head);
-                }
-            }
+                if (static::isNewEventLine($line)) {
+                    // Seeing a new event line means the previous event is complete.
+                    if ($currentEvent !== null) {
+                        $row = static::buildEventRow(
+                            $currentEvent,
+                            $eventStartOffset,
+                            $lineStartOffset,
+                            $logPath,
+                            $logDate
+                        );
 
-            $cursor = LogCursor::firstOrCreate(
-                ['file_path' => $logPath],
-                ['byte_offset' => 0]
-            );
+                        if ($row) {
+                            $rows[] = $row;
 
-            $truncated = $cursor->byte_offset > $size;
-            $replaced = $cursor->head_hash && $headHash && $cursor->head_hash !== $headHash;
-            $mtimeBackwards = $cursor->file_mtime && $mtime < $cursor->file_mtime;
-
-            if ($truncated || $replaced || $mtimeBackwards) {
-                $cursor->byte_offset = 0;
-                $cursor->local_username = null; // clean slate for new log instance
-            }
-
-            $cursor->file_mtime = $mtime;
-            $cursor->file_size = $size;
-            $cursor->head_hash = $headHash;
-            $cursor->save();
-
-            // Nothing new since last time.
-            if ($cursor->byte_offset >= $size) {
-                return;
-            }
-
-            $logDate = Carbon::createFromTimestamp($mtime);
-
-            $fh = @fopen($logPath, 'rb');
-            if (! $fh) {
-                return;
-            }
-
-            $rows = [];
-            $safeOffset = $cursor->byte_offset;
-
-            try {
-                fseek($fh, $cursor->byte_offset);
-
-                $currentEvent = null;
-                $eventStartOffset = $cursor->byte_offset;
-
-                while (($line = fgets($fh)) !== false) {
-                    $lineEndOffset = ftell($fh);
-                    $lineStartOffset = $lineEndOffset - strlen($line);
-
-                    if (static::isNewEventLine($line)) {
-                        // Seeing a new event line means the previous event is complete.
-                        if ($currentEvent !== null) {
-                            $row = static::buildEventRow(
-                                $currentEvent,
-                                $eventStartOffset,
-                                $lineStartOffset,
-                                $logPath,
-                                $logDate
-                            );
-
-                            if ($row) {
-                                $rows[] = $row;
-
-                                // Learn username once per log instance
-                                if (! $cursor->local_username && $row['category'] === 'UI' && $row['context'] === 'LastLoginName') {
-                                    $u = static::extractUsername($row['raw_text']);
-                                    if ($u) {
-                                        $cursor->local_username = $u;
-                                    }
+                            // Detect login events — always update (accounts can switch mid-session)
+                            if ($row['category'] === 'Login' && $row['context'] === 'MtGO Login Success') {
+                                $u = static::extractLoginUsername($row['raw_text']);
+                                if ($u) {
+                                    $cursor->local_username = $u;
+                                    Account::registerAndActivate($u);
                                 }
                             }
-
-                            // safe to advance to the start of this new line
-                            $safeOffset = $lineStartOffset;
                         }
 
-                        $currentEvent = $line;
-                        $eventStartOffset = $lineStartOffset;
-                    } else {
-                        if ($currentEvent !== null) {
-                            $currentEvent .= $line;
-                        }
-                    }
-                }
-
-                // EOF: only commit last event if complete; otherwise rewind to its start.
-                $eofOffset = ftell($fh);
-
-                if ($currentEvent !== null && str_ends_with($currentEvent, "\n")) {
-                    $row = static::buildEventRow(
-                        $currentEvent,
-                        $eventStartOffset,
-                        $eofOffset,
-                        $logPath,
-                        $logDate
-                    );
-
-                    if ($row) {
-                        $rows[] = $row;
-
-                        // Learn username once per log instance
-                        if (! $cursor->local_username && $row['category'] === 'UI' && $row['context'] === 'LastLoginName') {
-                            $u = static::extractUsername($row['raw_text']);
-                            if ($u) {
-                                $cursor->local_username = $u;
-                            }
-                        }
+                        // safe to advance to the start of this new line
+                        $safeOffset = $lineStartOffset;
                     }
 
-                    $safeOffset = $eofOffset;
+                    $currentEvent = $line;
+                    $eventStartOffset = $lineStartOffset;
                 } else {
-                    $safeOffset = $eventStartOffset;
+                    if ($currentEvent !== null) {
+                        $currentEvent .= $line;
+                    }
                 }
-            } finally {
-                fclose($fh);
             }
 
-            // No new complete events? Still update cursor to safeOffset (important if we flushed earlier events).
-            if (! empty($rows)) {
-                foreach (array_chunk($rows, 500) as $chunk) {
-                    LogEvent::query()->insertOrIgnore($chunk);
+            // EOF: only commit last event if complete; otherwise rewind to its start.
+            $eofOffset = ftell($fh);
+
+            if ($currentEvent !== null && str_ends_with($currentEvent, "\n")) {
+                $row = static::buildEventRow(
+                    $currentEvent,
+                    $eventStartOffset,
+                    $eofOffset,
+                    $logPath,
+                    $logDate
+                );
+
+                if ($row) {
+                    $rows[] = $row;
+
+                    // Detect login events — always update (accounts can switch mid-session)
+                    if ($row['category'] === 'Login' && $row['context'] === 'MtGO Login Success') {
+                        $u = static::extractLoginUsername($row['raw_text']);
+                        if ($u) {
+                            $cursor->local_username = $u;
+                            Account::registerAndActivate($u);
+                        }
+                    }
                 }
 
-                LogEventsIngested::dispatch();
+                $safeOffset = $eofOffset;
+            } else {
+                $safeOffset = $eventStartOffset;
             }
-
-            $cursor->byte_offset = $safeOffset;
-            $cursor->save();
         } finally {
-            $lock->release();
+            fclose($fh);
+        }
+
+        // No new complete events? Still update cursor to safeOffset (important if we flushed earlier events).
+        $hadNewEvents = false;
+
+        if (! empty($rows)) {
+            foreach (array_chunk($rows, 500) as $chunk) {
+                LogEvent::query()->insertOrIgnore($chunk);
+            }
+
+            $hadNewEvents = true;
+        }
+
+        $cursor->byte_offset = $safeOffset;
+        $cursor->save();
+
+        if ($hadNewEvents) {
+            LogEventsIngested::dispatch();
         }
     }
 
@@ -181,6 +180,15 @@ class IngestLog
     protected static function extractUsername(string $raw): ?string
     {
         if (preg_match('/\bUsername=([^\s]+)/', $raw, $m)) {
+            return $m[1];
+        }
+
+        return null;
+    }
+
+    protected static function extractLoginUsername(string $raw): ?string
+    {
+        if (preg_match('/Username:\s*(\S+)/', $raw, $m)) {
             return $m[1];
         }
 
