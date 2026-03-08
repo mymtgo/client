@@ -19,6 +19,7 @@ import UpdateAnonymousStatsController from '@/actions/App/Http/Controllers/Setti
 import UpdateShareStatsController from '@/actions/App/Http/Controllers/Settings/UpdateShareStatsController';
 import UpdateHidePhantomController from '@/actions/App/Http/Controllers/Settings/UpdateHidePhantomController';
 import RunSubmitMatchesController from '@/actions/App/Http/Controllers/Settings/RunSubmitMatchesController';
+import UpdateAccountTrackingController from '@/actions/App/Http/Controllers/Settings/UpdateAccountTrackingController';
 import { useAppearance } from '@/composables/useAppearance';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
@@ -39,6 +40,7 @@ const props = defineProps<{
     missingCardCount: number;
     hidePhantomLeagues: boolean;
     pendingMatches: Array<{ id: number; format: string; games_won: number; games_lost: number; started_at: string }>;
+    accounts: Array<{ id: number; username: string; tracked: boolean; active: boolean }>;
     appVersion: string;
 }>();
 
@@ -102,10 +104,40 @@ function toggleHidePhantom(checked: boolean | 'indeterminate') {
 function submitPendingMatches() {
     withProcessing('submitMatches', 'post', RunSubmitMatchesController.url());
 }
+
+function toggleAccountTracking(username: string, tracked: boolean) {
+    withProcessing(`account-${username}`, 'patch', UpdateAccountTrackingController.url(), { username, tracked });
+}
 </script>
 
 <template>
     <div class="max-w-2xl divide-y">
+            <!-- Accounts -->
+            <div v-if="accounts.length" class="flex flex-col gap-4 p-3 lg:p-4">
+                <div>
+                    <p class="font-semibold">Accounts</p>
+                    <p class="text-sm text-muted-foreground">
+                        MTGO accounts detected from your log files. Toggle tracking to control which accounts record match data.
+                    </p>
+                </div>
+
+                <div v-for="account in accounts" :key="account.id" class="flex items-start gap-3">
+                    <Checkbox
+                        :id="`account-${account.username}`"
+                        :defaultValue="account.tracked"
+                        @update:modelValue="(checked: boolean | 'indeterminate') => toggleAccountTracking(account.username, checked === true)"
+                        :disabled="processing === `account-${account.username}`"
+                    />
+                    <div class="flex flex-col gap-1">
+                        <Label :for="`account-${account.username}`">{{ account.username }}</Label>
+                        <p class="text-sm text-muted-foreground">
+                            <Badge v-if="account.active" variant="default" class="text-xs">Active</Badge>
+                            {{ account.tracked ? 'Recording matches' : 'Not recording matches' }}
+                        </p>
+                    </div>
+                </div>
+            </div>
+
             <!-- File Paths -->
             <div class="flex flex-col gap-4 p-3 lg:p-4">
                 <div>

@@ -11,7 +11,7 @@ class IndexController
 {
     public function __invoke(): Response
     {
-        $decks = Deck::withCount(['wonMatches', 'lostMatches', 'matches'])
+        $decks = Deck::forActiveAccount()->withCount(['wonMatches', 'lostMatches', 'matches'])
             ->withMax('matches', 'started_at')
 
             ->orderByDesc('matches_max_started_at')

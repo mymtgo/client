@@ -12,7 +12,7 @@ defineProps<{
     <div class="flex h-screen flex-col">
         <AppHeader />
         <AppNav />
-        <div class="flex flex-1 flex-col overflow-y-auto">
+        <div class="flex flex-1 flex-col">
             <slot />
         </div>
         <StatusBar />

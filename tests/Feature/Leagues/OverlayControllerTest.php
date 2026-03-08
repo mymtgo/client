@@ -1,0 +1,128 @@
+<?php
+
+use App\Enums\MatchState;
+use App\Models\League;
+use App\Models\MtgoMatch;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+
+uses(RefreshDatabase::class);
+
+it('renders overlay with no active league', function () {
+    $response = $this->get(route('leagues.overlay'));
+
+    $response->assertOk();
+    $response->assertInertia(fn ($page) => $page
+        ->component('leagues/Overlay')
+        ->where('league', null)
+    );
+});
+
+it('renders overlay with active league data', function () {
+    $league = League::create([
+        'token' => 'test-league-token',
+        'format' => 'Modern',
+        'name' => 'Test League',
+        'started_at' => now(),
+    ]);
+
+    MtgoMatch::create([
+        'mtgo_id' => '100001',
+        'token' => 'match-token-1',
+        'league_id' => $league->id,
+        'format' => 'Modern',
+        'match_type' => 'League',
+        'state' => MatchState::Complete,
+        'games_won' => 2,
+        'games_lost' => 1,
+        'started_at' => now(),
+        'ended_at' => now(),
+    ]);
+
+    MtgoMatch::create([
+        'mtgo_id' => '100002',
+        'token' => 'match-token-2',
+        'league_id' => $league->id,
+        'format' => 'Modern',
+        'match_type' => 'League',
+        'state' => MatchState::Complete,
+        'games_won' => 1,
+        'games_lost' => 2,
+        'started_at' => now(),
+        'ended_at' => now(),
+    ]);
+
+    $response = $this->get(route('leagues.overlay'));
+
+    $response->assertOk();
+    $response->assertInertia(fn ($page) => $page
+        ->component('leagues/Overlay')
+        ->where('league.wins', 1)
+        ->where('league.losses', 1)
+        ->where('league.totalMatches', 2)
+        ->where('league.format', 'Modern')
+        ->where('league.hasActiveMatch', false)
+    );
+});
+
+it('detects an active match in the league', function () {
+    $league = League::create([
+        'token' => 'test-league-token-2',
+        'format' => 'Modern',
+        'name' => 'Active Match League',
+        'started_at' => now(),
+    ]);
+
+    MtgoMatch::create([
+        'mtgo_id' => '200001',
+        'token' => 'match-token-active',
+        'league_id' => $league->id,
+        'format' => 'Modern',
+        'match_type' => 'League',
+        'state' => MatchState::InProgress,
+        'games_won' => 0,
+        'games_lost' => 0,
+        'started_at' => now(),
+        'ended_at' => now(),
+    ]);
+
+    $response = $this->get(route('leagues.overlay'));
+
+    $response->assertOk();
+    $response->assertInertia(fn ($page) => $page
+        ->component('leagues/Overlay')
+        ->where('league.hasActiveMatch', true)
+        ->where('league.totalMatches', 1)
+    );
+});
+
+it('excludes completed leagues with 5 matches', function () {
+    $league = League::create([
+        'token' => 'completed-league-token',
+        'format' => 'Modern',
+        'name' => 'Completed League',
+        'started_at' => now(),
+    ]);
+
+    foreach (range(1, 5) as $i) {
+        MtgoMatch::create([
+            'mtgo_id' => "300{$i}",
+            'token' => "completed-match-{$i}",
+            'league_id' => $league->id,
+            'format' => 'Modern',
+            'match_type' => 'League',
+            'state' => MatchState::Complete,
+            'games_won' => 2,
+            'games_lost' => 1,
+            'started_at' => now(),
+            'ended_at' => now(),
+        ]);
+    }
+
+    $response = $this->get(route('leagues.overlay'));
+
+    $response->assertOk();
+    $response->assertInertia(fn ($page) => $page
+        ->component('leagues/Overlay')
+        ->where('league', null)
+    );
+});

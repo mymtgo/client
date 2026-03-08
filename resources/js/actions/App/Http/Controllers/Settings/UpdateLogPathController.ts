@@ -1,4 +1,4 @@
-import { queryParams, type RouteQueryOptions, type RouteDefinition } from './../../../../../wayfinder'
+import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition } from './../../../../../wayfinder'
 /**
 * @see \App\Http\Controllers\Settings\UpdateLogPathController::__invoke
  * @see app/Http/Controllers/Settings/UpdateLogPathController.php:13
@@ -32,4 +32,36 @@ UpdateLogPathController.patch = (options?: RouteQueryOptions): RouteDefinition<'
     url: UpdateLogPathController.url(options),
     method: 'patch',
 })
+
+    /**
+* @see \App\Http\Controllers\Settings\UpdateLogPathController::__invoke
+ * @see app/Http/Controllers/Settings/UpdateLogPathController.php:13
+ * @route '/settings/log-path'
+ */
+    const UpdateLogPathControllerForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+        action: UpdateLogPathController.url({
+                    [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+                        _method: 'PATCH',
+                        ...(options?.query ?? options?.mergeQuery ?? {}),
+                    }
+                }),
+        method: 'post',
+    })
+
+            /**
+* @see \App\Http\Controllers\Settings\UpdateLogPathController::__invoke
+ * @see app/Http/Controllers/Settings/UpdateLogPathController.php:13
+ * @route '/settings/log-path'
+ */
+        UpdateLogPathControllerForm.patch = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
+            action: UpdateLogPathController.url({
+                        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+                            _method: 'PATCH',
+                            ...(options?.query ?? options?.mergeQuery ?? {}),
+                        }
+                    }),
+            method: 'post',
+        })
+    
+    UpdateLogPathController.form = UpdateLogPathControllerForm
 export default UpdateLogPathController

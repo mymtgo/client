@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Settings;
 use App\Actions\Settings\ValidatePath;
 use App\Facades\Mtgo;
 use App\Http\Controllers\Controller;
+use App\Models\Account;
 use App\Models\Card;
 use App\Models\Deck;
 use App\Models\LogEvent;
@@ -37,6 +38,7 @@ class IndexController extends Controller
                 ->latest('started_at')
                 ->get(['id', 'format', 'games_won', 'games_lost', 'started_at']),
             'hidePhantomLeagues' => (bool) Settings::get('hide_phantom_leagues'),
+            'accounts' => Account::orderBy('username')->get(['id', 'username', 'tracked', 'active']),
             'appVersion' => config('nativephp.version'),
         ]);
     }

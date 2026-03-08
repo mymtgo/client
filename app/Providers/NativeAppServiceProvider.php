@@ -15,9 +15,7 @@ class NativeAppServiceProvider implements ProvidesPhpIni
      */
     public function boot(): void
     {
-        if (app()->isProduction()) {
-            Menu::create();
-        }
+        //        Menu::create();
 
         Window::open()->width(1600)
             ->height(900)

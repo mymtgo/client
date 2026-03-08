@@ -23,6 +23,8 @@ Route::group([], function (\Illuminate\Routing\Router $router) {
         'prefix' => 'leagues',
     ], function (\Illuminate\Routing\Router $group) {
         $group->get('/', \App\Http\Controllers\Leagues\IndexController::class)->name('leagues.index');
+        $group->get('overlay', \App\Http\Controllers\Leagues\OverlayController::class)->name('leagues.overlay');
+        $group->post('overlay/toggle', \App\Http\Controllers\Leagues\ToggleOverlayController::class)->name('leagues.overlay.toggle');
         $group->delete('{league}', \App\Http\Controllers\Leagues\AbandonController::class)->name('leagues.abandon');
     });
 
@@ -53,5 +55,7 @@ Route::group([], function (\Illuminate\Routing\Router $router) {
         $group->patch('share-stats', \App\Http\Controllers\Settings\UpdateShareStatsController::class)->name('settings.share-stats');
         $group->patch('hide-phantom', \App\Http\Controllers\Settings\UpdateHidePhantomController::class)->name('settings.hide-phantom');
         $group->post('submit-matches', \App\Http\Controllers\Settings\RunSubmitMatchesController::class)->name('settings.submit-matches');
+        $group->patch('switch-account', \App\Http\Controllers\Settings\SwitchAccountController::class)->name('settings.switch-account');
+        $group->patch('account-tracking', \App\Http\Controllers\Settings\UpdateAccountTrackingController::class)->name('settings.account-tracking');
     });
 });

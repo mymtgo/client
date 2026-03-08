@@ -2,6 +2,8 @@
 
 namespace App\Actions\Decks;
 
+use App\Facades\Mtgo;
+use App\Models\Account;
 use App\Models\Deck;
 
 class SyncDecks
@@ -59,6 +61,7 @@ class SyncDecks
                 'mtgo_id' => $attributes['NetDeckId'],
                 'name' => $attributes['Name'],
                 'format' => $attributes['FormatCode'],
+                'account_id' => Account::where('username', Mtgo::getUsername())->value('id'),
                 'updated_at' => $attributes['Timestamp'],
             ]);
 
@@ -76,6 +79,11 @@ class SyncDecks
             $deckIds[] = $deck->id;
         }
 
-        Deck::whereNotIn('id', $deckIds)->delete();
+        $accountId = Account::where('username', Mtgo::getUsername())->value('id');
+        if ($accountId) {
+            Deck::where('account_id', $accountId)->whereNotIn('id', $deckIds)->delete();
+        } else {
+            Deck::whereNotIn('id', $deckIds)->delete();
+        }
     }
 }

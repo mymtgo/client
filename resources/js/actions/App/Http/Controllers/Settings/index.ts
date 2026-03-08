@@ -9,6 +9,8 @@ import UpdateAnonymousStatsController from './UpdateAnonymousStatsController'
 import UpdateShareStatsController from './UpdateShareStatsController'
 import UpdateHidePhantomController from './UpdateHidePhantomController'
 import RunSubmitMatchesController from './RunSubmitMatchesController'
+import SwitchAccountController from './SwitchAccountController'
+import UpdateAccountTrackingController from './UpdateAccountTrackingController'
 const Settings = {
     IndexController: Object.assign(IndexController, IndexController),
 UpdateLogPathController: Object.assign(UpdateLogPathController, UpdateLogPathController),
@@ -21,6 +23,8 @@ UpdateAnonymousStatsController: Object.assign(UpdateAnonymousStatsController, Up
 UpdateShareStatsController: Object.assign(UpdateShareStatsController, UpdateShareStatsController),
 UpdateHidePhantomController: Object.assign(UpdateHidePhantomController, UpdateHidePhantomController),
 RunSubmitMatchesController: Object.assign(RunSubmitMatchesController, RunSubmitMatchesController),
+SwitchAccountController: Object.assign(SwitchAccountController, SwitchAccountController),
+UpdateAccountTrackingController: Object.assign(UpdateAccountTrackingController, UpdateAccountTrackingController),
 }
 
 export default Settings
