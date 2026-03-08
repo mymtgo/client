@@ -2,7 +2,6 @@
 
 namespace App\Http\Middleware;
 
-use App\Facades\Mtgo;
 use App\Models\Account;
 use App\Models\LogCursor;
 use App\Models\MtgoMatch;
@@ -34,6 +33,7 @@ class HandleInertiaRequests extends Middleware
             'activeAccount' => fn () => Account::active()->first()?->username,
             'accounts' => fn () => Account::tracked()->orderBy('username')->get(['id', 'username', 'active']),
             'overlayOpen' => fn () => collect(Window::all())->contains('id', 'overlay'),
+            'overlayEnabled' => fn () => (bool) \Native\Desktop\Facades\Settings::get('overlay_enabled'),
         ];
     }
 }

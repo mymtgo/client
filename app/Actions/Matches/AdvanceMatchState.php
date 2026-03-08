@@ -3,6 +3,7 @@
 namespace App\Actions\Matches;
 
 use App\Actions\DetermineMatchArchetypes;
+use App\Actions\Leagues\OpenOverlayWindow;
 use App\Actions\Util\ExtractJson;
 use App\Actions\Util\ExtractKeyValueBlock;
 use App\Enums\LogEventType;
@@ -80,6 +81,11 @@ class AdvanceMatchState
             }
         }
 
+        // ── Create any games whose events arrived after Started → InProgress ──
+        if ($match->state === MatchState::InProgress || $match->state === MatchState::Ended) {
+            self::createMissingGames($match, $events);
+        }
+
         // ── InProgress → Ended ──────────────────────────────────────
         if ($match->state === MatchState::InProgress) {
             $advanced = self::tryAdvanceToEnded($match, $events, $stateChanges);
@@ -153,6 +159,13 @@ class AdvanceMatchState
 
         $match->update(['state' => MatchState::InProgress]);
 
+        if ($match->league_id
+            && Settings::get('overlay_enabled')
+            && ! Settings::get('overlay_always_show')
+        ) {
+            OpenOverlayWindow::run();
+        }
+
         return true;
     }
 
@@ -222,20 +235,17 @@ class AdvanceMatchState
     ): void {
         $gameLog = GetGameLog::run($match->token);
 
-        $gameCount = $match->games()->count();
-
-        // Cap log results to actual game count — the game log parser can
-        // produce a phantom extra result when the opponent disconnects
-        // after the final game (terminal event fires fallback).
-        $logResults = array_slice($gameLog['results'] ?? [], 0, $gameCount);
+        // Trust game log results as source of truth for win/loss.
+        // Cap to maximum possible games for the match type to guard
+        // against the parser producing phantom results on disconnect.
+        $maxGames = str_contains($gameMeta['GameStructureCd'] ?? '', 'BO5') ? 5 : 3;
+        $logResults = array_slice($gameLog['results'] ?? [], 0, $maxGames);
 
         $wins = count(array_filter($logResults, fn ($r) => $r === true));
         $losses = count(array_filter($logResults, fn ($r) => $r === false));
 
         /**
          * Matches are best-of-N (BO3 needs 2 wins, BO5 needs 3).
-         * Determine the win threshold from the game count: a completed
-         * BO3 has 2–3 games, a completed BO5 has 3–5 games.
          * If the match ended early with fewer results than expected,
          * either the local player conceded or the opponent quit.
          *
@@ -243,7 +253,7 @@ class AdvanceMatchState
          * when the LOCAL player triggers the concede protocol; an opponent quitting
          * MTGO entirely never generates that transition on our client.
          */
-        $winThreshold = $gameCount >= 3 && ($wins >= 3 || $losses >= 3) ? 3 : 2;
+        $winThreshold = ($wins >= 3 || $losses >= 3) ? 3 : 2;
 
         if (($wins + $losses) < $winThreshold) {
             $localConceded = $stateChanges->contains(
@@ -283,6 +293,48 @@ class AdvanceMatchState
             ->update([
                 'processed_at' => now(),
             ]);
+    }
+
+    /**
+     * Create games for any game_ids in log events that don't already
+     * have a Game record.  Events for later games may arrive after the
+     * Started → InProgress transition, so this is called again before
+     * the match completes.
+     */
+    private static function createMissingGames(MtgoMatch $match, Collection $events): void
+    {
+        $games = $events->groupBy('game_id')->filter(
+            fn ($group, $key) => $key !== '' && $key !== null
+        );
+
+        $existingMtgoIds = $match->games()->pluck('mtgo_id')->map(fn ($id) => (string) $id)->toArray();
+
+        $gameIds = $games->keys();
+
+        $decksEvents = LogEvent::where('event_type', LogEventType::DECK_USED->value)
+            ->whereIn('game_id', $gameIds)
+            ->get();
+
+        $gameIndex = 0;
+
+        foreach ($games as $gameId => $gameEvents) {
+            if (in_array((string) $gameId, $existingMtgoIds, true)) {
+                $gameIndex++;
+
+                continue;
+            }
+
+            $playerDeck = $decksEvents->first(
+                fn ($event) => (int) $event->game_id === (int) $gameId
+            );
+
+            $deckJson = $playerDeck
+                ? (ExtractJson::run($playerDeck->raw_text)->first() ?: [])
+                : [];
+
+            CreateGames::run($match, $gameId, $gameEvents, $gameIndex, $deckJson);
+            $gameIndex++;
+        }
     }
 
     /**
