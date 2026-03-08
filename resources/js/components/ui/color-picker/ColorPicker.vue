@@ -1,8 +1,4 @@
 <script setup lang="ts">
-import { ColorPickerRoot, ColorPickerCanvas, ColorPickerSliderHue, ColorPickerInputHex } from '@vuelor/picker';
-import '@vuelor/picker/style.css';
-import { ref, watch } from 'vue';
-
 const props = defineProps<{
     modelValue: string;
 }>();
@@ -11,26 +7,17 @@ const emit = defineEmits<{
     'update:modelValue': [value: string];
 }>();
 
-const color = ref(props.modelValue);
-
-watch(
-    () => props.modelValue,
-    (val) => {
-        color.value = val;
-    },
-);
-
-watch(color, (val) => {
-    if (val && val !== props.modelValue) {
-        emit('update:modelValue', val);
-    }
-});
+function onInput(event: Event) {
+    const target = event.target as HTMLInputElement;
+    emit('update:modelValue', target.value);
+}
 </script>
 
 <template>
-    <ColorPickerRoot v-model="color" class="flex flex-col gap-2">
-        <ColorPickerCanvas class="h-28 w-44 rounded-md border" />
-        <ColorPickerSliderHue class="h-3 w-44 rounded-full" />
-        <ColorPickerInputHex class="w-44 rounded-md border bg-transparent px-2 py-1 text-xs" />
-    </ColorPickerRoot>
+    <input
+        type="color"
+        :value="modelValue"
+        @input="onInput"
+        class="h-8 w-12 cursor-pointer rounded border border-border bg-transparent p-0.5"
+    />
 </template>

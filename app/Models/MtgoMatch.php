@@ -60,7 +60,7 @@ class MtgoMatch extends Model
                 $q->select('gp.player_id')
                     ->from('game_player as gp')
                     ->join('games as g', 'g.id', '=', 'gp.game_id')
-                    ->whereRaw('g.match_id = match_id')
+                    ->whereColumn('g.match_id', 'match_archetypes.mtgo_match_id')
                     ->where('gp.is_local', false)
                     ->distinct();
             });

@@ -1,33 +1,34 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
-import { usePage, router } from '@inertiajs/vue3';
+import RunIngestController from '@/actions/App/Http/Controllers/Settings/RunIngestController';
+import RunPopulateCardsController from '@/actions/App/Http/Controllers/Settings/RunPopulateCardsController';
+import RunSubmitMatchesController from '@/actions/App/Http/Controllers/Settings/RunSubmitMatchesController';
+import RunSyncController from '@/actions/App/Http/Controllers/Settings/RunSyncController';
+import UpdateAccountTrackingController from '@/actions/App/Http/Controllers/Settings/UpdateAccountTrackingController';
+import UpdateAnonymousStatsController from '@/actions/App/Http/Controllers/Settings/UpdateAnonymousStatsController';
+import UpdateDataPathController from '@/actions/App/Http/Controllers/Settings/UpdateDataPathController';
+import UpdateHidePhantomController from '@/actions/App/Http/Controllers/Settings/UpdateHidePhantomController';
+import UpdateLogPathController from '@/actions/App/Http/Controllers/Settings/UpdateLogPathController';
+import UpdateOverlaySettingsController from '@/actions/App/Http/Controllers/Settings/UpdateOverlaySettingsController';
+import UpdateShareStatsController from '@/actions/App/Http/Controllers/Settings/UpdateShareStatsController';
+import UpdateWatcherController from '@/actions/App/Http/Controllers/Settings/UpdateWatcherController';
+import type { LeagueData } from '@/components/leagues/LeagueTracker.vue';
+import LeagueTracker from '@/components/leagues/LeagueTracker.vue';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import ColorPicker from '@/components/ui/color-picker/ColorPicker.vue';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Badge } from '@/components/ui/badge';
 import { Spinner } from '@/components/ui/spinner';
-import UpdateLogPathController from '@/actions/App/Http/Controllers/Settings/UpdateLogPathController';
-import UpdateDataPathController from '@/actions/App/Http/Controllers/Settings/UpdateDataPathController';
-import UpdateWatcherController from '@/actions/App/Http/Controllers/Settings/UpdateWatcherController';
-import RunIngestController from '@/actions/App/Http/Controllers/Settings/RunIngestController';
-import RunSyncController from '@/actions/App/Http/Controllers/Settings/RunSyncController';
-import RunPopulateCardsController from '@/actions/App/Http/Controllers/Settings/RunPopulateCardsController';
-import UpdateAnonymousStatsController from '@/actions/App/Http/Controllers/Settings/UpdateAnonymousStatsController';
-import UpdateShareStatsController from '@/actions/App/Http/Controllers/Settings/UpdateShareStatsController';
-import UpdateHidePhantomController from '@/actions/App/Http/Controllers/Settings/UpdateHidePhantomController';
-import RunSubmitMatchesController from '@/actions/App/Http/Controllers/Settings/RunSubmitMatchesController';
-import UpdateAccountTrackingController from '@/actions/App/Http/Controllers/Settings/UpdateAccountTrackingController';
-import UpdateOverlaySettingsController from '@/actions/App/Http/Controllers/Settings/UpdateOverlaySettingsController';
 import { Switch } from '@/components/ui/switch';
-import LeagueTracker from '@/components/leagues/LeagueTracker.vue';
-import type { LeagueData } from '@/components/leagues/LeagueTracker.vue';
-import ColorPicker from '@/components/ui/color-picker/ColorPicker.vue';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAppearance } from '@/composables/useAppearance';
+import { router, usePage } from '@inertiajs/vue3';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
+import { computed, ref } from 'vue';
 
 dayjs.extend(relativeTime);
 
@@ -142,214 +143,86 @@ function toggleAccountTracking(username: string, tracked: boolean) {
     withProcessing(`account-${username}`, 'patch', UpdateAccountTrackingController.url(), { username, tracked });
 }
 
-function saveOverlaySettings() {
-    withProcessing('overlay', 'post', UpdateOverlaySettingsController.url(), {
+function saveOverlaySettings(overrides: Record<string, unknown> = {}) {
+    const data = {
         overlay_enabled: overlayEnabled.value,
         overlay_always_show: overlayAlwaysShow.value,
         overlay_font: overlayFont.value,
         overlay_text_color: overlayTextColor.value,
         overlay_bg_color: overlayBgColor.value,
-    });
+        ...overrides,
+    };
+    withProcessing('overlay', 'post', UpdateOverlaySettingsController.url(), data);
+}
+
+function setOverlayEnabled(val: boolean | 'indeterminate') {
+    overlayEnabled.value = val === true;
+    saveOverlaySettings({ overlay_enabled: val === true });
+}
+
+function setOverlayAlwaysShow(val: boolean | 'indeterminate') {
+    overlayAlwaysShow.value = val === true;
+    saveOverlaySettings({ overlay_always_show: val === true });
 }
 </script>
 
 <template>
-    <div class="max-w-2xl divide-y">
-            <!-- Accounts -->
-            <div v-if="accounts.length" class="flex flex-col gap-4 p-3 lg:p-4">
-                <div>
-                    <p class="font-semibold">Accounts</p>
-                    <p class="text-sm text-muted-foreground">
-                        MTGO accounts detected from your log files. Toggle tracking to control which accounts record match data.
-                    </p>
-                </div>
+    <Tabs default-value="general" class="max-w-3xl">
+        <TabsList class="mx-4 mt-4">
+            <TabsTrigger value="general">General</TabsTrigger>
+            <TabsTrigger value="leagues">Leagues</TabsTrigger>
+            <TabsTrigger value="logging">Logging</TabsTrigger>
+        </TabsList>
 
-                <div v-for="account in accounts" :key="account.id" class="flex items-start gap-3">
-                    <Checkbox
-                        :id="`account-${account.username}`"
-                        :defaultValue="account.tracked"
-                        @update:modelValue="(checked: boolean | 'indeterminate') => toggleAccountTracking(account.username, checked === true)"
-                        :disabled="processing === `account-${account.username}`"
-                    />
-                    <div class="flex flex-col gap-1">
-                        <Label :for="`account-${account.username}`">{{ account.username }}</Label>
+        <!-- ═══════════════════════════════════════════ General ═══ -->
+        <TabsContent value="general">
+            <div class="divide-y">
+                <!-- Accounts -->
+                <div v-if="accounts.length" class="flex flex-col gap-4 p-3 lg:p-4">
+                    <div>
+                        <p class="font-semibold">Accounts</p>
                         <p class="text-sm text-muted-foreground">
-                            <Badge v-if="account.active" variant="default" class="text-xs">Active</Badge>
-                            {{ account.tracked ? 'Recording matches' : 'Not recording matches' }}
+                            MTGO accounts detected from your log files. Toggle tracking to control which accounts record match data.
                         </p>
                     </div>
-                </div>
-            </div>
 
-            <!-- File Paths -->
-            <div class="flex flex-col gap-4 p-3 lg:p-4">
-                <div>
-                    <p class="font-semibold">File Paths</p>
-                    <p class="text-sm text-muted-foreground">
-                        Where to look for MTGO log files and game data. Defaults are set automatically for standard MTGO installs.
-                    </p>
-                </div>
-
-                <div class="flex flex-col gap-2">
-                    <Label>Log File Directory</Label>
-                    <p class="text-sm text-muted-foreground">Contains <code>mtgo.log</code> files</p>
-                    <div class="flex gap-2">
-                        <Input v-model="logPathInput" @keydown.enter="saveLogPath" :disabled="processing === 'logPath'" />
-                        <Button variant="outline" :disabled="processing === 'logPath'" @click="saveLogPath">
-                            <Spinner v-if="processing === 'logPath'" />
-                            {{ processing === 'logPath' ? 'Saving...' : 'Save' }}
-                        </Button>
-                    </div>
-                    <div v-if="logPath" class="flex items-center gap-2">
-                        <div class="size-2 shrink-0 rounded-full" :class="logPathStatus.valid ? 'bg-primary' : 'bg-destructive'" />
-                        <span class="text-sm" :class="logPathStatus.valid ? 'text-muted-foreground' : 'text-destructive'">
-                            {{ logPathStatus.message }}
-                        </span>
+                    <div v-for="account in accounts" :key="account.id" class="flex items-start gap-3">
+                        <Checkbox
+                            :id="`account-${account.username}`"
+                            :defaultValue="account.tracked"
+                            @update:modelValue="(checked: boolean | 'indeterminate') => toggleAccountTracking(account.username, checked === true)"
+                            :disabled="processing === `account-${account.username}`"
+                        />
+                        <div class="flex flex-col gap-1">
+                            <Label :for="`account-${account.username}`">{{ account.username }}</Label>
+                            <p class="text-sm text-muted-foreground">
+                                <Badge v-if="account.active" variant="default" class="text-xs">Active</Badge>
+                                {{ account.tracked ? 'Recording matches' : 'Not recording matches' }}
+                            </p>
+                        </div>
                     </div>
                 </div>
 
-                <Separator />
-
-                <div class="flex flex-col gap-2">
-                    <Label>Game Data Directory</Label>
-                    <p class="text-sm text-muted-foreground">Contains <code>Match_GameLog_*</code> and deck XML files</p>
-                    <div class="flex gap-2">
-                        <Input v-model="dataPathInput" @keydown.enter="saveDataPath" :disabled="processing === 'dataPath'" />
-                        <Button variant="outline" :disabled="processing === 'dataPath'" @click="saveDataPath">
-                            <Spinner v-if="processing === 'dataPath'" />
-                            {{ processing === 'dataPath' ? 'Saving...' : 'Save' }}
-                        </Button>
-                    </div>
-                    <div v-if="dataPath" class="flex items-center gap-2">
-                        <div class="size-2 shrink-0 rounded-full" :class="dataPathStatus.valid ? 'bg-primary' : 'bg-destructive'" />
-                        <span class="text-sm" :class="dataPathStatus.valid ? 'text-muted-foreground' : 'text-destructive'">
-                            {{ dataPathStatus.message }}
-                        </span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Watcher & Ingestion -->
-            <div class="flex flex-col gap-4 p-3 lg:p-4">
-                <div>
-                    <p class="font-semibold">Watcher &amp; Ingestion</p>
-                    <p class="text-sm text-muted-foreground">Control the file system watcher and manually trigger operations.</p>
-                </div>
-
-                <div class="flex items-center justify-between">
+                <!-- Display -->
+                <div class="flex flex-col gap-4 p-3 lg:p-4">
                     <div>
-                        <Label>File Watcher</Label>
-                        <p class="text-sm text-muted-foreground">Monitors log files and triggers ingestion automatically.</p>
-                        <p v-if="!pathsValid" class="text-sm text-destructive">File paths must be valid to enable the watcher.</p>
+                        <p class="font-semibold">Display</p>
+                        <p class="text-sm text-muted-foreground">Appearance preferences.</p>
                     </div>
-                    <div class="flex items-center gap-3">
-                        <Badge :variant="watcherActive && pathsValid ? 'default' : 'secondary'">
-                            {{ watcherActive && pathsValid ? 'Running' : 'Stopped' }}
-                        </Badge>
-                        <Button variant="outline" size="sm" :disabled="!pathsValid || processing === 'watcher'" @click="toggleWatcher">
-                            <Spinner v-if="processing === 'watcher'" />
-                            {{ processing === 'watcher' ? 'Processing...' : watcherActive && pathsValid ? 'Stop' : 'Start' }}
-                        </Button>
-                    </div>
-                </div>
-
-                <Separator />
-
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-sm font-medium">Ingest Logs</p>
-                        <p class="text-sm text-muted-foreground">
-                            {{ lastIngestAt ? `Last run ${dayjs(lastIngestAt).fromNow()}` : 'Never run' }}
-                        </p>
-                        <p v-if="errors.ingest" class="text-sm text-destructive">{{ errors.ingest }}</p>
-                    </div>
-                    <Button variant="outline" size="sm" :disabled="!pathsValid || processing === 'ingest'" @click="runIngest">
-                        <Spinner v-if="processing === 'ingest'" />
-                        {{ processing === 'ingest' ? 'Running...' : 'Run now' }}
-                    </Button>
-                </div>
-
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-sm font-medium">Sync Decks</p>
-                        <p class="text-sm text-muted-foreground">
-                            {{ lastSyncAt ? `Last run ${dayjs(lastSyncAt).fromNow()}` : 'Never run' }}
-                        </p>
-                        <p v-if="errors.sync" class="text-sm text-destructive">{{ errors.sync }}</p>
-                    </div>
-                    <Button variant="outline" size="sm" :disabled="!pathsValid || processing === 'sync'" @click="runSync">
-                        <Spinner v-if="processing === 'sync'" />
-                        {{ processing === 'sync' ? 'Running...' : 'Run now' }}
-                    </Button>
-                </div>
-
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-sm font-medium">Populate Card Data</p>
-                        <p class="text-sm text-muted-foreground">
-                            Fetch names and images for any cards missing data.
-                            <span v-if="missingCardCount > 0" class="text-warning font-medium"
-                                >{{ missingCardCount }} card{{ missingCardCount === 1 ? '' : 's' }} missing.</span
-                            >
-                            <span v-else class="font-medium text-success">All cards populated.</span>
-                        </p>
-                        <p v-if="errors.populateCards" class="text-sm text-destructive">{{ errors.populateCards }}</p>
-                    </div>
-                    <Button variant="outline" size="sm" :disabled="processing === 'populateCards'" @click="runPopulateCards">
-                        <Spinner v-if="processing === 'populateCards'" />
-                        {{ processing === 'populateCards' ? 'Running...' : 'Run now' }}
-                    </Button>
-                </div>
-            </div>
-
-            <!-- League Tracker -->
-            <div class="flex flex-col gap-4 p-3 lg:p-4">
-                <div>
-                    <p class="font-semibold">League Tracker</p>
-                    <p class="text-sm text-muted-foreground">
-                        Overlay window that shows your current league run on top of MTGO.
-                    </p>
-                </div>
-
-                <div class="flex items-center justify-between">
-                    <div>
-                        <Label>Enabled</Label>
-                        <p class="text-sm text-muted-foreground">Show the league tracker overlay.</p>
-                    </div>
-                    <Switch v-model:checked="overlayEnabled" @update:checked="saveOverlaySettings" />
-                </div>
-
-                <template v-if="overlayEnabled">
-                    <Separator />
 
                     <div class="flex items-center justify-between">
                         <div>
-                            <Label>Always show</Label>
-                            <p class="text-sm text-muted-foreground">Keep the overlay open at all times, not just during matches.</p>
+                            <Label>Theme</Label>
+                            <p class="text-sm text-muted-foreground">Light or dark.</p>
                         </div>
-                        <Switch v-model:checked="overlayAlwaysShow" @update:checked="saveOverlaySettings" />
-                    </div>
-
-                    <Separator />
-
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <Label>Font</Label>
-                            <p class="text-sm text-muted-foreground">Font used in the overlay.</p>
-                        </div>
-                        <Select v-model="overlayFont" @update:model-value="saveOverlaySettings">
-                            <SelectTrigger class="w-44">
+                        <Select :model-value="appearance" @update:model-value="updateAppearance">
+                            <SelectTrigger class="w-36">
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="Segoe UI">Segoe UI</SelectItem>
-                                <SelectItem value="Arial">Arial</SelectItem>
-                                <SelectItem value="Consolas">Consolas</SelectItem>
-                                <SelectItem value="Cascadia Code">Cascadia Code</SelectItem>
-                                <SelectItem value="Tahoma">Tahoma</SelectItem>
-                                <SelectItem value="Verdana">Verdana</SelectItem>
-                                <SelectItem value="Trebuchet MS">Trebuchet MS</SelectItem>
-                                <SelectItem value="Calibri">Calibri</SelectItem>
+                                <SelectItem value="light">Light</SelectItem>
+                                <SelectItem value="dark">Dark</SelectItem>
+                                <SelectItem value="system">System</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
@@ -358,131 +231,294 @@ function saveOverlaySettings() {
 
                     <div class="flex items-center justify-between">
                         <div>
-                            <Label>Text colour</Label>
-                            <p class="text-sm text-muted-foreground">Colour of overlay text.</p>
+                            <Label>Date Format</Label>
+                            <p class="text-sm text-muted-foreground">Detected from your system locale.</p>
                         </div>
-                        <ColorPicker v-model="overlayTextColor" @update:model-value="saveOverlaySettings" />
+                        <span class="text-sm text-muted-foreground">
+                            {{ dateFormat === 'DMY' ? 'DD/MM/YYYY' : 'MM/DD/YYYY' }}
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Data & Privacy -->
+                <div class="flex flex-col gap-4 p-3 lg:p-4">
+                    <div>
+                        <p class="font-semibold">Data &amp; Privacy</p>
+                        <p class="text-sm text-muted-foreground">Control what data is collected from your use of the app.</p>
+                    </div>
+
+                    <div class="flex items-start gap-3">
+                        <Checkbox
+                            id="share-stats"
+                            :defaultValue="shareStats"
+                            @update:modelValue="toggleShareStats"
+                            :disabled="processing === 'shareStats'"
+                        />
+                        <div class="flex flex-col gap-1">
+                            <Label for="share-stats">Share match stats</Label>
+                            <p class="text-sm text-muted-foreground">
+                                Contribute match data to the community. Your deck, archetype, result, and format are submitted after each match.
+                            </p>
+                            <div class="flex items-center justify-between">
+                                <p>{{ pendingMatches.length }} matches pending.</p>
+
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    :disabled="processing === 'submitMatches' || !pendingMatches.length"
+                                    @click="submitPendingMatches"
+                                >
+                                    <Spinner v-if="processing === 'submitMatches'" />
+                                    {{
+                                        processing === 'submitMatches'
+                                            ? 'Submitting...'
+                                            : `Submit ${pendingMatches.length} match${pendingMatches.length === 1 ? '' : 'es'}`
+                                    }}
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- App Version -->
+                <div class="p-3 lg:p-4">
+                    <p class="text-sm text-muted-foreground">mymtgo v{{ appVersion }}</p>
+                </div>
+            </div>
+        </TabsContent>
+
+        <!-- ═══════════════════════════════════════════ Leagues ═══ -->
+        <TabsContent value="leagues">
+            <div class="divide-y">
+                <!-- League Tracker Overlay -->
+                <div class="flex flex-col gap-4 p-3 lg:p-4">
+                    <div>
+                        <p class="font-semibold">League Tracker Overlay</p>
+                        <p class="text-sm text-muted-foreground">A small window that sits on top of MTGO showing your current league run.</p>
+                    </div>
+
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <Label>Enabled</Label>
+                            <p class="text-sm text-muted-foreground">Show the league tracker overlay.</p>
+                        </div>
+                        <Switch :checked="overlayEnabled" @update:modelValue="setOverlayEnabled" />
+                    </div>
+
+                    <template v-if="overlayEnabled">
+                        <Separator />
+
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <Label>Always show</Label>
+                                <p class="text-sm text-muted-foreground">Keep the overlay open at all times, not just during matches.</p>
+                            </div>
+                            <Switch :checked="overlayAlwaysShow" @update:modelValue="setOverlayAlwaysShow" />
+                        </div>
+
+                        <Separator />
+
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <Label>Font</Label>
+                                <p class="text-sm text-muted-foreground">Font used in the overlay.</p>
+                            </div>
+                            <Select v-model="overlayFont" @update:model-value="() => saveOverlaySettings()">
+                                <SelectTrigger class="w-44">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="Segoe UI">Segoe UI</SelectItem>
+                                    <SelectItem value="Arial">Arial</SelectItem>
+                                    <SelectItem value="Consolas">Consolas</SelectItem>
+                                    <SelectItem value="Cascadia Code">Cascadia Code</SelectItem>
+                                    <SelectItem value="Tahoma">Tahoma</SelectItem>
+                                    <SelectItem value="Verdana">Verdana</SelectItem>
+                                    <SelectItem value="Trebuchet MS">Trebuchet MS</SelectItem>
+                                    <SelectItem value="Calibri">Calibri</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <Separator />
+
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <Label>Text colour</Label>
+                                <p class="text-sm text-muted-foreground">Colour of overlay text.</p>
+                            </div>
+                            <ColorPicker v-model="overlayTextColor" @update:model-value="() => saveOverlaySettings()" />
+                        </div>
+
+                        <Separator />
+
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <Label>Background colour</Label>
+                                <p class="text-sm text-muted-foreground">Colour of overlay background.</p>
+                            </div>
+                            <ColorPicker v-model="overlayBgColor" @update:model-value="() => saveOverlaySettings()" />
+                        </div>
+
+                        <Separator />
+
+                        <!-- Preview -->
+                        <div>
+                            <Label class="mb-2 block">Preview</Label>
+                            <div class="overflow-hidden rounded-lg border">
+                                <LeagueTracker :league="sampleLeague" :font="overlayFont" :text-color="overlayTextColor" :bg-color="overlayBgColor" />
+                            </div>
+                        </div>
+                    </template>
+                </div>
+
+                <!-- League Display -->
+                <div class="flex flex-col gap-4 p-3 lg:p-4">
+                    <div>
+                        <p class="font-semibold">League Display</p>
+                        <p class="text-sm text-muted-foreground">How leagues appear in the app.</p>
+                    </div>
+
+                    <div class="flex items-start gap-3">
+                        <Checkbox
+                            id="hide-phantom"
+                            :defaultValue="hidePhantomLeagues"
+                            @update:modelValue="toggleHidePhantom"
+                            :disabled="processing === 'hidePhantom'"
+                        />
+                        <div class="flex flex-col gap-1">
+                            <Label for="hide-phantom">Hide phantom leagues</Label>
+                            <p class="text-sm text-muted-foreground">Exclude phantom league runs from the Leagues page and dashboard stats.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </TabsContent>
+
+        <!-- ═══════════════════════════════════════════ Logging ═══ -->
+        <TabsContent value="logging">
+            <div class="divide-y">
+                <!-- File Paths -->
+                <div class="flex flex-col gap-4 p-3 lg:p-4">
+                    <div>
+                        <p class="font-semibold">File Paths</p>
+                        <p class="text-sm text-muted-foreground">
+                            Where to look for MTGO log files and game data. Defaults are set automatically for standard MTGO installs.
+                        </p>
+                    </div>
+
+                    <div class="flex flex-col gap-2">
+                        <Label>Log File Directory</Label>
+                        <p class="text-sm text-muted-foreground">Contains <code>mtgo.log</code> files</p>
+                        <div class="flex gap-2">
+                            <Input v-model="logPathInput" @keydown.enter="saveLogPath" :disabled="processing === 'logPath'" />
+                            <Button variant="outline" :disabled="processing === 'logPath'" @click="saveLogPath">
+                                <Spinner v-if="processing === 'logPath'" />
+                                {{ processing === 'logPath' ? 'Saving...' : 'Save' }}
+                            </Button>
+                        </div>
+                        <div v-if="logPath" class="flex items-center gap-2">
+                            <div class="size-2 shrink-0 rounded-full" :class="logPathStatus.valid ? 'bg-primary' : 'bg-destructive'" />
+                            <span class="text-sm" :class="logPathStatus.valid ? 'text-muted-foreground' : 'text-destructive'">
+                                {{ logPathStatus.message }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <Separator />
+
+                    <div class="flex flex-col gap-2">
+                        <Label>Game Data Directory</Label>
+                        <p class="text-sm text-muted-foreground">Contains <code>Match_GameLog_*</code> and deck XML files</p>
+                        <div class="flex gap-2">
+                            <Input v-model="dataPathInput" @keydown.enter="saveDataPath" :disabled="processing === 'dataPath'" />
+                            <Button variant="outline" :disabled="processing === 'dataPath'" @click="saveDataPath">
+                                <Spinner v-if="processing === 'dataPath'" />
+                                {{ processing === 'dataPath' ? 'Saving...' : 'Save' }}
+                            </Button>
+                        </div>
+                        <div v-if="dataPath" class="flex items-center gap-2">
+                            <div class="size-2 shrink-0 rounded-full" :class="dataPathStatus.valid ? 'bg-primary' : 'bg-destructive'" />
+                            <span class="text-sm" :class="dataPathStatus.valid ? 'text-muted-foreground' : 'text-destructive'">
+                                {{ dataPathStatus.message }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Watcher & Ingestion -->
+                <div class="flex flex-col gap-4 p-3 lg:p-4">
+                    <div>
+                        <p class="font-semibold">Watcher &amp; Ingestion</p>
+                        <p class="text-sm text-muted-foreground">Control the file system watcher and manually trigger operations.</p>
+                    </div>
+
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <Label>File Watcher</Label>
+                            <p class="text-sm text-muted-foreground">Monitors log files and triggers ingestion automatically.</p>
+                            <p v-if="!pathsValid" class="text-sm text-destructive">File paths must be valid to enable the watcher.</p>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <Badge :variant="watcherActive && pathsValid ? 'default' : 'secondary'">
+                                {{ watcherActive && pathsValid ? 'Running' : 'Stopped' }}
+                            </Badge>
+                            <Button variant="outline" size="sm" :disabled="!pathsValid || processing === 'watcher'" @click="toggleWatcher">
+                                <Spinner v-if="processing === 'watcher'" />
+                                {{ processing === 'watcher' ? 'Processing...' : watcherActive && pathsValid ? 'Stop' : 'Start' }}
+                            </Button>
+                        </div>
                     </div>
 
                     <Separator />
 
                     <div class="flex items-center justify-between">
                         <div>
-                            <Label>Background colour</Label>
-                            <p class="text-sm text-muted-foreground">Colour of overlay background.</p>
+                            <p class="text-sm font-medium">Ingest Logs</p>
+                            <p class="text-sm text-muted-foreground">
+                                {{ lastIngestAt ? `Last run ${dayjs(lastIngestAt).fromNow()}` : 'Never run' }}
+                            </p>
+                            <p v-if="errors.ingest" class="text-sm text-destructive">{{ errors.ingest }}</p>
                         </div>
-                        <ColorPicker v-model="overlayBgColor" @update:model-value="saveOverlaySettings" />
+                        <Button variant="outline" size="sm" :disabled="!pathsValid || processing === 'ingest'" @click="runIngest">
+                            <Spinner v-if="processing === 'ingest'" />
+                            {{ processing === 'ingest' ? 'Running...' : 'Run now' }}
+                        </Button>
                     </div>
 
-                    <Separator />
-
-                    <!-- Preview -->
-                    <div>
-                        <Label class="mb-2 block">Preview</Label>
-                        <div class="overflow-hidden rounded-lg border">
-                            <LeagueTracker
-                                :league="sampleLeague"
-                                :font="overlayFont"
-                                :text-color="overlayTextColor"
-                                :bg-color="overlayBgColor"
-                            />
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium">Sync Decks</p>
+                            <p class="text-sm text-muted-foreground">
+                                {{ lastSyncAt ? `Last run ${dayjs(lastSyncAt).fromNow()}` : 'Never run' }}
+                            </p>
+                            <p v-if="errors.sync" class="text-sm text-destructive">{{ errors.sync }}</p>
                         </div>
+                        <Button variant="outline" size="sm" :disabled="!pathsValid || processing === 'sync'" @click="runSync">
+                            <Spinner v-if="processing === 'sync'" />
+                            {{ processing === 'sync' ? 'Running...' : 'Run now' }}
+                        </Button>
                     </div>
-                </template>
-            </div>
 
-            <!-- Display -->
-            <div class="flex flex-col gap-4 p-3 lg:p-4">
-                <div>
-                    <p class="font-semibold">Display</p>
-                    <p class="text-sm text-muted-foreground">Appearance preferences.</p>
-                </div>
-
-                <div class="flex items-center justify-between">
-                    <div>
-                        <Label>Theme</Label>
-                        <p class="text-sm text-muted-foreground">Light or dark.</p>
-                    </div>
-                    <Select :model-value="appearance" @update:model-value="updateAppearance">
-                        <SelectTrigger class="w-36">
-                            <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="light">Light</SelectItem>
-                            <SelectItem value="dark">Dark</SelectItem>
-                            <SelectItem value="system">System</SelectItem>
-                        </SelectContent>
-                    </Select>
-                </div>
-
-                <Separator />
-
-                <div class="flex items-center justify-between">
-                    <div>
-                        <Label>Date Format</Label>
-                        <p class="text-sm text-muted-foreground">Detected from your system locale.</p>
-                    </div>
-                    <span class="text-sm text-muted-foreground">
-                        {{ dateFormat === 'DMY' ? 'DD/MM/YYYY' : 'MM/DD/YYYY' }}
-                    </span>
-                </div>
-
-                <Separator />
-
-                <div class="flex items-start gap-3">
-                    <Checkbox
-                        id="hide-phantom"
-                        :defaultValue="hidePhantomLeagues"
-                        @update:modelValue="toggleHidePhantom"
-                        :disabled="processing === 'hidePhantom'"
-                    />
-                    <div class="flex flex-col gap-1">
-                        <Label for="hide-phantom">Hide phantom leagues</Label>
-                        <p class="text-sm text-muted-foreground">
-                            Exclude phantom league runs from the Leagues page and dashboard stats.
-                        </p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Data & Privacy -->
-            <div class="flex flex-col gap-4 p-3 lg:p-4">
-                <div>
-                    <p class="font-semibold">Data &amp; Privacy</p>
-                    <p class="text-sm text-muted-foreground">Control what data is collected from your use of the app.</p>
-                </div>
-
-                <div class="flex items-start gap-3">
-                    <Checkbox
-                        id="share-stats"
-                        :defaultValue="shareStats"
-                        @update:modelValue="toggleShareStats"
-                        :disabled="processing === 'shareStats'"
-                    />
-                    <div class="flex flex-col gap-1">
-                        <Label for="share-stats">Share match stats</Label>
-                        <p class="text-sm text-muted-foreground">
-                            Contribute match data to the community. Your deck, archetype, result, and format are submitted after each match.
-                        </p>
-                        <div class="flex justify-between items-center">
-                            <p>{{ pendingMatches.length }} matches pending.</p>
-
-                            <Button variant="outline" size="sm" :disabled="processing === 'submitMatches' || !pendingMatches.length" @click="submitPendingMatches">
-                                <Spinner v-if="processing === 'submitMatches'" />
-                                {{
-                                    processing === 'submitMatches'
-                                        ? 'Submitting...'
-                                        : `Submit ${pendingMatches.length} match${pendingMatches.length === 1 ? '' : 'es'}`
-                                }}
-                            </Button>
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium">Populate Card Data</p>
+                            <p class="text-sm text-muted-foreground">
+                                Fetch names and images for any cards missing data.
+                                <span v-if="missingCardCount > 0" class="text-warning font-medium"
+                                    >{{ missingCardCount }} card{{ missingCardCount === 1 ? '' : 's' }} missing.</span
+                                >
+                                <span v-else class="font-medium text-success">All cards populated.</span>
+                            </p>
+                            <p v-if="errors.populateCards" class="text-sm text-destructive">{{ errors.populateCards }}</p>
                         </div>
+                        <Button variant="outline" size="sm" :disabled="processing === 'populateCards'" @click="runPopulateCards">
+                            <Spinner v-if="processing === 'populateCards'" />
+                            {{ processing === 'populateCards' ? 'Running...' : 'Run now' }}
+                        </Button>
                     </div>
                 </div>
             </div>
-
-            <!-- App Version -->
-            <div class="p-3 lg:p-4">
-                <p class="text-sm text-muted-foreground">mymtgo v{{ appVersion }}</p>
-            </div>
-    </div>
+        </TabsContent>
+    </Tabs>
 </template>
