@@ -40,7 +40,7 @@ class IndexController extends Controller
             ->when($this->activeAccountId(), fn ($q, $id) => $q
                 ->whereHas('deckVersion', fn ($q2) => $q2->whereHas('deck', fn ($q3) => $q3->where('account_id', $id)))
             )
-            ->with(['deck', 'opponentArchetypes.archetype', 'opponentArchetypes.player', 'league'])
+            ->with(['deck', 'games.players', 'opponentArchetypes.archetype', 'opponentArchetypes.player', 'league'])
             ->whereBetween('started_at', [$start, $end])
             ->orderByDesc('started_at')
             ->paginate(25);

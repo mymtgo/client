@@ -101,7 +101,7 @@ class ShowController extends Controller
             // Default group — matches tab (loads immediately after paint)
             'matches' => Inertia::defer(fn () => MatchData::collect(
                 $matchesQuery->clone()
-                    ->with(['opponentArchetypes.archetype', 'opponentArchetypes.player', 'league'])
+                    ->with(['games.players', 'opponentArchetypes.archetype', 'opponentArchetypes.player', 'league'])
                     ->orderByDesc('started_at')
                     ->paginate(50)
             )),
@@ -117,7 +117,7 @@ class ShowController extends Controller
             'leagues' => Inertia::defer(function () use ($matchIdsInRange) {
                 $leagues = League::with(['matches' => fn ($q) => $q
                     ->whereIn('matches.id', $matchIdsInRange)
-                    ->with(['opponentArchetypes.archetype', 'opponentArchetypes.player', 'league'])])
+                    ->with(['games.players', 'opponentArchetypes.archetype', 'opponentArchetypes.player', 'league'])])
                     ->whereHas('matches', fn ($q) => $q->whereIn('matches.id', $matchIdsInRange))
                     ->latest('started_at')
                     ->get();
