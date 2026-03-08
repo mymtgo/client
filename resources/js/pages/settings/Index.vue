@@ -24,7 +24,7 @@ import UpdateOverlaySettingsController from '@/actions/App/Http/Controllers/Sett
 import { Switch } from '@/components/ui/switch';
 import LeagueTracker from '@/components/leagues/LeagueTracker.vue';
 import type { LeagueData } from '@/components/leagues/LeagueTracker.vue';
-import { ColorPicker } from '@vuelor/picker';
+import ColorPicker from '@/components/ui/color-picker/ColorPicker.vue';
 import { useAppearance } from '@/composables/useAppearance';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
