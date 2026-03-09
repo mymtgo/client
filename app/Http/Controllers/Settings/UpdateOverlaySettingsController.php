@@ -14,6 +14,7 @@ class UpdateOverlaySettingsController extends Controller
         $validated = $request->validate([
             'overlay_enabled' => 'sometimes|boolean',
             'overlay_opponent_enabled' => 'sometimes|boolean',
+            'deck_popout_enabled' => 'sometimes|boolean',
         ]);
 
         if (isset($validated['overlay_enabled'])) {
@@ -22,6 +23,10 @@ class UpdateOverlaySettingsController extends Controller
 
         if (isset($validated['overlay_opponent_enabled'])) {
             Settings::set('overlay_opponent_enabled', $validated['overlay_opponent_enabled'] ? 1 : 0);
+        }
+
+        if (isset($validated['deck_popout_enabled'])) {
+            Settings::set('deck_popout_enabled', $validated['deck_popout_enabled'] ? 1 : 0);
         }
 
         return back();

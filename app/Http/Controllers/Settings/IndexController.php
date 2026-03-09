@@ -33,6 +33,7 @@ class IndexController extends Controller
             'appVersion' => config('nativephp.version'),
             'overlayEnabled' => (bool) Settings::get('overlay_enabled'),
             'overlayOpponentEnabled' => (bool) Settings::get('overlay_opponent_enabled'),
+            'deckPopoutEnabled' => (bool) Settings::get('deck_popout_enabled'),
         ]);
     }
 }

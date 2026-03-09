@@ -35,6 +35,7 @@ const props = defineProps<{
     accounts: Array<{ id: number; username: string; tracked: boolean; active: boolean }>;
     overlayEnabled: boolean;
     overlayOpponentEnabled: boolean;
+    deckPopoutEnabled: boolean;
     appVersion: string;
 }>();
 
@@ -113,6 +114,10 @@ function setOverlayEnabled(val: boolean) {
 
 function setOverlayOpponentEnabled(val: boolean) {
     withProcessing('overlayOpponent', 'post', UpdateOverlaySettingsController.url(), { overlay_opponent_enabled: val });
+}
+
+function setDeckPopoutEnabled(val: boolean) {
+    withProcessing('deckPopout', 'post', UpdateOverlaySettingsController.url(), { deck_popout_enabled: val });
 }
 
 const sampleLeague: LeagueData = {
@@ -208,6 +213,22 @@ const sampleOpponent: OpponentData = {
 
                     <div class="mx-auto w-64 overflow-hidden rounded-md border border-border">
                         <OpponentScout :opponent="sampleOpponent" />
+                    </div>
+
+                    <Separator />
+
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <Label>Auto-show deck list</Label>
+                            <p class="text-sm text-muted-foreground">
+                                Show your current deck for the match.
+                            </p>
+                        </div>
+                        <Switch
+                            :modelValue="props.deckPopoutEnabled"
+                            @update:modelValue="setDeckPopoutEnabled"
+                            :disabled="processing === 'deckPopout'"
+                        />
                     </div>
 
                     <Separator />
