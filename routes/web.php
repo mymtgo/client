@@ -45,6 +45,7 @@ Route::group([], function (\Illuminate\Routing\Router $router) {
         'prefix' => 'settings',
     ], function (\Illuminate\Routing\Router $group) {
         $group->get('/', \App\Http\Controllers\Settings\IndexController::class)->name('settings.index');
+        $group->get('browse-folder', \App\Http\Controllers\Settings\BrowseFolderController::class)->name('settings.browse-folder');
         $group->patch('log-path', \App\Http\Controllers\Settings\UpdateLogPathController::class)->name('settings.log-path');
         $group->patch('data-path', \App\Http\Controllers\Settings\UpdateDataPathController::class)->name('settings.data-path');
         $group->patch('watcher', \App\Http\Controllers\Settings\UpdateWatcherController::class)->name('settings.watcher');

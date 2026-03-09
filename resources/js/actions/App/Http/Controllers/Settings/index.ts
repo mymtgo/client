@@ -1,4 +1,5 @@
 import IndexController from './IndexController'
+import BrowseFolderController from './BrowseFolderController'
 import UpdateLogPathController from './UpdateLogPathController'
 import UpdateDataPathController from './UpdateDataPathController'
 import UpdateWatcherController from './UpdateWatcherController'
@@ -12,21 +13,23 @@ import RunSubmitMatchesController from './RunSubmitMatchesController'
 import SwitchAccountController from './SwitchAccountController'
 import UpdateAccountTrackingController from './UpdateAccountTrackingController'
 import UpdateOverlaySettingsController from './UpdateOverlaySettingsController'
+
 const Settings = {
     IndexController: Object.assign(IndexController, IndexController),
-UpdateLogPathController: Object.assign(UpdateLogPathController, UpdateLogPathController),
-UpdateDataPathController: Object.assign(UpdateDataPathController, UpdateDataPathController),
-UpdateWatcherController: Object.assign(UpdateWatcherController, UpdateWatcherController),
-RunIngestController: Object.assign(RunIngestController, RunIngestController),
-RunSyncController: Object.assign(RunSyncController, RunSyncController),
-RunPopulateCardsController: Object.assign(RunPopulateCardsController, RunPopulateCardsController),
-UpdateAnonymousStatsController: Object.assign(UpdateAnonymousStatsController, UpdateAnonymousStatsController),
-UpdateShareStatsController: Object.assign(UpdateShareStatsController, UpdateShareStatsController),
-UpdateHidePhantomController: Object.assign(UpdateHidePhantomController, UpdateHidePhantomController),
-RunSubmitMatchesController: Object.assign(RunSubmitMatchesController, RunSubmitMatchesController),
-SwitchAccountController: Object.assign(SwitchAccountController, SwitchAccountController),
-UpdateAccountTrackingController: Object.assign(UpdateAccountTrackingController, UpdateAccountTrackingController),
-UpdateOverlaySettingsController: Object.assign(UpdateOverlaySettingsController, UpdateOverlaySettingsController),
+    BrowseFolderController: Object.assign(BrowseFolderController, BrowseFolderController),
+    UpdateLogPathController: Object.assign(UpdateLogPathController, UpdateLogPathController),
+    UpdateDataPathController: Object.assign(UpdateDataPathController, UpdateDataPathController),
+    UpdateWatcherController: Object.assign(UpdateWatcherController, UpdateWatcherController),
+    RunIngestController: Object.assign(RunIngestController, RunIngestController),
+    RunSyncController: Object.assign(RunSyncController, RunSyncController),
+    RunPopulateCardsController: Object.assign(RunPopulateCardsController, RunPopulateCardsController),
+    UpdateAnonymousStatsController: Object.assign(UpdateAnonymousStatsController, UpdateAnonymousStatsController),
+    UpdateShareStatsController: Object.assign(UpdateShareStatsController, UpdateShareStatsController),
+    UpdateHidePhantomController: Object.assign(UpdateHidePhantomController, UpdateHidePhantomController),
+    RunSubmitMatchesController: Object.assign(RunSubmitMatchesController, RunSubmitMatchesController),
+    SwitchAccountController: Object.assign(SwitchAccountController, SwitchAccountController),
+    UpdateAccountTrackingController: Object.assign(UpdateAccountTrackingController, UpdateAccountTrackingController),
+    UpdateOverlaySettingsController: Object.assign(UpdateOverlaySettingsController, UpdateOverlaySettingsController),
 }
 
 export default Settings

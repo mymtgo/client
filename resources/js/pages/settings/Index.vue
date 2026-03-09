@@ -1,10 +1,7 @@
 <script setup lang="ts">
-import RunIngestController from '@/actions/App/Http/Controllers/Settings/RunIngestController';
-import RunPopulateCardsController from '@/actions/App/Http/Controllers/Settings/RunPopulateCardsController';
+import BrowseFolderController from '@/actions/App/Http/Controllers/Settings/BrowseFolderController';
 import RunSubmitMatchesController from '@/actions/App/Http/Controllers/Settings/RunSubmitMatchesController';
-import RunSyncController from '@/actions/App/Http/Controllers/Settings/RunSyncController';
 import UpdateAccountTrackingController from '@/actions/App/Http/Controllers/Settings/UpdateAccountTrackingController';
-import UpdateAnonymousStatsController from '@/actions/App/Http/Controllers/Settings/UpdateAnonymousStatsController';
 import UpdateDataPathController from '@/actions/App/Http/Controllers/Settings/UpdateDataPathController';
 import UpdateHidePhantomController from '@/actions/App/Http/Controllers/Settings/UpdateHidePhantomController';
 import UpdateLogPathController from '@/actions/App/Http/Controllers/Settings/UpdateLogPathController';
@@ -13,34 +10,22 @@ import UpdateShareStatsController from '@/actions/App/Http/Controllers/Settings/
 import UpdateWatcherController from '@/actions/App/Http/Controllers/Settings/UpdateWatcherController';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Spinner } from '@/components/ui/spinner';
 import { Switch } from '@/components/ui/switch';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useAppearance } from '@/composables/useAppearance';
 import { router, usePage } from '@inertiajs/vue3';
-import dayjs from 'dayjs';
-import relativeTime from 'dayjs/plugin/relativeTime';
 import { computed, ref } from 'vue';
-
-dayjs.extend(relativeTime);
 
 const props = defineProps<{
     logPath: string;
     dataPath: string;
     watcherActive: boolean;
-    anonymousStats: boolean;
     shareStats: boolean;
-    dateFormat: 'DMY' | 'MDY';
     logPathStatus: { valid: boolean; fileCount: number; message: string };
     dataPathStatus: { valid: boolean; fileCount: number; message: string };
-    lastIngestAt: string | null;
-    lastSyncAt: string | null;
-    missingCardCount: number;
     hidePhantomLeagues: boolean;
     pendingMatches: Array<{ id: number; format: string; games_won: number; games_lost: number; started_at: string }>;
     accounts: Array<{ id: number; username: string; tracked: boolean; active: boolean }>;
@@ -55,11 +40,7 @@ const pathsValid = computed(() => props.logPathStatus.valid && props.dataPathSta
 
 const errors = computed(() => usePage().props.errors as Record<string, string>);
 
-const { appearance, updateAppearance } = useAppearance();
-
 const processing = ref<string | null>(null);
-
-const overlayEnabled = ref(props.overlayEnabled);
 
 function withProcessing(key: string, method: 'patch' | 'post', url: string, data: Record<string, unknown> = {}) {
     processing.value = key;
@@ -79,32 +60,38 @@ function saveDataPath() {
     withProcessing('dataPath', 'patch', UpdateDataPathController.url(), { path: dataPathInput.value });
 }
 
+async function browseFolder(key: 'logPath' | 'dataPath') {
+    const currentPath = key === 'logPath' ? logPathInput.value : dataPathInput.value;
+    const updateUrl = key === 'logPath' ? UpdateLogPathController.url() : UpdateDataPathController.url();
+    const inputRef = key === 'logPath' ? logPathInput : dataPathInput;
+
+    processing.value = key;
+
+    try {
+        const response = await fetch(BrowseFolderController.url({ query: { default: currentPath } }));
+        const { path } = await response.json();
+
+        if (path) {
+            inputRef.value = path;
+            withProcessing(key, 'patch', updateUrl, { path });
+        } else {
+            processing.value = null;
+        }
+    } catch {
+        processing.value = null;
+    }
+}
+
 function toggleWatcher() {
     withProcessing('watcher', 'patch', UpdateWatcherController.url(), { active: !props.watcherActive });
 }
 
-function runIngest() {
-    withProcessing('ingest', 'post', RunIngestController.url());
+function toggleShareStats(val: boolean) {
+    withProcessing('shareStats', 'patch', UpdateShareStatsController.url(), { enabled: val });
 }
 
-function runSync() {
-    withProcessing('sync', 'post', RunSyncController.url());
-}
-
-function runPopulateCards() {
-    withProcessing('populateCards', 'post', RunPopulateCardsController.url());
-}
-
-function toggleAnonymousStats(checked: boolean | 'indeterminate') {
-    withProcessing('stats', 'patch', UpdateAnonymousStatsController.url(), { enabled: checked === true });
-}
-
-function toggleShareStats(checked: boolean | 'indeterminate') {
-    withProcessing('shareStats', 'patch', UpdateShareStatsController.url(), { enabled: checked === true });
-}
-
-function toggleHidePhantom(checked: boolean | 'indeterminate') {
-    withProcessing('hidePhantom', 'patch', UpdateHidePhantomController.url(), { enabled: checked === true });
+function toggleHidePhantom(val: boolean) {
+    withProcessing('hidePhantom', 'patch', UpdateHidePhantomController.url(), { enabled: val });
 }
 
 function submitPendingMatches() {
@@ -115,193 +102,87 @@ function toggleAccountTracking(username: string, tracked: boolean) {
     withProcessing(`account-${username}`, 'patch', UpdateAccountTrackingController.url(), { username, tracked });
 }
 
-function setOverlayEnabled(val: boolean | 'indeterminate') {
-    overlayEnabled.value = val === true;
-    withProcessing('overlay', 'post', UpdateOverlaySettingsController.url(), { overlay_enabled: val === true });
+function setOverlayEnabled(val: boolean) {
+    withProcessing('overlay', 'post', UpdateOverlaySettingsController.url(), { overlay_enabled: val });
 }
 </script>
 
 <template>
-    <Tabs default-value="general" class="max-w-3xl">
-        <TabsList class="mx-4 mt-4">
-            <TabsTrigger value="general">General</TabsTrigger>
-            <TabsTrigger value="leagues">Leagues</TabsTrigger>
-            <TabsTrigger value="logging">Logging</TabsTrigger>
-        </TabsList>
-
-        <!-- ═══════════════════════════════════════════ General ═══ -->
-        <TabsContent value="general">
-            <div class="divide-y">
-                <!-- Accounts -->
-                <div v-if="accounts.length" class="flex flex-col gap-4 p-3 lg:p-4">
-                    <div>
-                        <p class="font-semibold">Accounts</p>
-                        <p class="text-sm text-muted-foreground">
-                            MTGO accounts detected from your log files. Toggle tracking to control which accounts record match data.
-                        </p>
-                    </div>
-
-                    <div v-for="account in accounts" :key="account.id" class="flex items-start gap-3">
-                        <Checkbox
-                            :id="`account-${account.username}`"
-                            :defaultValue="account.tracked"
-                            @update:modelValue="(checked: boolean | 'indeterminate') => toggleAccountTracking(account.username, checked === true)"
-                            :disabled="processing === `account-${account.username}`"
-                        />
-                        <div class="flex flex-col gap-1">
-                            <Label :for="`account-${account.username}`">{{ account.username }}</Label>
+    <div class="flex-1 overflow-y-auto">
+        <div class="mx-auto max-w-3xl space-y-4 p-6">
+            <!-- Accounts -->
+            <Card v-if="accounts.length">
+                <CardHeader>
+                    <CardTitle>Accounts</CardTitle>
+                    <CardDescription>Toggle tracking to control which accounts record match data.</CardDescription>
+                </CardHeader>
+                <CardContent class="flex flex-col gap-3">
+                    <div v-for="account in accounts" :key="account.id" class="flex items-center justify-between">
+                        <div>
+                            <Label>
+                                {{ account.username }}
+                                <Badge v-if="account.active" variant="default" class="ml-1 text-xs">Active</Badge>
+                            </Label>
                             <p class="text-sm text-muted-foreground">
-                                <Badge v-if="account.active" variant="default" class="text-xs">Active</Badge>
                                 {{ account.tracked ? 'Recording matches' : 'Not recording matches' }}
                             </p>
                         </div>
+                        <Switch
+                            :modelValue="account.tracked"
+                            @update:modelValue="(val: boolean) => toggleAccountTracking(account.username, val)"
+                            :disabled="processing === `account-${account.username}`"
+                        />
                     </div>
-                </div>
+                </CardContent>
+            </Card>
 
-                <!-- Display -->
-                <div class="flex flex-col gap-4 p-3 lg:p-4">
-                    <div>
-                        <p class="font-semibold">Display</p>
-                        <p class="text-sm text-muted-foreground">Appearance preferences.</p>
-                    </div>
-
+            <!-- Gameplay Settings -->
+            <Card>
+                <CardHeader>
+                    <CardTitle>Gameplay Settings</CardTitle>
+                    <CardDescription>League overlay and display preferences.</CardDescription>
+                </CardHeader>
+                <CardContent class="flex flex-col gap-4">
                     <div class="flex items-center justify-between">
                         <div>
-                            <Label>Theme</Label>
-                            <p class="text-sm text-muted-foreground">Light or dark.</p>
+                            <Label>League progress overlay</Label>
+                            <p class="text-sm text-muted-foreground">Show a small overlay on top of MTGO with your current league run.</p>
                         </div>
-                        <Select :model-value="appearance" @update:model-value="updateAppearance">
-                            <SelectTrigger class="w-36">
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="light">Light</SelectItem>
-                                <SelectItem value="dark">Dark</SelectItem>
-                                <SelectItem value="system">System</SelectItem>
-                            </SelectContent>
-                        </Select>
+                        <Switch :modelValue="props.overlayEnabled" @update:modelValue="setOverlayEnabled" />
                     </div>
 
                     <Separator />
 
                     <div class="flex items-center justify-between">
                         <div>
-                            <Label>Date Format</Label>
-                            <p class="text-sm text-muted-foreground">Detected from your system locale.</p>
+                            <Label>Hide phantom leagues</Label>
+                            <p class="text-sm text-muted-foreground">Exclude phantom league runs from the Leagues page and dashboard stats.</p>
                         </div>
-                        <span class="text-sm text-muted-foreground">
-                            {{ dateFormat === 'DMY' ? 'DD/MM/YYYY' : 'MM/DD/YYYY' }}
-                        </span>
-                    </div>
-                </div>
-
-                <!-- Data & Privacy -->
-                <div class="flex flex-col gap-4 p-3 lg:p-4">
-                    <div>
-                        <p class="font-semibold">Data &amp; Privacy</p>
-                        <p class="text-sm text-muted-foreground">Control what data is collected from your use of the app.</p>
-                    </div>
-
-                    <div class="flex items-start gap-3">
-                        <Checkbox
-                            id="share-stats"
-                            :defaultValue="shareStats"
-                            @update:modelValue="toggleShareStats"
-                            :disabled="processing === 'shareStats'"
-                        />
-                        <div class="flex flex-col gap-1">
-                            <Label for="share-stats">Share match stats</Label>
-                            <p class="text-sm text-muted-foreground">
-                                Contribute match data to the community. Your deck, archetype, result, and format are submitted after each match.
-                            </p>
-                            <div class="flex items-center justify-between">
-                                <p>{{ pendingMatches.length }} matches pending.</p>
-
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    :disabled="processing === 'submitMatches' || !pendingMatches.length"
-                                    @click="submitPendingMatches"
-                                >
-                                    <Spinner v-if="processing === 'submitMatches'" />
-                                    {{
-                                        processing === 'submitMatches'
-                                            ? 'Submitting...'
-                                            : `Submit ${pendingMatches.length} match${pendingMatches.length === 1 ? '' : 'es'}`
-                                    }}
-                                </Button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- App Version -->
-                <div class="p-3 lg:p-4">
-                    <p class="text-sm text-muted-foreground">mymtgo v{{ appVersion }}</p>
-                </div>
-            </div>
-        </TabsContent>
-
-        <!-- ═══════════════════════════════════════════ Leagues ═══ -->
-        <TabsContent value="leagues">
-            <div class="divide-y">
-                <!-- League Tracker Overlay -->
-                <div class="flex flex-col gap-4 p-3 lg:p-4">
-                    <div>
-                        <p class="font-semibold">League Tracker Overlay</p>
-                        <p class="text-sm text-muted-foreground">A small window that sits on top of MTGO showing your current league run.</p>
-                    </div>
-
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <Label>Enable league progress overlay</Label>
-                            <p class="text-sm text-muted-foreground">Show a small overlay on top of MTGO with your current league run when the app starts.</p>
-                        </div>
-                        <Switch :checked="overlayEnabled" @update:modelValue="setOverlayEnabled" />
-                    </div>
-                </div>
-
-                <!-- League Display -->
-                <div class="flex flex-col gap-4 p-3 lg:p-4">
-                    <div>
-                        <p class="font-semibold">League Display</p>
-                        <p class="text-sm text-muted-foreground">How leagues appear in the app.</p>
-                    </div>
-
-                    <div class="flex items-start gap-3">
-                        <Checkbox
-                            id="hide-phantom"
-                            :defaultValue="hidePhantomLeagues"
+                        <Switch
+                            :modelValue="props.hidePhantomLeagues"
                             @update:modelValue="toggleHidePhantom"
                             :disabled="processing === 'hidePhantom'"
                         />
-                        <div class="flex flex-col gap-1">
-                            <Label for="hide-phantom">Hide phantom leagues</Label>
-                            <p class="text-sm text-muted-foreground">Exclude phantom league runs from the Leagues page and dashboard stats.</p>
-                        </div>
                     </div>
-                </div>
-            </div>
-        </TabsContent>
+                </CardContent>
+            </Card>
 
-        <!-- ═══════════════════════════════════════════ Logging ═══ -->
-        <TabsContent value="logging">
-            <div class="divide-y">
-                <!-- File Paths -->
-                <div class="flex flex-col gap-4 p-3 lg:p-4">
-                    <div>
-                        <p class="font-semibold">File Paths</p>
-                        <p class="text-sm text-muted-foreground">
-                            Where to look for MTGO log files and game data. Defaults are set automatically for standard MTGO installs.
-                        </p>
-                    </div>
-
+            <!-- File Paths -->
+            <Card>
+                <CardHeader>
+                    <CardTitle>File Paths</CardTitle>
+                    <CardDescription
+                        >Where to look for MTGO log files and game data. Defaults are set automatically for standard installs.</CardDescription
+                    >
+                </CardHeader>
+                <CardContent class="flex flex-col gap-4">
                     <div class="flex flex-col gap-2">
                         <Label>Log File Directory</Label>
                         <p class="text-sm text-muted-foreground">Contains <code>mtgo.log</code> files</p>
                         <div class="flex gap-2">
                             <Input v-model="logPathInput" @keydown.enter="saveLogPath" :disabled="processing === 'logPath'" />
-                            <Button variant="outline" :disabled="processing === 'logPath'" @click="saveLogPath">
+                            <Button variant="outline" :disabled="processing === 'logPath'" @click="browseFolder('logPath')">Browse</Button>
+                            <Button variant="outline" :disabled="processing === 'logPath' || logPathInput === logPath" @click="saveLogPath">
                                 <Spinner v-if="processing === 'logPath'" />
                                 {{ processing === 'logPath' ? 'Saving...' : 'Save' }}
                             </Button>
@@ -321,7 +202,8 @@ function setOverlayEnabled(val: boolean | 'indeterminate') {
                         <p class="text-sm text-muted-foreground">Contains <code>Match_GameLog_*</code> and deck XML files</p>
                         <div class="flex gap-2">
                             <Input v-model="dataPathInput" @keydown.enter="saveDataPath" :disabled="processing === 'dataPath'" />
-                            <Button variant="outline" :disabled="processing === 'dataPath'" @click="saveDataPath">
+                            <Button variant="outline" :disabled="processing === 'dataPath'" @click="browseFolder('dataPath')">Browse</Button>
+                            <Button variant="outline" :disabled="processing === 'dataPath' || dataPathInput === dataPath" @click="saveDataPath">
                                 <Spinner v-if="processing === 'dataPath'" />
                                 {{ processing === 'dataPath' ? 'Saving...' : 'Save' }}
                             </Button>
@@ -333,15 +215,16 @@ function setOverlayEnabled(val: boolean | 'indeterminate') {
                             </span>
                         </div>
                     </div>
-                </div>
+                </CardContent>
+            </Card>
 
-                <!-- Watcher & Ingestion -->
-                <div class="flex flex-col gap-4 p-3 lg:p-4">
-                    <div>
-                        <p class="font-semibold">Watcher &amp; Ingestion</p>
-                        <p class="text-sm text-muted-foreground">Control the file system watcher and manually trigger operations.</p>
-                    </div>
-
+            <!-- Watcher -->
+            <Card>
+                <CardHeader>
+                    <CardTitle>Watcher</CardTitle>
+                    <CardDescription>Control the file system watcher that monitors log files and triggers ingestion.</CardDescription>
+                </CardHeader>
+                <CardContent>
                     <div class="flex items-center justify-between">
                         <div>
                             <Label>File Watcher</Label>
@@ -358,56 +241,49 @@ function setOverlayEnabled(val: boolean | 'indeterminate') {
                             </Button>
                         </div>
                     </div>
+                </CardContent>
+            </Card>
 
-                    <Separator />
-
+            <!-- Data & Privacy -->
+            <Card>
+                <CardHeader>
+                    <CardTitle>Data &amp; Privacy</CardTitle>
+                    <CardDescription>Control what data is collected from your use of the app.</CardDescription>
+                </CardHeader>
+                <CardContent class="flex flex-col gap-4">
                     <div class="flex items-center justify-between">
                         <div>
-                            <p class="text-sm font-medium">Ingest Logs</p>
+                            <Label>Share match stats</Label>
                             <p class="text-sm text-muted-foreground">
-                                {{ lastIngestAt ? `Last run ${dayjs(lastIngestAt).fromNow()}` : 'Never run' }}
+                                Contribute match data to the community. Your deck, archetype, result, and format are submitted after each match.
                             </p>
-                            <p v-if="errors.ingest" class="text-sm text-destructive">{{ errors.ingest }}</p>
                         </div>
-                        <Button variant="outline" size="sm" :disabled="!pathsValid || processing === 'ingest'" @click="runIngest">
-                            <Spinner v-if="processing === 'ingest'" />
-                            {{ processing === 'ingest' ? 'Running...' : 'Run now' }}
+                        <Switch
+                            :modelValue="props.shareStats"
+                            @update:modelValue="toggleShareStats"
+                            :disabled="processing === 'shareStats'"
+                        />
+                    </div>
+                    <div v-if="props.shareStats" class="flex items-center justify-between">
+                        <p class="text-sm text-muted-foreground">{{ pendingMatches.length }} matches pending.</p>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            :disabled="processing === 'submitMatches' || !pendingMatches.length"
+                            @click="submitPendingMatches"
+                        >
+                            <Spinner v-if="processing === 'submitMatches'" />
+                            {{
+                                processing === 'submitMatches'
+                                    ? 'Submitting...'
+                                    : `Submit ${pendingMatches.length} match${pendingMatches.length === 1 ? '' : 'es'}`
+                            }}
                         </Button>
                     </div>
+                </CardContent>
+            </Card>
 
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-sm font-medium">Sync Decks</p>
-                            <p class="text-sm text-muted-foreground">
-                                {{ lastSyncAt ? `Last run ${dayjs(lastSyncAt).fromNow()}` : 'Never run' }}
-                            </p>
-                            <p v-if="errors.sync" class="text-sm text-destructive">{{ errors.sync }}</p>
-                        </div>
-                        <Button variant="outline" size="sm" :disabled="!pathsValid || processing === 'sync'" @click="runSync">
-                            <Spinner v-if="processing === 'sync'" />
-                            {{ processing === 'sync' ? 'Running...' : 'Run now' }}
-                        </Button>
-                    </div>
-
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-sm font-medium">Populate Card Data</p>
-                            <p class="text-sm text-muted-foreground">
-                                Fetch names and images for any cards missing data.
-                                <span v-if="missingCardCount > 0" class="text-warning font-medium"
-                                    >{{ missingCardCount }} card{{ missingCardCount === 1 ? '' : 's' }} missing.</span
-                                >
-                                <span v-else class="font-medium text-success">All cards populated.</span>
-                            </p>
-                            <p v-if="errors.populateCards" class="text-sm text-destructive">{{ errors.populateCards }}</p>
-                        </div>
-                        <Button variant="outline" size="sm" :disabled="processing === 'populateCards'" @click="runPopulateCards">
-                            <Spinner v-if="processing === 'populateCards'" />
-                            {{ processing === 'populateCards' ? 'Running...' : 'Run now' }}
-                        </Button>
-                    </div>
-                </div>
-            </div>
-        </TabsContent>
-    </Tabs>
+            <p class="text-xs text-muted-foreground">mymtgo v{{ appVersion }}</p>
+        </div>
+    </div>
 </template>
