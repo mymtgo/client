@@ -39,6 +39,8 @@ Route::group([], function (\Illuminate\Routing\Router $router) {
     ], function (\Illuminate\Routing\Router $group) {
         $group->get('/', \App\Http\Controllers\Decks\IndexController::class)->name('decks.index');
         $group->get('{deck:id}', \App\Http\Controllers\Decks\ShowController::class)->name('decks.show');
+        $group->get('{deck:id}/popout', \App\Http\Controllers\Decks\PopoutController::class)->name('decks.popout');
+        $group->post('{deck:id}/popout', \App\Http\Controllers\Decks\OpenPopoutController::class)->name('decks.open-popout');
     });
 
     $router->group([
