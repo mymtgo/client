@@ -146,6 +146,7 @@ const decklistOrgUrl = computed(() => {
                     </TabsContent>
 
                     <TabsContent value="stats" class="space-y-4">
+                    <p class="text-xs text-muted-foreground">Stats from the last 2 months</p>
                     <!-- KPI Cards -->
                     <div class="grid grid-cols-5 gap-4">
                         <Card class="gap-0 py-0">
