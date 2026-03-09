@@ -162,10 +162,10 @@ const sideboardCount = computed(() => props.sideboard.reduce((sum, c) => sum + c
 .deck-scroll::-webkit-scrollbar { width: 6px; }
 .deck-scroll::-webkit-scrollbar-track { background: transparent; }
 .deck-scroll::-webkit-scrollbar-thumb {
-    background: hsl(var(--muted-foreground) / 0.3);
+    background: #4a5568;
     border-radius: 3px;
 }
 .deck-scroll::-webkit-scrollbar-thumb:hover {
-    background: hsl(var(--muted-foreground) / 0.5);
+    background: #5a6a80;
 }
 </style>
