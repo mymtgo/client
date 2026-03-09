@@ -1,0 +1,121 @@
+<script setup lang="ts">
+import ManaSymbols from '@/components/ManaSymbols.vue';
+import OverlayLayout from '@/Layouts/OverlayLayout.vue';
+import { computed } from 'vue';
+
+defineOptions({ layout: OverlayLayout });
+
+const props = defineProps<{
+    deckName: string;
+    format: string;
+    maindeck: Record<string, App.Data.Front.CardData[]>;
+    sideboard: App.Data.Front.CardData[];
+}>();
+
+const COLOR_MAP: Record<string, string> = {
+    W: '#F8F6D8',
+    U: '#C1D7E9',
+    B: '#BAB1AB',
+    R: '#E49977',
+    G: '#A3C095',
+};
+
+const FALLBACK_COLOR = '#888';
+
+function colorBorder(identity: string | null): string {
+    if (!identity) return FALLBACK_COLOR;
+    const colors = identity.split(',').map((c) => COLOR_MAP[c.trim()]).filter(Boolean);
+    if (colors.length === 0) return FALLBACK_COLOR;
+    if (colors.length === 1) return colors[0];
+    const pct = 100 / colors.length;
+    const stops = colors.map((c, i) => `${c} ${i * pct}% ${(i + 1) * pct}%`).join(', ');
+    return `linear-gradient(to bottom, ${stops})`;
+}
+
+function borderStyle(identity: string | null): Record<string, string> {
+    const val = colorBorder(identity);
+    if (val.startsWith('linear-gradient')) {
+        return { borderImage: `${val} 1`, borderLeftWidth: '3px', borderLeftStyle: 'solid' };
+    }
+    return { borderLeftColor: val, borderLeftWidth: '3px', borderLeftStyle: 'solid' };
+}
+
+const CANONICAL_TYPES = ['Creature', 'Planeswalker', 'Battle', 'Instant', 'Sorcery', 'Enchantment', 'Artifact', 'Land'] as const;
+const TYPE_ORDER = Object.fromEntries(CANONICAL_TYPES.map((t, i) => [t, i]));
+
+function normalizeType(raw: string): string {
+    for (const canonical of CANONICAL_TYPES) {
+        if (raw.includes(canonical)) return canonical;
+    }
+    return raw;
+}
+
+const groupedMaindeck = computed(() => {
+    const merged: Record<string, App.Data.Front.CardData[]> = {};
+    for (const [rawType, cards] of Object.entries(props.maindeck)) {
+        const key = normalizeType(rawType);
+        (merged[key] ??= []).push(...cards);
+    }
+    return Object.fromEntries(
+        Object.entries(merged).sort(([a], [b]) => (TYPE_ORDER[a] ?? 99) - (TYPE_ORDER[b] ?? 99)),
+    );
+});
+
+const getCount = (cards: App.Data.Front.CardData[]) => cards.reduce((sum, c) => sum + c.quantity, 0);
+const maindeckCount = computed(() => Object.values(props.maindeck).flat().reduce((sum, c) => sum + c.quantity, 0));
+const sideboardCount = computed(() => props.sideboard.reduce((sum, c) => sum + c.quantity, 0));
+</script>
+
+<template>
+    <div class="flex h-screen flex-col overflow-y-auto bg-background text-foreground">
+        <div class="p-3">
+            <h1 class="text-lg font-bold leading-tight">{{ deckName }}</h1>
+            <p class="text-xs text-muted-foreground">{{ format }}</p>
+        </div>
+
+        <div class="flex-1 space-y-3 px-3 pb-3">
+            <!-- Main Deck -->
+            <div>
+                <h2 class="mb-1 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                    Main Deck ({{ maindeckCount }})
+                </h2>
+                <div v-for="(cards, type) in groupedMaindeck" :key="type" class="mb-2">
+                    <h3 class="mb-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">
+                        {{ type }} ({{ getCount(cards) }})
+                    </h3>
+                    <div
+                        v-for="card in cards"
+                        :key="card.mtgoId ?? card.name"
+                        :style="borderStyle(card.identity)"
+                        class="flex items-center justify-between py-0.5 pl-2 pr-1 text-xs"
+                    >
+                        <span class="truncate">
+                            <span class="font-medium tabular-nums">{{ card.quantity }}</span>
+                            {{ card.name }}
+                        </span>
+                        <ManaSymbols :symbols="card.identity" class="shrink-0 scale-75" />
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sideboard -->
+            <div v-if="sideboard.length">
+                <h2 class="mb-1 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                    Sideboard ({{ sideboardCount }})
+                </h2>
+                <div
+                    v-for="card in sideboard"
+                    :key="card.mtgoId ?? card.name"
+                    :style="borderStyle(card.identity)"
+                    class="flex items-center justify-between py-0.5 pl-2 pr-1 text-xs"
+                >
+                    <span class="truncate">
+                        <span class="font-medium tabular-nums">{{ card.quantity }}</span>
+                        {{ card.name }}
+                    </span>
+                    <ManaSymbols :symbols="card.identity" class="shrink-0 scale-75" />
+                </div>
+            </div>
+        </div>
+    </div>
+</template>
