@@ -25,6 +25,7 @@ class OpenDeckPopoutWindow
             ->alwaysOnTop()
             ->frameless()
             ->resizable()
+            ->movable()
             ->maximizable(false)
             ->fullscreenable(false)
             ->hideMenu()
