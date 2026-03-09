@@ -79,7 +79,7 @@ const sideboardCount = computed(() => props.sideboard.reduce((sum, c) => sum + c
 </script>
 
 <template>
-    <div class="flex h-screen flex-col bg-background text-foreground">
+    <div class="relative flex h-screen flex-col bg-background text-foreground">
         <div class="shrink-0 p-4" style="-webkit-app-region: drag">
             <h1 class="text-xl font-bold leading-tight">{{ deckName }}</h1>
             <p class="text-sm text-muted-foreground">{{ format }}</p>
@@ -134,17 +134,16 @@ const sideboardCount = computed(() => props.sideboard.reduce((sum, c) => sum + c
             </div>
         </div>
 
-        <!-- Card image preview -->
+        <!-- Card image preview (inside window, anchored top-right) -->
         <Transition name="fade">
             <div
                 v-if="hoveredCard?.image"
-                class="pointer-events-none fixed z-50"
-                :style="{ top: `${hoverY}px`, right: '100%', marginRight: '8px' }"
+                class="pointer-events-none absolute right-2 top-2 z-50"
             >
                 <img
                     :src="hoveredCard.image"
                     :alt="hoveredCard.name"
-                    class="w-[250px] rounded-lg shadow-xl"
+                    class="w-[200px] rounded-lg shadow-xl ring-1 ring-border"
                 />
             </div>
         </Transition>
