@@ -1,7 +1,7 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition } from './../../../../../wayfinder'
 /**
 * @see \App\Http\Controllers\Settings\UpdateOverlaySettingsController::__invoke
- * @see app/Http/Controllers/Settings/UpdateOverlaySettingsController.php:23
+ * @see app/Http/Controllers/Settings/UpdateOverlaySettingsController.php:12
  * @route '/settings/overlay'
  */
 const UpdateOverlaySettingsController = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -16,7 +16,7 @@ UpdateOverlaySettingsController.definition = {
 
 /**
 * @see \App\Http\Controllers\Settings\UpdateOverlaySettingsController::__invoke
- * @see app/Http/Controllers/Settings/UpdateOverlaySettingsController.php:23
+ * @see app/Http/Controllers/Settings/UpdateOverlaySettingsController.php:12
  * @route '/settings/overlay'
  */
 UpdateOverlaySettingsController.url = (options?: RouteQueryOptions) => {
@@ -25,7 +25,7 @@ UpdateOverlaySettingsController.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\Settings\UpdateOverlaySettingsController::__invoke
- * @see app/Http/Controllers/Settings/UpdateOverlaySettingsController.php:23
+ * @see app/Http/Controllers/Settings/UpdateOverlaySettingsController.php:12
  * @route '/settings/overlay'
  */
 UpdateOverlaySettingsController.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -35,7 +35,7 @@ UpdateOverlaySettingsController.post = (options?: RouteQueryOptions): RouteDefin
 
     /**
 * @see \App\Http\Controllers\Settings\UpdateOverlaySettingsController::__invoke
- * @see app/Http/Controllers/Settings/UpdateOverlaySettingsController.php:23
+ * @see app/Http/Controllers/Settings/UpdateOverlaySettingsController.php:12
  * @route '/settings/overlay'
  */
     const UpdateOverlaySettingsControllerForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -45,7 +45,7 @@ UpdateOverlaySettingsController.post = (options?: RouteQueryOptions): RouteDefin
 
             /**
 * @see \App\Http\Controllers\Settings\UpdateOverlaySettingsController::__invoke
- * @see app/Http/Controllers/Settings/UpdateOverlaySettingsController.php:23
+ * @see app/Http/Controllers/Settings/UpdateOverlaySettingsController.php:12
  * @route '/settings/overlay'
  */
         UpdateOverlaySettingsControllerForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({

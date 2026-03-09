@@ -8,7 +8,6 @@ use App\Models\League;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
-use Native\Desktop\Facades\Settings;
 
 class OverlayController extends Controller
 {
@@ -27,9 +26,6 @@ class OverlayController extends Controller
         if (! $league) {
             return Inertia::render('leagues/Overlay', [
                 'league' => null,
-                'font' => Settings::get('overlay_font', 'Segoe UI'),
-                'textColor' => Settings::get('overlay_text_color', '#ffffff'),
-                'bgColor' => Settings::get('overlay_bg_color', '#1a1a1a'),
             ]);
         }
 
@@ -63,9 +59,6 @@ class OverlayController extends Controller
                 'hasActiveMatch' => $currentMatch !== null,
                 'games' => $games,
             ],
-            'font' => Settings::get('overlay_font', 'Segoe UI'),
-            'textColor' => Settings::get('overlay_text_color', '#ffffff'),
-            'bgColor' => Settings::get('overlay_bg_color', '#1a1a1a'),
         ]);
     }
 }

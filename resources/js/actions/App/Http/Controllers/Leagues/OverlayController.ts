@@ -1,7 +1,7 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition } from './../../../../../wayfinder'
 /**
 * @see \App\Http\Controllers\Leagues\OverlayController::__invoke
- * @see app/Http/Controllers/Leagues/OverlayController.php:15
+ * @see app/Http/Controllers/Leagues/OverlayController.php:14
  * @route '/leagues/overlay'
  */
 const OverlayController = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -16,7 +16,7 @@ OverlayController.definition = {
 
 /**
 * @see \App\Http\Controllers\Leagues\OverlayController::__invoke
- * @see app/Http/Controllers/Leagues/OverlayController.php:15
+ * @see app/Http/Controllers/Leagues/OverlayController.php:14
  * @route '/leagues/overlay'
  */
 OverlayController.url = (options?: RouteQueryOptions) => {
@@ -25,7 +25,7 @@ OverlayController.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\Leagues\OverlayController::__invoke
- * @see app/Http/Controllers/Leagues/OverlayController.php:15
+ * @see app/Http/Controllers/Leagues/OverlayController.php:14
  * @route '/leagues/overlay'
  */
 OverlayController.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -34,7 +34,7 @@ OverlayController.get = (options?: RouteQueryOptions): RouteDefinition<'get'> =>
 })
 /**
 * @see \App\Http\Controllers\Leagues\OverlayController::__invoke
- * @see app/Http/Controllers/Leagues/OverlayController.php:15
+ * @see app/Http/Controllers/Leagues/OverlayController.php:14
  * @route '/leagues/overlay'
  */
 OverlayController.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -44,7 +44,7 @@ OverlayController.head = (options?: RouteQueryOptions): RouteDefinition<'head'> 
 
     /**
 * @see \App\Http\Controllers\Leagues\OverlayController::__invoke
- * @see app/Http/Controllers/Leagues/OverlayController.php:15
+ * @see app/Http/Controllers/Leagues/OverlayController.php:14
  * @route '/leagues/overlay'
  */
     const OverlayControllerForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -54,7 +54,7 @@ OverlayController.head = (options?: RouteQueryOptions): RouteDefinition<'head'> 
 
             /**
 * @see \App\Http\Controllers\Leagues\OverlayController::__invoke
- * @see app/Http/Controllers/Leagues/OverlayController.php:15
+ * @see app/Http/Controllers/Leagues/OverlayController.php:14
  * @route '/leagues/overlay'
  */
         OverlayControllerForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -63,7 +63,7 @@ OverlayController.head = (options?: RouteQueryOptions): RouteDefinition<'head'> 
         })
             /**
 * @see \App\Http\Controllers\Leagues\OverlayController::__invoke
- * @see app/Http/Controllers/Leagues/OverlayController.php:15
+ * @see app/Http/Controllers/Leagues/OverlayController.php:14
  * @route '/leagues/overlay'
  */
         OverlayControllerForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({

@@ -33,7 +33,7 @@ class NativeAppServiceProvider implements ProvidesPhpIni
         Mtgo::runInitialSetup();
         Mtgo::retryUnsubmittedMatches();
 
-        if (Settings::get('overlay_enabled') && Settings::get('overlay_always_show')) {
+        if (Settings::get('overlay_enabled')) {
             OpenOverlayWindow::run();
         }
     }

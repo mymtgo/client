@@ -9,9 +9,6 @@ defineOptions({ layout: OverlayLayout });
 
 const props = defineProps<{
     league: LeagueData | null;
-    font: string;
-    textColor: string;
-    bgColor: string;
 }>();
 
 let interval: ReturnType<typeof setInterval>;
@@ -31,9 +28,6 @@ onUnmounted(() => {
     <div class="h-screen" style="-webkit-app-region: drag">
         <LeagueTracker
             :league="league"
-            :font="font"
-            :text-color="textColor"
-            :bg-color="bgColor"
             class="h-full"
         />
     </div>

@@ -819,7 +819,7 @@ accountTracking.patch = (options?: RouteQueryOptions): RouteDefinition<'patch'> 
     accountTracking.form = accountTrackingForm
 /**
 * @see \App\Http\Controllers\Settings\UpdateOverlaySettingsController::__invoke
- * @see app/Http/Controllers/Settings/UpdateOverlaySettingsController.php:23
+ * @see app/Http/Controllers/Settings/UpdateOverlaySettingsController.php:12
  * @route '/settings/overlay'
  */
 export const overlay = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -834,7 +834,7 @@ overlay.definition = {
 
 /**
 * @see \App\Http\Controllers\Settings\UpdateOverlaySettingsController::__invoke
- * @see app/Http/Controllers/Settings/UpdateOverlaySettingsController.php:23
+ * @see app/Http/Controllers/Settings/UpdateOverlaySettingsController.php:12
  * @route '/settings/overlay'
  */
 overlay.url = (options?: RouteQueryOptions) => {
@@ -843,7 +843,7 @@ overlay.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\Settings\UpdateOverlaySettingsController::__invoke
- * @see app/Http/Controllers/Settings/UpdateOverlaySettingsController.php:23
+ * @see app/Http/Controllers/Settings/UpdateOverlaySettingsController.php:12
  * @route '/settings/overlay'
  */
 overlay.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -853,7 +853,7 @@ overlay.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
 
     /**
 * @see \App\Http\Controllers\Settings\UpdateOverlaySettingsController::__invoke
- * @see app/Http/Controllers/Settings/UpdateOverlaySettingsController.php:23
+ * @see app/Http/Controllers/Settings/UpdateOverlaySettingsController.php:12
  * @route '/settings/overlay'
  */
     const overlayForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
@@ -863,7 +863,7 @@ overlay.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
 
             /**
 * @see \App\Http\Controllers\Settings\UpdateOverlaySettingsController::__invoke
- * @see app/Http/Controllers/Settings/UpdateOverlaySettingsController.php:23
+ * @see app/Http/Controllers/Settings/UpdateOverlaySettingsController.php:12
  * @route '/settings/overlay'
  */
         overlayForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
