@@ -25,6 +25,7 @@ Route::group([], function (\Illuminate\Routing\Router $router) {
         $group->get('/', \App\Http\Controllers\Leagues\IndexController::class)->name('leagues.index');
         $group->get('overlay', \App\Http\Controllers\Leagues\OverlayController::class)->name('leagues.overlay');
         $group->post('overlay/toggle', \App\Http\Controllers\Leagues\ToggleOverlayController::class)->name('leagues.overlay.toggle');
+        $group->post('overlay/open', \App\Http\Controllers\Leagues\OpenOverlayController::class)->name('leagues.overlay.open');
         $group->delete('{league}', \App\Http\Controllers\Leagues\AbandonController::class)->name('leagues.abandon');
     });
 
