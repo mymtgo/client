@@ -21,6 +21,7 @@ class OpenDeckPopoutWindow
             ->width(300)
             ->height(700)
             ->minWidth(300)
+            ->maxWidth(400)
             ->minHeight(400)
             ->rememberState()
             ->alwaysOnTop()
