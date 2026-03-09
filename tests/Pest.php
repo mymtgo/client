@@ -14,6 +14,8 @@
 pest()->extend(Tests\TestCase::class)
  // ->use(Illuminate\Foundation\Testing\RefreshDatabase::class)
     ->beforeEach(function () {
+        $this->withoutVite();
+
         // NativePHP Settings makes HTTP calls to localhost:4000 (the Electron
         // backend) which doesn't exist in CI or during testing.  Swap the
         // facade root with a simple in-memory store so tests never hit the
