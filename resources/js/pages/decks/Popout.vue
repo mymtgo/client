@@ -1,9 +1,21 @@
 <script setup lang="ts">
 import ManaSymbols from '@/components/ManaSymbols.vue';
 import OverlayLayout from '@/Layouts/OverlayLayout.vue';
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 
 defineOptions({ layout: OverlayLayout });
+
+const hoveredCard = ref<App.Data.Front.CardData | null>(null);
+const hoverY = ref(0);
+
+function onCardEnter(card: App.Data.Front.CardData, event: MouseEvent) {
+    hoveredCard.value = card;
+    hoverY.value = (event.currentTarget as HTMLElement).getBoundingClientRect().top;
+}
+
+function onCardLeave() {
+    hoveredCard.value = null;
+}
 
 const props = defineProps<{
     deckName: string;
@@ -88,6 +100,8 @@ const sideboardCount = computed(() => props.sideboard.reduce((sum, c) => sum + c
                         :key="card.mtgoId ?? card.name"
                         :style="borderStyle(card.identity)"
                         class="flex items-center justify-between py-1 pl-2.5 pr-1.5 text-sm"
+                        @mouseenter="onCardEnter(card, $event)"
+                        @mouseleave="onCardLeave"
                     >
                         <span class="truncate">
                             <span class="font-semibold tabular-nums">{{ card.quantity }}</span>
@@ -108,6 +122,8 @@ const sideboardCount = computed(() => props.sideboard.reduce((sum, c) => sum + c
                     :key="card.mtgoId ?? card.name"
                     :style="borderStyle(card.identity)"
                     class="flex items-center justify-between py-1 pl-2.5 pr-1.5 text-sm"
+                    @mouseenter="onCardEnter(card, $event)"
+                    @mouseleave="onCardLeave"
                 >
                     <span class="truncate">
                         <span class="font-semibold tabular-nums">{{ card.quantity }}</span>
@@ -117,5 +133,26 @@ const sideboardCount = computed(() => props.sideboard.reduce((sum, c) => sum + c
                 </div>
             </div>
         </div>
+
+        <!-- Card image preview -->
+        <Transition name="fade">
+            <div
+                v-if="hoveredCard?.image"
+                class="pointer-events-none fixed z-50"
+                :style="{ top: `${hoverY}px`, right: '100%', marginRight: '8px' }"
+            >
+                <img
+                    :src="hoveredCard.image"
+                    :alt="hoveredCard.name"
+                    class="w-[250px] rounded-lg shadow-xl"
+                />
+            </div>
+        </Transition>
     </div>
 </template>
+
+<style scoped>
+.fade-enter-active { transition: opacity 0.1s ease; }
+.fade-leave-active { transition: opacity 0.05s ease; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
+</style>
