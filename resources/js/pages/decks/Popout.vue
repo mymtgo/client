@@ -6,11 +6,14 @@ import { computed, ref } from 'vue';
 defineOptions({ layout: OverlayLayout });
 
 const hoveredCard = ref<App.Data.Front.CardData | null>(null);
-const hoverY = ref(0);
+const previewTop = ref(0);
 
 function onCardEnter(card: App.Data.Front.CardData, event: MouseEvent) {
     hoveredCard.value = card;
-    hoverY.value = (event.currentTarget as HTMLElement).getBoundingClientRect().top;
+    const rowTop = (event.currentTarget as HTMLElement).getBoundingClientRect().top;
+    // Card image is ~280px tall at 200px wide (MTG ratio). Clamp so it stays in viewport.
+    const maxTop = window.innerHeight - 280;
+    previewTop.value = Math.max(8, Math.min(rowTop, maxTop));
 }
 
 function onCardLeave() {
@@ -138,7 +141,8 @@ const sideboardCount = computed(() => props.sideboard.reduce((sum, c) => sum + c
         <Transition name="fade">
             <div
                 v-if="hoveredCard?.image"
-                class="pointer-events-none absolute right-2 top-2 z-50"
+                class="pointer-events-none fixed right-2 z-50"
+                :style="{ top: `${previewTop}px` }"
             >
                 <img
                     :src="hoveredCard.image"
