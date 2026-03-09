@@ -5,6 +5,7 @@ namespace App\Actions\Matches;
 use App\Actions\DetermineMatchArchetypes;
 use App\Actions\Leagues\OpenOverlayWindow;
 use App\Actions\Util\ExtractJson;
+use App\Events\DeckLinkedToMatch;
 use App\Actions\Util\ExtractKeyValueBlock;
 use App\Enums\LogEventType;
 use App\Enums\MatchState;
@@ -150,6 +151,10 @@ class AdvanceMatchState
         if (! $match->deck_version_id) {
             DetermineMatchDeck::run($match);
             $match->refresh();
+
+            if ($match->deck_version_id) {
+                DeckLinkedToMatch::dispatch($match);
+            }
         }
 
         // ── Assign league (if not already assigned) ──
