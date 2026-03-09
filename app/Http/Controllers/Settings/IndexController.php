@@ -41,10 +41,6 @@ class IndexController extends Controller
             'accounts' => Account::orderBy('username')->get(['id', 'username', 'tracked', 'active']),
             'appVersion' => config('nativephp.version'),
             'overlayEnabled' => (bool) Settings::get('overlay_enabled'),
-            'overlayAlwaysShow' => (bool) Settings::get('overlay_always_show'),
-            'overlayFont' => Settings::get('overlay_font', 'Segoe UI'),
-            'overlayTextColor' => Settings::get('overlay_text_color', '#ffffff'),
-            'overlayBgColor' => Settings::get('overlay_bg_color', '#1a1a1a'),
         ]);
     }
 

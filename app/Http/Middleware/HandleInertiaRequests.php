@@ -7,7 +7,6 @@ use App\Models\LogCursor;
 use App\Models\MtgoMatch;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
-use Native\Desktop\Facades\Window;
 
 class HandleInertiaRequests extends Middleware
 {
@@ -32,8 +31,6 @@ class HandleInertiaRequests extends Middleware
             ],
             'activeAccount' => fn () => Account::active()->first()?->username,
             'accounts' => fn () => Account::tracked()->orderBy('username')->get(['id', 'username', 'active']),
-            'overlayOpen' => fn () => collect(Window::all())->contains('id', 'overlay'),
-            'overlayEnabled' => fn () => (bool) \Native\Desktop\Facades\Settings::get('overlay_enabled'),
         ];
     }
 }
