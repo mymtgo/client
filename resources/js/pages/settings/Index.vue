@@ -8,10 +8,10 @@ import UpdateLogPathController from '@/actions/App/Http/Controllers/Settings/Upd
 import UpdateOverlaySettingsController from '@/actions/App/Http/Controllers/Settings/UpdateOverlaySettingsController';
 import UpdateShareStatsController from '@/actions/App/Http/Controllers/Settings/UpdateShareStatsController';
 import UpdateWatcherController from '@/actions/App/Http/Controllers/Settings/UpdateWatcherController';
-import LeagueTracker from '@/components/leagues/LeagueTracker.vue';
-import OpponentScout from '@/components/leagues/OpponentScout.vue';
 import type { LeagueData } from '@/components/leagues/LeagueTracker.vue';
+import LeagueTracker from '@/components/leagues/LeagueTracker.vue';
 import type { OpponentData } from '@/components/leagues/OpponentScout.vue';
+import OpponentScout from '@/components/leagues/OpponentScout.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -195,7 +195,9 @@ const sampleOpponent: OpponentData = {
                     <div class="flex items-center justify-between">
                         <div>
                             <Label>Show opponent scouting</Label>
-                            <p class="text-sm text-muted-foreground">Display opponent history and last known archetype on the overlay during matches.</p>
+                            <p class="text-sm text-muted-foreground">
+                                Display opponent history and last known archetype on the overlay during matches.
+                            </p>
                         </div>
                         <Switch
                             :modelValue="props.overlayOpponentEnabled"
@@ -315,11 +317,7 @@ const sampleOpponent: OpponentData = {
                                 Contribute match data to the community. Your deck, archetype, result, and format are submitted after each match.
                             </p>
                         </div>
-                        <Switch
-                            :modelValue="props.shareStats"
-                            @update:modelValue="toggleShareStats"
-                            :disabled="processing === 'shareStats'"
-                        />
+                        <Switch :modelValue="props.shareStats" @update:modelValue="toggleShareStats" :disabled="processing === 'shareStats'" />
                     </div>
                     <div v-if="props.shareStats" class="flex items-center justify-between">
                         <p class="text-sm text-muted-foreground">{{ pendingMatches.length }} matches pending.</p>
