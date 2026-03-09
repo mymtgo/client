@@ -88,7 +88,7 @@ const sideboardCount = computed(() => props.sideboard.reduce((sum, c) => sum + c
             <p class="text-sm text-muted-foreground">{{ format }}</p>
         </div>
 
-        <div class="flex-1 space-y-4 overflow-y-auto px-4 pb-4">
+        <div class="deck-scroll flex-1 space-y-4 overflow-y-auto px-4 pb-4">
             <!-- Main Deck -->
             <div>
                 <h2 class="mb-1.5 text-sm font-bold uppercase tracking-wider text-muted-foreground">
@@ -158,4 +158,14 @@ const sideboardCount = computed(() => props.sideboard.reduce((sum, c) => sum + c
 .fade-enter-active { transition: opacity 0.1s ease; }
 .fade-leave-active { transition: opacity 0.05s ease; }
 .fade-enter-from, .fade-leave-to { opacity: 0; }
+
+.deck-scroll::-webkit-scrollbar { width: 6px; }
+.deck-scroll::-webkit-scrollbar-track { background: transparent; }
+.deck-scroll::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted-foreground) / 0.3);
+    border-radius: 3px;
+}
+.deck-scroll::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground) / 0.5);
+}
 </style>
