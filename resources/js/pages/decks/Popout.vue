@@ -67,7 +67,7 @@ const sideboardCount = computed(() => props.sideboard.reduce((sum, c) => sum + c
 </script>
 
 <template>
-    <div class="flex h-screen flex-col overflow-y-auto bg-background text-foreground">
+    <div class="flex h-screen flex-col overflow-y-auto bg-background text-foreground" style="-webkit-app-region: drag">
         <div class="p-4">
             <h1 class="text-xl font-bold leading-tight">{{ deckName }}</h1>
             <p class="text-sm text-muted-foreground">{{ format }}</p>
