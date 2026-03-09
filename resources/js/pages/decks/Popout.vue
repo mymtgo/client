@@ -35,9 +35,9 @@ function colorBorder(identity: string | null): string {
 function borderStyle(identity: string | null): Record<string, string> {
     const val = colorBorder(identity);
     if (val.startsWith('linear-gradient')) {
-        return { borderImage: `${val} 1`, borderLeftWidth: '3px', borderLeftStyle: 'solid' };
+        return { borderImage: `${val} 1`, borderLeftWidth: '4px', borderLeftStyle: 'solid' };
     }
-    return { borderLeftColor: val, borderLeftWidth: '3px', borderLeftStyle: 'solid' };
+    return { borderLeftColor: val, borderLeftWidth: '4px', borderLeftStyle: 'solid' };
 }
 
 const CANONICAL_TYPES = ['Creature', 'Planeswalker', 'Battle', 'Instant', 'Sorcery', 'Enchantment', 'Artifact', 'Land'] as const;
@@ -68,52 +68,52 @@ const sideboardCount = computed(() => props.sideboard.reduce((sum, c) => sum + c
 
 <template>
     <div class="flex h-screen flex-col overflow-y-auto bg-background text-foreground">
-        <div class="p-3">
-            <h1 class="text-lg font-bold leading-tight">{{ deckName }}</h1>
-            <p class="text-xs text-muted-foreground">{{ format }}</p>
+        <div class="p-4">
+            <h1 class="text-xl font-bold leading-tight">{{ deckName }}</h1>
+            <p class="text-sm text-muted-foreground">{{ format }}</p>
         </div>
 
-        <div class="flex-1 space-y-3 px-3 pb-3">
+        <div class="flex-1 space-y-4 px-4 pb-4">
             <!-- Main Deck -->
             <div>
-                <h2 class="mb-1 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                <h2 class="mb-1.5 text-sm font-bold uppercase tracking-wider text-muted-foreground">
                     Main Deck ({{ maindeckCount }})
                 </h2>
-                <div v-for="(cards, type) in groupedMaindeck" :key="type" class="mb-2">
-                    <h3 class="mb-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">
+                <div v-for="(cards, type) in groupedMaindeck" :key="type" class="mb-3">
+                    <h3 class="mb-0.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground/60">
                         {{ type }} ({{ getCount(cards) }})
                     </h3>
                     <div
                         v-for="card in cards"
                         :key="card.mtgoId ?? card.name"
                         :style="borderStyle(card.identity)"
-                        class="flex items-center justify-between py-0.5 pl-2 pr-1 text-xs"
+                        class="flex items-center justify-between py-1 pl-2.5 pr-1.5 text-sm"
                     >
                         <span class="truncate">
-                            <span class="font-medium tabular-nums">{{ card.quantity }}</span>
+                            <span class="font-semibold tabular-nums">{{ card.quantity }}</span>
                             {{ card.name }}
                         </span>
-                        <ManaSymbols :symbols="card.identity" class="shrink-0 scale-75" />
+                        <ManaSymbols :symbols="card.identity" class="shrink-0" />
                     </div>
                 </div>
             </div>
 
             <!-- Sideboard -->
             <div v-if="sideboard.length">
-                <h2 class="mb-1 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                <h2 class="mb-1.5 text-sm font-bold uppercase tracking-wider text-muted-foreground">
                     Sideboard ({{ sideboardCount }})
                 </h2>
                 <div
                     v-for="card in sideboard"
                     :key="card.mtgoId ?? card.name"
                     :style="borderStyle(card.identity)"
-                    class="flex items-center justify-between py-0.5 pl-2 pr-1 text-xs"
+                    class="flex items-center justify-between py-1 pl-2.5 pr-1.5 text-sm"
                 >
                     <span class="truncate">
-                        <span class="font-medium tabular-nums">{{ card.quantity }}</span>
+                        <span class="font-semibold tabular-nums">{{ card.quantity }}</span>
                         {{ card.name }}
                     </span>
-                    <ManaSymbols :symbols="card.identity" class="shrink-0 scale-75" />
+                    <ManaSymbols :symbols="card.identity" class="shrink-0" />
                 </div>
             </div>
         </div>
