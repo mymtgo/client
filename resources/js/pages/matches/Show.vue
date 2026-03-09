@@ -58,7 +58,7 @@ const opponentArchetype = computed(() => {
                     <div class="flex items-center gap-2">
                         <ResultBadge :won="isWin" :showText="true" />
                         <span class="text-sm font-semibold tabular-nums">
-                            {{ match.gamesWon }}–{{ match.gamesLost }}
+                            {{ match.gamesWon }}-{{ match.gamesLost }}
                         </span>
                     </div>
                     <div class="h-4 w-px bg-border" />

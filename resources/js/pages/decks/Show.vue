@@ -157,7 +157,7 @@ const decklistOrgUrl = computed(() => {
                                     :class="activeVersion.matchWinrate > 50 ? 'text-success' : activeVersion.matchWinrate < 50 ? 'text-destructive' : ''"
                                 >{{ activeVersion.matchWinrate }}%</span>
                                 <span class="text-sm text-muted-foreground">
-                                    {{ activeVersion.matchesWon }}–{{ activeVersion.matchesLost }}
+                                    {{ activeVersion.matchesWon }}-{{ activeVersion.matchesLost }}
                                 </span>
                             </CardContent>
                         </Card>
@@ -169,7 +169,7 @@ const decklistOrgUrl = computed(() => {
                                     :class="activeVersion.gameWinrate > 50 ? 'text-success' : activeVersion.gameWinrate < 50 ? 'text-destructive' : ''"
                                 >{{ activeVersion.gameWinrate }}%</span>
                                 <span class="text-sm text-muted-foreground">
-                                    {{ activeVersion.gamesWon }}–{{ activeVersion.gamesLost }}
+                                    {{ activeVersion.gamesWon }}-{{ activeVersion.gamesLost }}
                                 </span>
                             </CardContent>
                         </Card>
@@ -177,7 +177,7 @@ const decklistOrgUrl = computed(() => {
                             <CardContent class="flex flex-col gap-0.5 p-3">
                                 <span class="text-xs tracking-wide text-muted-foreground uppercase">Match Record</span>
                                 <span class="text-3xl font-bold tabular-nums">
-                                    {{ activeVersion.matchesWon }}–{{ activeVersion.matchesLost }}
+                                    {{ activeVersion.matchesWon }}-{{ activeVersion.matchesLost }}
                                 </span>
                                 <span class="text-sm text-muted-foreground">
                                     {{ activeVersion.matchesWon + activeVersion.matchesLost }} played
@@ -192,7 +192,7 @@ const decklistOrgUrl = computed(() => {
                                     :class="activeVersion.otpRate > 50 ? 'text-success' : activeVersion.otpRate < 50 ? 'text-destructive' : ''"
                                 >{{ activeVersion.otpRate }}%</span>
                                 <span class="text-sm text-muted-foreground">
-                                    {{ activeVersion.gamesOtpWon }}–{{ activeVersion.gamesOtpLost }} games
+                                    {{ activeVersion.gamesOtpWon }}-{{ activeVersion.gamesOtpLost }} games
                                 </span>
                             </CardContent>
                         </Card>
@@ -204,7 +204,7 @@ const decklistOrgUrl = computed(() => {
                                     :class="activeVersion.otdRate > 50 ? 'text-success' : activeVersion.otdRate < 50 ? 'text-destructive' : ''"
                                 >{{ activeVersion.otdRate }}%</span>
                                 <span class="text-sm text-muted-foreground">
-                                    {{ activeVersion.gamesOtdWon }}–{{ activeVersion.gamesOtdLost }} games
+                                    {{ activeVersion.gamesOtdWon }}-{{ activeVersion.gamesOtdLost }} games
                                 </span>
                             </CardContent>
                         </Card>

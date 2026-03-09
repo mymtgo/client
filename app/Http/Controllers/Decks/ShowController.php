@@ -319,7 +319,7 @@ class ShowController extends Controller
 
             $nextVersion = $versions[$i + 1] ?? null;
             $dateLabel = $version->modified_at->format('M d')
-                .' – '
+                .' - '
                 .($nextVersion ? $nextVersion->modified_at->format('M d') : 'now');
 
             $result[] = [
