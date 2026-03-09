@@ -3,12 +3,12 @@
 namespace App\Actions\Matches;
 
 use App\Actions\DetermineMatchArchetypes;
-use App\Actions\Leagues\OpenOverlayWindow;
 use App\Actions\Util\ExtractJson;
-use App\Events\DeckLinkedToMatch;
 use App\Actions\Util\ExtractKeyValueBlock;
 use App\Enums\LogEventType;
 use App\Enums\MatchState;
+use App\Events\DeckLinkedToMatch;
+use App\Events\LeagueMatchStarted;
 use App\Jobs\SubmitMatch;
 use App\Models\DeckVersion;
 use App\Models\League;
@@ -168,7 +168,7 @@ class AdvanceMatchState
             && Settings::get('overlay_enabled')
             && ! Settings::get('overlay_always_show')
         ) {
-            OpenOverlayWindow::run();
+            LeagueMatchStarted::dispatch();
         }
 
         return true;
