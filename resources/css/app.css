@@ -173,6 +173,16 @@
     body {
         @apply bg-background text-foreground font-sans;
     }
+
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb {
+        background: #4a5568;
+        border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+        background: #5a6a80;
+    }
 }
 
 @layer {
