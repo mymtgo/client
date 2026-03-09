@@ -18,10 +18,11 @@ class OpenDeckPopoutWindow
 
         Window::open($windowId)
             ->route('decks.popout', ['deck' => $deckId])
-            ->width(380)
+            ->width(300)
             ->height(700)
             ->minWidth(300)
             ->minHeight(400)
+            ->rememberState()
             ->alwaysOnTop()
             ->frameless()
             ->resizable()
