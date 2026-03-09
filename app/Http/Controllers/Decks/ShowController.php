@@ -102,7 +102,7 @@ class ShowController extends Controller
 
             // ── Lazy closures: skipped on partial reloads that exclude them ──
             'chartData' => fn () => $this->buildDeckChartData($deck, $from, $to),
-            'versions' => fn () => $this->buildVersionsList($deck, $wins, $losses, $gamesWon, $gamesLost, $matchWinrate, $gameWinrate, $gamesotpWon, $gamesotpLost, $otpRate, $gamesotdWon, $gamesotdLost, $otdRate),
+            'versions' => fn () => $this->buildVersionsList($deck, $from, $to, $wins, $losses, $gamesWon, $gamesLost, $matchWinrate, $gameWinrate, $gamesotpWon, $gamesotpLost, $otpRate, $gamesotdWon, $gamesotdLost, $otdRate),
 
             // ── Deferred: auto-loaded in background after initial render ─────
             // Default group — matches tab (loads immediately after paint)
@@ -249,20 +249,23 @@ class ShowController extends Controller
 
     private function buildVersionsList(
         Deck $deck,
+        Carbon $from, Carbon $to,
         int $wins, int $losses,
         int $gamesWon, int $gamesLost,
         int $matchWinrate, int $gameWinrate,
         int $gamesOtpWon, int $gamesOtpLost, int $otpRate,
         int $gamesOtdWon, int $gamesOtdLost, int $otdRate,
     ): array {
+        $dateScope = fn ($q) => $q->whereBetween('started_at', [$from, $to]);
+
         $versions = $deck->versions()
             ->withCount([
-                'matches',
-                'matches as won_matches_count' => fn ($q) => $q->whereRaw('games_won > games_lost'),
-                'matches as lost_matches_count' => fn ($q) => $q->whereRaw('games_lost > games_won'),
+                'matches' => $dateScope,
+                'matches as won_matches_count' => fn ($q) => $dateScope($q)->whereRaw('games_won > games_lost'),
+                'matches as lost_matches_count' => fn ($q) => $dateScope($q)->whereRaw('games_lost > games_won'),
             ])
-            ->withSum('matches', 'games_won')
-            ->withSum('matches', 'games_lost')
+            ->withSum(['matches' => $dateScope], 'games_won')
+            ->withSum(['matches' => $dateScope], 'games_lost')
             ->orderBy('modified_at')
             ->get();
 
@@ -274,6 +277,7 @@ class ShowController extends Controller
             ->join('game_player as gp', fn ($j) => $j->on('gp.game_id', '=', 'games.id')->where('gp.is_local', 1))
             ->join('matches as m', 'm.id', '=', 'games.match_id')
             ->whereIn('m.deck_version_id', $versionIds)
+            ->whereBetween('m.started_at', [$from, $to])
             ->selectRaw('m.deck_version_id, gp.on_play, SUM(CASE WHEN games.won = 1 THEN 1 ELSE 0 END) as won, SUM(CASE WHEN games.won = 0 THEN 1 ELSE 0 END) as lost')
             ->groupBy('m.deck_version_id', 'gp.on_play')
             ->get()

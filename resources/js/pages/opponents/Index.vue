@@ -1,15 +1,15 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Pagination, PaginationContent, PaginationItem, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 import ManaSymbols from '@/components/ManaSymbols.vue';
 import WinRateBar from '@/components/WinRateBar.vue';
-import { Swords } from 'lucide-vue-next';
+import { Skull, Swords } from 'lucide-vue-next';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 
@@ -29,13 +29,15 @@ const props = defineProps<{
     opponents: Opponent[];
 }>();
 
-const getTag = (opp: Opponent) => {
+const VISIBLE_ARCHETYPES = 3;
+const PER_PAGE = 25;
+
+const getTag = (opp: Opponent): 'nemesis' | 'rival' | null => {
     const total = opp.matchesWon + opp.matchesLost;
-    if (total < 3) return null;
-    const winrate = opp.matchesWon / total;
-    if (winrate < 0.4) return 'nemesis';
-    if (winrate < 0.5) return 'rival';
-    if (winrate > 0.65) return 'favourite_victim';
+    if (total < 2) return null;
+    const wr = Math.round((opp.matchesWon / total) * 100);
+    if (wr <= 39) return 'nemesis';
+    if (wr <= 60) return 'rival';
     return null;
 };
 
@@ -51,6 +53,7 @@ const allFormats = computed(() =>
 const search = ref('');
 const sortBy = ref('winrate_desc');
 const selectedFormat = ref<string | null>(null);
+const currentPage = ref(1);
 
 const filtered = computed(() => {
     let list = [...props.opponents];
@@ -75,6 +78,16 @@ const filtered = computed(() => {
 
     return list;
 });
+
+const totalPages = computed(() => Math.ceil(filtered.value.length / PER_PAGE));
+const paginated = computed(() => {
+    const start = (currentPage.value - 1) * PER_PAGE;
+    return filtered.value.slice(start, start + PER_PAGE);
+});
+
+// Reset to page 1 when filters change
+import { watch } from 'vue';
+watch([search, sortBy, selectedFormat], () => { currentPage.value = 1; });
 </script>
 
 <template>
@@ -100,8 +113,7 @@ const filtered = computed(() => {
                     </SelectContent>
                 </Select>
 
-                <!-- Format pills -->
-                <div class="flex items-center gap-1.5">
+                <div class="ml-auto flex items-center gap-1.5">
                     <Button
                         size="sm"
                         :variant="selectedFormat === null ? 'default' : 'outline'"
@@ -122,10 +134,10 @@ const filtered = computed(() => {
                 <Table>
                     <TableHeader class="bg-muted">
                         <TableRow>
+                            <TableHead class="w-0"></TableHead>
                             <TableHead>Opponent</TableHead>
                             <TableHead>Archetypes Seen</TableHead>
-                            <TableHead>W/L</TableHead>
-                            <TableHead>Win Rate</TableHead>
+                            <TableHead>Record</TableHead>
                             <TableHead>Last Played</TableHead>
                         </TableRow>
                     </TableHeader>
@@ -142,47 +154,71 @@ const filtered = computed(() => {
                             </TableRow>
                         </template>
                         <TableRow
-                            v-for="opp in filtered"
+                            v-for="opp in paginated"
                             :key="opp.playerId"
                         >
                             <TableCell>
-                                <div class="flex items-center gap-2">
-                                    <span class="font-medium">{{ opp.username }}</span>
-                                    <Badge
-                                        v-if="getTag(opp) === 'nemesis'"
-                                        variant="destructive"
-                                        class="text-xs"
-                                    >Nemesis</Badge>
-                                    <Badge
-                                        v-else-if="getTag(opp) === 'rival'"
-                                        variant="secondary"
-                                    >Rival</Badge>
-                                    <Badge
-                                        v-else-if="getTag(opp) === 'favourite_victim'"
-                                        variant="default"
-                                    >Favourite Victim</Badge>
-                                </div>
+                                <TooltipProvider v-if="getTag(opp)">
+                                    <Tooltip>
+                                        <TooltipTrigger>
+                                            <span
+                                                v-if="getTag(opp) === 'nemesis'"
+                                                class="inline-flex items-center gap-1 rounded-full border border-red-500/50 px-2 py-0.5 text-xs font-medium text-red-500"
+                                            >
+                                                <Skull class="size-3" />
+                                                Nemesis
+                                            </span>
+                                            <span
+                                                v-else-if="getTag(opp) === 'rival'"
+                                                class="inline-flex items-center gap-1 rounded-full border border-indigo-500/50 px-2 py-0.5 text-xs font-medium text-indigo-500"
+                                            >
+                                                <Swords class="size-3" />
+                                                Rival
+                                            </span>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                            <template v-if="getTag(opp) === 'nemesis'">Your win rate is under 40% against this opponent</template>
+                                            <template v-else>Your win rate is between 40–60% against this opponent</template>
+                                        </TooltipContent>
+                                    </Tooltip>
+                                </TooltipProvider>
+                            </TableCell>
+                            <TableCell>
+                                <span class="font-medium">{{ opp.username }}</span>
                             </TableCell>
                             <TableCell>
                                 <TooltipProvider v-if="opp.archetypes.length > 0">
-                                    <div class="flex flex-wrap gap-1">
-                                        <Tooltip v-for="archetype in opp.archetypes" :key="archetype.name">
+                                    <div class="flex flex-wrap items-center gap-1.5">
+                                        <Tooltip v-for="archetype in opp.archetypes.slice(0, VISIBLE_ARCHETYPES)" :key="archetype.name">
                                             <TooltipTrigger>
-                                                <div class="flex items-center gap-1 border px-2 py-0.5">
+                                                <div class="flex items-center gap-1 rounded border px-1.5 py-0.5 text-xs">
                                                     <ManaSymbols :symbols="archetype.colorIdentity" />
+                                                    <span class="max-w-24 truncate">{{ archetype.name }}</span>
                                                 </div>
                                             </TooltipTrigger>
                                             <TooltipContent>{{ archetype.name }}</TooltipContent>
+                                        </Tooltip>
+                                        <Tooltip v-if="opp.archetypes.length > VISIBLE_ARCHETYPES">
+                                            <TooltipTrigger>
+                                                <span class="text-xs text-muted-foreground">+{{ opp.archetypes.length - VISIBLE_ARCHETYPES }} more</span>
+                                            </TooltipTrigger>
+                                            <TooltipContent>
+                                                <div class="flex flex-col gap-0.5">
+                                                    <span v-for="arch in opp.archetypes.slice(VISIBLE_ARCHETYPES)" :key="arch.name">{{ arch.name }}</span>
+                                                </div>
+                                            </TooltipContent>
                                         </Tooltip>
                                     </div>
                                 </TooltipProvider>
                                 <span v-else class="text-muted-foreground text-sm">Unknown</span>
                             </TableCell>
-                            <TableCell class="tabular-nums">
-                                {{ opp.matchesWon }}W – {{ opp.matchesLost }}L
-                            </TableCell>
-                            <TableCell class="min-w-32">
-                                <WinRateBar :winrate="winrate(opp)" size="sm" />
+                            <TableCell>
+                                <div class="flex flex-col gap-1">
+                                    <WinRateBar :winrate="winrate(opp)" size="sm" />
+                                    <span class="text-xs tabular-nums text-muted-foreground">
+                                        {{ opp.matchesWon }}W – {{ opp.matchesLost }}L
+                                    </span>
+                                </div>
                             </TableCell>
                             <TableCell class="text-muted-foreground whitespace-nowrap text-sm">
                                 {{ dayjs(opp.lastPlayedAt).fromNow() }}
@@ -190,6 +226,26 @@ const filtered = computed(() => {
                         </TableRow>
                     </TableBody>
                 </Table>
+
+                <div v-if="totalPages > 1" class="justify-end py-2 text-right">
+                    <Pagination
+                        @update:page="(p: number) => currentPage = p"
+                        v-slot="{ page }"
+                        :items-per-page="PER_PAGE"
+                        :total="filtered.length"
+                        :default-page="1"
+                    >
+                        <PaginationContent v-slot="{ items }">
+                            <PaginationPrevious />
+                            <template v-for="(item, index) in items" :key="index">
+                                <PaginationItem v-if="item.type === 'page'" :value="item.value" :is-active="item.value === page">
+                                    {{ item.value }}
+                                </PaginationItem>
+                            </template>
+                            <PaginationNext />
+                        </PaginationContent>
+                    </Pagination>
+                </div>
             </Card>
     </div>
 </template>
