@@ -5,13 +5,14 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Deferred } from '@inertiajs/vue3';
+import { Deferred, router } from '@inertiajs/vue3';
+import OpenPopoutController from '@/actions/App/Http/Controllers/Decks/OpenPopoutController';
 import DeckMatches from '@/pages/decks/partials/DeckMatches.vue';
 import DeckLeagues from '@/pages/decks/partials/DeckLeagues.vue';
 import DeckList from '@/pages/decks/partials/DeckList.vue';
 import ManaSymbols from '@/components/ManaSymbols.vue';
 import MatchHistoryChart from '@/pages/decks/partials/MatchHistoryChart.vue';
-import { Download, Trophy } from 'lucide-vue-next';
+import { Download, ExternalLink, Trophy } from 'lucide-vue-next';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 
@@ -116,6 +117,13 @@ const decklistOrgUrl = computed(() => {
                     </div>
 
                     <div class="flex items-center gap-2">
+                        <button
+                            @click="router.post(OpenPopoutController.url({ deck: deck.id }))"
+                            class="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+                        >
+                            <ExternalLink class="size-4" />
+                            Popout Deck
+                        </button>
                         <a :href="decklistOrgUrl" target="_blank" class="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground">
                             <Download class="size-4" />
                             Deck Registration
