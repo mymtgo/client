@@ -22,7 +22,7 @@ const props = withDefaults(
         bgColor?: string;
     }>(),
     {
-        font: 'Segoe UI',
+        font: 'Bungee',
         textColor: '#ffffff',
         bgColor: '#1a1a1a',
     },
@@ -53,7 +53,6 @@ const props = withDefaults(
                     <PhantomBadge v-if="league.phantom" :label="false" />
                 </span>
                 <span class="inline-flex items-center gap-1.5">
-                    Match {{ league.totalMatches + (league.hasActiveMatch ? 0 : 1) }}
                     <span v-if="league.hasActiveMatch" class="inline-flex items-center gap-1">
                         <template v-for="(game, i) in league.games" :key="i">
                             <span
@@ -61,7 +60,7 @@ const props = withDefaults(
                                 :class="{
                                     'bg-green-500': game.won === true,
                                     'bg-red-500': game.won === false && game.ended,
-                                    'animate-pulse bg-yellow-400': !game.ended,
+                                    'border border-white/40 bg-transparent': !game.ended,
                                 }"
                             />
                         </template>

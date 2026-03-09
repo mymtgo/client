@@ -178,7 +178,7 @@ watch([search, sortBy, selectedFormat], () => { currentPage.value = 1; });
                                         </TooltipTrigger>
                                         <TooltipContent>
                                             <template v-if="getTag(opp) === 'nemesis'">Your win rate is under 40% against this opponent</template>
-                                            <template v-else>Your win rate is between 40–60% against this opponent</template>
+                                            <template v-else>Your win rate is between 40-60% against this opponent</template>
                                         </TooltipContent>
                                     </Tooltip>
                                 </TooltipProvider>
@@ -216,7 +216,7 @@ watch([search, sortBy, selectedFormat], () => { currentPage.value = 1; });
                                 <div class="flex flex-col gap-1">
                                     <WinRateBar :winrate="winrate(opp)" size="sm" />
                                     <span class="text-xs tabular-nums text-muted-foreground">
-                                        {{ opp.matchesWon }}W – {{ opp.matchesLost }}L
+                                        {{ opp.matchesWon }}W - {{ opp.matchesLost }}L
                                     </span>
                                 </div>
                             </TableCell>

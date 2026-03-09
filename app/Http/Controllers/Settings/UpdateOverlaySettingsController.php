@@ -12,10 +12,17 @@ class UpdateOverlaySettingsController extends Controller
     public function __invoke(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'overlay_enabled' => 'required|boolean',
+            'overlay_enabled' => 'sometimes|boolean',
+            'overlay_opponent_enabled' => 'sometimes|boolean',
         ]);
 
-        Settings::set('overlay_enabled', $validated['overlay_enabled'] ? 1 : 0);
+        if (isset($validated['overlay_enabled'])) {
+            Settings::set('overlay_enabled', $validated['overlay_enabled'] ? 1 : 0);
+        }
+
+        if (isset($validated['overlay_opponent_enabled'])) {
+            Settings::set('overlay_opponent_enabled', $validated['overlay_opponent_enabled'] ? 1 : 0);
+        }
 
         return back();
     }

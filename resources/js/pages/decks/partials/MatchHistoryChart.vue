@@ -42,7 +42,7 @@ const tooltipTemplate = (d: DataPoint): string | null => {
     return `<div style="padding:6px 10px;line-height:1.5">
         <div style="font-size:11px;opacity:0.6">${label}</div>
         <div style="font-weight:600;font-size:14px">${d.rate !== null ? d.rate + '% win rate' : 'No data'}</div>
-        <div style="font-size:12px;opacity:0.8">${d.wins}W – ${d.losses}L</div>
+        <div style="font-size:12px;opacity:0.8">${d.wins}W - ${d.losses}L</div>
     </div>`;
 };
 

@@ -32,6 +32,7 @@ class IndexController extends Controller
             'accounts' => Account::orderBy('username')->get(['id', 'username', 'tracked', 'active']),
             'appVersion' => config('nativephp.version'),
             'overlayEnabled' => (bool) Settings::get('overlay_enabled'),
+            'overlayOpponentEnabled' => (bool) Settings::get('overlay_opponent_enabled'),
         ]);
     }
 }

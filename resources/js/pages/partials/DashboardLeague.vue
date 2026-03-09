@@ -43,7 +43,7 @@ defineProps<{
                     <PhantomBadge v-if="league.phantom" />
                     <span class="text-sm text-muted-foreground">
                         <span class="font-medium">{{ league.wins }}W</span>
-                        <span class="mx-0.5">–</span>
+                        <span class="mx-0.5">-</span>
                         <span class="text-destructive font-medium">{{ league.losses }}L</span>
                         <span v-if="league.isActive" class="ml-1 text-muted-foreground">· {{ league.matchesRemaining }} remaining</span>
                     </span>

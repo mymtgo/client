@@ -100,11 +100,11 @@ function setTimeframe(value: string) {
                         </div>
                         <div class="flex flex-col items-center gap-1 px-4 py-3">
                             <span class="text-3xl font-bold tabular-nums">{{ matchesWon + matchesLost }}</span>
-                            <span class="text-xs text-muted-foreground tabular-nums">{{ matchesWon }}W – {{ matchesLost }}L</span>
+                            <span class="text-xs text-muted-foreground tabular-nums">{{ matchesWon }}W - {{ matchesLost }}L</span>
                         </div>
                         <div class="flex flex-col items-center gap-1 px-4 py-3">
                             <span class="text-3xl font-bold tabular-nums">{{ gamesWon + gamesLost }}</span>
-                            <span class="text-xs text-muted-foreground tabular-nums">{{ gamesWon }}W – {{ gamesLost }}L</span>
+                            <span class="text-xs text-muted-foreground tabular-nums">{{ gamesWon }}W - {{ gamesLost }}L</span>
                         </div>
                     </CardContent>
                 </Card>

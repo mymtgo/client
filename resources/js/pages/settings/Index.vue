@@ -8,6 +8,10 @@ import UpdateLogPathController from '@/actions/App/Http/Controllers/Settings/Upd
 import UpdateOverlaySettingsController from '@/actions/App/Http/Controllers/Settings/UpdateOverlaySettingsController';
 import UpdateShareStatsController from '@/actions/App/Http/Controllers/Settings/UpdateShareStatsController';
 import UpdateWatcherController from '@/actions/App/Http/Controllers/Settings/UpdateWatcherController';
+import LeagueTracker from '@/components/leagues/LeagueTracker.vue';
+import OpponentScout from '@/components/leagues/OpponentScout.vue';
+import type { LeagueData } from '@/components/leagues/LeagueTracker.vue';
+import type { OpponentData } from '@/components/leagues/OpponentScout.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -30,6 +34,7 @@ const props = defineProps<{
     pendingMatches: Array<{ id: number; format: string; games_won: number; games_lost: number; started_at: string }>;
     accounts: Array<{ id: number; username: string; tracked: boolean; active: boolean }>;
     overlayEnabled: boolean;
+    overlayOpponentEnabled: boolean;
     appVersion: string;
 }>();
 
@@ -105,6 +110,36 @@ function toggleAccountTracking(username: string, tracked: boolean) {
 function setOverlayEnabled(val: boolean) {
     withProcessing('overlay', 'post', UpdateOverlaySettingsController.url(), { overlay_enabled: val });
 }
+
+function setOverlayOpponentEnabled(val: boolean) {
+    withProcessing('overlayOpponent', 'post', UpdateOverlaySettingsController.url(), { overlay_opponent_enabled: val });
+}
+
+const sampleLeague: LeagueData = {
+    id: 0,
+    name: 'Friendly League',
+    format: 'Modern',
+    phantom: false,
+    wins: 3,
+    losses: 1,
+    totalMatches: 4,
+    deckName: 'Mono Green Tron',
+    hasActiveMatch: true,
+    games: [
+        { won: true, ended: true },
+        { won: false, ended: true },
+        { won: null, ended: false },
+    ],
+};
+
+const sampleOpponent: OpponentData = {
+    username: 'Opponent123',
+    previousMatches: 2,
+    wins: 1,
+    losses: 1,
+    lastArchetype: 'Azorius Control',
+    lastArchetypeColors: 'W,U',
+};
 </script>
 
 <template>
@@ -149,6 +184,28 @@ function setOverlayEnabled(val: boolean) {
                             <p class="text-sm text-muted-foreground">Show a small overlay on top of MTGO with your current league run.</p>
                         </div>
                         <Switch :modelValue="props.overlayEnabled" @update:modelValue="setOverlayEnabled" />
+                    </div>
+
+                    <div class="mx-auto w-64 overflow-hidden rounded-md border border-border">
+                        <LeagueTracker :league="sampleLeague" />
+                    </div>
+
+                    <Separator />
+
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <Label>Show opponent scouting</Label>
+                            <p class="text-sm text-muted-foreground">Display opponent history and last known archetype on the overlay during matches.</p>
+                        </div>
+                        <Switch
+                            :modelValue="props.overlayOpponentEnabled"
+                            @update:modelValue="setOverlayOpponentEnabled"
+                            :disabled="processing === 'overlayOpponent'"
+                        />
+                    </div>
+
+                    <div class="mx-auto w-64 overflow-hidden rounded-md border border-border">
+                        <OpponentScout :opponent="sampleOpponent" />
                     </div>
 
                     <Separator />
