@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import OverlayLayout from '@/Layouts/OverlayLayout.vue';
-import LeagueTracker from '@/components/leagues/LeagueTracker.vue';
-import OpponentScout from '@/components/leagues/OpponentScout.vue';
 import type { LeagueData } from '@/components/leagues/LeagueTracker.vue';
+import LeagueTracker from '@/components/leagues/LeagueTracker.vue';
 import type { OpponentData } from '@/components/leagues/OpponentScout.vue';
+import OpponentScout from '@/components/leagues/OpponentScout.vue';
 import { router } from '@inertiajs/vue3';
 import { onMounted, onUnmounted } from 'vue';
 
