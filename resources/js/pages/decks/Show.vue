@@ -1,18 +1,17 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import DecksShowController from '@/actions/App/Http/Controllers/Decks/ShowController';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Deferred, router } from '@inertiajs/vue3';
-import MatchupSpread from '@/pages/decks/partials/MatchupSpread.vue';
+import { Deferred } from '@inertiajs/vue3';
 import DeckMatches from '@/pages/decks/partials/DeckMatches.vue';
 import DeckLeagues from '@/pages/decks/partials/DeckLeagues.vue';
 import DeckList from '@/pages/decks/partials/DeckList.vue';
-import WinRateBar from '@/components/WinRateBar.vue';
+import ManaSymbols from '@/components/ManaSymbols.vue';
 import MatchHistoryChart from '@/pages/decks/partials/MatchHistoryChart.vue';
+import { Download, Trophy } from 'lucide-vue-next';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 
@@ -44,7 +43,7 @@ type VersionDecklist = {
 
 const props = defineProps<{
     deck: App.Data.Front.DeckData;
-    period: string;
+    trophies: number;
     maindeck: Record<string, App.Data.Front.CardData[]>;
     sideboard: App.Data.Front.CardData[];
     matchesWon: number;
@@ -60,8 +59,7 @@ const props = defineProps<{
     gamesOtdLost: number;
     otdRate: number;
     versions: VersionStats[];
-    chartData: { date: string; winrate: string | null }[];
-    chartGranularity: 'daily' | 'monthly';
+    chartData: { date: string; wins: number; losses: number; winrate: string | null }[];
     // Deferred props — undefined until background request resolves
     matches?: any;
     leagues?: App.Data.Front.LeagueData[];
@@ -70,41 +68,31 @@ const props = defineProps<{
     versionDecklists?: Record<string, VersionDecklist>;
 }>();
 
-const currentVersion = computed(() => props.versions.find((v) => v.isCurrent));
-const selectedVersionKey = ref<string>(currentVersion.value?.id ? String(currentVersion.value.id) : 'all');
-
-type Period = 'all_time' | 'this_year' | 'this_month' | 'this_week';
-const periodLabels: Record<Period, string> = {
-    all_time: 'All time',
-    this_year: 'This year',
-    this_month: 'This month',
-    this_week: 'This week',
-};
-const activePeriod = ref<Period>((props.period as Period) ?? 'all_time');
-
-const onPeriodChange = (value: string) => {
-    const options = value === 'all_time' ? {} : { query: { period: value } };
-    router.visit(DecksShowController({ deck: props.deck.id }, options).url, {
-        preserveScroll: true,
-    });
-};
+const realVersions = computed(() => props.versions.slice(1));
+const currentVersion = computed(() => realVersions.value.find((v) => v.isCurrent) ?? realVersions.value[realVersions.value.length - 1]);
+const selectedVersionKey = ref<string>(String(currentVersion.value?.id ?? ''));
 
 const activeVersion = computed((): VersionStats => {
-    if (selectedVersionKey.value === 'all') return props.versions[0];
     const id = parseInt(selectedVersionKey.value);
-    return props.versions.find((v) => v.id === id) ?? props.versions[0];
+    return realVersions.value.find((v) => v.id === id) ?? currentVersion.value;
 });
-
-// "All versions" shows the latest version's decklist
-const latestVersionId = computed(() => props.versions[props.versions.length - 1]?.id);
 
 const activeDecklist = computed((): VersionDecklist => {
-    const key = selectedVersionKey.value === 'all' ? String(latestVersionId.value) : selectedVersionKey.value;
-    return props.versionDecklists?.[key] ?? { maindeck: props.maindeck, sideboard: props.sideboard };
+    return props.versionDecklists?.[selectedVersionKey.value] ?? { maindeck: props.maindeck, sideboard: props.sideboard };
 });
 
-// All-time stats for the header (from deck DTO)
-const allTime = computed(() => props.versions[0]);
+const decklistOrgUrl = computed(() => {
+    const dl = activeDecklist.value;
+    const mainCards = Object.values(dl.maindeck).flat().map((c) => `${c.quantity} ${c.name}`).join('\n');
+    const sideCards = dl.sideboard.map((c) => `${c.quantity} ${c.name}`).join('\n');
+    const params = new URLSearchParams({
+        deckmain: mainCards,
+        deckside: sideCards,
+        eventformat: props.deck.format,
+    });
+    return `https://decklist.org/?${params.toString()}`;
+});
+
 </script>
 
 <template>
@@ -117,10 +105,10 @@ const allTime = computed(() => props.versions[0]);
                         <div class="flex items-center gap-2">
                             <h1 class="text-2xl font-bold tracking-tight">{{ deck.name }}</h1>
                             <Badge variant="outline">{{ deck.format }}</Badge>
-                            <div class="w-28">
-                                <WinRateBar :winrate="allTime.matchWinrate" size="sm" />
-                            </div>
-                            <span class="text-sm text-muted-foreground"> {{ allTime.matchesWon + allTime.matchesLost }} matches </span>
+                            <span v-if="trophies" class="flex items-center gap-1 text-sm font-medium">
+                                <Trophy class="size-4 text-yellow-400" />
+                                {{ trophies }}
+                            </span>
                         </div>
                         <p class="text-sm text-muted-foreground">
                             Last played {{ deck.lastPlayedAt ? dayjs(deck.lastPlayedAt).fromNow() : 'never' }}
@@ -128,31 +116,22 @@ const allTime = computed(() => props.versions[0]);
                     </div>
 
                     <div class="flex items-center gap-2">
-                        <Select v-model="activePeriod" @update:model-value="onPeriodChange">
-                            <SelectTrigger class="h-7 w-32 text-xs">
+                        <a :href="decklistOrgUrl" target="_blank" class="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground">
+                            <Download class="size-4" />
+                            Deck Registration
+                        </a>
+                        <Select v-if="realVersions.length > 1" v-model="selectedVersionKey">
+                            <SelectTrigger>
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem v-for="(label, key) in periodLabels" :key="key" :value="key" class="text-xs">
-                                    {{ label }}
-                                </SelectItem>
-                            </SelectContent>
-                        </Select>
-
-                        <Select v-model="selectedVersionKey">
-                            <SelectTrigger>
-                                <SelectValue placeholder="All versions" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">All versions</SelectItem>
-                                <SelectItem v-for="version in versions.slice(1)" :key="version.id" :value="String(version.id)">
+                                <SelectItem v-for="version in realVersions" :key="version.id" :value="String(version.id)">
                                     {{ version.label }}
                                     <span v-if="version.isCurrent" class="ml-1 text-muted-foreground">· Current</span>
                                     <span v-if="version.dateLabel" class="ml-1 text-muted-foreground">· {{ version.dateLabel }}</span>
                                 </SelectItem>
                             </SelectContent>
                         </Select>
-
                     </div>
                 </div>
 
@@ -167,66 +146,135 @@ const allTime = computed(() => props.versions[0]);
                     </TabsContent>
 
                     <TabsContent value="stats" class="space-y-4">
-                    <!-- Stats row (updates per selected version) -->
-                    <Card>
-                        <CardContent class="flex divide-x p-0">
-                            <div class="flex flex-1 flex-col gap-0.5 px-4 py-3">
-                                <span class="text-xs tracking-wide text-muted-foreground uppercase">Match W/L</span>
-                                <span class="text-lg font-semibold tabular-nums">
+                    <!-- KPI Cards -->
+                    <div class="grid grid-cols-5 gap-4">
+                        <Card class="gap-0 py-0">
+                            <CardContent class="flex flex-col gap-0.5 p-3">
+                                <span class="text-xs tracking-wide text-muted-foreground uppercase">Match Win Rate</span>
+                                <span
+                                    class="text-3xl font-bold tabular-nums"
+                                    :class="activeVersion.matchWinrate > 50 ? 'text-success' : activeVersion.matchWinrate < 50 ? 'text-destructive' : ''"
+                                >{{ activeVersion.matchWinrate }}%</span>
+                                <span class="text-sm text-muted-foreground">
                                     {{ activeVersion.matchesWon }}–{{ activeVersion.matchesLost }}
                                 </span>
-                            </div>
-                            <div class="flex flex-1 flex-col gap-0.5 px-4 py-3">
-                                <span class="text-xs tracking-wide text-muted-foreground uppercase">Game W/L</span>
-                                <span class="text-lg font-semibold tabular-nums"> {{ activeVersion.gamesWon }}–{{ activeVersion.gamesLost }} </span>
-                            </div>
-                            <div class="flex flex-1 flex-col gap-0.5 px-4 py-3">
-                                <span class="text-xs tracking-wide text-muted-foreground uppercase">On the Play</span>
-                                <span class="text-lg font-semibold tabular-nums">
-                                    {{ activeVersion.otpRate }}%
-                                    <span class="text-xs font-normal text-muted-foreground">
-                                        {{ activeVersion.gamesOtpWon }}–{{ activeVersion.gamesOtpLost }}
-                                    </span>
+                            </CardContent>
+                        </Card>
+                        <Card class="gap-0 py-0">
+                            <CardContent class="flex flex-col gap-0.5 p-3">
+                                <span class="text-xs tracking-wide text-muted-foreground uppercase">Game Win Rate</span>
+                                <span
+                                    class="text-3xl font-bold tabular-nums"
+                                    :class="activeVersion.gameWinrate > 50 ? 'text-success' : activeVersion.gameWinrate < 50 ? 'text-destructive' : ''"
+                                >{{ activeVersion.gameWinrate }}%</span>
+                                <span class="text-sm text-muted-foreground">
+                                    {{ activeVersion.gamesWon }}–{{ activeVersion.gamesLost }}
                                 </span>
-                            </div>
-                            <div class="flex flex-1 flex-col gap-0.5 px-4 py-3">
-                                <span class="text-xs tracking-wide text-muted-foreground uppercase">On the Draw</span>
-                                <span class="text-lg font-semibold tabular-nums">
-                                    {{ activeVersion.otdRate }}%
-                                    <span class="text-xs font-normal text-muted-foreground">
-                                        {{ activeVersion.gamesOtdWon }}–{{ activeVersion.gamesOtdLost }}
-                                    </span>
+                            </CardContent>
+                        </Card>
+                        <Card class="gap-0 py-0">
+                            <CardContent class="flex flex-col gap-0.5 p-3">
+                                <span class="text-xs tracking-wide text-muted-foreground uppercase">Match Record</span>
+                                <span class="text-3xl font-bold tabular-nums">
+                                    {{ activeVersion.matchesWon }}–{{ activeVersion.matchesLost }}
                                 </span>
-                            </div>
-                        </CardContent>
-                    </Card>
+                                <span class="text-sm text-muted-foreground">
+                                    {{ activeVersion.matchesWon + activeVersion.matchesLost }} played
+                                </span>
+                            </CardContent>
+                        </Card>
+                        <Card class="gap-0 py-0">
+                            <CardContent class="flex flex-col gap-0.5 p-3">
+                                <span class="text-xs tracking-wide text-muted-foreground uppercase">Win % on the Play</span>
+                                <span
+                                    class="text-3xl font-bold tabular-nums"
+                                    :class="activeVersion.otpRate > 50 ? 'text-success' : activeVersion.otpRate < 50 ? 'text-destructive' : ''"
+                                >{{ activeVersion.otpRate }}%</span>
+                                <span class="text-sm text-muted-foreground">
+                                    {{ activeVersion.gamesOtpWon }}–{{ activeVersion.gamesOtpLost }} games
+                                </span>
+                            </CardContent>
+                        </Card>
+                        <Card class="gap-0 py-0">
+                            <CardContent class="flex flex-col gap-0.5 p-3">
+                                <span class="text-xs tracking-wide text-muted-foreground uppercase">Win % on the Draw</span>
+                                <span
+                                    class="text-3xl font-bold tabular-nums"
+                                    :class="activeVersion.otdRate > 50 ? 'text-success' : activeVersion.otdRate < 50 ? 'text-destructive' : ''"
+                                >{{ activeVersion.otdRate }}%</span>
+                                <span class="text-sm text-muted-foreground">
+                                    {{ activeVersion.gamesOtdWon }}–{{ activeVersion.gamesOtdLost }} games
+                                </span>
+                            </CardContent>
+                        </Card>
+                    </div>
 
-                    <!-- Win rate chart -->
-                    <Card v-if="chartData.length">
-                        <CardContent>
-                            <MatchHistoryChart :data="chartData" :granularity="chartGranularity" />
-                        </CardContent>
-                    </Card>
+                    <!-- Chart + Matchup Spread -->
+                    <div class="grid grid-cols-3 gap-4">
+                        <Card class="col-span-2">
+                            <CardContent>
+                                <MatchHistoryChart
+                                    v-if="chartData.length"
+                                    :data="chartData"
+                                />
+                                <p v-else class="py-12 text-center text-sm text-muted-foreground">
+                                    No match data for this period.
+                                </p>
+                            </CardContent>
+                        </Card>
 
-                    <!-- No chart but still show period selector -->
-                    <div v-else class="flex justify-end">
-                        <Select v-model="activePeriod" @update:model-value="onPeriodChange">
-                            <SelectTrigger class="h-7 w-32 text-xs">
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem v-for="(label, key) in periodLabels" :key="key" :value="key" class="text-xs">
-                                    {{ label }}
-                                </SelectItem>
-                            </SelectContent>
-                        </Select>
+                        <div>
+                            <Deferred data="matchupSpread">
+                                <template #fallback>
+                                    <Card class="gap-0 p-0">
+                                        <CardContent class="flex flex-col gap-2 p-4">
+                                            <Skeleton class="h-6 w-full" />
+                                            <Skeleton class="h-6 w-full" />
+                                            <Skeleton class="h-6 w-3/4" />
+                                        </CardContent>
+                                    </Card>
+                                </template>
+                                <Card class="gap-0 overflow-hidden p-0">
+                                    <CardContent class="max-h-[460px] overflow-y-auto px-0 scrollbar-none">
+                                        <p v-if="!matchupSpread?.length" class="text-muted-foreground py-8 text-center text-sm">
+                                            No matchup data yet.
+                                        </p>
+                                        <table v-else class="w-full text-sm">
+                                            <thead class="bg-muted sticky top-0">
+                                                <tr>
+                                                    <th class="px-3 py-2 text-left text-xs font-medium text-muted-foreground">Archetype</th>
+                                                    <th class="px-3 py-2 text-right text-xs font-medium text-muted-foreground">Record</th>
+                                                    <th class="px-3 py-2 text-right text-xs font-medium text-muted-foreground">Win %</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr v-for="matchup in matchupSpread" :key="matchup.archetype_id" class="border-b border-border">
+                                                    <td class="px-3 py-2">
+                                                        <div class="flex items-center gap-1.5">
+                                                            <ManaSymbols :symbols="matchup.color_identity" class="shrink-0" />
+                                                            <span class="truncate">{{ matchup.name }}</span>
+                                                        </div>
+                                                    </td>
+                                                    <td class="px-3 py-2 text-right tabular-nums text-muted-foreground">{{ matchup.match_record }}</td>
+                                                    <td class="px-3 py-2 text-right">
+                                                        <span
+                                                            class="font-medium tabular-nums"
+                                                            :class="matchup.match_winrate > 50 ? 'text-success' : matchup.match_winrate < 50 ? 'text-destructive' : ''"
+                                                        >{{ matchup.match_winrate }}%</span>
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </CardContent>
+                                </Card>
+                            </Deferred>
+                        </div>
                     </div>
 
                     <!-- Tabs -->
                     <Tabs default-value="matches">
                         <TabsList>
                             <TabsTrigger value="matches">Matches</TabsTrigger>
-                            <TabsTrigger value="matchups">Matchups</TabsTrigger>
                             <TabsTrigger value="leagues">Leagues</TabsTrigger>
                         </TabsList>
                         <TabsContent value="matches">
@@ -242,20 +290,6 @@ const allTime = computed(() => props.versions[0]);
                                     </Card>
                                 </template>
                                 <DeckMatches :matches="matches!" :archetypes="archetypes!" />
-                            </Deferred>
-                        </TabsContent>
-                        <TabsContent value="matchups">
-                            <Deferred data="matchupSpread">
-                                <template #fallback>
-                                    <Card class="gap-0 overflow-hidden p-0">
-                                        <CardContent class="flex flex-col gap-2 px-4 py-4">
-                                            <Skeleton class="h-8 w-full" />
-                                            <Skeleton class="h-8 w-full" />
-                                            <Skeleton class="h-8 w-3/4" />
-                                        </CardContent>
-                                    </Card>
-                                </template>
-                                <MatchupSpread :matchup-spread="matchupSpread!" />
                             </Deferred>
                         </TabsContent>
                         <TabsContent value="leagues">
