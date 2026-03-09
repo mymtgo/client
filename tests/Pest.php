@@ -13,6 +13,36 @@
 
 pest()->extend(Tests\TestCase::class)
  // ->use(Illuminate\Foundation\Testing\RefreshDatabase::class)
+    ->beforeEach(function () {
+        // NativePHP Settings makes HTTP calls to localhost:4000 (the Electron
+        // backend) which doesn't exist in CI or during testing.  Swap the
+        // facade root with a simple in-memory store so tests never hit the
+        // network.
+        \Native\Desktop\Facades\Settings::swap(new class
+        {
+            protected array $store = [];
+
+            public function get(string $key, $default = null): mixed
+            {
+                return $this->store[$key] ?? ($default instanceof \Closure ? $default() : $default);
+            }
+
+            public function set(string $key, $value): void
+            {
+                $this->store[$key] = $value;
+            }
+
+            public function forget(string $key): void
+            {
+                unset($this->store[$key]);
+            }
+
+            public function clear(): void
+            {
+                $this->store = [];
+            }
+        });
+    })
     ->in('Feature');
 
 /*
