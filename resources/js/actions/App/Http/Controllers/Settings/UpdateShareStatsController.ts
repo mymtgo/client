@@ -1,4 +1,4 @@
-import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition } from './../../../../../wayfinder'
+import { queryParams, type RouteQueryOptions, type RouteDefinition } from './../../../../../wayfinder'
 /**
 * @see \App\Http\Controllers\Settings\UpdateShareStatsController::__invoke
 * @see app/Http/Controllers/Settings/UpdateShareStatsController.php:12
@@ -32,37 +32,5 @@ UpdateShareStatsController.patch = (options?: RouteQueryOptions): RouteDefinitio
     url: UpdateShareStatsController.url(options),
     method: 'patch',
 })
-
-/**
-* @see \App\Http\Controllers\Settings\UpdateShareStatsController::__invoke
-* @see app/Http/Controllers/Settings/UpdateShareStatsController.php:12
-* @route '/settings/share-stats'
-*/
-const UpdateShareStatsControllerForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-    action: UpdateShareStatsController.url({
-        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-            _method: 'PATCH',
-            ...(options?.query ?? options?.mergeQuery ?? {}),
-        }
-    }),
-    method: 'post',
-})
-
-/**
-* @see \App\Http\Controllers\Settings\UpdateShareStatsController::__invoke
-* @see app/Http/Controllers/Settings/UpdateShareStatsController.php:12
-* @route '/settings/share-stats'
-*/
-UpdateShareStatsControllerForm.patch = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-    action: UpdateShareStatsController.url({
-        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-            _method: 'PATCH',
-            ...(options?.query ?? options?.mergeQuery ?? {}),
-        }
-    }),
-    method: 'post',
-})
-
-UpdateShareStatsController.form = UpdateShareStatsControllerForm
 
 export default UpdateShareStatsController
