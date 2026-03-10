@@ -22,7 +22,7 @@ const props = withDefaults(
         bgColor?: string;
     }>(),
     {
-        font: 'Bungee',
+        font: 'sans-serif',
         textColor: '#ffffff',
         bgColor: '#1a1a1a',
     },
@@ -40,14 +40,14 @@ const props = withDefaults(
     >
         <template v-if="league">
             <div class="flex items-baseline justify-between">
-                <span class="truncate text-sm font-semibold">
+                <span class="truncate text-base font-semibold">
                     {{ league.deckName ?? 'Unknown Deck' }}
                 </span>
-                <span class="ml-2 shrink-0 text-lg font-bold tabular-nums">
+                <span class="ml-2 shrink-0 text-xl font-bold tabular-nums">
                     {{ league.wins }}-{{ league.losses }}
                 </span>
             </div>
-            <div class="flex items-center justify-between text-xs" :style="{ color: textColor, opacity: 0.7 }">
+            <div class="flex items-center justify-between text-sm" :style="{ color: textColor, opacity: 0.7 }">
                 <span class="inline-flex items-center gap-1">
                     {{ league.format }}
                     <PhantomBadge v-if="league.phantom" :label="false" />

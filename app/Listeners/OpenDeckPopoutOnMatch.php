@@ -2,10 +2,9 @@
 
 namespace App\Listeners;
 
-use App\Actions\Decks\OpenDeckPopoutWindow;
 use App\Events\DeckLinkedToMatch;
+use App\Events\DeckPopoutRequested;
 use Native\Desktop\Facades\Settings;
-use Native\Desktop\Facades\Window;
 
 class OpenDeckPopoutOnMatch
 {
@@ -22,13 +21,7 @@ class OpenDeckPopoutOnMatch
         }
 
         $deckId = $match->deckVersion->deck_id;
-        $targetWindowId = "deck-popout-{$deckId}";
 
-        // Close any other deck popout windows
-        collect(Window::all())
-            ->filter(fn ($w) => str_starts_with($w['id'], 'deck-popout-') && $w['id'] !== $targetWindowId)
-            ->each(fn ($w) => Window::close($w['id']));
-
-        OpenDeckPopoutWindow::run($deckId);
+        DeckPopoutRequested::dispatch($deckId);
     }
 }

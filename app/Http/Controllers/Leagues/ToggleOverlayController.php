@@ -11,7 +11,7 @@ class ToggleOverlayController extends Controller
 {
     public function __invoke(Request $request)
     {
-        $existing = collect(Window::all())->firstWhere('id', 'overlay');
+        $existing = collect(Window::all())->first(fn ($w) => $w->getId() === 'overlay');
 
         if ($existing) {
             Window::close('overlay');
