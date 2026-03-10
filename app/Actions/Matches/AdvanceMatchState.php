@@ -67,7 +67,7 @@ class AdvanceMatchState
         }
 
         // ── No regression ───────────────────────────────────────────
-        if ($match->state === MatchState::Complete) {
+        if ($match->state === MatchState::Complete || $match->state === MatchState::Voided) {
             return $match;
         }
 

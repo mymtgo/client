@@ -53,6 +53,8 @@ function onClose(e: Event) {
 const accentColor: Record<string, string> = {
     match_win: '#22c55e',
     match_loss: '#ef4444',
+    match_voided: '#6b7280',
+    match_incomplete: '#f59e0b',
 };
 
 onMounted(() => {

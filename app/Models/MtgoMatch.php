@@ -81,7 +81,7 @@ class MtgoMatch extends Model
 
     public function scopeIncomplete(Builder $query): Builder
     {
-        return $query->where('state', '!=', MatchState::Complete);
+        return $query->whereNotIn('state', [MatchState::Complete, MatchState::Voided]);
     }
 
     public static function displayFormat(string $format): string
