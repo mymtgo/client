@@ -298,18 +298,18 @@ class AdvanceMatchState
     }
 
     /**
-     * Create games for any game_ids in log events that don't already
-     * have a Game record.  Events for later games may arrive after the
-     * Started → InProgress transition, so this is called again before
-     * the match completes.
+     * Create or update games from log events.
+     *
+     * Events for later games may arrive after the Started → InProgress
+     * transition, and existing games may have incomplete timeline data.
+     * Re-running CreateGames is safe — it upserts the game record and
+     * replaces timeline entries idempotently.
      */
     private static function createMissingGames(MtgoMatch $match, Collection $events): void
     {
         $games = $events->groupBy('game_id')->filter(
             fn ($group, $key) => $key !== '' && $key !== null
         );
-
-        $existingMtgoIds = $match->games()->pluck('mtgo_id')->map(fn ($id) => (string) $id)->toArray();
 
         $gameIds = $games->keys();
 
@@ -320,12 +320,6 @@ class AdvanceMatchState
         $gameIndex = 0;
 
         foreach ($games as $gameId => $gameEvents) {
-            if (in_array((string) $gameId, $existingMtgoIds, true)) {
-                $gameIndex++;
-
-                continue;
-            }
-
             $playerDeck = $decksEvents->first(
                 fn ($event) => (int) $event->game_id === (int) $gameId
             );
