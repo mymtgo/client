@@ -2,7 +2,6 @@
 
 namespace App\Actions\Leagues;
 
-use Native\Desktop\Facades\Settings;
 use Native\Desktop\Facades\Window;
 
 class OpenOverlayWindow
@@ -15,12 +14,10 @@ class OpenOverlayWindow
             return;
         }
 
-        $height = Settings::get('overlay_opponent_enabled') ? 160 : 80;
-
         Window::open('overlay')
             ->route('leagues.overlay')
             ->width(300)
-            ->height($height)
+            ->height(80)
             ->minWidth(200)
             ->minHeight(80)
             ->alwaysOnTop()
