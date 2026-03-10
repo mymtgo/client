@@ -251,6 +251,7 @@ const decklistOrgUrl = computed(() => {
                                         <table v-else class="w-full text-sm">
                                             <thead class="bg-muted sticky top-0">
                                                 <tr>
+                                                    <th class="w-8 py-2 pl-3 pr-0 text-left text-xs font-medium text-muted-foreground"></th>
                                                     <th class="px-3 py-2 text-left text-xs font-medium text-muted-foreground">Archetype</th>
                                                     <th class="px-3 py-2 text-right text-xs font-medium text-muted-foreground">Record</th>
                                                     <th class="px-3 py-2 text-right text-xs font-medium text-muted-foreground">Win %</th>
@@ -258,12 +259,10 @@ const decklistOrgUrl = computed(() => {
                                             </thead>
                                             <tbody>
                                                 <tr v-for="matchup in matchupSpread" :key="matchup.archetype_id" class="border-b border-border">
-                                                    <td class="px-3 py-2">
-                                                        <div class="flex items-center gap-1.5">
-                                                            <ManaSymbols :symbols="matchup.color_identity" class="shrink-0" />
-                                                            <span class="truncate">{{ matchup.name }}</span>
-                                                        </div>
+                                                    <td class="w-8 py-2 pl-3 pr-0">
+                                                        <ManaSymbols :symbols="matchup.color_identity" class="shrink-0" />
                                                     </td>
+                                                    <td class="truncate px-3 py-2">{{ matchup.name }}</td>
                                                     <td class="px-3 py-2 text-right tabular-nums text-muted-foreground">{{ matchup.match_record }}</td>
                                                     <td class="px-3 py-2 text-right">
                                                         <span
