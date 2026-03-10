@@ -1,5 +1,4 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition, applyUrlDefaults } from './../../wayfinder'
-import overlayE7e003 from './overlay'
 /**
 * @see \App\Http\Controllers\Leagues\IndexController::__invoke
 * @see app/Http/Controllers/Leagues/IndexController.php:16
@@ -83,7 +82,7 @@ index.form = indexForm
 
 /**
 * @see \App\Http\Controllers\Leagues\OverlayController::__invoke
-* @see app/Http/Controllers/Leagues/OverlayController.php:16
+* @see app/Http/Controllers/Leagues/OverlayController.php:14
 * @route '/leagues/overlay'
 */
 export const overlay = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -98,7 +97,7 @@ overlay.definition = {
 
 /**
 * @see \App\Http\Controllers\Leagues\OverlayController::__invoke
-* @see app/Http/Controllers/Leagues/OverlayController.php:16
+* @see app/Http/Controllers/Leagues/OverlayController.php:14
 * @route '/leagues/overlay'
 */
 overlay.url = (options?: RouteQueryOptions) => {
@@ -107,7 +106,7 @@ overlay.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\Leagues\OverlayController::__invoke
-* @see app/Http/Controllers/Leagues/OverlayController.php:16
+* @see app/Http/Controllers/Leagues/OverlayController.php:14
 * @route '/leagues/overlay'
 */
 overlay.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -117,7 +116,7 @@ overlay.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 
 /**
 * @see \App\Http\Controllers\Leagues\OverlayController::__invoke
-* @see app/Http/Controllers/Leagues/OverlayController.php:16
+* @see app/Http/Controllers/Leagues/OverlayController.php:14
 * @route '/leagues/overlay'
 */
 overlay.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -127,7 +126,7 @@ overlay.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 
 /**
 * @see \App\Http\Controllers\Leagues\OverlayController::__invoke
-* @see app/Http/Controllers/Leagues/OverlayController.php:16
+* @see app/Http/Controllers/Leagues/OverlayController.php:14
 * @route '/leagues/overlay'
 */
 const overlayForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -137,7 +136,7 @@ const overlayForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> =>
 
 /**
 * @see \App\Http\Controllers\Leagues\OverlayController::__invoke
-* @see app/Http/Controllers/Leagues/OverlayController.php:16
+* @see app/Http/Controllers/Leagues/OverlayController.php:14
 * @route '/leagues/overlay'
 */
 overlayForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -147,7 +146,7 @@ overlayForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => (
 
 /**
 * @see \App\Http\Controllers\Leagues\OverlayController::__invoke
-* @see app/Http/Controllers/Leagues/OverlayController.php:16
+* @see app/Http/Controllers/Leagues/OverlayController.php:14
 * @route '/leagues/overlay'
 */
 overlayForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
@@ -254,7 +253,7 @@ abandon.form = abandonForm
 
 const leagues = {
     index: Object.assign(index, index),
-    overlay: Object.assign(overlay, overlayE7e003),
+    overlay: Object.assign(overlay, overlay),
     abandon: Object.assign(abandon, abandon),
 }
 
