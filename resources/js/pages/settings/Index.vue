@@ -33,9 +33,9 @@ const props = defineProps<{
     hidePhantomLeagues: boolean;
     pendingMatches: Array<{ id: number; format: string; games_won: number; games_lost: number; started_at: string }>;
     accounts: Array<{ id: number; username: string; tracked: boolean; active: boolean }>;
-    overlayEnabled: boolean;
-    overlayOpponentEnabled: boolean;
-    deckPopoutEnabled: boolean;
+    leagueWindowEnabled: boolean;
+    opponentWindowEnabled: boolean;
+    deckWindowEnabled: boolean;
     appVersion: string;
 }>();
 
@@ -108,16 +108,16 @@ function toggleAccountTracking(username: string, tracked: boolean) {
     withProcessing(`account-${username}`, 'patch', UpdateAccountTrackingController.url(), { username, tracked });
 }
 
-function setOverlayEnabled(val: boolean) {
-    withProcessing('overlay', 'post', UpdateOverlaySettingsController.url(), { overlay_enabled: val });
+function setLeagueWindowEnabled(val: boolean) {
+    withProcessing('leagueWindow', 'post', UpdateOverlaySettingsController.url(), { league_window: val });
 }
 
-function setOverlayOpponentEnabled(val: boolean) {
-    withProcessing('overlayOpponent', 'post', UpdateOverlaySettingsController.url(), { overlay_opponent_enabled: val });
+function setOpponentWindowEnabled(val: boolean) {
+    withProcessing('opponentWindow', 'post', UpdateOverlaySettingsController.url(), { opponent_window: val });
 }
 
-function setDeckPopoutEnabled(val: boolean) {
-    withProcessing('deckPopout', 'post', UpdateOverlaySettingsController.url(), { deck_popout_enabled: val });
+function setDeckWindowEnabled(val: boolean) {
+    withProcessing('deckWindow', 'post', UpdateOverlaySettingsController.url(), { deck_window: val });
 }
 
 const sampleLeague: LeagueData = {
@@ -185,10 +185,10 @@ const sampleOpponent: OpponentData = {
                 <CardContent class="flex flex-col gap-4">
                     <div class="flex items-center justify-between">
                         <div>
-                            <Label>League progress overlay</Label>
-                            <p class="text-sm text-muted-foreground">Show a small overlay on top of MTGO with your current league run.</p>
+                            <Label>League progress window</Label>
+                            <p class="text-sm text-muted-foreground">Show a small always-on-top window with your current league run.</p>
                         </div>
-                        <Switch :modelValue="props.overlayEnabled" @update:modelValue="setOverlayEnabled" />
+                        <Switch :modelValue="props.leagueWindowEnabled" @update:modelValue="setLeagueWindowEnabled" />
                     </div>
 
                     <div class="mx-auto w-64 overflow-hidden rounded-md border border-border">
@@ -199,15 +199,15 @@ const sampleOpponent: OpponentData = {
 
                     <div class="flex items-center justify-between">
                         <div>
-                            <Label>Show opponent scouting</Label>
+                            <Label>Opponent scouting window</Label>
                             <p class="text-sm text-muted-foreground">
-                                Display opponent history and last known archetype on the overlay during matches.
+                                Show opponent history and last known archetype in a separate window during matches.
                             </p>
                         </div>
                         <Switch
-                            :modelValue="props.overlayOpponentEnabled"
-                            @update:modelValue="setOverlayOpponentEnabled"
-                            :disabled="processing === 'overlayOpponent'"
+                            :modelValue="props.opponentWindowEnabled"
+                            @update:modelValue="setOpponentWindowEnabled"
+                            :disabled="processing === 'opponentWindow'"
                         />
                     </div>
 
@@ -219,15 +219,15 @@ const sampleOpponent: OpponentData = {
 
                     <div class="flex items-center justify-between">
                         <div>
-                            <Label>Auto-show deck list</Label>
+                            <Label>Deck list window</Label>
                             <p class="text-sm text-muted-foreground">
-                                Show your current deck for the match.
+                                Show your most recently used deck in a separate window.
                             </p>
                         </div>
                         <Switch
-                            :modelValue="props.deckPopoutEnabled"
-                            @update:modelValue="setDeckPopoutEnabled"
-                            :disabled="processing === 'deckPopout'"
+                            :modelValue="props.deckWindowEnabled"
+                            @update:modelValue="setDeckWindowEnabled"
+                            :disabled="processing === 'deckWindow'"
                         />
                     </div>
 

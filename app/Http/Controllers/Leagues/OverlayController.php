@@ -5,11 +5,9 @@ namespace App\Http\Controllers\Leagues;
 use App\Enums\MatchState;
 use App\Http\Controllers\Controller;
 use App\Models\League;
-use App\Models\MtgoMatch;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
-use Native\Desktop\Facades\Settings;
 
 class OverlayController extends Controller
 {
@@ -28,7 +26,6 @@ class OverlayController extends Controller
         if (! $league) {
             return Inertia::render('leagues/Overlay', [
                 'league' => null,
-                'opponent' => null,
             ]);
         }
 
@@ -49,44 +46,7 @@ class OverlayController extends Controller
             ->first()
             ?->deck?->name;
 
-        // Opponent scouting data
-        $opponent = null;
-        if ($currentMatch && (bool) Settings::get('overlay_opponent_enabled')) {
-            $opponentPlayer = $currentMatch->games()
-                ->first()
-                ?->opponents()
-                ->first();
-
-            if ($opponentPlayer) {
-                // Count previous matches against this opponent
-                $previousMatches = MtgoMatch::complete()
-                    ->whereHas('games.opponents', fn ($q) => $q->where('players.id', $opponentPlayer->id))
-                    ->where('matches.id', '!=', $currentMatch->id);
-
-                $wins = (clone $previousMatches)->whereRaw('games_won > games_lost')->count();
-                $losses = (clone $previousMatches)->whereRaw('games_won < games_lost')->count();
-                $totalPrevious = $wins + $losses;
-
-                // Last known archetype for this opponent
-                $lastArchetype = $opponentPlayer->matchArchetypes()
-                    ->with('archetype')
-                    ->latest('id')
-                    ->first()
-                    ?->archetype;
-
-                $opponent = [
-                    'username' => $opponentPlayer->username,
-                    'previousMatches' => $totalPrevious,
-                    'wins' => $wins,
-                    'losses' => $losses,
-                    'lastArchetype' => $lastArchetype?->name,
-                    'lastArchetypeColors' => $lastArchetype?->color_identity,
-                ];
-            }
-        }
-
         return Inertia::render('leagues/Overlay', [
-            'opponentEnabled' => (bool) Settings::get('overlay_opponent_enabled'),
             'league' => [
                 'id' => $league->id,
                 'name' => $league->name,
@@ -99,7 +59,6 @@ class OverlayController extends Controller
                 'hasActiveMatch' => $currentMatch !== null,
                 'games' => $games,
             ],
-            'opponent' => $opponent,
         ]);
     }
 }

@@ -31,9 +31,9 @@ class IndexController extends Controller
             'hidePhantomLeagues' => (bool) Settings::get('hide_phantom_leagues'),
             'accounts' => Account::orderBy('username')->get(['id', 'username', 'tracked', 'active']),
             'appVersion' => config('nativephp.version'),
-            'overlayEnabled' => (bool) Settings::get('overlay_enabled'),
-            'overlayOpponentEnabled' => (bool) Settings::get('overlay_opponent_enabled'),
-            'deckPopoutEnabled' => (bool) Settings::get('deck_popout_enabled'),
+            'leagueWindowEnabled' => (bool) Settings::get('league_window'),
+            'opponentWindowEnabled' => (bool) Settings::get('opponent_window'),
+            'deckWindowEnabled' => (bool) Settings::get('deck_window'),
         ]);
     }
 }
