@@ -7,8 +7,6 @@ use App\Actions\Util\ExtractJson;
 use App\Actions\Util\ExtractKeyValueBlock;
 use App\Enums\LogEventType;
 use App\Enums\MatchState;
-use App\Events\DeckLinkedToMatch;
-use App\Events\LeagueMatchStarted;
 use App\Jobs\SubmitMatch;
 use App\Models\DeckVersion;
 use App\Models\League;
@@ -152,9 +150,6 @@ class AdvanceMatchState
             DetermineMatchDeck::run($match);
             $match->refresh();
 
-            if ($match->deck_version_id) {
-                DeckLinkedToMatch::dispatch($match);
-            }
         }
 
         // ── Assign league (if not already assigned) ──
@@ -163,10 +158,6 @@ class AdvanceMatchState
         }
 
         $match->update(['state' => MatchState::InProgress]);
-
-        if ($match->league_id && Settings::get('overlay_enabled')) {
-            LeagueMatchStarted::dispatch();
-        }
 
         return true;
     }
