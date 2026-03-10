@@ -2,10 +2,26 @@
 import AppHeader from '@/components/AppHeader.vue';
 import AppNav from '@/components/AppNav.vue';
 import StatusBar from '@/components/StatusBar.vue';
+import ToastContainer from '@/components/ToastContainer.vue';
+import { useToast } from '@/composables/useToast';
+import { onMounted } from 'vue';
 
 defineProps<{
     title?: string;
 }>();
+
+const { add } = useToast();
+
+onMounted(() => {
+    window.Native?.on('App\\Events\\AppNotification', (payload: { type: string; title: string; message: string; route?: string }) => {
+        add({
+            type: payload.type,
+            title: payload.title,
+            message: payload.message,
+            route: payload.route,
+        });
+    });
+});
 </script>
 
 <template>
@@ -16,5 +32,6 @@ defineProps<{
             <slot />
         </div>
         <StatusBar />
+        <ToastContainer />
     </div>
 </template>

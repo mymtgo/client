@@ -7,6 +7,7 @@ use App\Actions\Util\ExtractJson;
 use App\Actions\Util\ExtractKeyValueBlock;
 use App\Enums\LogEventType;
 use App\Enums\MatchState;
+use App\Events\AppNotification;
 use App\Events\DeckLinkedToMatch;
 use App\Events\LeagueMatchStarted;
 use App\Jobs\SubmitMatch;
@@ -16,7 +17,6 @@ use App\Models\LogEvent;
 use App\Models\MtgoMatch;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
-use Native\Desktop\Facades\Notification;
 use Native\Desktop\Facades\Settings;
 
 class AdvanceMatchState
@@ -284,9 +284,15 @@ class AdvanceMatchState
 
         SubmitMatch::dispatch($match->id);
 
-        Notification::title('New match Recorded')
-            ->message($match->deck?->name.' // '.$match->games_won.'-'.$match->games_lost)
-            ->show();
+        $won = $match->games_won > $match->games_lost;
+        $opponentArchetype = $match->opponentArchetypes()->with('archetype')->first()?->archetype?->name ?? 'Unknown';
+
+        AppNotification::dispatch(
+            type: $won ? 'match_win' : 'match_loss',
+            title: ($won ? 'Win' : 'Loss').' vs '.$opponentArchetype,
+            message: $match->games_won.'-'.$match->games_lost,
+            route: '/matches/'.$match->id,
+        );
 
         // Mark all related log events as processed
         LogEvent::where('match_id', $match->mtgo_id)
