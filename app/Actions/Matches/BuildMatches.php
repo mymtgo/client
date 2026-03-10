@@ -52,5 +52,8 @@ class BuildMatches
         foreach ($incompleteMatches as $match) {
             AdvanceMatchState::run($match->token, $match->mtgo_id);
         }
+
+        // 3. Stale match resolution — void or end matches that can't complete
+        ResolveStaleMatches::run();
     }
 }
