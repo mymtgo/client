@@ -162,6 +162,87 @@ overlayForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => 
 overlay.form = overlayForm
 
 /**
+* @see \App\Http\Controllers\Leagues\OpponentScoutWindowController::__invoke
+* @see app/Http/Controllers/Leagues/OpponentScoutWindowController.php:13
+* @route '/leagues/opponent-scout'
+*/
+export const opponentScout = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
+    url: opponentScout.url(options),
+    method: 'get',
+})
+
+opponentScout.definition = {
+    methods: ["get","head"],
+    url: '/leagues/opponent-scout',
+} satisfies RouteDefinition<["get","head"]>
+
+/**
+* @see \App\Http\Controllers\Leagues\OpponentScoutWindowController::__invoke
+* @see app/Http/Controllers/Leagues/OpponentScoutWindowController.php:13
+* @route '/leagues/opponent-scout'
+*/
+opponentScout.url = (options?: RouteQueryOptions) => {
+    return opponentScout.definition.url + queryParams(options)
+}
+
+/**
+* @see \App\Http\Controllers\Leagues\OpponentScoutWindowController::__invoke
+* @see app/Http/Controllers/Leagues/OpponentScoutWindowController.php:13
+* @route '/leagues/opponent-scout'
+*/
+opponentScout.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
+    url: opponentScout.url(options),
+    method: 'get',
+})
+
+/**
+* @see \App\Http\Controllers\Leagues\OpponentScoutWindowController::__invoke
+* @see app/Http/Controllers/Leagues/OpponentScoutWindowController.php:13
+* @route '/leagues/opponent-scout'
+*/
+opponentScout.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
+    url: opponentScout.url(options),
+    method: 'head',
+})
+
+/**
+* @see \App\Http\Controllers\Leagues\OpponentScoutWindowController::__invoke
+* @see app/Http/Controllers/Leagues/OpponentScoutWindowController.php:13
+* @route '/leagues/opponent-scout'
+*/
+const opponentScoutForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+    action: opponentScout.url(options),
+    method: 'get',
+})
+
+/**
+* @see \App\Http\Controllers\Leagues\OpponentScoutWindowController::__invoke
+* @see app/Http/Controllers/Leagues/OpponentScoutWindowController.php:13
+* @route '/leagues/opponent-scout'
+*/
+opponentScoutForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+    action: opponentScout.url(options),
+    method: 'get',
+})
+
+/**
+* @see \App\Http\Controllers\Leagues\OpponentScoutWindowController::__invoke
+* @see app/Http/Controllers/Leagues/OpponentScoutWindowController.php:13
+* @route '/leagues/opponent-scout'
+*/
+opponentScoutForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+    action: opponentScout.url({
+        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+            _method: 'HEAD',
+            ...(options?.query ?? options?.mergeQuery ?? {}),
+        }
+    }),
+    method: 'get',
+})
+
+opponentScout.form = opponentScoutForm
+
+/**
 * @see \App\Http\Controllers\Leagues\AbandonController::__invoke
 * @see app/Http/Controllers/Leagues/AbandonController.php:11
 * @route '/leagues/{league}'
@@ -254,6 +335,7 @@ abandon.form = abandonForm
 const leagues = {
     index: Object.assign(index, index),
     overlay: Object.assign(overlay, overlay),
+    opponentScout: Object.assign(opponentScout, opponentScout),
     abandon: Object.assign(abandon, abandon),
 }
 
