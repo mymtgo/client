@@ -12,6 +12,7 @@ defineOptions({ layout: OverlayLayout });
 const props = defineProps<{
     league: LeagueData | null;
     opponent: OpponentData | null;
+    opponentEnabled: boolean;
 }>();
 
 let interval: ReturnType<typeof setInterval>;
@@ -32,6 +33,9 @@ onUnmounted(() => {
         <div class="flex h-full flex-col">
             <LeagueTracker :league="league" />
             <OpponentScout v-if="opponent" :opponent="opponent" />
+            <div v-else-if="opponentEnabled" class="px-4 py-2 text-center text-sm opacity-50" style="color: #ffffff; background-color: #1a1a1a">
+                Opponent will appear when match starts
+            </div>
         </div>
     </div>
 </template>

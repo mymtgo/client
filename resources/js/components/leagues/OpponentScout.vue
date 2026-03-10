@@ -18,7 +18,7 @@ const props = withDefaults(
         bgColor?: string;
     }>(),
     {
-        font: 'Bungee',
+        font: 'sans-serif',
         textColor: '#ffffff',
         bgColor: '#1a1a1a',
     },
@@ -35,17 +35,17 @@ const props = withDefaults(
         }"
     >
         <template v-if="opponent">
-            <div class="flex items-center justify-between text-xs">
+            <div class="flex items-center justify-between text-sm">
                 <span class="font-semibold">vs {{ opponent.username }}</span>
                 <span v-if="opponent.previousMatches > 0" class="tabular-nums" :style="{ color: textColor, opacity: 0.7 }">
                     {{ opponent.wins }}-{{ opponent.losses }}
                 </span>
             </div>
-            <div v-if="opponent.lastArchetype" class="mt-0.5 flex items-center gap-1 text-xs" :style="{ color: textColor, opacity: 0.5 }">
+            <div v-if="opponent.lastArchetype" class="mt-0.5 flex items-center gap-1 text-sm" :style="{ color: textColor, opacity: 0.5 }">
                 <ManaSymbols v-if="opponent.lastArchetypeColors" :symbols="opponent.lastArchetypeColors" />
                 <span>{{ opponent.lastArchetype }}</span>
             </div>
-            <div v-else-if="opponent.previousMatches === 0" class="text-xs" :style="{ color: textColor, opacity: 0.5 }">
+            <div v-else-if="opponent.previousMatches === 0" class="text-sm" :style="{ color: textColor, opacity: 0.5 }">
                 First time opponent
             </div>
         </template>

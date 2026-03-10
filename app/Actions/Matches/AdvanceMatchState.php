@@ -164,10 +164,7 @@ class AdvanceMatchState
 
         $match->update(['state' => MatchState::InProgress]);
 
-        if ($match->league_id
-            && Settings::get('overlay_enabled')
-            && ! Settings::get('overlay_always_show')
-        ) {
+        if ($match->league_id && Settings::get('overlay_enabled')) {
             LeagueMatchStarted::dispatch();
         }
 

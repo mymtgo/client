@@ -10,11 +10,16 @@ class OpenDeckPopoutWindow
     {
         $windowId = "deck-popout-{$deckId}";
 
-        $alreadyOpen = collect(Window::all())->contains('id', $windowId);
+        $alreadyOpen = collect(Window::all())->contains(fn ($w) => $w->getId() === $windowId);
 
         if ($alreadyOpen) {
             return;
         }
+
+        // Close any other deck popout windows
+        collect(Window::all())
+            ->filter(fn ($w) => str_starts_with($w->getId(), 'deck-popout-') && $w->getId() !== $windowId)
+            ->each(fn ($w) => Window::close($w->getId()));
 
         Window::open($windowId)
             ->route('decks.popout', ['deck' => $deckId])

@@ -86,6 +86,7 @@ class OverlayController extends Controller
         }
 
         return Inertia::render('leagues/Overlay', [
+            'opponentEnabled' => (bool) Settings::get('overlay_opponent_enabled'),
             'league' => [
                 'id' => $league->id,
                 'name' => $league->name,
