@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Actions\Decks\OpenMostRecentDeckPopout;
+use App\Actions\Leagues\OpenOpponentScoutWindow;
 use App\Actions\Leagues\OpenOverlayWindow;
 use App\Facades\Mtgo;
 use Native\Desktop\Contracts\ProvidesPhpIni;
@@ -36,6 +38,14 @@ class NativeAppServiceProvider implements ProvidesPhpIni
 
         if (Settings::get('league_window')) {
             OpenOverlayWindow::run();
+        }
+
+        if (Settings::get('opponent_window')) {
+            OpenOpponentScoutWindow::run();
+        }
+
+        if (Settings::get('deck_window')) {
+            OpenMostRecentDeckPopout::run();
         }
     }
 
