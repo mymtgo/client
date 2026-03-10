@@ -87,7 +87,7 @@ onUnmounted(() => {
         <div class="flex flex-1 items-start gap-3 px-3 py-3">
             <div class="min-w-0 flex-1">
                 <p class="text-sm font-semibold text-white">{{ toast.title }}</p>
-                <p class="mt-0.5 text-xs text-white/60">{{ toast.message }}</p>
+                <p v-if="toast.message" class="mt-0.5 text-xs text-white/60">{{ toast.message }}</p>
             </div>
 
             <button class="shrink-0 rounded p-0.5 text-white/40 transition-colors hover:text-white/80" @click="onClose">

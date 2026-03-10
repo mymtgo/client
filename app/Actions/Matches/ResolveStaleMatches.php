@@ -56,7 +56,7 @@ class ResolveStaleMatches
                 AppNotification::dispatch(
                     type: 'match_incomplete',
                     title: 'Match recorded but some data is missing',
-                    message: $match->deck?->name ?? $match->format,
+                    message: '',
                     route: '/matches/'.$match->id,
                 );
             } else {
@@ -66,7 +66,7 @@ class ResolveStaleMatches
                 AppNotification::dispatch(
                     type: 'match_voided',
                     title: 'Unable to determine match results',
-                    message: $match->deck?->name ?? $match->format,
+                    message: '',
                 );
             }
         }
