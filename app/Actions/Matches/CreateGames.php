@@ -36,6 +36,12 @@ class CreateGames
             'ended_at' => now()->parse($lastStateEvent->logged_at)->setTimeFromTimeString($lastStateEvent->timestamp),
         ]);
 
+        // Update fields that may have been unavailable at creation time
+        $gameModel->update([
+            'won' => $gameLog['results'][$gameIndex] ?? $gameModel->won,
+            'ended_at' => now()->parse($lastStateEvent->logged_at)->setTimeFromTimeString($lastStateEvent->timestamp),
+        ]);
+
         $playerModels = collect();
         $playerModelMapping = [];
 
@@ -106,6 +112,9 @@ class CreateGames
         }
 
         CreateMissingCards::run(array_unique($timelineCatalogIds));
+
+        // Replace timeline entries — events may have grown since last call
+        GameTimeline::where('game_id', $gameModel->id)->delete();
         GameTimeline::insert($events);
     }
 }
