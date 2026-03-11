@@ -1,4 +1,4 @@
-import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition } from './../../../../../wayfinder'
+import { queryParams, type RouteQueryOptions, type RouteDefinition } from './../../../../../wayfinder'
 /**
 * @see \App\Http\Controllers\Settings\UpdateAnonymousStatsController::__invoke
 * @see app/Http/Controllers/Settings/UpdateAnonymousStatsController.php:12
@@ -32,37 +32,5 @@ UpdateAnonymousStatsController.patch = (options?: RouteQueryOptions): RouteDefin
     url: UpdateAnonymousStatsController.url(options),
     method: 'patch',
 })
-
-/**
-* @see \App\Http\Controllers\Settings\UpdateAnonymousStatsController::__invoke
-* @see app/Http/Controllers/Settings/UpdateAnonymousStatsController.php:12
-* @route '/settings/anonymous-stats'
-*/
-const UpdateAnonymousStatsControllerForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-    action: UpdateAnonymousStatsController.url({
-        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-            _method: 'PATCH',
-            ...(options?.query ?? options?.mergeQuery ?? {}),
-        }
-    }),
-    method: 'post',
-})
-
-/**
-* @see \App\Http\Controllers\Settings\UpdateAnonymousStatsController::__invoke
-* @see app/Http/Controllers/Settings/UpdateAnonymousStatsController.php:12
-* @route '/settings/anonymous-stats'
-*/
-UpdateAnonymousStatsControllerForm.patch = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-    action: UpdateAnonymousStatsController.url({
-        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-            _method: 'PATCH',
-            ...(options?.query ?? options?.mergeQuery ?? {}),
-        }
-    }),
-    method: 'post',
-})
-
-UpdateAnonymousStatsController.form = UpdateAnonymousStatsControllerForm
 
 export default UpdateAnonymousStatsController

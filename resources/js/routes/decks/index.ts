@@ -1,4 +1,4 @@
-import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition, applyUrlDefaults } from './../../wayfinder'
+import { queryParams, type RouteQueryOptions, type RouteDefinition, applyUrlDefaults } from './../../wayfinder'
 /**
 * @see \App\Http\Controllers\Decks\IndexController::__invoke
 * @see app/Http/Controllers/Decks/IndexController.php:14
@@ -42,43 +42,6 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     url: index.url(options),
     method: 'head',
 })
-
-/**
-* @see \App\Http\Controllers\Decks\IndexController::__invoke
-* @see app/Http/Controllers/Decks/IndexController.php:14
-* @route '/decks'
-*/
-const indexForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-    action: index.url(options),
-    method: 'get',
-})
-
-/**
-* @see \App\Http\Controllers\Decks\IndexController::__invoke
-* @see app/Http/Controllers/Decks/IndexController.php:14
-* @route '/decks'
-*/
-indexForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-    action: index.url(options),
-    method: 'get',
-})
-
-/**
-* @see \App\Http\Controllers\Decks\IndexController::__invoke
-* @see app/Http/Controllers/Decks/IndexController.php:14
-* @route '/decks'
-*/
-indexForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-    action: index.url({
-        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-            _method: 'HEAD',
-            ...(options?.query ?? options?.mergeQuery ?? {}),
-        }
-    }),
-    method: 'get',
-})
-
-index.form = indexForm
 
 /**
 * @see \App\Http\Controllers\Decks\ShowController::__invoke
@@ -149,43 +112,6 @@ show.head = (args: { deck: string | number | { id: string | number } } | [deck: 
 })
 
 /**
-* @see \App\Http\Controllers\Decks\ShowController::__invoke
-* @see app/Http/Controllers/Decks/ShowController.php:26
-* @route '/decks/{deck}'
-*/
-const showForm = (args: { deck: string | number | { id: string | number } } | [deck: string | number | { id: string | number } ] | string | number | { id: string | number }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-    action: show.url(args, options),
-    method: 'get',
-})
-
-/**
-* @see \App\Http\Controllers\Decks\ShowController::__invoke
-* @see app/Http/Controllers/Decks/ShowController.php:26
-* @route '/decks/{deck}'
-*/
-showForm.get = (args: { deck: string | number | { id: string | number } } | [deck: string | number | { id: string | number } ] | string | number | { id: string | number }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-    action: show.url(args, options),
-    method: 'get',
-})
-
-/**
-* @see \App\Http\Controllers\Decks\ShowController::__invoke
-* @see app/Http/Controllers/Decks/ShowController.php:26
-* @route '/decks/{deck}'
-*/
-showForm.head = (args: { deck: string | number | { id: string | number } } | [deck: string | number | { id: string | number } ] | string | number | { id: string | number }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-    action: show.url(args, {
-        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-            _method: 'HEAD',
-            ...(options?.query ?? options?.mergeQuery ?? {}),
-        }
-    }),
-    method: 'get',
-})
-
-show.form = showForm
-
-/**
 * @see \App\Http\Controllers\Decks\PopoutController::__invoke
 * @see app/Http/Controllers/Decks/PopoutController.php:15
 * @route '/decks/{deck}/popout'
@@ -254,43 +180,6 @@ popout.head = (args: { deck: number | { id: number } } | [deck: number | { id: n
 })
 
 /**
-* @see \App\Http\Controllers\Decks\PopoutController::__invoke
-* @see app/Http/Controllers/Decks/PopoutController.php:15
-* @route '/decks/{deck}/popout'
-*/
-const popoutForm = (args: { deck: number | { id: number } } | [deck: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-    action: popout.url(args, options),
-    method: 'get',
-})
-
-/**
-* @see \App\Http\Controllers\Decks\PopoutController::__invoke
-* @see app/Http/Controllers/Decks/PopoutController.php:15
-* @route '/decks/{deck}/popout'
-*/
-popoutForm.get = (args: { deck: number | { id: number } } | [deck: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-    action: popout.url(args, options),
-    method: 'get',
-})
-
-/**
-* @see \App\Http\Controllers\Decks\PopoutController::__invoke
-* @see app/Http/Controllers/Decks/PopoutController.php:15
-* @route '/decks/{deck}/popout'
-*/
-popoutForm.head = (args: { deck: number | { id: number } } | [deck: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-    action: popout.url(args, {
-        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-            _method: 'HEAD',
-            ...(options?.query ?? options?.mergeQuery ?? {}),
-        }
-    }),
-    method: 'get',
-})
-
-popout.form = popoutForm
-
-/**
 * @see \App\Http\Controllers\Decks\OpenPopoutController::__invoke
 * @see app/Http/Controllers/Decks/OpenPopoutController.php:12
 * @route '/decks/{deck}/popout'
@@ -347,28 +236,6 @@ openPopout.post = (args: { deck: number | { id: number } } | [deck: number | { i
     url: openPopout.url(args, options),
     method: 'post',
 })
-
-/**
-* @see \App\Http\Controllers\Decks\OpenPopoutController::__invoke
-* @see app/Http/Controllers/Decks/OpenPopoutController.php:12
-* @route '/decks/{deck}/popout'
-*/
-const openPopoutForm = (args: { deck: number | { id: number } } | [deck: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-    action: openPopout.url(args, options),
-    method: 'post',
-})
-
-/**
-* @see \App\Http\Controllers\Decks\OpenPopoutController::__invoke
-* @see app/Http/Controllers/Decks/OpenPopoutController.php:12
-* @route '/decks/{deck}/popout'
-*/
-openPopoutForm.post = (args: { deck: number | { id: number } } | [deck: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-    action: openPopout.url(args, options),
-    method: 'post',
-})
-
-openPopout.form = openPopoutForm
 
 const decks = {
     index: Object.assign(index, index),

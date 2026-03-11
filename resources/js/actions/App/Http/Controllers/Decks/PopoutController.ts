@@ -1,4 +1,4 @@
-import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition, applyUrlDefaults } from './../../../../../wayfinder'
+import { queryParams, type RouteQueryOptions, type RouteDefinition, applyUrlDefaults } from './../../../../../wayfinder'
 /**
 * @see \App\Http\Controllers\Decks\PopoutController::__invoke
 * @see app/Http/Controllers/Decks/PopoutController.php:15
@@ -66,42 +66,5 @@ PopoutController.head = (args: { deck: number | { id: number } } | [deck: number
     url: PopoutController.url(args, options),
     method: 'head',
 })
-
-/**
-* @see \App\Http\Controllers\Decks\PopoutController::__invoke
-* @see app/Http/Controllers/Decks/PopoutController.php:15
-* @route '/decks/{deck}/popout'
-*/
-const PopoutControllerForm = (args: { deck: number | { id: number } } | [deck: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-    action: PopoutController.url(args, options),
-    method: 'get',
-})
-
-/**
-* @see \App\Http\Controllers\Decks\PopoutController::__invoke
-* @see app/Http/Controllers/Decks/PopoutController.php:15
-* @route '/decks/{deck}/popout'
-*/
-PopoutControllerForm.get = (args: { deck: number | { id: number } } | [deck: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-    action: PopoutController.url(args, options),
-    method: 'get',
-})
-
-/**
-* @see \App\Http\Controllers\Decks\PopoutController::__invoke
-* @see app/Http/Controllers/Decks/PopoutController.php:15
-* @route '/decks/{deck}/popout'
-*/
-PopoutControllerForm.head = (args: { deck: number | { id: number } } | [deck: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-    action: PopoutController.url(args, {
-        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-            _method: 'HEAD',
-            ...(options?.query ?? options?.mergeQuery ?? {}),
-        }
-    }),
-    method: 'get',
-})
-
-PopoutController.form = PopoutControllerForm
 
 export default PopoutController

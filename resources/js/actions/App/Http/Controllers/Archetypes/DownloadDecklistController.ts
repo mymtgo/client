@@ -1,4 +1,4 @@
-import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition, applyUrlDefaults } from './../../../../../wayfinder'
+import { queryParams, type RouteQueryOptions, type RouteDefinition, applyUrlDefaults } from './../../../../../wayfinder'
 /**
 * @see \App\Http\Controllers\Archetypes\DownloadDecklistController::__invoke
 * @see app/Http/Controllers/Archetypes/DownloadDecklistController.php:11
@@ -56,27 +56,5 @@ DownloadDecklistController.post = (args: { archetype: number | { id: number } } 
     url: DownloadDecklistController.url(args, options),
     method: 'post',
 })
-
-/**
-* @see \App\Http\Controllers\Archetypes\DownloadDecklistController::__invoke
-* @see app/Http/Controllers/Archetypes/DownloadDecklistController.php:11
-* @route '/archetypes/{archetype}/download'
-*/
-const DownloadDecklistControllerForm = (args: { archetype: number | { id: number } } | [archetype: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-    action: DownloadDecklistController.url(args, options),
-    method: 'post',
-})
-
-/**
-* @see \App\Http\Controllers\Archetypes\DownloadDecklistController::__invoke
-* @see app/Http/Controllers/Archetypes/DownloadDecklistController.php:11
-* @route '/archetypes/{archetype}/download'
-*/
-DownloadDecklistControllerForm.post = (args: { archetype: number | { id: number } } | [archetype: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-    action: DownloadDecklistController.url(args, options),
-    method: 'post',
-})
-
-DownloadDecklistController.form = DownloadDecklistControllerForm
 
 export default DownloadDecklistController

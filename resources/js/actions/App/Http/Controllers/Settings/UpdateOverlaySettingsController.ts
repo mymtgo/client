@@ -1,4 +1,4 @@
-import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition } from './../../../../../wayfinder'
+import { queryParams, type RouteQueryOptions, type RouteDefinition } from './../../../../../wayfinder'
 /**
 * @see \App\Http\Controllers\Settings\UpdateOverlaySettingsController::__invoke
 * @see app/Http/Controllers/Settings/UpdateOverlaySettingsController.php:18
@@ -32,27 +32,5 @@ UpdateOverlaySettingsController.post = (options?: RouteQueryOptions): RouteDefin
     url: UpdateOverlaySettingsController.url(options),
     method: 'post',
 })
-
-/**
-* @see \App\Http\Controllers\Settings\UpdateOverlaySettingsController::__invoke
-* @see app/Http/Controllers/Settings/UpdateOverlaySettingsController.php:18
-* @route '/settings/overlay'
-*/
-const UpdateOverlaySettingsControllerForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-    action: UpdateOverlaySettingsController.url(options),
-    method: 'post',
-})
-
-/**
-* @see \App\Http\Controllers\Settings\UpdateOverlaySettingsController::__invoke
-* @see app/Http/Controllers/Settings/UpdateOverlaySettingsController.php:18
-* @route '/settings/overlay'
-*/
-UpdateOverlaySettingsControllerForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-    action: UpdateOverlaySettingsController.url(options),
-    method: 'post',
-})
-
-UpdateOverlaySettingsController.form = UpdateOverlaySettingsControllerForm
 
 export default UpdateOverlaySettingsController

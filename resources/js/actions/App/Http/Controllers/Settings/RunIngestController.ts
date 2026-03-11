@@ -1,4 +1,4 @@
-import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition } from './../../../../../wayfinder'
+import { queryParams, type RouteQueryOptions, type RouteDefinition } from './../../../../../wayfinder'
 /**
 * @see \App\Http\Controllers\Settings\RunIngestController::__invoke
 * @see app/Http/Controllers/Settings/RunIngestController.php:13
@@ -32,27 +32,5 @@ RunIngestController.post = (options?: RouteQueryOptions): RouteDefinition<'post'
     url: RunIngestController.url(options),
     method: 'post',
 })
-
-/**
-* @see \App\Http\Controllers\Settings\RunIngestController::__invoke
-* @see app/Http/Controllers/Settings/RunIngestController.php:13
-* @route '/settings/ingest'
-*/
-const RunIngestControllerForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-    action: RunIngestController.url(options),
-    method: 'post',
-})
-
-/**
-* @see \App\Http\Controllers\Settings\RunIngestController::__invoke
-* @see app/Http/Controllers/Settings/RunIngestController.php:13
-* @route '/settings/ingest'
-*/
-RunIngestControllerForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-    action: RunIngestController.url(options),
-    method: 'post',
-})
-
-RunIngestController.form = RunIngestControllerForm
 
 export default RunIngestController

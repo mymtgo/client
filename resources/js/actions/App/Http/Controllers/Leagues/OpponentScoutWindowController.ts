@@ -1,4 +1,4 @@
-import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition } from './../../../../../wayfinder'
+import { queryParams, type RouteQueryOptions, type RouteDefinition } from './../../../../../wayfinder'
 /**
 * @see \App\Http\Controllers\Leagues\OpponentScoutWindowController::__invoke
 * @see app/Http/Controllers/Leagues/OpponentScoutWindowController.php:13
@@ -42,42 +42,5 @@ OpponentScoutWindowController.head = (options?: RouteQueryOptions): RouteDefinit
     url: OpponentScoutWindowController.url(options),
     method: 'head',
 })
-
-/**
-* @see \App\Http\Controllers\Leagues\OpponentScoutWindowController::__invoke
-* @see app/Http/Controllers/Leagues/OpponentScoutWindowController.php:13
-* @route '/leagues/opponent-scout'
-*/
-const OpponentScoutWindowControllerForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-    action: OpponentScoutWindowController.url(options),
-    method: 'get',
-})
-
-/**
-* @see \App\Http\Controllers\Leagues\OpponentScoutWindowController::__invoke
-* @see app/Http/Controllers/Leagues/OpponentScoutWindowController.php:13
-* @route '/leagues/opponent-scout'
-*/
-OpponentScoutWindowControllerForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-    action: OpponentScoutWindowController.url(options),
-    method: 'get',
-})
-
-/**
-* @see \App\Http\Controllers\Leagues\OpponentScoutWindowController::__invoke
-* @see app/Http/Controllers/Leagues/OpponentScoutWindowController.php:13
-* @route '/leagues/opponent-scout'
-*/
-OpponentScoutWindowControllerForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-    action: OpponentScoutWindowController.url({
-        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-            _method: 'HEAD',
-            ...(options?.query ?? options?.mergeQuery ?? {}),
-        }
-    }),
-    method: 'get',
-})
-
-OpponentScoutWindowController.form = OpponentScoutWindowControllerForm
 
 export default OpponentScoutWindowController

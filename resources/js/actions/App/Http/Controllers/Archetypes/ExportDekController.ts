@@ -1,4 +1,4 @@
-import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition, applyUrlDefaults } from './../../../../../wayfinder'
+import { queryParams, type RouteQueryOptions, type RouteDefinition, applyUrlDefaults } from './../../../../../wayfinder'
 /**
 * @see \App\Http\Controllers\Archetypes\ExportDekController::__invoke
 * @see app/Http/Controllers/Archetypes/ExportDekController.php:14
@@ -56,27 +56,5 @@ ExportDekController.post = (args: { archetype: number | { id: number } } | [arch
     url: ExportDekController.url(args, options),
     method: 'post',
 })
-
-/**
-* @see \App\Http\Controllers\Archetypes\ExportDekController::__invoke
-* @see app/Http/Controllers/Archetypes/ExportDekController.php:14
-* @route '/archetypes/{archetype}/export'
-*/
-const ExportDekControllerForm = (args: { archetype: number | { id: number } } | [archetype: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-    action: ExportDekController.url(args, options),
-    method: 'post',
-})
-
-/**
-* @see \App\Http\Controllers\Archetypes\ExportDekController::__invoke
-* @see app/Http/Controllers/Archetypes/ExportDekController.php:14
-* @route '/archetypes/{archetype}/export'
-*/
-ExportDekControllerForm.post = (args: { archetype: number | { id: number } } | [archetype: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-    action: ExportDekController.url(args, options),
-    method: 'post',
-})
-
-ExportDekController.form = ExportDekControllerForm
 
 export default ExportDekController

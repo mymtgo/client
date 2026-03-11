@@ -1,4 +1,4 @@
-import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition, applyUrlDefaults } from './../../../../../wayfinder'
+import { queryParams, type RouteQueryOptions, type RouteDefinition, applyUrlDefaults } from './../../../../../wayfinder'
 /**
 * @see \App\Http\Controllers\Archetypes\ShowController::__invoke
 * @see app/Http/Controllers/Archetypes/ShowController.php:17
@@ -66,42 +66,5 @@ ShowController.head = (args: { archetype: number | { id: number } } | [archetype
     url: ShowController.url(args, options),
     method: 'head',
 })
-
-/**
-* @see \App\Http\Controllers\Archetypes\ShowController::__invoke
-* @see app/Http/Controllers/Archetypes/ShowController.php:17
-* @route '/archetypes/{archetype}'
-*/
-const ShowControllerForm = (args: { archetype: number | { id: number } } | [archetype: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-    action: ShowController.url(args, options),
-    method: 'get',
-})
-
-/**
-* @see \App\Http\Controllers\Archetypes\ShowController::__invoke
-* @see app/Http/Controllers/Archetypes/ShowController.php:17
-* @route '/archetypes/{archetype}'
-*/
-ShowControllerForm.get = (args: { archetype: number | { id: number } } | [archetype: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-    action: ShowController.url(args, options),
-    method: 'get',
-})
-
-/**
-* @see \App\Http\Controllers\Archetypes\ShowController::__invoke
-* @see app/Http/Controllers/Archetypes/ShowController.php:17
-* @route '/archetypes/{archetype}'
-*/
-ShowControllerForm.head = (args: { archetype: number | { id: number } } | [archetype: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-    action: ShowController.url(args, {
-        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-            _method: 'HEAD',
-            ...(options?.query ?? options?.mergeQuery ?? {}),
-        }
-    }),
-    method: 'get',
-})
-
-ShowController.form = ShowControllerForm
 
 export default ShowController

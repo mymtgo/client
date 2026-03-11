@@ -1,4 +1,4 @@
-import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition, applyUrlDefaults } from './../../../../../wayfinder'
+import { queryParams, type RouteQueryOptions, type RouteDefinition, applyUrlDefaults } from './../../../../../wayfinder'
 /**
 * @see \App\Http\Controllers\Decks\OpenPopoutController::__invoke
 * @see app/Http/Controllers/Decks/OpenPopoutController.php:12
@@ -56,27 +56,5 @@ OpenPopoutController.post = (args: { deck: number | { id: number } } | [deck: nu
     url: OpenPopoutController.url(args, options),
     method: 'post',
 })
-
-/**
-* @see \App\Http\Controllers\Decks\OpenPopoutController::__invoke
-* @see app/Http/Controllers/Decks/OpenPopoutController.php:12
-* @route '/decks/{deck}/popout'
-*/
-const OpenPopoutControllerForm = (args: { deck: number | { id: number } } | [deck: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-    action: OpenPopoutController.url(args, options),
-    method: 'post',
-})
-
-/**
-* @see \App\Http\Controllers\Decks\OpenPopoutController::__invoke
-* @see app/Http/Controllers/Decks/OpenPopoutController.php:12
-* @route '/decks/{deck}/popout'
-*/
-OpenPopoutControllerForm.post = (args: { deck: number | { id: number } } | [deck: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-    action: OpenPopoutController.url(args, options),
-    method: 'post',
-})
-
-OpenPopoutController.form = OpenPopoutControllerForm
 
 export default OpenPopoutController
