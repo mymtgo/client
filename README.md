@@ -1,74 +1,63 @@
-# MTGO Deck Tracker
+# mymtgo
 
-## What is this?
+A free, local desktop app for tracking your Magic: The Gathering Online matches. Every match. Fully tracked.
 
-A desktop app (NativePHP/Electron-style) that:
+![mymtgo dashboard](public/images/dashboard.png)
 
-* Parses MTGO log files
-* Tracks matches, games, players
-* Syncs deck XML files
-* Stores structured data locally (SQLite)
-* Shows stats, winrates, matchup data
+## What is mymtgo?
 
----
+mymtgo is a desktop companion for competitive MTGO players who care about their data. It automatically parses your MTGO log files and builds a complete picture of your match history, win rates, and performance trends — no manual entry required.
 
-## Key Features
+Everything runs locally. Your data stays yours.
 
-* Automatic log ingestion
-* Byte-offset cursor parsing
-* Deck versioning
-* Archetype detection
-* Mulligan & sideboard tracking
+## Features
 
----
+- **Automatic match tracking** — log parsing, per-game timelines, and archetype detection
+- **Performance dashboard** — win rates, play/draw stats, and performance charts over time
+- **Archetype matchup breakdowns** — see how you perform against every deck
+- **Match detail drill-down** — opening hands, mulligans, sideboard tracking
+- **League progress tracker** — track your league runs from start to finish
+- **Opponent history and scouting** — review past opponents and their tendencies
+- **Live decklist overlay** — pop out your deck list during matches
+- **Deck versioning** — automatic snapshots synced from your MTGO deck files
 
-## Documentation
+## How it works
 
-| File                 | Purpose                    |
-| -------------------- | -------------------------- |
-| `/docs/system.md`    | Full architecture overview |
-| `/docs/pipelines.md` | Log + deck ingestion       |
-| `/docs/database.md`  | Schema + relationships     |
+mymtgo reads your local MTGO log files and deck XMLs passively. It does not inject into, modify, or interact with the MTGO client in any way.
 
----
+```
+MTGO log files → mymtgo → SQLite (local)
+```
 
-## Tech Stack
+## Getting started
 
-* Laravel
-* NativePHP
-* SQLite
-* Inertia / Vue
+### Prerequisites
 
----
+- PHP 8.4
+- Node.js
+- Composer
 
-## Running locally
+### Installation
 
 ```bash
 composer install
+npm install
 php artisan migrate
 php artisan native:serve
 ```
 
----
+## Tech stack
 
-## Common Terms
+- Laravel 12 / PHP 8.4
+- NativePHP (Electron)
+- Vue 3 / Inertia.js v2
+- Tailwind CSS v4
+- SQLite
 
-| Term         | Meaning                    |
-| ------------ | -------------------------- |
-| MTGO         | Magic The Gathering Online |
-| LogCursor    | Byte offset tracker        |
-| Deck Version | Snapshot at time of play   |
+## License
 
----
+MIT
 
-## Reporting Bugs
+## Disclaimer
 
-Use short-hand referencing architecture:
-
-> "SyncDecks not deleting removed deck files"
-
-> "LogCursor skipped events after rotation"
-
----
-
-# END
+Magic: The Gathering and Magic: The Gathering Online (MTGO) are trademarks of Wizards of the Coast LLC. mymtgo is not affiliated with, endorsed by, or sponsored by Wizards of the Coast.
