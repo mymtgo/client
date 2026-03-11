@@ -52,14 +52,14 @@ function goToPage(page: number) {
 
 <template>
     <aside class="flex h-full w-full flex-col border-r border-black/60">
-        <div class="space-y-2 border-b border-black/60 p-3">
-            <Input v-model="search" placeholder="Search archetypes..." class="h-8 text-sm" />
+        <div class="flex gap-2 border-b border-black/60 p-3">
+            <Input v-model="search" placeholder="Search..." class="h-8 basis-2/3 text-sm" />
             <select
                 v-model="format"
-                class="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm"
+                class="basis-1/3 rounded-md border border-input bg-background px-2 py-1.5 text-sm"
                 @change="onFormatChange"
             >
-                <option value="">All Formats</option>
+                <option value="">All</option>
                 <option v-for="(label, value) in formats" :key="value" :value="value">
                     {{ label }}
                 </option>

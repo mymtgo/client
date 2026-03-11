@@ -17,8 +17,8 @@ defineProps<{
 </script>
 
 <template>
-    <div class="flex h-full">
-        <div class="w-[35%] shrink-0">
+    <div class="flex min-h-0 flex-1">
+        <div class="w-80 shrink-0">
             <ArchetypeSidebar
                 :archetypes="archetypes"
                 :formats="formats"
@@ -26,7 +26,7 @@ defineProps<{
                 :selected-id="selectedId"
             />
         </div>
-        <div class="flex-1 overflow-y-auto">
+        <div class="flex min-h-0 flex-1 flex-col overflow-y-auto">
             <slot />
         </div>
     </div>
