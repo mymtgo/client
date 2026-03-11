@@ -19,7 +19,13 @@ class BuildMatch implements ShouldQueue
 
     public function handle(): void
     {
-        Mtgo::setUsername(LogCursor::first()->local_username);
+        $username = LogCursor::first()?->local_username;
+
+        if (! $username) {
+            return;
+        }
+
+        Mtgo::setUsername($username);
         AdvanceMatchState::run($this->matchToken, $this->matchId);
     }
 }
