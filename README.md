@@ -2,7 +2,7 @@
 
 A free, local desktop app for tracking your Magic: The Gathering Online matches. Every match. Fully tracked.
 
-![mymtgo dashboard](public/images/dashboard.png)
+<img width="3810" height="3054" alt="image" src="https://github.com/user-attachments/assets/29cc27a9-d59f-4fb7-9b3f-b7a2aca724b9" />
 
 ## What is mymtgo?
 
