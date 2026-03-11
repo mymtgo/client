@@ -280,6 +280,8 @@ class AdvanceMatchState
             'state' => MatchState::Complete,
         ]);
 
+        SyncGameResults::run($match, $gameLog['results'] ?? []);
+
         DetermineMatchArchetypes::run($match);
 
         SubmitMatch::dispatch($match->id);
