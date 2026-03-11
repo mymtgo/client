@@ -47,9 +47,9 @@ Route::group([], function (\Illuminate\Routing\Router $router) {
         'prefix' => 'archetypes',
     ], function (\Illuminate\Routing\Router $group) {
         $group->get('/', \App\Http\Controllers\Archetypes\IndexController::class)->name('archetypes.index');
-        $group->get('{archetype}', fn () => '')->name('archetypes.show');
+        $group->get('{archetype}', \App\Http\Controllers\Archetypes\ShowController::class)->name('archetypes.show');
         $group->post('{archetype}/download', \App\Http\Controllers\Archetypes\DownloadDecklistController::class)->name('archetypes.download');
-        // Routes for export will be added when their controllers are created.
+        $group->post('{archetype}/export', \App\Http\Controllers\Archetypes\ExportDekController::class)->name('archetypes.export');
     });
 
     $router->group([
