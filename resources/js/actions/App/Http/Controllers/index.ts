@@ -4,6 +4,7 @@ import Games from './Games'
 import Leagues from './Leagues'
 import Opponents from './Opponents'
 import Decks from './Decks'
+import Archetypes from './Archetypes'
 import Settings from './Settings'
 
 const Controllers = {
@@ -13,6 +14,7 @@ const Controllers = {
     Leagues: Object.assign(Leagues, Leagues),
     Opponents: Object.assign(Opponents, Opponents),
     Decks: Object.assign(Decks, Decks),
+    Archetypes: Object.assign(Archetypes, Archetypes),
     Settings: Object.assign(Settings, Settings),
 }
 

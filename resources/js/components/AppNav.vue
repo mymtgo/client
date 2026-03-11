@@ -1,16 +1,18 @@
 <script setup lang="ts">
+import ArchetypesIndexController from '@/actions/App/Http/Controllers/Archetypes/IndexController';
 import DecksIndexController from '@/actions/App/Http/Controllers/Decks/IndexController';
 import DashboardController from '@/actions/App/Http/Controllers/IndexController';
 import LeaguesIndexController from '@/actions/App/Http/Controllers/Leagues/IndexController';
 import OpponentsIndexController from '@/actions/App/Http/Controllers/Opponents/IndexController';
 import { Link, usePage } from '@inertiajs/vue3';
-import { Layers, LayoutDashboard, Swords, Trophy } from 'lucide-vue-next';
+import { Layers, LayoutDashboard, Puzzle, Swords, Trophy } from 'lucide-vue-next';
 
 const page = usePage();
 
 const nav = [
     { label: 'Dashboard', icon: LayoutDashboard, href: DashboardController.url() },
     { label: 'Decks', icon: Layers, href: DecksIndexController.url() },
+    { label: 'Archetypes', icon: Puzzle, href: ArchetypesIndexController.url() },
     { label: 'Leagues', icon: Trophy, href: LeaguesIndexController.url() },
     { label: 'Opponents', icon: Swords, href: OpponentsIndexController.url() },
 ];
