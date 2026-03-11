@@ -1,0 +1,42 @@
+name: Discord Release Announcement
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Discord notification
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          RELEASE_NAME: ${{ github.event.release.name }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          RELEASE_BODY: ${{ github.event.release.body }}
+          RELEASE_URL: ${{ github.event.release.html_url }}
+        run: |
+          # Truncate body to fit Discord's 4096 char embed description limit
+          BODY="${RELEASE_BODY:0:3900}"
+          if [ ${#RELEASE_BODY} -gt 3900 ]; then
+            BODY="${BODY}..."
+          fi
+
+          # Escape for JSON
+          BODY=$(echo "$BODY" | jq -Rs .)
+          TITLE=$(echo "$RELEASE_NAME" | jq -Rs .)
+
+          curl -s -H "Content-Type: application/json" \
+            -d "{
+              \"embeds\": [{
+                \"title\": $TITLE,
+                \"url\": \"$RELEASE_URL\",
+                \"description\": $BODY,
+                \"color\": 3066993,
+                \"footer\": {
+                  \"text\": \"$RELEASE_TAG\"
+                },
+                \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"
+              }]
+            }" \
+            "$DISCORD_WEBHOOK_URL"
