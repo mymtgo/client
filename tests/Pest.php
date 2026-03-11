@@ -16,10 +16,15 @@ pest()->extend(Tests\TestCase::class)
     ->beforeEach(function () {
         $this->withoutVite();
 
-        // NativePHP Settings makes HTTP calls to localhost:4000 (the Electron
-        // backend) which doesn't exist in CI or during testing.  Swap the
-        // facade root with a simple in-memory store so tests never hit the
-        // network.
+        // NativePHP facades make HTTP calls to localhost:4000 (the Electron
+        // backend) which doesn't exist in CI or during testing.
+        \Illuminate\Support\Facades\Http::fake();
+        \Native\Desktop\Facades\Window::fake()
+            ->alwaysReturnWindows([
+                new \Native\Desktop\Windows\Window('main'),
+            ]);
+
+        // Settings doesn't support ::fake() so we swap with an in-memory store.
         \Native\Desktop\Facades\Settings::swap(new class
         {
             protected array $store = [];
