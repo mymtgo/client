@@ -68,27 +68,16 @@ const sideboard = computed(() => {
                         <ManaSymbols v-if="detail.archetype.colorIdentity" :symbols="detail.archetype.colorIdentity" class="inline-flex" />
                     </div>
                 </div>
-                <div class="flex items-center gap-2">
-                    <Button
-                        v-if="!detail.archetype.hasDecklist"
-                        size="sm"
-                        :disabled="downloading"
-                        @click="downloadDecklist"
-                    >
-                        <Spinner v-if="downloading" class="mr-1.5 size-3.5" />
-                        {{ downloading ? 'Downloading...' : 'Download Decklist' }}
-                    </Button>
-                    <Button
-                        v-if="detail.archetype.hasDecklist"
-                        variant="outline"
-                        size="sm"
-                        :disabled="exporting"
-                        @click="exportDek"
-                    >
-                        <Download class="mr-1.5 size-3.5" />
-                        Download .dek
-                    </Button>
-                </div>
+                <Button
+                    v-if="detail.archetype.hasDecklist"
+                    variant="outline"
+                    size="sm"
+                    :disabled="exporting"
+                    @click="exportDek"
+                >
+                    <Download class="mr-1.5 size-3.5" />
+                    Download .dek
+                </Button>
             </div>
 
             <!-- Winrate stats -->
@@ -121,8 +110,11 @@ const sideboard = computed(() => {
         <!-- Body -->
         <div class="flex-1 overflow-y-auto p-4">
             <!-- Not downloaded -->
-            <div v-if="!detail.archetype.hasDecklist && !downloading" class="flex h-full flex-col items-center justify-center">
+            <div v-if="!detail.archetype.hasDecklist && !downloading" class="flex h-full flex-col items-center justify-center gap-3">
                 <p class="text-sm text-muted-foreground">Decklist not yet downloaded</p>
+                <Button @click="downloadDecklist">
+                    Download Decklist
+                </Button>
             </div>
 
             <!-- Downloading -->
