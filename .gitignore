@@ -25,5 +25,13 @@ Thumbs.db
 /storage/AppFiles
 /storage/app
 /.ai
+/.claude
 /.junie
 /.git-backup
+/.mcp.json
+/docs
+/plans
+/specs
+/screenshots
+/database/mtgo.log
+CLAUDE.md
