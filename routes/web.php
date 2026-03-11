@@ -44,6 +44,13 @@ Route::group([], function (\Illuminate\Routing\Router $router) {
     });
 
     $router->group([
+        'prefix' => 'archetypes',
+    ], function (\Illuminate\Routing\Router $group) {
+        $group->get('/', \App\Http\Controllers\Archetypes\IndexController::class)->name('archetypes.index');
+        // Routes for show, download, and export will be added when their controllers are created.
+    });
+
+    $router->group([
         'prefix' => 'settings',
     ], function (\Illuminate\Routing\Router $group) {
         $group->get('/', \App\Http\Controllers\Settings\IndexController::class)->name('settings.index');
