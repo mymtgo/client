@@ -25,13 +25,17 @@ class IngestLogs implements ShouldQueue
      */
     public function handle(): void
     {
-        $path = FindMtgoLogPath::run();
+        $paths = FindMtgoLogPath::all();
 
-        if (! $path || ! is_file($path)) {
-            Cache::forget('mtgo.active_log_path');
-            $path = FindMtgoLogPath::run();
+        if ($paths->isEmpty()) {
+            Cache::forget('mtgo.all_log_paths');
+            $paths = FindMtgoLogPath::all();
         }
 
-        IngestLog::run($path);
+        foreach ($paths as $path) {
+            if ($path && is_file($path)) {
+                IngestLog::run($path);
+            }
+        }
     }
 }

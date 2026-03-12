@@ -17,19 +17,40 @@ class FindMtgoLogPath
 
     public static function scan(): ?string
     {
+        return static::all()->last();
+    }
+
+    /**
+     * Return all mtgo.log paths sorted oldest-first by mtime.
+     *
+     * @return \Illuminate\Support\Collection<int, string>
+     */
+    public static function all(): \Illuminate\Support\Collection
+    {
+        return Cache::remember('mtgo.all_log_paths', now()->addSeconds(60), function () {
+            return static::scanAll();
+        });
+    }
+
+    /**
+     * @return \Illuminate\Support\Collection<int, string>
+     */
+    public static function scanAll(): \Illuminate\Support\Collection
+    {
         $finder = Finder::create()
             ->files()
             ->name('mtgo.log')
             ->in(Mtgo::getLogPath())
             ->ignoreUnreadableDirs()
             ->sortByModifiedTime()
-            ->reverseSorting()
             ->depth('< 8');
 
+        $paths = collect();
+
         foreach ($finder as $file) {
-            return $file->getRealPath();
+            $paths->push($file->getRealPath());
         }
 
-        return null;
+        return $paths;
     }
 }
