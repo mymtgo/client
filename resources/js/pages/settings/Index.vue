@@ -9,6 +9,7 @@ import UpdateOverlaySettingsController from '@/actions/App/Http/Controllers/Sett
 import UpdateShareStatsController from '@/actions/App/Http/Controllers/Settings/UpdateShareStatsController';
 import UpdateDebugModeController from '@/actions/App/Http/Controllers/Settings/UpdateDebugModeController';
 import UpdateWatcherController from '@/actions/App/Http/Controllers/Settings/UpdateWatcherController';
+import SimulateUpdateController from '@/actions/App/Http/Controllers/Debug/Updates/SimulateController';
 import type { LeagueData } from '@/components/leagues/LeagueTracker.vue';
 import LeagueTracker from '@/components/leagues/LeagueTracker.vue';
 import type { OpponentData } from '@/components/leagues/OpponentScout.vue';
@@ -383,6 +384,22 @@ const sampleOpponent: OpponentData = {
                             :disabled="processing === 'debugMode'"
                         />
                     </div>
+                    <template v-if="props.debugMode">
+                        <Separator class="my-4" />
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <Label>Simulate update</Label>
+                                <p class="text-sm text-muted-foreground">Triggers a fake update banner for testing.</p>
+                            </div>
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                @click="router.post(SimulateUpdateController.url(), {}, { preserveScroll: true })"
+                            >
+                                Simulate
+                            </Button>
+                        </div>
+                    </template>
                 </CardContent>
             </Card>
 
