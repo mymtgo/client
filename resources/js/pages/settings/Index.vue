@@ -7,6 +7,7 @@ import UpdateHidePhantomController from '@/actions/App/Http/Controllers/Settings
 import UpdateLogPathController from '@/actions/App/Http/Controllers/Settings/UpdateLogPathController';
 import UpdateOverlaySettingsController from '@/actions/App/Http/Controllers/Settings/UpdateOverlaySettingsController';
 import UpdateShareStatsController from '@/actions/App/Http/Controllers/Settings/UpdateShareStatsController';
+import UpdateDebugModeController from '@/actions/App/Http/Controllers/Settings/UpdateDebugModeController';
 import UpdateWatcherController from '@/actions/App/Http/Controllers/Settings/UpdateWatcherController';
 import type { LeagueData } from '@/components/leagues/LeagueTracker.vue';
 import LeagueTracker from '@/components/leagues/LeagueTracker.vue';
@@ -36,6 +37,7 @@ const props = defineProps<{
     leagueWindowEnabled: boolean;
     opponentWindowEnabled: boolean;
     deckWindowEnabled: boolean;
+    debugMode: boolean;
     appVersion: string;
 }>();
 
@@ -118,6 +120,10 @@ function setOpponentWindowEnabled(val: boolean) {
 
 function setDeckWindowEnabled(val: boolean) {
     withProcessing('deckWindow', 'post', UpdateOverlaySettingsController.url(), { deck_window: val });
+}
+
+function toggleDebugMode(val: boolean) {
+    withProcessing('debugMode', 'patch', UpdateDebugModeController.url(), { enabled: val });
 }
 
 const sampleLeague: LeagueData = {
@@ -355,6 +361,27 @@ const sampleOpponent: OpponentData = {
                                     : `Submit ${pendingMatches.length} match${pendingMatches.length === 1 ? '' : 'es'}`
                             }}
                         </Button>
+                    </div>
+                </CardContent>
+            </Card>
+
+            <!-- Debug Mode -->
+            <Card>
+                <CardHeader>
+                    <CardTitle>Debug Mode</CardTitle>
+                    <CardDescription>This will add more menu items and editing capabilities, use at your own risk.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <Label>Enable debug mode</Label>
+                            <p class="text-sm text-muted-foreground">Access raw database tables for matches, games, and log events.</p>
+                        </div>
+                        <Switch
+                            :modelValue="props.debugMode"
+                            @update:modelValue="toggleDebugMode"
+                            :disabled="processing === 'debugMode'"
+                        />
                     </div>
                 </CardContent>
             </Card>

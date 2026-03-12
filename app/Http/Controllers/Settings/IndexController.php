@@ -30,6 +30,7 @@ class IndexController extends Controller
                 ->get(['id', 'format', 'games_won', 'games_lost', 'started_at']),
             'hidePhantomLeagues' => (bool) Settings::get('hide_phantom_leagues'),
             'accounts' => Account::orderBy('username')->get(['id', 'username', 'tracked', 'active']),
+            'debugMode' => (bool) Settings::get('debug_mode'),
             'appVersion' => config('nativephp.version'),
             'leagueWindowEnabled' => (bool) Settings::get('league_window'),
             'opponentWindowEnabled' => (bool) Settings::get('opponent_window'),

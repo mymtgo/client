@@ -4,6 +4,17 @@ id: number;
 name: string;
 format: string;
 colorIdentity: string | null;
+decklistDownloadedAt: string | null;
+hasDecklist: boolean;
+};
+export type ArchetypeDetailData = {
+archetype: App.Data.Front.ArchetypeData;
+cards: Array<App.Data.Front.CardData> | null;
+playingWinrate: number | null;
+playingRecord: string | null;
+facingWinrate: number | null;
+facingRecord: string | null;
+isStale: boolean;
 };
 export type CardData = {
 mtgoId: number | null;

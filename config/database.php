@@ -37,10 +37,9 @@ return [
             'database' => env('DB_DATABASE', database_path('nativephp.sqlite')),
             'prefix' => '',
             'foreign_key_constraints' => env('DB_FOREIGN_KEYS', true),
-            'busy_timeout' => 5000,
+            'busy_timeout' => 30000,
             'journal_mode' => 'WAL',
             'synchronous' => 'NORMAL',
-            'transaction_mode' => 'IMMEDIATE',
         ],
 
         'mysql' => [
