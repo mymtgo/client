@@ -16,6 +16,7 @@ use App\Models\League;
 use App\Models\LogEvent;
 use App\Models\MtgoMatch;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Native\Desktop\Facades\Settings;
 
@@ -46,62 +47,66 @@ class AdvanceMatchState
             return null;
         }
 
-        // ── Find or create the match ────────────────────────────────
-        $match = MtgoMatch::where('mtgo_id', $matchId)->first();
+        // Wrap all state-advancement writes in a single transaction so
+        // the SQLite write-lock is held once instead of 10–15 times.
+        return DB::transaction(function () use ($matchToken, $matchId, $events, $stateChanges, $joinedState) {
+            // ── Find or create the match ────────────────────────────────
+            $match = MtgoMatch::where('mtgo_id', $matchId)->first();
 
-        if (! $match) {
-            $gameMeta = ExtractKeyValueBlock::run($joinedState->raw_text);
+            if (! $match) {
+                $gameMeta = ExtractKeyValueBlock::run($joinedState->raw_text);
 
-            $started = now()->parse($joinedState->logged_at)
-                ->setTimeFromTimeString($joinedState->timestamp);
+                $started = now()->parse($joinedState->logged_at)
+                    ->setTimeFromTimeString($joinedState->timestamp);
 
-            $match = MtgoMatch::create([
-                'mtgo_id' => $matchId,
-                'token' => $matchToken,
-                'format' => $gameMeta['PlayFormatCd'] ?? 'Unknown',
-                'match_type' => $gameMeta['GameStructureCd'] ?? 'Unknown',
-                'started_at' => $started,
-                'ended_at' => $started, // placeholder until real end is known
-                'state' => MatchState::Started,
-            ]);
-        }
+                $match = MtgoMatch::create([
+                    'mtgo_id' => $matchId,
+                    'token' => $matchToken,
+                    'format' => $gameMeta['PlayFormatCd'] ?? 'Unknown',
+                    'match_type' => $gameMeta['GameStructureCd'] ?? 'Unknown',
+                    'started_at' => $started,
+                    'ended_at' => $started, // placeholder until real end is known
+                    'state' => MatchState::Started,
+                ]);
+            }
 
-        // ── No regression ───────────────────────────────────────────
-        if ($match->state === MatchState::Complete || $match->state === MatchState::Voided) {
-            return $match;
-        }
-
-        $gameMeta ??= ExtractKeyValueBlock::run($joinedState->raw_text);
-
-        // ── Started → InProgress ────────────────────────────────────
-        if ($match->state === MatchState::Started) {
-            $advanced = self::tryAdvanceToInProgress($match, $events, $gameMeta);
-
-            if (! $advanced) {
+            // ── No regression ───────────────────────────────────────────
+            if ($match->state === MatchState::Complete || $match->state === MatchState::Voided) {
                 return $match;
             }
-        }
 
-        // ── Create any games whose events arrived after Started → InProgress ──
-        if ($match->state === MatchState::InProgress || $match->state === MatchState::Ended) {
-            self::createMissingGames($match, $events);
-        }
+            $gameMeta ??= ExtractKeyValueBlock::run($joinedState->raw_text);
 
-        // ── InProgress → Ended ──────────────────────────────────────
-        if ($match->state === MatchState::InProgress) {
-            $advanced = self::tryAdvanceToEnded($match, $events, $stateChanges);
+            // ── Started → InProgress ────────────────────────────────────
+            if ($match->state === MatchState::Started) {
+                $advanced = self::tryAdvanceToInProgress($match, $events, $gameMeta);
 
-            if (! $advanced) {
-                return $match;
+                if (! $advanced) {
+                    return $match;
+                }
             }
-        }
 
-        // ── Ended → Complete ────────────────────────────────────────
-        if ($match->state === MatchState::Ended) {
-            self::tryAdvanceToComplete($match, $events, $stateChanges, $gameMeta);
-        }
+            // ── Create any games whose events arrived after Started → InProgress ──
+            if ($match->state === MatchState::InProgress || $match->state === MatchState::Ended) {
+                self::createMissingGames($match, $events);
+            }
 
-        return $match->refresh();
+            // ── InProgress → Ended ──────────────────────────────────────
+            if ($match->state === MatchState::InProgress) {
+                $advanced = self::tryAdvanceToEnded($match, $events, $stateChanges);
+
+                if (! $advanced) {
+                    return $match;
+                }
+            }
+
+            // ── Ended → Complete ────────────────────────────────────────
+            if ($match->state === MatchState::Ended) {
+                self::tryAdvanceToComplete($match, $events, $stateChanges, $gameMeta);
+            }
+
+            return $match->refresh();
+        });
     }
 
     /**
