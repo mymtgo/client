@@ -74,6 +74,8 @@ Route::group([], function (\Illuminate\Routing\Router $router) {
         $group->patch('debug-mode', \App\Http\Controllers\Settings\UpdateDebugModeController::class)->name('settings.debug-mode');
     });
 
+    $router->post('updates/install', \App\Http\Controllers\Updates\InstallController::class)->name('updates.install');
+
     $router->group([
         'prefix' => 'debug',
         'middleware' => 'debug',
