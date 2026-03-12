@@ -77,5 +77,9 @@ Route::group([], function (\Illuminate\Routing\Router $router) {
         // Games
         $group->get('games', \App\Http\Controllers\Debug\Games\IndexController::class)->name('debug.games.index');
         $group->patch('games/{game}', \App\Http\Controllers\Debug\Games\UpdateController::class)->name('debug.games.update');
+
+        // Log Events
+        $group->get('log-events', \App\Http\Controllers\Debug\LogEvents\IndexController::class)->name('debug.log-events.index');
+        $group->patch('log-events/{logEvent}', \App\Http\Controllers\Debug\LogEvents\UpdateController::class)->name('debug.log-events.update');
     });
 });
