@@ -12,9 +12,9 @@ const page = usePage();
 const nav = [
     { label: 'Dashboard', icon: LayoutDashboard, href: DashboardController.url() },
     { label: 'Decks', icon: Layers, href: DecksIndexController.url() },
-    { label: 'Archetypes', icon: Puzzle, href: ArchetypesIndexController.url() },
     { label: 'Leagues', icon: Trophy, href: LeaguesIndexController.url() },
     { label: 'Opponents', icon: Swords, href: OpponentsIndexController.url() },
+    { label: 'Archetypes', icon: Puzzle, href: ArchetypesIndexController.url() },
 ];
 
 const isActive = (href: string) => {

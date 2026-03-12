@@ -32,6 +32,7 @@ class DownloadArchetypeDecklist
         }
 
         $cards = $response->json('cards', []);
+
         $pivotData = [];
 
         foreach ($cards as $cardData) {

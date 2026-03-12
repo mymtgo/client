@@ -16,6 +16,6 @@ class DownloadDecklistController
             return redirect()->back()->with('error', $e->getMessage());
         }
 
-        return redirect()->route('archetypes.show', $archetype);
+        return redirect()->back();
     }
 }

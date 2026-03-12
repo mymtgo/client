@@ -22,6 +22,8 @@ function downloadDecklist() {
         DownloadDecklistController.url({ archetype: props.detail.archetype.id }),
         {},
         {
+            preserveState: true,
+            preserveScroll: true,
             onFinish: () => { downloading.value = false; },
         },
     );
@@ -33,6 +35,7 @@ function exportDek() {
         ExportDekController.url({ archetype: props.detail.archetype.id }),
         {},
         {
+            preserveState: true,
             preserveScroll: true,
             onFinish: () => { exporting.value = false; },
         },

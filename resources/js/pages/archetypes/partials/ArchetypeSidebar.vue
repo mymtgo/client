@@ -77,6 +77,8 @@ function goToPage(page: number) {
                     'border-l-2 border-l-purple-500 bg-accent/30': selectedId === archetype.id,
                 }"
                 preserve-state
+                preserve-scroll
+                :only="['detail']"
             >
                 <div class="min-w-0 flex-1">
                     <div class="truncate font-medium text-foreground">{{ archetype.name }}</div>
