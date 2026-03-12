@@ -21,22 +21,19 @@ const props = defineProps<{
         current_page: number;
         last_page: number;
     };
-    filters: { search: string; event_type: string; context: string; category: string };
+    filters: { search: string; event_type: string; category: string };
     eventTypeOptions: SelectOption[];
-    contextOptions: SelectOption[];
     categoryOptions: SelectOption[];
 }>();
 
 const searchFilter = ref(props.filters.search);
 const eventTypeFilter = ref(props.filters.event_type);
-const contextFilter = ref(props.filters.context);
 const categoryFilter = ref(props.filters.category);
 
 function applyFilters() {
     router.get('/debug/log-events', {
         search: searchFilter.value || undefined,
         event_type: eventTypeFilter.value || undefined,
-        context: contextFilter.value || undefined,
         category: categoryFilter.value || undefined,
     }, { preserveScroll: true });
 }
@@ -44,7 +41,6 @@ function applyFilters() {
 function clearFilters() {
     searchFilter.value = '';
     eventTypeFilter.value = '';
-    contextFilter.value = '';
     categoryFilter.value = '';
     router.get('/debug/log-events', {}, { preserveScroll: true });
 }
@@ -112,20 +108,6 @@ const columns = [
                         <SelectContent>
                             <SelectItem value="__all__">All types</SelectItem>
                             <SelectItem v-for="opt in eventTypeOptions" :key="opt.value" :value="opt.value">
-                                {{ opt.label }}
-                            </SelectItem>
-                        </SelectContent>
-                    </Select>
-                </div>
-                <div class="flex flex-col gap-1">
-                    <Label class="text-xs">Context</Label>
-                    <Select :modelValue="contextFilter || undefined" @update:modelValue="(val: string) => (contextFilter = val === '__all__' ? '' : val)">
-                        <SelectTrigger class="h-8 w-48 text-xs">
-                            <SelectValue placeholder="All" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="__all__">All</SelectItem>
-                            <SelectItem v-for="opt in contextOptions" :key="opt.value" :value="opt.value">
                                 {{ opt.label }}
                             </SelectItem>
                         </SelectContent>

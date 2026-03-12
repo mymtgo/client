@@ -27,10 +27,6 @@ class IndexController extends Controller
             $query->where('event_type', $request->input('event_type'));
         }
 
-        if ($request->filled('context')) {
-            $query->where('context', $request->input('context'));
-        }
-
         if ($request->filled('category')) {
             $query->where('category', $request->input('category'));
         }
@@ -40,7 +36,6 @@ class IndexController extends Controller
             'filters' => [
                 'search' => $request->input('search', ''),
                 'event_type' => $request->input('event_type', ''),
-                'context' => $request->input('context', ''),
                 'category' => $request->input('category', ''),
             ],
             'eventTypeOptions' => LogEvent::query()
@@ -52,20 +47,6 @@ class IndexController extends Controller
                 ->map(fn (string $t) => [
                     'label' => $t,
                     'value' => $t,
-                ]),
-            'contextOptions' => LogEvent::query()
-                ->selectRaw('context, count(*) as cnt')
-                ->whereNotNull('context')
-                ->where('context', '!=', '')
-                ->groupBy('context')
-                ->orderByDesc('cnt')
-                ->limit(50)
-                ->pluck('context')
-                ->sort()
-                ->values()
-                ->map(fn (string $c) => [
-                    'label' => $c,
-                    'value' => $c,
                 ]),
             'categoryOptions' => LogEvent::query()
                 ->selectRaw('category, count(*) as cnt')
