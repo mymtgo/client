@@ -27,7 +27,7 @@ const error = computed(() => errors[props.status] ?? {
 <template>
     <div class="flex flex-1 items-center justify-center p-8">
         <div class="flex flex-col items-center gap-4 text-center">
-            <component :is="error.icon" class="size-12 text-muted-foreground/50" />
+            <component :is="error.icon" class="size-12 text-muted-foreground" />
             <div>
                 <h1 class="text-4xl font-bold text-foreground">{{ status }}</h1>
                 <p class="mt-1 text-lg font-medium text-muted-foreground">{{ error.title }}</p>
