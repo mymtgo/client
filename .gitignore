@@ -35,3 +35,5 @@ Thumbs.db
 /screenshots
 /database/mtgo.log
 CLAUDE.md
+/resources/js/actions
+/resources/js/routes
