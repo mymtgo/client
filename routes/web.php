@@ -44,6 +44,15 @@ Route::group([], function (\Illuminate\Routing\Router $router) {
     });
 
     $router->group([
+        'prefix' => 'archetypes',
+    ], function (\Illuminate\Routing\Router $group) {
+        $group->get('/', \App\Http\Controllers\Archetypes\IndexController::class)->name('archetypes.index');
+        $group->get('{archetype}', \App\Http\Controllers\Archetypes\ShowController::class)->name('archetypes.show');
+        $group->post('{archetype}/download', \App\Http\Controllers\Archetypes\DownloadDecklistController::class)->name('archetypes.download');
+        $group->post('{archetype}/export', \App\Http\Controllers\Archetypes\ExportDekController::class)->name('archetypes.export');
+    });
+
+    $router->group([
         'prefix' => 'settings',
     ], function (\Illuminate\Routing\Router $group) {
         $group->get('/', \App\Http\Controllers\Settings\IndexController::class)->name('settings.index');
