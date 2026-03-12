@@ -13,6 +13,7 @@ import RunSubmitMatchesController from './RunSubmitMatchesController'
 import SwitchAccountController from './SwitchAccountController'
 import UpdateAccountTrackingController from './UpdateAccountTrackingController'
 import UpdateOverlaySettingsController from './UpdateOverlaySettingsController'
+import UpdateDebugModeController from './UpdateDebugModeController'
 
 const Settings = {
     IndexController: Object.assign(IndexController, IndexController),
@@ -30,6 +31,7 @@ const Settings = {
     SwitchAccountController: Object.assign(SwitchAccountController, SwitchAccountController),
     UpdateAccountTrackingController: Object.assign(UpdateAccountTrackingController, UpdateAccountTrackingController),
     UpdateOverlaySettingsController: Object.assign(UpdateOverlaySettingsController, UpdateOverlaySettingsController),
+    UpdateDebugModeController: Object.assign(UpdateDebugModeController, UpdateDebugModeController),
 }
 
 export default Settings

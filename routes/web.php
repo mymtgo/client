@@ -61,5 +61,6 @@ Route::group([], function (\Illuminate\Routing\Router $router) {
         $group->patch('switch-account', \App\Http\Controllers\Settings\SwitchAccountController::class)->name('settings.switch-account');
         $group->patch('account-tracking', \App\Http\Controllers\Settings\UpdateAccountTrackingController::class)->name('settings.account-tracking');
         $group->post('overlay', \App\Http\Controllers\Settings\UpdateOverlaySettingsController::class)->name('settings.overlay');
+        $group->patch('debug-mode', \App\Http\Controllers\Settings\UpdateDebugModeController::class)->name('settings.debug-mode');
     });
 });

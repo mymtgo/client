@@ -4,7 +4,8 @@ import DashboardController from '@/actions/App/Http/Controllers/IndexController'
 import LeaguesIndexController from '@/actions/App/Http/Controllers/Leagues/IndexController';
 import OpponentsIndexController from '@/actions/App/Http/Controllers/Opponents/IndexController';
 import { Link, usePage } from '@inertiajs/vue3';
-import { Layers, LayoutDashboard, Swords, Trophy } from 'lucide-vue-next';
+import { Bug, Layers, LayoutDashboard, Swords, Trophy } from 'lucide-vue-next';
+import { computed } from 'vue';
 
 const page = usePage();
 
@@ -14,6 +15,8 @@ const nav = [
     { label: 'Leagues', icon: Trophy, href: LeaguesIndexController.url() },
     { label: 'Opponents', icon: Swords, href: OpponentsIndexController.url() },
 ];
+
+const debugMode = computed(() => (usePage().props as Record<string, unknown>).debugMode as boolean);
 
 const isActive = (href: string) => {
     if (href === '/') return page.url === '/';
@@ -36,6 +39,18 @@ const isActive = (href: string) => {
         >
             <component :is="item.icon" class="size-4" />
             {{ item.label }}
+        </Link>
+        <Link
+            v-if="debugMode"
+            href="/debug/matches"
+            class="relative inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm font-medium text-white transition-colors"
+            :class="{
+                'border-blue-500/40 bg-blue-500/10 shadow-inner shadow-black text-blue-300 outline-[1px] outline-white/2': isActive('/debug'),
+                'bevel border-black/60 hover:bg-accent/50 hover:text-accent-foreground': !isActive('/debug'),
+            }"
+        >
+            <Bug class="size-4" />
+            Debug
         </Link>
     </nav>
 </template>
