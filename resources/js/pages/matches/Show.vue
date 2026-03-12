@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, nextTick } from 'vue';
 import BackLink from '@/components/BackLink.vue';
 import { Button } from '@/components/ui/button';
 import ResultBadge from '@/components/matches/ResultBadge.vue';
@@ -7,8 +7,10 @@ import ManaSymbols from '@/components/ManaSymbols.vue';
 import SetArchetypeDialog from '@/components/matches/SetArchetypeDialog.vue';
 import MatchGame from '@/pages/matches/partials/MatchGame.vue';
 import DeckShowController from '@/actions/App/Http/Controllers/Decks/ShowController';
-import { PencilIcon } from 'lucide-vue-next';
+import UpdateNotesController from '@/actions/App/Http/Controllers/Matches/UpdateNotesController';
+import { PencilIcon, NotepadText } from 'lucide-vue-next';
 import dayjs from 'dayjs';
+import { useForm } from '@inertiajs/vue3';
 
 type GameDetail = {
     id: number;
@@ -31,6 +33,25 @@ const props = defineProps<{
 }>();
 
 const archetypeDialog = ref<InstanceType<typeof SetArchetypeDialog> | null>(null);
+const editingNotes = ref(false);
+const notesTextarea = ref<HTMLTextAreaElement | null>(null);
+
+const notesForm = useForm<{ notes: string | null }>({
+    notes: props.match.notes ?? null,
+});
+
+function startEditingNotes() {
+    notesForm.notes = props.match.notes ?? '';
+    editingNotes.value = true;
+    nextTick(() => notesTextarea.value?.focus());
+}
+
+function saveNotes() {
+    editingNotes.value = false;
+    notesForm.submit(UpdateNotesController({ id: props.match.id }), {
+        preserveScroll: true,
+    });
+}
 
 const isWin = computed(() => props.match.gamesWon > props.match.gamesLost);
 const deck = computed(() => props.match.deck as App.Data.Front.DeckData | null);
@@ -89,6 +110,29 @@ const opponentArchetype = computed(() => {
                     · {{ dayjs(match.startedAt).format('MMM D, YYYY [at] h:mma') }}
                     · {{ match.matchTime }}
                     <template v-if="match.leagueName"> · {{ match.leagueName }}</template>
+                </p>
+            </div>
+
+            <!-- Notes -->
+            <div class="flex flex-col gap-1">
+                <div class="flex items-center gap-1.5 text-sm text-muted-foreground">
+                    <NotepadText :size="14" />
+                    <span>Notes</span>
+                </div>
+                <textarea
+                    v-if="editingNotes"
+                    ref="notesTextarea"
+                    v-model="notesForm.notes"
+                    class="min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    placeholder="Add your notes about this match..."
+                    @blur="saveNotes"
+                />
+                <p
+                    v-else
+                    class="cursor-pointer whitespace-pre-wrap rounded-md px-3 py-2 text-sm hover:bg-accent/50"
+                    @click="startEditingNotes"
+                >
+                    {{ match.notes || 'Click to add notes...' }}
                 </p>
             </div>
 
