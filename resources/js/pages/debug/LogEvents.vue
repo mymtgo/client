@@ -91,12 +91,12 @@ const columns = [
                 </div>
                 <div class="flex flex-col gap-1">
                     <Label class="text-xs">Event Type</Label>
-                    <Select v-model="eventTypeFilter">
+                    <Select :modelValue="eventTypeFilter || undefined" @update:modelValue="(val: string) => (eventTypeFilter = val === '__all__' ? '' : val)">
                         <SelectTrigger class="h-8 w-48 text-xs">
                             <SelectValue placeholder="All types" />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="">All types</SelectItem>
+                            <SelectItem value="__all__">All types</SelectItem>
                             <SelectItem v-for="opt in eventTypeOptions" :key="opt.value" :value="opt.value">
                                 {{ opt.label }}
                             </SelectItem>
