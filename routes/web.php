@@ -73,5 +73,9 @@ Route::group([], function (\Illuminate\Routing\Router $router) {
         $group->patch('matches/{match}', \App\Http\Controllers\Debug\Matches\UpdateController::class)->name('debug.matches.update');
         $group->delete('matches/{match}', \App\Http\Controllers\Debug\Matches\DestroyController::class)->name('debug.matches.destroy');
         $group->patch('matches/{match}/restore', \App\Http\Controllers\Debug\Matches\RestoreController::class)->name('debug.matches.restore');
+
+        // Games
+        $group->get('games', \App\Http\Controllers\Debug\Games\IndexController::class)->name('debug.games.index');
+        $group->patch('games/{game}', \App\Http\Controllers\Debug\Games\UpdateController::class)->name('debug.games.update');
     });
 });
