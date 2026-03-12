@@ -10,6 +10,7 @@ Route::group([], function (\Illuminate\Routing\Router $router) {
     ], function (\Illuminate\Routing\Router $group) {
         $group->get('{id}', \App\Http\Controllers\Matches\ShowController::class)->name('matches.show');
         $group->patch('{id}/archetype', \App\Http\Controllers\Matches\UpdateArchetypeController::class)->name('matches.update-archetype');
+        $group->patch('{id}/notes', \App\Http\Controllers\Matches\UpdateNotesController::class)->name('matches.update-notes');
         $group->delete('{id}', \App\Http\Controllers\Matches\DeleteController::class)->name('matches.delete');
     });
 

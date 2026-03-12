@@ -4,13 +4,16 @@ import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } 
 import { Badge } from '@/components/ui/badge';
 import ManaSymbols from '@/components/ManaSymbols.vue';
 import ResultBadge from '@/components/matches/ResultBadge.vue';
+import MatchNotesDialog from '@/components/matches/MatchNotesDialog.vue';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import dayjs from 'dayjs';
 import { useForm, router } from '@inertiajs/vue3';
 import DeleteController from '@/actions/App/Http/Controllers/Matches/DeleteController';
 import UpdateArchetypeController from '@/actions/App/Http/Controllers/Matches/UpdateArchetypeController';
 import ShowController from '@/actions/App/Http/Controllers/Matches/ShowController';
 import SetArchetypeDialog from '@/components/matches/SetArchetypeDialog.vue';
+import { NotepadText } from 'lucide-vue-next';
 
 defineProps<{
     matches: App.Data.Front.MatchData[];
@@ -18,6 +21,7 @@ defineProps<{
 }>();
 
 const archetypeDialog = ref<InstanceType<typeof SetArchetypeDialog> | null>(null);
+const notesDialog = ref<InstanceType<typeof MatchNotesDialog> | null>(null);
 
 const deleteForm = useForm<{
     id: string | number;
@@ -47,6 +51,7 @@ const clearArchetype = (matchId: number) => {
 
 <template>
     <SetArchetypeDialog ref="archetypeDialog" :archetypes="archetypes ?? []" />
+    <MatchNotesDialog ref="notesDialog" />
 
     <Table>
         <TableHeader class="bg-muted">
@@ -60,6 +65,7 @@ const clearArchetype = (matchId: number) => {
                 <TableHead>Games lost</TableHead>
                 <TableHead>Duration</TableHead>
                 <TableHead>Date</TableHead>
+                <TableHead></TableHead>
             </TableRow>
         </TableHeader>
         <TableBody>
@@ -101,10 +107,25 @@ const clearArchetype = (matchId: number) => {
                             <TableCell>
                                 {{ dayjs(match.startedAt).format('DD/MM/YYYY hh:mma') }}
                             </TableCell>
+                            <TableCell>
+                                <TooltipProvider v-if="match.notes">
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <NotepadText :size="14" class="text-muted-foreground" />
+                                        </TooltipTrigger>
+                                        <TooltipContent side="left" class="max-w-xs">
+                                            <p class="whitespace-pre-wrap text-xs">{{ match.notes }}</p>
+                                        </TooltipContent>
+                                    </Tooltip>
+                                </TooltipProvider>
+                            </TableCell>
 
                         </TableRow>
                     </ContextMenuTrigger>
                     <ContextMenuContent>
+                        <ContextMenuItem @click="notesDialog?.openForMatch(match.id, match.notes ?? null)">
+                            {{ match.notes ? 'Edit notes' : 'Add notes' }}
+                        </ContextMenuItem>
                         <ContextMenuItem @click="archetypeDialog?.openForMatch(match.id, match.format)">Set archetype</ContextMenuItem>
                         <ContextMenuItem
                             v-if="match.opponentArchetypes?.[0]?.archetype"
