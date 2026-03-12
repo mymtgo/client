@@ -1,9 +1,11 @@
 <script lang="ts" setup>
+import { computed } from 'vue';
+
 const props = defineProps<{
     symbols: string | null;
 }>();
 
-const symbolsArray = props.symbols?.split(',') || [];
+const symbolsArray = computed(() => props.symbols?.split(',') || []);
 </script>
 
 <template>

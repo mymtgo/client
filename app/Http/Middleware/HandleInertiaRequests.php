@@ -29,6 +29,7 @@ class HandleInertiaRequests extends Middleware
                 'lastIngestAt' => LogCursor::max('updated_at'),
                 'pendingMatchCount' => MtgoMatch::submittable()->count(),
             ],
+            'debugMode' => fn () => (bool) \Native\Desktop\Facades\Settings::get('debug_mode'),
             'activeAccount' => fn () => Account::active()->first()?->username,
             'accounts' => fn () => Account::tracked()->orderBy('username')->get(['id', 'username', 'active']),
         ];

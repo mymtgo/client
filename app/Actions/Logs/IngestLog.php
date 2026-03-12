@@ -153,19 +153,19 @@ class IngestLog
             fclose($fh);
         }
 
-        // No new complete events? Still update cursor to safeOffset (important if we flushed earlier events).
-        $hadNewEvents = false;
+        // Batch all DB writes in a single transaction to minimise lock duration.
+        $hadNewEvents = ! empty($rows);
 
-        if (! empty($rows)) {
-            foreach (array_chunk($rows, 500) as $chunk) {
-                LogEvent::query()->insertOrIgnore($chunk);
+        DB::transaction(function () use ($rows, $cursor, $safeOffset) {
+            if (! empty($rows)) {
+                foreach (array_chunk($rows, 500) as $chunk) {
+                    LogEvent::query()->insertOrIgnore($chunk);
+                }
             }
 
-            $hadNewEvents = true;
-        }
-
-        $cursor->byte_offset = $safeOffset;
-        $cursor->save();
+            $cursor->byte_offset = $safeOffset;
+            $cursor->save();
+        });
 
         if ($hadNewEvents) {
             LogEventsIngested::dispatch();
