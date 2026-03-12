@@ -4,8 +4,11 @@ import EditableCell from '@/components/debug/EditableCell.vue';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { useToast } from '@/composables/useToast';
 import { router } from '@inertiajs/vue3';
 import { reactive } from 'vue';
+
+const { add: toast } = useToast();
 
 type SelectOption = { label: string; value: string };
 
@@ -30,7 +33,10 @@ function saveField(gameId: number, field: string, value: unknown) {
     const key = `${gameId}-${field}`;
     router.patch(`/debug/games/${gameId}`, { [field]: value }, {
         preserveScroll: true,
-        onSuccess: () => flashCell(key, 'success'),
+        onSuccess: () => {
+            flashCell(key, 'success');
+            toast({ type: 'success', title: 'Updated', message: `Game #${gameId} ${field} updated.`, duration: 2000 });
+        },
         onError: () => flashCell(key, 'error'),
     });
 }

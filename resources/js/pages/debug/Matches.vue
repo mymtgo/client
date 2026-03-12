@@ -3,8 +3,11 @@ import DebugNav from '@/components/debug/DebugNav.vue';
 import EditableCell from '@/components/debug/EditableCell.vue';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { useToast } from '@/composables/useToast';
 import { router } from '@inertiajs/vue3';
 import { reactive } from 'vue';
+
+const { add: toast } = useToast();
 
 type SelectOption = { label: string; value: string };
 
@@ -31,17 +34,26 @@ function saveField(matchId: number, field: string, value: unknown) {
     const key = `${matchId}-${field}`;
     router.patch(`/debug/matches/${matchId}`, { [field]: value }, {
         preserveScroll: true,
-        onSuccess: () => flashCell(key, 'success'),
+        onSuccess: () => {
+            flashCell(key, 'success');
+            toast({ type: 'success', title: 'Updated', message: `Match #${matchId} ${field} updated.`, duration: 2000 });
+        },
         onError: () => flashCell(key, 'error'),
     });
 }
 
 function deleteMatch(id: number) {
-    router.delete(`/debug/matches/${id}`, { preserveScroll: true });
+    router.delete(`/debug/matches/${id}`, {
+        preserveScroll: true,
+        onSuccess: () => toast({ type: 'success', title: 'Deleted', message: `Match #${id} soft-deleted.`, duration: 2000 }),
+    });
 }
 
 function restoreMatch(id: number) {
-    router.patch(`/debug/matches/${id}/restore`, {}, { preserveScroll: true });
+    router.patch(`/debug/matches/${id}/restore`, {}, {
+        preserveScroll: true,
+        onSuccess: () => toast({ type: 'success', title: 'Restored', message: `Match #${id} restored.`, duration: 2000 }),
+    });
 }
 
 const columns = [

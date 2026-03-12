@@ -6,8 +6,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { useToast } from '@/composables/useToast';
 import { router } from '@inertiajs/vue3';
 import { reactive, ref } from 'vue';
+
+const { add: toast } = useToast();
 
 type SelectOption = { label: string; value: string };
 
@@ -18,23 +21,31 @@ const props = defineProps<{
         current_page: number;
         last_page: number;
     };
-    filters: { match_token: string; event_type: string };
+    filters: { search: string; event_type: string; context: string; category: string };
     eventTypeOptions: SelectOption[];
+    contextOptions: SelectOption[];
+    categoryOptions: SelectOption[];
 }>();
 
-const matchTokenFilter = ref(props.filters.match_token);
+const searchFilter = ref(props.filters.search);
 const eventTypeFilter = ref(props.filters.event_type);
+const contextFilter = ref(props.filters.context);
+const categoryFilter = ref(props.filters.category);
 
 function applyFilters() {
     router.get('/debug/log-events', {
-        match_token: matchTokenFilter.value || undefined,
+        search: searchFilter.value || undefined,
         event_type: eventTypeFilter.value || undefined,
+        context: contextFilter.value || undefined,
+        category: categoryFilter.value || undefined,
     }, { preserveScroll: true });
 }
 
 function clearFilters() {
-    matchTokenFilter.value = '';
+    searchFilter.value = '';
     eventTypeFilter.value = '';
+    contextFilter.value = '';
+    categoryFilter.value = '';
     router.get('/debug/log-events', {}, { preserveScroll: true });
 }
 
@@ -49,7 +60,10 @@ function saveField(eventId: number, field: string, value: unknown) {
     const key = `${eventId}-${field}`;
     router.patch(`/debug/log-events/${eventId}`, { [field]: value }, {
         preserveScroll: true,
-        onSuccess: () => flashCell(key, 'success'),
+        onSuccess: () => {
+            flashCell(key, 'success');
+            toast({ type: 'success', title: 'Updated', message: `Log event #${eventId} ${field} updated.`, duration: 2000 });
+        },
         onError: () => flashCell(key, 'error'),
     });
 }
@@ -79,13 +93,13 @@ const columns = [
         <DebugNav />
         <div class="flex-1 overflow-auto p-4">
             <!-- Filters -->
-            <div class="mb-4 flex items-end gap-4">
+            <div class="mb-4 flex flex-wrap items-end gap-4">
                 <div class="flex flex-col gap-1">
-                    <Label class="text-xs">Match Token</Label>
+                    <Label class="text-xs">Search</Label>
                     <Input
-                        v-model="matchTokenFilter"
+                        v-model="searchFilter"
                         class="h-8 w-64 text-xs"
-                        placeholder="Filter by match token..."
+                        placeholder="Match token, game ID, match ID..."
                         @keydown.enter="applyFilters"
                     />
                 </div>
@@ -98,6 +112,34 @@ const columns = [
                         <SelectContent>
                             <SelectItem value="__all__">All types</SelectItem>
                             <SelectItem v-for="opt in eventTypeOptions" :key="opt.value" :value="opt.value">
+                                {{ opt.label }}
+                            </SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+                <div class="flex flex-col gap-1">
+                    <Label class="text-xs">Context</Label>
+                    <Select :modelValue="contextFilter || undefined" @update:modelValue="(val: string) => (contextFilter = val === '__all__' ? '' : val)">
+                        <SelectTrigger class="h-8 w-48 text-xs">
+                            <SelectValue placeholder="All" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="__all__">All</SelectItem>
+                            <SelectItem v-for="opt in contextOptions" :key="opt.value" :value="opt.value">
+                                {{ opt.label }}
+                            </SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+                <div class="flex flex-col gap-1">
+                    <Label class="text-xs">Category</Label>
+                    <Select :modelValue="categoryFilter || undefined" @update:modelValue="(val: string) => (categoryFilter = val === '__all__' ? '' : val)">
+                        <SelectTrigger class="h-8 w-48 text-xs">
+                            <SelectValue placeholder="All" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="__all__">All</SelectItem>
+                            <SelectItem v-for="opt in categoryOptions" :key="opt.value" :value="opt.value">
                                 {{ opt.label }}
                             </SelectItem>
                         </SelectContent>
