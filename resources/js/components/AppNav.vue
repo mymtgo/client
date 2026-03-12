@@ -1,10 +1,11 @@
 <script setup lang="ts">
+import ArchetypesIndexController from '@/actions/App/Http/Controllers/Archetypes/IndexController';
 import DecksIndexController from '@/actions/App/Http/Controllers/Decks/IndexController';
 import DashboardController from '@/actions/App/Http/Controllers/IndexController';
 import LeaguesIndexController from '@/actions/App/Http/Controllers/Leagues/IndexController';
 import OpponentsIndexController from '@/actions/App/Http/Controllers/Opponents/IndexController';
 import { Link, usePage } from '@inertiajs/vue3';
-import { Bug, Layers, LayoutDashboard, Swords, Trophy } from 'lucide-vue-next';
+import { Bug, Layers, LayoutDashboard, Puzzle, Swords, Trophy } from 'lucide-vue-next';
 import { computed } from 'vue';
 
 const page = usePage();
@@ -14,6 +15,7 @@ const nav = [
     { label: 'Decks', icon: Layers, href: DecksIndexController.url() },
     { label: 'Leagues', icon: Trophy, href: LeaguesIndexController.url() },
     { label: 'Opponents', icon: Swords, href: OpponentsIndexController.url() },
+    { label: 'Archetypes', icon: Puzzle, href: ArchetypesIndexController.url() },
 ];
 
 const debugMode = computed(() => (usePage().props as Record<string, unknown>).debugMode as boolean);

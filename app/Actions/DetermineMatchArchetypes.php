@@ -2,6 +2,7 @@
 
 namespace App\Actions;
 
+use App\Jobs\DownloadArchetypeDecklists;
 use App\Models\MtgoMatch;
 use App\Models\Player;
 
@@ -65,5 +66,9 @@ class DetermineMatchArchetypes
         $match->archetypes()->delete();
 
         $match->archetypes()->createMany($matchArchetypes);
+
+        foreach ($matchArchetypes as $matchArchetype) {
+            DownloadArchetypeDecklists::dispatch($matchArchetype['archetype_id']);
+        }
     }
 }

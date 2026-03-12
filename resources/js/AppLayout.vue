@@ -28,7 +28,7 @@ onMounted(() => {
     <div class="flex h-screen flex-col">
         <AppHeader />
         <AppNav />
-        <div class="flex flex-1 flex-col">
+        <div class="flex min-h-0 flex-1 flex-col">
             <slot />
         </div>
         <StatusBar />
