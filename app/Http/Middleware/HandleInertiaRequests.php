@@ -26,7 +26,7 @@ class HandleInertiaRequests extends Middleware
             ...parent::share($request),
             'status' => fn () => [
                 'watcherRunning' => (bool) \Native\Desktop\Facades\Settings::get('watcher_active', true),
-                'lastIngestAt' => LogCursor::first()?->updated_at,
+                'lastIngestAt' => LogCursor::max('updated_at'),
                 'pendingMatchCount' => MtgoMatch::submittable()->count(),
             ],
             'activeAccount' => fn () => Account::active()->first()?->username,

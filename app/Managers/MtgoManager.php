@@ -78,7 +78,7 @@ class MtgoManager
 
     public function getUsername(): ?string
     {
-        return LogCursor::first()->local_username;
+        return LogCursor::first()?->local_username;
     }
 
     public function retryUnsubmittedMatches(): void

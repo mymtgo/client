@@ -191,10 +191,10 @@ class AdvanceMatchState
             fn ($e) => str_contains($e->context ?? '', 'MatchConcedeReq')
         );
         $idxNotJoined = $stateChanges->search(
-            fn ($e) => str_contains($e->context ?? '', 'MatchNotJoinedUnderway')
+            fn ($e) => str_contains($e->context ?? '', 'NotJoined')
         );
         $idxConcedeFulfilled = $stateChanges->search(
-            fn ($e) => str_contains($e->context ?? '', 'MatchConcedeReqState to MatchNotJoinedEventUnderwayState')
+            fn ($e) => preg_match('/ConcedeReqState to .+NotJoined/', $e->context ?? '')
         );
 
         $concededAndQuit = ($idxConcede !== false
@@ -243,40 +243,11 @@ class AdvanceMatchState
         $maxGames = str_contains($gameMeta['GameStructureCd'] ?? '', 'BO5') ? 5 : 3;
         $logResults = array_slice($gameLog['results'] ?? [], 0, $maxGames);
 
-        $wins = count(array_filter($logResults, fn ($r) => $r === true));
-        $losses = count(array_filter($logResults, fn ($r) => $r === false));
-
-        /**
-         * Matches are best-of-N (BO3 needs 2 wins, BO5 needs 3).
-         * If the match ended early with fewer results than expected,
-         * either the local player conceded or the opponent quit.
-         *
-         * MatchConcedeReqState -> MatchNotJoinedEventUnderwayState only appears
-         * when the LOCAL player triggers the concede protocol; an opponent quitting
-         * MTGO entirely never generates that transition on our client.
-         */
-        $winThreshold = ($wins >= 3 || $losses >= 3) ? 3 : 2;
-
-        if (($wins + $losses) < $winThreshold) {
-            $localConceded = $stateChanges->contains(
-                fn (LogEvent $event) => str_contains(
-                    $event->context ?? '',
-                    'MatchConcedeReqState to MatchNotJoinedEventUnderwayState'
-                )
-            );
-
-            if ($localConceded) {
-                // Local forfeited — opponent is awarded enough games to win
-                $losses = $winThreshold;
-            } else {
-                // Opponent quit/disconnected — local is awarded enough games to win
-                $wins = $winThreshold;
-            }
-        }
+        $result = DetermineMatchResult::run($logResults, $stateChanges, $gameMeta['GameStructureCd'] ?? '');
 
         $match->update([
-            'games_won' => $wins,
-            'games_lost' => $losses,
+            'games_won' => $result['wins'],
+            'games_lost' => $result['losses'],
             'state' => MatchState::Complete,
         ]);
 

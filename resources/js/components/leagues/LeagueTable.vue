@@ -82,7 +82,10 @@ function abandonLeague(league: LeagueRun) {
                         </div>
 
                         <div class="flex items-center gap-1">
-                            <ResultBadge :won="result === 'W'" v-for="(result, i) in league.results" :key="i" />
+                            <template v-for="(result, i) in league.results" :key="i">
+                                <div v-if="result === null" class="h-2 w-2 rounded-full border border-muted-foreground/40" />
+                                <ResultBadge v-else :won="result === 'W'" />
+                            </template>
                         </div>
 
                         <DropdownMenu v-if="league.phantom">

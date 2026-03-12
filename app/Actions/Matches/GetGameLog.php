@@ -50,7 +50,7 @@ class GetGameLog
          * ===============================
          */
         preg_match_all(
-            '/@P(?<player>[A-Za-z0-9_]+) chooses to play (first|second)/',
+            '/@P(?<player>[A-Za-z0-9_-]{3,20}) chooses to play (first|second)/',
             $clean,
             $turnOrder,
             PREG_SET_ORDER
@@ -62,7 +62,7 @@ class GetGameLog
          * ===============================
          */
         preg_match_all(
-            '/@P(?<player>[A-Za-z0-9_]+)\s+.*?\bbegins the game with\s+(?<hand>(?:\d+|one|two|three|four|five|six|seven))\s+cards?\s+in\s+hand\b/i',
+            '/@P(?<player>[A-Za-z0-9_-]{3,20})\s+.*?\bbegins the game with\s+(?<hand>(?:\d+|one|two|three|four|five|six|seven))\s+cards?\s+in\s+hand\b/i',
             $clean,
             $mulligans,
             PREG_SET_ORDER
@@ -76,7 +76,7 @@ class GetGameLog
 
         // Explicit wins
         preg_match_all(
-            '/@P(?<player>[A-Za-z0-9_]+)\s+wins the game\b/i',
+            '/@P(?<player>[A-Za-z0-9_-]{3,20})\s+wins the game\b/i',
             $clean,
             $winMatches,
             PREG_SET_ORDER | PREG_OFFSET_CAPTURE
@@ -84,7 +84,7 @@ class GetGameLog
 
         // Terminal losses (concede / disconnect)
         preg_match_all(
-            '/@P(?<player>[A-Za-z0-9_]+)\s+has\s+(?<reason>conceded from the game|lost connection to the game)\b/i',
+            '/@P(?<player>[A-Za-z0-9_-]{3,20})\s+has\s+(?<reason>conceded from the game|lost connection to the game)\b/i',
             $clean,
             $terminalMatches,
             PREG_SET_ORDER | PREG_OFFSET_CAPTURE
