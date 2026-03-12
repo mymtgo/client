@@ -63,4 +63,15 @@ Route::group([], function (\Illuminate\Routing\Router $router) {
         $group->post('overlay', \App\Http\Controllers\Settings\UpdateOverlaySettingsController::class)->name('settings.overlay');
         $group->patch('debug-mode', \App\Http\Controllers\Settings\UpdateDebugModeController::class)->name('settings.debug-mode');
     });
+
+    $router->group([
+        'prefix' => 'debug',
+        'middleware' => 'debug',
+    ], function (\Illuminate\Routing\Router $group) {
+        // Matches
+        $group->get('matches', \App\Http\Controllers\Debug\Matches\IndexController::class)->name('debug.matches.index');
+        $group->patch('matches/{match}', \App\Http\Controllers\Debug\Matches\UpdateController::class)->name('debug.matches.update');
+        $group->delete('matches/{match}', \App\Http\Controllers\Debug\Matches\DestroyController::class)->name('debug.matches.destroy');
+        $group->patch('matches/{match}/restore', \App\Http\Controllers\Debug\Matches\RestoreController::class)->name('debug.matches.restore');
+    });
 });
