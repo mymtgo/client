@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { ref, watch } from 'vue';
 
 const props = defineProps<{
     modelValue: string | number | boolean | null;
-    type?: 'text' | 'number' | 'select' | 'readonly';
+    type?: 'text' | 'number' | 'select' | 'switch' | 'readonly';
     options?: Array<{ label: string; value: string }>;
     nullable?: boolean;
     flash?: 'success' | 'error' | null;
@@ -58,6 +59,12 @@ function onSelect(val: string) {
                 </SelectItem>
             </SelectContent>
         </Select>
+
+        <Switch
+            v-else-if="type === 'switch'"
+            :modelValue="!!modelValue"
+            @update:modelValue="(val: boolean) => emit('save', val)"
+        />
 
         <Input
             v-else

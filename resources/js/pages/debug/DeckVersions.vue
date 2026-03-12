@@ -14,13 +14,13 @@ const { add: toast } = useToast();
 type SelectOption = { label: string; value: string };
 
 const props = defineProps<{
-    games: {
+    deckVersions: {
         data: Array<Record<string, unknown>>;
         links: Array<{ url: string | null; label: string; active: boolean }>;
         current_page: number;
         last_page: number;
     };
-    matchOptions: SelectOption[];
+    deckOptions: SelectOption[];
 }>();
 
 const flashState = reactive<Record<string, 'success' | 'error' | null>>({});
@@ -30,13 +30,13 @@ function flashCell(key: string, state: 'success' | 'error') {
     setTimeout(() => (flashState[key] = null), 1000);
 }
 
-function saveField(gameId: number, field: string, value: unknown) {
-    const key = `${gameId}-${field}`;
-    router.patch(`/debug/games/${gameId}`, { [field]: value }, {
+function saveField(versionId: number, field: string, value: unknown) {
+    const key = `${versionId}-${field}`;
+    router.patch(`/debug/deck-versions/${versionId}`, { [field]: value }, {
         preserveScroll: true,
         onSuccess: () => {
             flashCell(key, 'success');
-            toast({ type: 'success', title: 'Updated', message: `Game #${gameId} ${field} updated.`, duration: 2000 });
+            toast({ type: 'success', title: 'Updated', message: `Deck version #${versionId} ${field} updated.`, duration: 2000 });
         },
         onError: () => flashCell(key, 'error'),
     });
@@ -44,22 +44,20 @@ function saveField(gameId: number, field: string, value: unknown) {
 
 const columns = [
     { key: 'id', label: 'ID', type: 'readonly' as const },
-    { key: 'won', label: 'Won', type: 'switch' as const },
-    { key: 'match_id', label: 'Match', type: 'select' as const, optionsKey: 'matchOptions' as const },
-    { key: 'mtgo_id', label: 'MTGO ID', type: 'text' as const },
-    { key: 'started_at', label: 'Started', type: 'text' as const },
-    { key: 'ended_at', label: 'Ended', type: 'text' as const },
+    { key: 'deck_id', label: 'Deck', type: 'select' as const, optionsKey: 'deckOptions' as const },
+    { key: 'signature', label: 'Signature', type: 'text' as const },
+    { key: 'modified_at', label: 'Modified At', type: 'text' as const },
 ];
 
 const optionsMap: Record<string, SelectOption[]> = {
-    matchOptions: props.matchOptions,
+    deckOptions: props.deckOptions,
 };
 
 const [refreshing, startRefreshing] = useSpinGuard();
 
 function refresh() {
     const stop = startRefreshing();
-    router.reload({ preserveScroll: true, onSuccess: () => toast({ type: 'success', title: 'Refreshed', message: 'Games refreshed.', duration: 2000 }), onFinish: stop });
+    router.reload({ preserveScroll: true, onSuccess: () => toast({ type: 'success', title: 'Refreshed', message: 'Deck versions refreshed.', duration: 2000 }), onFinish: stop });
 }
 </script>
 
@@ -83,16 +81,15 @@ function refresh() {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        <tr v-for="game in games.data" :key="game.id as number">
+                        <tr v-for="version in deckVersions.data" :key="version.id as number">
                             <EditableCell
                                 v-for="col in columns"
                                 :key="col.key"
-                                :modelValue="game[col.key] as string | number | null"
+                                :modelValue="version[col.key] as string | number | null"
                                 :type="col.type"
                                 :options="col.optionsKey ? optionsMap[col.optionsKey] : undefined"
-                                :nullable="col.nullable"
-                                :flash="flashState[`${game.id}-${col.key}`]"
-                                @save="(val: unknown) => saveField(game.id as number, col.key, val)"
+                                :flash="flashState[`${version.id}-${col.key}`]"
+                                @save="(val: unknown) => saveField(version.id as number, col.key, val)"
                             />
                         </tr>
                     </TableBody>
@@ -100,8 +97,8 @@ function refresh() {
             </div>
 
             <!-- Pagination -->
-            <div v-if="games.last_page > 1" class="mt-4 flex items-center justify-center gap-1">
-                <template v-for="link in games.links" :key="link.label">
+            <div v-if="deckVersions.last_page > 1" class="mt-4 flex items-center justify-center gap-1">
+                <template v-for="link in deckVersions.links" :key="link.label">
                     <Button
                         v-if="link.url"
                         variant="outline"

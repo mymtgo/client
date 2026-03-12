@@ -6,8 +6,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { useSpinGuard } from '@/composables/useSpinGuard';
 import { useToast } from '@/composables/useToast';
 import { router } from '@inertiajs/vue3';
+import { RefreshCw } from 'lucide-vue-next';
 import { reactive, ref } from 'vue';
 
 const { add: toast } = useToast();
@@ -62,6 +64,26 @@ function saveField(eventId: number, field: string, value: unknown) {
         },
         onError: () => flashCell(key, 'error'),
     });
+}
+
+const [ingesting, startIngesting] = useSpinGuard();
+const [refreshing, startRefreshing] = useSpinGuard();
+
+function ingestNow() {
+    const stop = startIngesting();
+    router.post('/debug/log-events/ingest', {}, {
+        preserveScroll: true,
+        onSuccess: () => {
+            toast({ type: 'success', title: 'Ingested', message: 'Log files ingested.', duration: 2000 });
+            setTimeout(() => refresh(), 1000);
+        },
+        onFinish: stop,
+    });
+}
+
+function refresh() {
+    const stop = startRefreshing();
+    router.reload({ preserveScroll: true, onSuccess: () => toast({ type: 'success', title: 'Refreshed', message: 'Log events refreshed.', duration: 2000 }), onFinish: stop });
 }
 
 const columns = [
@@ -129,6 +151,16 @@ const columns = [
                 </div>
                 <Button size="sm" class="h-8" @click="applyFilters">Filter</Button>
                 <Button size="sm" variant="outline" class="h-8" @click="clearFilters">Clear</Button>
+                <div class="ml-auto flex items-center gap-2">
+                    <Button size="sm" class="h-8" :disabled="ingesting" @click="ingestNow">
+                        <RefreshCw class="mr-1.5 h-3.5 w-3.5" :class="{ 'animate-spin': ingesting }" />
+                        Ingest Now
+                    </Button>
+                    <Button size="sm" variant="outline" class="h-8" @click="refresh">
+                        <RefreshCw class="mr-1.5 h-3.5 w-3.5" :class="{ 'animate-spin': refreshing }" />
+                        Refresh
+                    </Button>
+                </div>
             </div>
 
             <div class="overflow-x-auto rounded-lg border border-border">

@@ -73,6 +73,7 @@ Route::group([], function (\Illuminate\Routing\Router $router) {
         $group->patch('matches/{match}', \App\Http\Controllers\Debug\Matches\UpdateController::class)->name('debug.matches.update');
         $group->delete('matches/{match}', \App\Http\Controllers\Debug\Matches\DestroyController::class)->name('debug.matches.destroy');
         $group->patch('matches/{match}/restore', \App\Http\Controllers\Debug\Matches\RestoreController::class)->name('debug.matches.restore');
+        $group->post('matches/process', \App\Http\Controllers\Debug\Matches\ProcessController::class)->name('debug.matches.process');
 
         // Games
         $group->get('games', \App\Http\Controllers\Debug\Games\IndexController::class)->name('debug.games.index');
@@ -81,5 +82,17 @@ Route::group([], function (\Illuminate\Routing\Router $router) {
         // Log Events
         $group->get('log-events', \App\Http\Controllers\Debug\LogEvents\IndexController::class)->name('debug.log-events.index');
         $group->patch('log-events/{logEvent}', \App\Http\Controllers\Debug\LogEvents\UpdateController::class)->name('debug.log-events.update');
+        $group->post('log-events/ingest', \App\Http\Controllers\Debug\LogEvents\IngestController::class)->name('debug.log-events.ingest');
+
+        // Decks
+        $group->get('decks', \App\Http\Controllers\Debug\Decks\IndexController::class)->name('debug.decks.index');
+        $group->patch('decks/{deck}', \App\Http\Controllers\Debug\Decks\UpdateController::class)->name('debug.decks.update');
+        $group->delete('decks/{deck}', \App\Http\Controllers\Debug\Decks\DestroyController::class)->name('debug.decks.destroy');
+        $group->patch('decks/{deck}/restore', \App\Http\Controllers\Debug\Decks\RestoreController::class)->name('debug.decks.restore');
+        $group->post('decks/sync', \App\Http\Controllers\Debug\Decks\SyncController::class)->name('debug.decks.sync');
+
+        // Deck Versions
+        $group->get('deck-versions', \App\Http\Controllers\Debug\DeckVersions\IndexController::class)->name('debug.deck-versions.index');
+        $group->patch('deck-versions/{deckVersion}', \App\Http\Controllers\Debug\DeckVersions\UpdateController::class)->name('debug.deck-versions.update');
     });
 });

@@ -7,6 +7,8 @@ const tabs = [
     { label: 'Matches', href: '/debug/matches' },
     { label: 'Games', href: '/debug/games' },
     { label: 'Log Events', href: '/debug/log-events' },
+    { label: 'Decks', href: '/debug/decks' },
+    { label: 'Deck Versions', href: '/debug/deck-versions' },
 ];
 
 const isActive = (href: string) => page.url.startsWith(href);

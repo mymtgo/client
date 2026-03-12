@@ -14,15 +14,13 @@ const { add: toast } = useToast();
 type SelectOption = { label: string; value: string };
 
 const props = defineProps<{
-    matches: {
+    decks: {
         data: Array<Record<string, unknown>>;
         links: Array<{ url: string | null; label: string; active: boolean }>;
         current_page: number;
         last_page: number;
     };
-    leagueOptions: SelectOption[];
-    deckVersionOptions: SelectOption[];
-    stateOptions: SelectOption[];
+    accountOptions: SelectOption[];
 }>();
 
 const flashState = reactive<Record<string, 'success' | 'error' | null>>({});
@@ -32,63 +30,53 @@ function flashCell(key: string, state: 'success' | 'error') {
     setTimeout(() => (flashState[key] = null), 1000);
 }
 
-function saveField(matchId: number, field: string, value: unknown) {
-    const key = `${matchId}-${field}`;
-    router.patch(`/debug/matches/${matchId}`, { [field]: value }, {
+function saveField(deckId: number, field: string, value: unknown) {
+    const key = `${deckId}-${field}`;
+    router.patch(`/debug/decks/${deckId}`, { [field]: value }, {
         preserveScroll: true,
         onSuccess: () => {
             flashCell(key, 'success');
-            toast({ type: 'success', title: 'Updated', message: `Match #${matchId} ${field} updated.`, duration: 2000 });
+            toast({ type: 'success', title: 'Updated', message: `Deck #${deckId} ${field} updated.`, duration: 2000 });
         },
         onError: () => flashCell(key, 'error'),
     });
 }
 
-function deleteMatch(id: number) {
-    router.delete(`/debug/matches/${id}`, {
+function deleteDeck(id: number) {
+    router.delete(`/debug/decks/${id}`, {
         preserveScroll: true,
-        onSuccess: () => toast({ type: 'success', title: 'Deleted', message: `Match #${id} soft-deleted.`, duration: 2000 }),
+        onSuccess: () => toast({ type: 'success', title: 'Deleted', message: `Deck #${id} soft-deleted.`, duration: 2000 }),
     });
 }
 
-function restoreMatch(id: number) {
-    router.patch(`/debug/matches/${id}/restore`, {}, {
+function restoreDeck(id: number) {
+    router.patch(`/debug/decks/${id}/restore`, {}, {
         preserveScroll: true,
-        onSuccess: () => toast({ type: 'success', title: 'Restored', message: `Match #${id} restored.`, duration: 2000 }),
+        onSuccess: () => toast({ type: 'success', title: 'Restored', message: `Deck #${id} restored.`, duration: 2000 }),
     });
 }
 
 const columns = [
     { key: 'id', label: 'ID', type: 'readonly' as const },
-    { key: 'token', label: 'Token', type: 'text' as const },
     { key: 'mtgo_id', label: 'MTGO ID', type: 'text' as const },
-    { key: 'league_id', label: 'League', type: 'select' as const, optionsKey: 'leagueOptions' as const, nullable: true },
-    { key: 'deck_version_id', label: 'Deck Version', type: 'select' as const, optionsKey: 'deckVersionOptions' as const, nullable: true },
+    { key: 'name', label: 'Name', type: 'text' as const },
     { key: 'format', label: 'Format', type: 'text' as const },
-    { key: 'match_type', label: 'Type', type: 'text' as const },
-    { key: 'state', label: 'State', type: 'select' as const, optionsKey: 'stateOptions' as const },
-    { key: 'games_won', label: 'Won', type: 'number' as const },
-    { key: 'games_lost', label: 'Lost', type: 'number' as const },
-    { key: 'started_at', label: 'Started', type: 'text' as const },
-    { key: 'ended_at', label: 'Ended', type: 'text' as const },
-    { key: 'submitted_at', label: 'Submitted', type: 'text' as const },
+    { key: 'account_id', label: 'Account', type: 'select' as const, optionsKey: 'accountOptions' as const, nullable: true },
 ];
 
 const optionsMap: Record<string, SelectOption[]> = {
-    leagueOptions: props.leagueOptions,
-    deckVersionOptions: props.deckVersionOptions,
-    stateOptions: props.stateOptions,
+    accountOptions: props.accountOptions,
 };
 
-const [processing, startProcessing] = useSpinGuard();
+const [syncing, startSyncing] = useSpinGuard();
 const [refreshing, startRefreshing] = useSpinGuard();
 
-function processNow() {
-    const stop = startProcessing();
-    router.post('/debug/matches/process', {}, {
+function syncNow() {
+    const stop = startSyncing();
+    router.post('/debug/decks/sync', {}, {
         preserveScroll: true,
         onSuccess: () => {
-            toast({ type: 'success', title: 'Processed', message: 'Log events processed into matches.', duration: 2000 });
+            toast({ type: 'success', title: 'Synced', message: 'Deck sync dispatched.', duration: 2000 });
             setTimeout(() => refresh(), 1000);
         },
         onFinish: stop,
@@ -97,7 +85,7 @@ function processNow() {
 
 function refresh() {
     const stop = startRefreshing();
-    router.reload({ preserveScroll: true, onSuccess: () => toast({ type: 'success', title: 'Refreshed', message: 'Matches refreshed.', duration: 2000 }), onFinish: stop });
+    router.reload({ preserveScroll: true, onSuccess: () => toast({ type: 'success', title: 'Refreshed', message: 'Decks refreshed.', duration: 2000 }), onFinish: stop });
 }
 </script>
 
@@ -106,9 +94,9 @@ function refresh() {
         <DebugNav />
         <div class="flex-1 overflow-auto p-4">
             <div class="mb-4 flex items-center justify-end gap-2">
-                <Button size="sm" class="h-8" :disabled="processing" @click="processNow">
-                    <RefreshCw class="mr-1.5 h-3.5 w-3.5" :class="{ 'animate-spin': processing }" />
-                    Process Now
+                <Button size="sm" class="h-8" :disabled="syncing" @click="syncNow">
+                    <RefreshCw class="mr-1.5 h-3.5 w-3.5" :class="{ 'animate-spin': syncing }" />
+                    Sync Now
                 </Button>
                 <Button size="sm" variant="outline" class="h-8" @click="refresh">
                     <RefreshCw class="mr-1.5 h-3.5 w-3.5" :class="{ 'animate-spin': refreshing }" />
@@ -127,27 +115,27 @@ function refresh() {
                     </TableHeader>
                     <TableBody>
                         <tr
-                            v-for="match in matches.data"
-                            :key="match.id as number"
-                            :class="{ 'opacity-40 line-through': match.deleted_at }"
+                            v-for="deck in decks.data"
+                            :key="deck.id as number"
+                            :class="{ 'opacity-40 line-through': deck.deleted_at }"
                         >
                             <EditableCell
                                 v-for="col in columns"
                                 :key="col.key"
-                                :modelValue="match[col.key] as string | number | null"
+                                :modelValue="deck[col.key] as string | number | null"
                                 :type="col.type"
                                 :options="col.optionsKey ? optionsMap[col.optionsKey] : undefined"
                                 :nullable="col.nullable"
-                                :flash="flashState[`${match.id}-${col.key}`]"
-                                @save="(val: unknown) => saveField(match.id as number, col.key, val)"
+                                :flash="flashState[`${deck.id}-${col.key}`]"
+                                @save="(val: unknown) => saveField(deck.id as number, col.key, val)"
                             />
                             <td class="px-2 py-1">
                                 <Button
-                                    v-if="match.deleted_at"
+                                    v-if="deck.deleted_at"
                                     variant="outline"
                                     size="sm"
                                     class="h-7 text-xs"
-                                    @click="restoreMatch(match.id as number)"
+                                    @click="restoreDeck(deck.id as number)"
                                 >
                                     Restore
                                 </Button>
@@ -156,7 +144,7 @@ function refresh() {
                                     variant="ghost"
                                     size="sm"
                                     class="h-7 text-xs text-destructive"
-                                    @click="deleteMatch(match.id as number)"
+                                    @click="deleteDeck(deck.id as number)"
                                 >
                                     Delete
                                 </Button>
@@ -167,8 +155,8 @@ function refresh() {
             </div>
 
             <!-- Pagination -->
-            <div v-if="matches.last_page > 1" class="mt-4 flex items-center justify-center gap-1">
-                <template v-for="link in matches.links" :key="link.label">
+            <div v-if="decks.last_page > 1" class="mt-4 flex items-center justify-center gap-1">
+                <template v-for="link in decks.links" :key="link.label">
                     <Button
                         v-if="link.url"
                         variant="outline"
