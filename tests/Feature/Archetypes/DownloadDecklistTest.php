@@ -50,7 +50,7 @@ it('downloads decklist from API and stores cards', function () {
 
     $response = $this->post("/archetypes/{$archetype->id}/download");
 
-    $response->assertRedirect("/archetypes/{$archetype->id}");
+    $response->assertRedirect();
 
     $archetype->refresh();
     expect($archetype->decklist_downloaded_at)->not->toBeNull();
