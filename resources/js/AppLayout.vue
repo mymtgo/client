@@ -3,6 +3,7 @@ import AppHeader from '@/components/AppHeader.vue';
 import AppNav from '@/components/AppNav.vue';
 import StatusBar from '@/components/StatusBar.vue';
 import ToastContainer from '@/components/ToastContainer.vue';
+import UpdateBanner from '@/components/UpdateBanner.vue';
 import { useToast } from '@/composables/useToast';
 import { onMounted } from 'vue';
 
@@ -27,6 +28,7 @@ onMounted(() => {
 <template>
     <div class="flex h-screen flex-col">
         <AppHeader />
+        <UpdateBanner />
         <AppNav />
         <div class="flex min-h-0 flex-1 flex-col overflow-y-auto">
             <slot />
