@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { router } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { reactive, ref } from 'vue';
 
 type SelectOption = { label: string; value: string };
 
@@ -38,13 +38,19 @@ function clearFilters() {
     router.get('/debug/log-events', {}, { preserveScroll: true });
 }
 
-const cellRefs = ref<Record<string, InstanceType<typeof EditableCell>>>({});
+const flashState = reactive<Record<string, 'success' | 'error' | null>>({});
+
+function flashCell(key: string, state: 'success' | 'error') {
+    flashState[key] = state;
+    setTimeout(() => (flashState[key] = null), 1000);
+}
 
 function saveField(eventId: number, field: string, value: unknown) {
+    const key = `${eventId}-${field}`;
     router.patch(`/debug/log-events/${eventId}`, { [field]: value }, {
         preserveScroll: true,
-        onSuccess: () => cellRefs.value[`${eventId}-${field}`]?.flashCell('success'),
-        onError: () => cellRefs.value[`${eventId}-${field}`]?.flashCell('error'),
+        onSuccess: () => flashCell(key, 'success'),
+        onError: () => flashCell(key, 'error'),
     });
 }
 
@@ -115,9 +121,9 @@ const columns = [
                             <EditableCell
                                 v-for="col in columns"
                                 :key="col.key"
-                                :ref="(el: any) => { if (el) cellRefs[`${event.id}-${col.key}`] = el }"
                                 :modelValue="event[col.key] as string | number | null"
                                 :type="col.type"
+                                :flash="flashState[`${event.id}-${col.key}`]"
                                 @save="(val: unknown) => saveField(event.id as number, col.key, val)"
                             />
                         </tr>

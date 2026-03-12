@@ -8,18 +8,12 @@ const props = defineProps<{
     type?: 'text' | 'number' | 'select' | 'readonly';
     options?: Array<{ label: string; value: string }>;
     nullable?: boolean;
+    flash?: 'success' | 'error' | null;
 }>();
 
 const emit = defineEmits<{
     save: [value: string | number | boolean | null];
 }>();
-
-const flash = ref<'success' | 'error' | null>(null);
-
-function flashCell(state: 'success' | 'error') {
-    flash.value = state;
-    setTimeout(() => (flash.value = null), 1000);
-}
 
 const localValue = ref(String(props.modelValue ?? ''));
 
@@ -41,16 +35,14 @@ function onSelect(val: string) {
         emit('save', emitVal);
     }
 }
-
-defineExpose({ flashCell });
 </script>
 
 <template>
     <td
         class="px-2 py-1 transition-colors duration-300"
         :class="{
-            'bg-green-500/20': flash === 'success',
-            'bg-red-500/20': flash === 'error',
+            'bg-green-500/20': props.flash === 'success',
+            'bg-red-500/20': props.flash === 'error',
         }"
     >
         <span v-if="type === 'readonly'" class="text-xs text-muted-foreground">{{ modelValue ?? '—' }}</span>

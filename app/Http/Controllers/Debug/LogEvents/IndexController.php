@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Debug\LogEvents;
 
-use App\Enums\LogEventType;
 use App\Http\Controllers\Controller;
 use App\Models\LogEvent;
 use Illuminate\Http\Request;
@@ -29,10 +28,16 @@ class IndexController extends Controller
                 'match_token' => $request->input('match_token', ''),
                 'event_type' => $request->input('event_type', ''),
             ],
-            'eventTypeOptions' => collect(LogEventType::cases())->map(fn ($t) => [
-                'label' => $t->value,
-                'value' => $t->value,
-            ]),
+            'eventTypeOptions' => LogEvent::query()
+                ->whereNotNull('event_type')
+                ->distinct()
+                ->pluck('event_type')
+                ->sort()
+                ->values()
+                ->map(fn (string $t) => [
+                    'label' => $t,
+                    'value' => $t,
+                ]),
         ]);
     }
 }

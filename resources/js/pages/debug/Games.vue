@@ -2,9 +2,10 @@
 import DebugNav from '@/components/debug/DebugNav.vue';
 import EditableCell from '@/components/debug/EditableCell.vue';
 import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { router } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { reactive } from 'vue';
 
 type SelectOption = { label: string; value: string };
 
@@ -16,16 +17,21 @@ const props = defineProps<{
         last_page: number;
     };
     matchOptions: SelectOption[];
-    wonOptions: SelectOption[];
 }>();
 
-const cellRefs = ref<Record<string, InstanceType<typeof EditableCell>>>({});
+const flashState = reactive<Record<string, 'success' | 'error' | null>>({});
+
+function flashCell(key: string, state: 'success' | 'error') {
+    flashState[key] = state;
+    setTimeout(() => (flashState[key] = null), 1000);
+}
 
 function saveField(gameId: number, field: string, value: unknown) {
+    const key = `${gameId}-${field}`;
     router.patch(`/debug/games/${gameId}`, { [field]: value }, {
         preserveScroll: true,
-        onSuccess: () => cellRefs.value[`${gameId}-${field}`]?.flashCell('success'),
-        onError: () => cellRefs.value[`${gameId}-${field}`]?.flashCell('error'),
+        onSuccess: () => flashCell(key, 'success'),
+        onError: () => flashCell(key, 'error'),
     });
 }
 
@@ -33,14 +39,12 @@ const columns = [
     { key: 'id', label: 'ID', type: 'readonly' as const },
     { key: 'match_id', label: 'Match', type: 'select' as const, optionsKey: 'matchOptions' as const },
     { key: 'mtgo_id', label: 'MTGO ID', type: 'text' as const },
-    { key: 'won', label: 'Won', type: 'select' as const, optionsKey: 'wonOptions' as const },
     { key: 'started_at', label: 'Started', type: 'text' as const },
     { key: 'ended_at', label: 'Ended', type: 'text' as const },
 ];
 
 const optionsMap: Record<string, SelectOption[]> = {
     matchOptions: props.matchOptions,
-    wonOptions: props.wonOptions,
 };
 </script>
 
@@ -55,6 +59,7 @@ const optionsMap: Record<string, SelectOption[]> = {
                             <TableHead v-for="col in columns" :key="col.key" class="whitespace-nowrap px-2 text-xs">
                                 {{ col.label }}
                             </TableHead>
+                            <TableHead class="whitespace-nowrap px-2 text-xs">Won</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -62,13 +67,19 @@ const optionsMap: Record<string, SelectOption[]> = {
                             <EditableCell
                                 v-for="col in columns"
                                 :key="col.key"
-                                :ref="(el: any) => { if (el) cellRefs[`${game.id}-${col.key}`] = el }"
                                 :modelValue="game[col.key] as string | number | null"
                                 :type="col.type"
                                 :options="col.optionsKey ? optionsMap[col.optionsKey] : undefined"
                                 :nullable="col.nullable"
+                                :flash="flashState[`${game.id}-${col.key}`]"
                                 @save="(val: unknown) => saveField(game.id as number, col.key, val)"
                             />
+                            <td class="px-2 py-1">
+                                <Switch
+                                    :modelValue="!!game.won"
+                                    @update:modelValue="(val: boolean) => saveField(game.id as number, 'won', val)"
+                                />
+                            </td>
                         </tr>
                     </TableBody>
                 </Table>

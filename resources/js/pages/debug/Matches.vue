@@ -4,7 +4,7 @@ import EditableCell from '@/components/debug/EditableCell.vue';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { router } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { reactive } from 'vue';
 
 type SelectOption = { label: string; value: string };
 
@@ -20,13 +20,19 @@ const props = defineProps<{
     stateOptions: SelectOption[];
 }>();
 
-const cellRefs = ref<Record<string, InstanceType<typeof EditableCell>>>({});
+const flashState = reactive<Record<string, 'success' | 'error' | null>>({});
+
+function flashCell(key: string, state: 'success' | 'error') {
+    flashState[key] = state;
+    setTimeout(() => (flashState[key] = null), 1000);
+}
 
 function saveField(matchId: number, field: string, value: unknown) {
+    const key = `${matchId}-${field}`;
     router.patch(`/debug/matches/${matchId}`, { [field]: value }, {
         preserveScroll: true,
-        onSuccess: () => cellRefs.value[`${matchId}-${field}`]?.flashCell('success'),
-        onError: () => cellRefs.value[`${matchId}-${field}`]?.flashCell('error'),
+        onSuccess: () => flashCell(key, 'success'),
+        onError: () => flashCell(key, 'error'),
     });
 }
 
@@ -47,13 +53,11 @@ const columns = [
     { key: 'format', label: 'Format', type: 'text' as const },
     { key: 'match_type', label: 'Type', type: 'text' as const },
     { key: 'state', label: 'State', type: 'select' as const, optionsKey: 'stateOptions' as const },
-    { key: 'result', label: 'Result', type: 'text' as const },
     { key: 'games_won', label: 'Won', type: 'number' as const },
     { key: 'games_lost', label: 'Lost', type: 'number' as const },
     { key: 'started_at', label: 'Started', type: 'text' as const },
     { key: 'ended_at', label: 'Ended', type: 'text' as const },
     { key: 'submitted_at', label: 'Submitted', type: 'text' as const },
-    { key: 'deleted_at', label: 'Deleted', type: 'readonly' as const },
 ];
 
 const optionsMap: Record<string, SelectOption[]> = {
@@ -86,11 +90,11 @@ const optionsMap: Record<string, SelectOption[]> = {
                             <EditableCell
                                 v-for="col in columns"
                                 :key="col.key"
-                                :ref="(el: any) => { if (el) cellRefs[`${match.id}-${col.key}`] = el }"
                                 :modelValue="match[col.key] as string | number | null"
                                 :type="col.type"
                                 :options="col.optionsKey ? optionsMap[col.optionsKey] : undefined"
                                 :nullable="col.nullable"
+                                :flash="flashState[`${match.id}-${col.key}`]"
                                 @save="(val: unknown) => saveField(match.id as number, col.key, val)"
                             />
                             <td class="px-2 py-1">
