@@ -42,6 +42,7 @@
         "class-variance-authority": "^0.7.1",
         "clsx": "^2.1.1",
         "dayjs": "^1.11.19",
+        "html-to-image": "^1.11.13",
         "lucide-vue-next": "^0.562.0",
         "reka-ui": "^2.8.2",
         "tailwind-merge": "^3.4.0",

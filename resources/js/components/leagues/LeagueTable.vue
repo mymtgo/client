@@ -8,7 +8,10 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { router } from '@inertiajs/vue3';
 import dayjs from 'dayjs';
-import { ChevronRight, Ellipsis, Trash2, Trophy } from 'lucide-vue-next';
+import { useLeagueScreenshot } from '@/composables/useLeagueScreenshot';
+import { Camera, ChevronRight, Ellipsis, Trash2, Trophy } from 'lucide-vue-next';
+import { ref } from 'vue';
+import LeagueScreenshot from './LeagueScreenshot.vue';
 import ResultBadge from '../matches/ResultBadge.vue';
 import { Badge } from '../ui/badge';
 import { Card, CardContent } from '../ui/card';
@@ -48,6 +51,16 @@ const isTrophy = (r: LeagueRun) => runWins(r) === 5 && isComplete(r) && !r.phant
 
 function abandonLeague(league: LeagueRun) {
     router.delete(AbandonController.url(league.id), { preserveScroll: true });
+}
+
+const screenshotRef = ref<InstanceType<typeof LeagueScreenshot> | null>(null);
+const { capture, capturing } = useLeagueScreenshot();
+
+function copyScreenshot() {
+    const el = screenshotRef.value?.$el as HTMLElement | undefined;
+    if (el) {
+        capture(el);
+    }
 }
 </script>
 
@@ -90,6 +103,16 @@ function abandonLeague(league: LeagueRun) {
                                 <ResultBadge v-else :won="result === 'W'" />
                             </template>
                         </div>
+
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            class="size-7 shrink-0"
+                            :disabled="capturing"
+                            @click.stop="copyScreenshot"
+                        >
+                            <Camera class="size-4" />
+                        </Button>
 
                         <DropdownMenu v-if="league.phantom">
                             <DropdownMenuTrigger as-child>
@@ -157,5 +180,9 @@ function abandonLeague(league: LeagueRun) {
                 </div>
             </CollapsibleContent>
         </Collapsible>
+
+        <div style="position: fixed; top: 0; left: 0; opacity: 0; pointer-events: none; z-index: -1;">
+            <LeagueScreenshot ref="screenshotRef" :league="league" />
+        </div>
     </Card>
 </template>
