@@ -29,7 +29,7 @@ class OpenDeckPopoutWindow
             ->maxWidth(400)
             ->minHeight(400)
             ->rememberState()
-            ->alwaysOnTop()
+            ->alwaysOnTop(true, 'screen-saver')
             ->frameless()
             ->resizable()
             ->movable()

@@ -20,7 +20,7 @@ class OpenOpponentScoutWindow
             ->height(80)
             ->minWidth(200)
             ->minHeight(60)
-            ->alwaysOnTop()
+            ->alwaysOnTop(true, 'screen-saver')
             ->frameless()
             ->resizable()
             ->maximizable(false)

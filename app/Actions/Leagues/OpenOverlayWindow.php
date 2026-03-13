@@ -20,7 +20,7 @@ class OpenOverlayWindow
             ->height(80)
             ->minWidth(200)
             ->minHeight(80)
-            ->alwaysOnTop()
+            ->alwaysOnTop(true, 'screen-saver')
             ->frameless()
             ->resizable()
             ->maximizable(false)
