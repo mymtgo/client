@@ -9,7 +9,6 @@ import UpdateOverlaySettingsController from '@/actions/App/Http/Controllers/Sett
 import UpdateShareStatsController from '@/actions/App/Http/Controllers/Settings/UpdateShareStatsController';
 import UpdateDebugModeController from '@/actions/App/Http/Controllers/Settings/UpdateDebugModeController';
 import UpdateWatcherController from '@/actions/App/Http/Controllers/Settings/UpdateWatcherController';
-import SimulateUpdateController from '@/actions/App/Http/Controllers/Debug/Updates/SimulateController';
 import type { LeagueData } from '@/components/leagues/LeagueTracker.vue';
 import LeagueTracker from '@/components/leagues/LeagueTracker.vue';
 import type { OpponentData } from '@/components/leagues/OpponentScout.vue';
