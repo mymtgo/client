@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "807586d1a0d43eb331382a3335127a16",
+    "content-hash": "8f6ed5b6f2c90dabb9c3ecf5b34e271a",
     "packages": [
         {
             "name": "brick/math",
@@ -2367,16 +2367,16 @@
         },
         {
             "name": "nativephp/desktop",
-            "version": "2.1.0",
+            "version": "dev-feat/always-on-top-level",
             "source": {
                 "type": "git",
-                "url": "https://github.com/NativePHP/desktop.git",
-                "reference": "1dafd3c8e06941519dedf7fe38adbfaa352394a2"
+                "url": "https://github.com/alecritson/desktop.git",
+                "reference": "c4aef49390fade333de2ffa5975b7b619ab0cc53"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/NativePHP/desktop/zipball/1dafd3c8e06941519dedf7fe38adbfaa352394a2",
-                "reference": "1dafd3c8e06941519dedf7fe38adbfaa352394a2",
+                "url": "https://api.github.com/repos/alecritson/desktop/zipball/c4aef49390fade333de2ffa5975b7b619ab0cc53",
+                "reference": "c4aef49390fade333de2ffa5975b7b619ab0cc53",
                 "shasum": ""
             },
             "require": {
@@ -2411,28 +2411,28 @@
             "type": "library",
             "extra": {
                 "laravel": {
-                    "aliases": {
-                        "Dock": "Native\\Desktop\\Facades\\Dock",
-                        "Menu": "Native\\Desktop\\Facades\\Menu",
-                        "Shell": "Native\\Desktop\\Facades\\Shell",
-                        "Screen": "Native\\Desktop\\Facades\\Screen",
-                        "System": "Native\\Desktop\\Facades\\System",
-                        "Window": "Native\\Desktop\\Facades\\Window",
-                        "MenuBar": "Native\\Desktop\\Facades\\MenuBar",
-                        "Process": "Native\\Desktop\\Facades\\Process",
-                        "Updater": "Native\\Electron\\Facades\\Updater",
-                        "Settings": "Native\\Desktop\\Facades\\Settings",
-                        "Clipboard": "Native\\Desktop\\Facades\\Clipboard",
-                        "ContextMenu": "Native\\Desktop\\Facades\\ContextMenu",
-                        "QueueWorker": "Native\\Desktop\\Facades\\QueueWorker",
-                        "ChildProcess": "Native\\Desktop\\Facades\\ChildProcess",
-                        "Notification": "Native\\Desktop\\Facades\\Notification",
-                        "PowerMonitor": "Native\\Desktop\\Facades\\PowerMonitor",
-                        "GlobalShortcut": "Native\\Desktop\\Facades\\GlobalShortcut"
-                    },
                     "providers": [
                         "Native\\Desktop\\NativeServiceProvider"
-                    ]
+                    ],
+                    "aliases": {
+                        "ChildProcess": "Native\\Desktop\\Facades\\ChildProcess",
+                        "Clipboard": "Native\\Desktop\\Facades\\Clipboard",
+                        "ContextMenu": "Native\\Desktop\\Facades\\ContextMenu",
+                        "Dock": "Native\\Desktop\\Facades\\Dock",
+                        "GlobalShortcut": "Native\\Desktop\\Facades\\GlobalShortcut",
+                        "Menu": "Native\\Desktop\\Facades\\Menu",
+                        "MenuBar": "Native\\Desktop\\Facades\\MenuBar",
+                        "Notification": "Native\\Desktop\\Facades\\Notification",
+                        "PowerMonitor": "Native\\Desktop\\Facades\\PowerMonitor",
+                        "Process": "Native\\Desktop\\Facades\\Process",
+                        "QueueWorker": "Native\\Desktop\\Facades\\QueueWorker",
+                        "Screen": "Native\\Desktop\\Facades\\Screen",
+                        "Settings": "Native\\Desktop\\Facades\\Settings",
+                        "Shell": "Native\\Desktop\\Facades\\Shell",
+                        "System": "Native\\Desktop\\Facades\\System",
+                        "Window": "Native\\Desktop\\Facades\\Window",
+                        "Updater": "Native\\Electron\\Facades\\Updater"
+                    }
                 }
             },
             "autoload": {
@@ -2440,7 +2440,33 @@
                     "Native\\Desktop\\": "src"
                 }
             },
-            "notification-url": "https://packagist.org/downloads/",
+            "autoload-dev": {
+                "psr-4": {
+                    "Native\\Desktop\\Tests\\": "tests/"
+                }
+            },
+            "scripts": {
+                "qa": [
+                    "@composer format",
+                    "@composer analyse",
+                    "@composer test"
+                ],
+                "post-autoload-dump": [
+                    "@php ./vendor/bin/testbench package:discover --ansi"
+                ],
+                "analyse": [
+                    "vendor/bin/phpstan analyse"
+                ],
+                "test": [
+                    "vendor/bin/pest"
+                ],
+                "test-coverage": [
+                    "vendor/bin/pest --coverage"
+                ],
+                "format": [
+                    "vendor/bin/pint"
+                ]
+            },
             "license": [
                 "MIT"
             ],
@@ -2465,20 +2491,19 @@
                 "nativephp-laravel"
             ],
             "support": {
-                "issues": "https://github.com/NativePHP/desktop/issues",
-                "source": "https://github.com/NativePHP/desktop/tree/2.1.0"
+                "source": "https://github.com/alecritson/desktop/tree/feat/always-on-top-level"
             },
             "funding": [
                 {
-                    "url": "https://github.com/sponsors/simonhamp",
-                    "type": "github"
+                    "type": "github",
+                    "url": "https://github.com/sponsors/simonhamp"
                 },
                 {
-                    "url": "https://opencollective.com/nativephp",
-                    "type": "opencollective"
+                    "type": "opencollective",
+                    "url": "https://opencollective.com/nativephp"
                 }
             ],
-            "time": "2026-01-07T14:13:04+00:00"
+            "time": "2026-03-13T12:47:29+00:00"
         },
         {
             "name": "nativephp/php-bin",
@@ -10426,8 +10451,10 @@
         }
     ],
     "aliases": [],
-    "minimum-stability": "stable",
-    "stability-flags": {},
+    "minimum-stability": "dev",
+    "stability-flags": {
+        "nativephp/desktop": 20
+    },
     "prefer-stable": true,
     "prefer-lowest": false,
     "platform": {
