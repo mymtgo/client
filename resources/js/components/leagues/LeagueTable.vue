@@ -31,6 +31,7 @@ type LeagueRun = {
     startedAt: string;
     results: ('W' | 'L' | null)[];
     phantom: boolean;
+    state: 'active' | 'complete' | 'partial';
     matches: LeagueMatch[];
 };
 
@@ -40,8 +41,9 @@ defineProps<{
 
 const runWins = (r: LeagueRun) => r.results.filter((x) => x === 'W').length;
 const runLosses = (r: LeagueRun) => r.results.filter((x) => x === 'L').length;
-const isComplete = (r: LeagueRun) => r.results.every((x) => x !== null);
-const isInProgress = (r: LeagueRun) => !isComplete(r);
+const isComplete = (r: LeagueRun) => r.state === 'complete';
+const isPartial = (r: LeagueRun) => r.state === 'partial';
+const isActive = (r: LeagueRun) => r.state === 'active';
 const isTrophy = (r: LeagueRun) => runWins(r) === 5 && isComplete(r) && !r.phantom;
 
 function abandonLeague(league: LeagueRun) {
@@ -77,7 +79,8 @@ function abandonLeague(league: LeagueRun) {
                     <div class="ml-auto flex shrink-0 items-center gap-3">
                         <div class="flex items-center gap-1.5">
                             <Trophy v-if="isTrophy(league)" class="size-4 text-yellow-400" />
-                            <Badge v-if="isInProgress(league)" variant="outline" class="text-xs text-muted-foreground"> In progress </Badge>
+                            <Badge v-if="isActive(league)" variant="outline" class="text-xs text-muted-foreground"> In progress </Badge>
+                            <Badge v-else-if="isPartial(league)" variant="secondary" class="text-xs text-muted-foreground"> Partial </Badge>
                             <span v-else class="text-sm font-semibold tabular-nums"> {{ runWins(league) }}-{{ runLosses(league) }} </span>
                         </div>
 

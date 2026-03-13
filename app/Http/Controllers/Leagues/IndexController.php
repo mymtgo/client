@@ -102,6 +102,7 @@ class IndexController extends Controller
                 'name' => $league->name,
                 'format' => MtgoMatch::displayFormat($league->format),
                 'phantom' => (bool) $league->phantom,
+                'state' => $league->state?->value ?? 'active',
                 'startedAt' => $league->started_at,
                 'deck' => $deck,
                 'results' => $results,

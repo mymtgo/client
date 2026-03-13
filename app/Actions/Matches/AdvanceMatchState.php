@@ -5,6 +5,7 @@ namespace App\Actions\Matches;
 use App\Actions\DetermineMatchArchetypes;
 use App\Actions\Util\ExtractJson;
 use App\Actions\Util\ExtractKeyValueBlock;
+use App\Enums\LeagueState;
 use App\Enums\LogEventType;
 use App\Enums\MatchState;
 use App\Events\AppNotification;
@@ -256,6 +257,14 @@ class AdvanceMatchState
             'state' => MatchState::Complete,
         ]);
 
+        if (
+            ($league = $match->league)
+            && $league->state === LeagueState::Active
+            && $league->matches()->where('state', MatchState::Complete)->count() >= 5
+        ) {
+            $league->update(['state' => LeagueState::Complete]);
+        }
+
         SyncGameResults::run($match, $gameLog['results'] ?? []);
 
         DetermineMatchArchetypes::run($match);
@@ -330,6 +339,15 @@ class AdvanceMatchState
                 'started_at' => now(),
                 'name' => trim(($gameMeta['GameStructureCd'] ?? '').' League '.now()->format('d-m-Y h:ma')),
             ]);
+
+            if ($league->wasRecentlyCreated) {
+                League::where('format', $gameMeta['PlayFormatCd'])
+                    ->where('phantom', false)
+                    ->where('state', LeagueState::Active)
+                    ->where('id', '!=', $league->id)
+                    ->where('started_at', '<', $league->started_at)
+                    ->update(['state' => LeagueState::Partial]);
+            }
         } elseif (! Settings::get('hide_phantom_leagues')) {
             $match->refresh();
 
