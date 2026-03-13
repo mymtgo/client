@@ -151,6 +151,7 @@ it('excludes completed leagues with 5 matches', function () {
         'token' => 'completed-league-token',
         'format' => 'Modern',
         'name' => 'Completed League',
+        'state' => 'complete',
         'started_at' => now(),
     ]);
 

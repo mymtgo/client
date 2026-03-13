@@ -27,6 +27,7 @@ type LeagueRun = {
     startedAt: string;
     results: ('W' | 'L' | null)[];
     phantom: boolean;
+    state: 'active' | 'complete' | 'partial';
     matches: LeagueMatch[];
 };
 
@@ -48,7 +49,7 @@ const activeFormat = ref('All');
 
 const runWins = (r: LeagueRun) => r.results.filter((x) => x === 'W').length;
 const runLosses = (r: LeagueRun) => r.results.filter((x) => x === 'L').length;
-const isComplete = (r: LeagueRun) => r.results.every((x) => x !== null);
+const isComplete = (r: LeagueRun) => r.state === 'complete';
 const isTrophy = (r: LeagueRun) => runWins(r) === 5 && isComplete(r) && !r.phantom;
 
 const filteredRuns = computed(() =>
