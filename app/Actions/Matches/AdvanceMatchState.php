@@ -12,6 +12,7 @@ use App\Events\AppNotification;
 use App\Events\DeckLinkedToMatch;
 use App\Events\LeagueMatchStarted;
 use App\Jobs\SubmitMatch;
+use App\Jobs\SyncDecks;
 use App\Models\DeckVersion;
 use App\Models\League;
 use App\Models\LogEvent;
@@ -288,6 +289,12 @@ class AdvanceMatchState
             ->update([
                 'processed_at' => now(),
             ]);
+
+        // If deck wasn't linked during InProgress (race with deck sync),
+        // trigger a sync now — its backfill will re-link this match
+        if (! $match->deck_version_id) {
+            SyncDecks::dispatch();
+        }
     }
 
     /**
