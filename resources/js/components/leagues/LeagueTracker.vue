@@ -19,35 +19,32 @@ const props = withDefaults(
         league: LeagueData | null;
         font?: string;
         textColor?: string;
-        bgColor?: string;
     }>(),
     {
         font: 'sans-serif',
         textColor: '#ffffff',
-        bgColor: '#1a1a1a',
     },
 );
 </script>
 
 <template>
     <div
-        class="flex flex-col justify-center px-4 py-3"
+        class="flex h-full flex-col justify-center px-4 py-3"
         :style="{
             fontFamily: font,
             color: textColor,
-            backgroundColor: bgColor,
         }"
     >
         <template v-if="league">
             <div class="flex items-baseline justify-between">
-                <span class="truncate text-base font-semibold">
+                <span class="truncate text-lg font-semibold">
                     {{ league.deckName ?? 'Unknown Deck' }}
                 </span>
-                <span class="ml-2 shrink-0 text-xl font-bold tabular-nums">
+                <span class="ml-2 shrink-0 text-2xl font-bold tabular-nums">
                     {{ league.wins }}-{{ league.losses }}
                 </span>
             </div>
-            <div class="flex items-center justify-between text-sm" :style="{ color: textColor, opacity: 0.7 }">
+            <div class="flex items-center justify-between text-base" :style="{ color: textColor, opacity: 0.7 }">
                 <span class="inline-flex items-center gap-1">
                     {{ league.format }}
                     <PhantomBadge v-if="league.phantom" :label="false" />
@@ -56,7 +53,7 @@ const props = withDefaults(
                     <span v-if="league.hasActiveMatch" class="inline-flex items-center gap-1">
                         <template v-for="(game, i) in league.games" :key="i">
                             <span
-                                class="inline-block size-2 rounded-full"
+                                class="inline-block size-2.5 rounded-full"
                                 :class="{
                                     'bg-green-500': game.won === true,
                                     'bg-red-500': game.won === false && game.ended,
@@ -69,7 +66,7 @@ const props = withDefaults(
             </div>
         </template>
         <template v-else>
-            <p class="text-center text-xs" :style="{ color: textColor, opacity: 0.7 }">
+            <p class="text-center text-sm" :style="{ color: textColor, opacity: 0.7 }">
                 Start or continue a league to track
             </p>
         </template>

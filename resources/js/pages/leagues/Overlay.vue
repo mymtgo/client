@@ -26,8 +26,6 @@ onUnmounted(() => {
 
 <template>
     <div class="h-screen" style="-webkit-app-region: drag">
-        <div class="flex h-full flex-col">
-            <LeagueTracker :league="league" />
-        </div>
+        <LeagueTracker :league="league" />
     </div>
 </template>
