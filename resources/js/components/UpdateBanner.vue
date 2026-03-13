@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { router, usePage } from '@inertiajs/vue3';
 import { Download } from 'lucide-vue-next';
-import { computed, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import InstallController from '@/actions/App/Http/Controllers/Updates/InstallController';
 import { Button } from '@/components/ui/button';
 
@@ -9,8 +9,19 @@ const page = usePage<{
     availableUpdate: { version: string; releaseName: string; releaseNotes: string } | null;
 }>();
 
-const update = computed(() => page.props.availableUpdate);
+const ipcUpdate = ref<{ version: string; releaseName: string; releaseNotes: string } | null>(null);
+const update = computed(() => page.props.availableUpdate ?? ipcUpdate.value);
 const installing = ref(false);
+
+onMounted(() => {
+    window.Native?.on('Native\\Desktop\\Events\\AutoUpdater\\UpdateDownloaded', (payload: Record<string, unknown>) => {
+        ipcUpdate.value = {
+            version: payload.version as string,
+            releaseName: (payload.releaseName as string) ?? '',
+            releaseNotes: (payload.releaseNotes as string) ?? '',
+        };
+    });
+});
 
 function install() {
     installing.value = true;
