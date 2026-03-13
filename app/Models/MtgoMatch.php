@@ -86,7 +86,10 @@ class MtgoMatch extends Model
 
     public static function displayFormat(string $format): string
     {
-        return \Illuminate\Support\Str::title(strtolower(substr($format, 1)));
+        // MTGO format codes are prefixed with 'C' (e.g. CModern, CStandard)
+        $raw = preg_match('/^C[A-Z]/', $format) ? substr($format, 1) : $format;
+
+        return \Illuminate\Support\Str::title(strtolower($raw));
     }
 
     public function isCompleted(): bool
