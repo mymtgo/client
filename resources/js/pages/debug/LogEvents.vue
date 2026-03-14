@@ -103,6 +103,7 @@ const columns = [
     { key: 'match_id', label: 'Match ID', type: 'text' as const },
     { key: 'event_type', label: 'Event Type', type: 'text' as const },
     { key: 'logged_at', label: 'Logged At', type: 'text' as const },
+    { key: 'username', label: 'Username', type: 'text' as const },
 ];
 </script>
 

@@ -12,24 +12,6 @@ class BuildMatches
 {
     public static function run()
     {
-        $username = Account::current()->value('username');
-
-        if (! $username) {
-            Log::debug('BuildMatches: no current account username, aborting');
-
-            return;
-        }
-
-        Mtgo::setUsername($username);
-
-        $account = Account::where('username', $username)->first();
-
-        if ($account && ! $account->tracked) {
-            Log::debug("BuildMatches: account {$username} is not tracked, aborting");
-
-            return;
-        }
-
         // 1. New match detection — find unprocessed match tokens
         $matchTokens = LogEvent::whereNotNull('match_id')
             ->whereNotNull('match_token')
@@ -49,7 +31,27 @@ class BuildMatches
                 continue;
             }
 
-            Log::debug("BuildMatches: creating match token={$matchToken} id={$matchId}");
+            $username = LogEvent::where('match_token', $matchToken)
+                ->whereNotNull('username')
+                ->value('username');
+
+            if (! $username) {
+                Log::debug("BuildMatches: no username on events for token={$matchToken}, skipping");
+
+                continue;
+            }
+
+            $account = Account::where('username', $username)->first();
+
+            if ($account && ! $account->tracked) {
+                Log::debug("BuildMatches: account {$username} is not tracked, skipping token={$matchToken}");
+
+                continue;
+            }
+
+            Mtgo::setUsername($username);
+
+            Log::debug("BuildMatches: creating match token={$matchToken} id={$matchId} username={$username}");
             $result = AdvanceMatchState::run($matchToken, $matchId);
             Log::debug('BuildMatches: AdvanceMatchState returned '.($result ? "match #{$result->id} state={$result->state->value}" : 'null'));
         }
@@ -58,6 +60,14 @@ class BuildMatches
         $incompleteMatches = MtgoMatch::incomplete()->get();
 
         foreach ($incompleteMatches as $match) {
+            $username = LogEvent::where('match_token', $match->token)
+                ->whereNotNull('username')
+                ->value('username');
+
+            if ($username) {
+                Mtgo::setUsername($username);
+            }
+
             AdvanceMatchState::run($match->token, $match->mtgo_id);
         }
 

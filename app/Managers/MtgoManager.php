@@ -16,7 +16,6 @@ use App\Jobs\SyncDecks;
 use App\Models\Account;
 use App\Models\Archetype;
 use App\Models\Deck;
-use App\Models\LogCursor;
 use App\Models\MtgoMatch;
 use Illuminate\Console\Scheduling\Schedule;
 use Native\Desktop\Facades\Settings;
@@ -81,7 +80,7 @@ class MtgoManager
 
     public function getUsername(): ?string
     {
-        return Account::current()->value('username');
+        return $this->username ?? Account::active()->value('username');
     }
 
     public function retryUnsubmittedMatches(): void
@@ -131,14 +130,6 @@ class MtgoManager
         if ($this->getUsername() && ! Account::exists()) {
             $account = Account::registerAndActivate($this->getUsername());
             Deck::whereNull('account_id')->update(['account_id' => $account->id]);
-        }
-
-        // Ensure an account is marked current (upgrade from pre-current schema)
-        if (Account::exists() && ! Account::current()->exists()) {
-            $cursorUsername = LogCursor::first()?->local_username;
-            if ($cursorUsername) {
-                Account::where('username', $cursorUsername)->first()?->markAsCurrent();
-            }
         }
     }
 
