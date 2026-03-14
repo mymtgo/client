@@ -58,6 +58,8 @@ class IngestLog
         $cursor->head_hash = $headHash;
         $cursor->save();
 
+        $currentUsername = $cursor->local_username;
+
         // Nothing new since last time.
         if ($cursor->byte_offset >= $size) {
             return;
@@ -95,8 +97,9 @@ class IngestLog
                         );
 
                         if ($row) {
+                            static::detectLogin($row, $cursor, $currentUsername);
+                            $row['username'] = $currentUsername;
                             $rows[] = $row;
-                            static::detectLogin($row, $cursor);
                         }
 
                         // safe to advance to the start of this new line
@@ -125,8 +128,9 @@ class IngestLog
                 );
 
                 if ($row) {
+                    static::detectLogin($row, $cursor, $currentUsername);
+                    $row['username'] = $currentUsername;
                     $rows[] = $row;
-                    static::detectLogin($row, $cursor);
                 }
 
                 $safeOffset = $eofOffset;
@@ -161,7 +165,7 @@ class IngestLog
         return preg_match('/^\d{2}:\d{2}:\d{2} \[(INF|ERR|DBG|WRN|TRC)\]/', $line) === 1;
     }
 
-    protected static function detectLogin(array $row, LogCursor $cursor): void
+    protected static function detectLogin(array $row, LogCursor $cursor, ?string &$currentUsername): void
     {
         if ($row['category'] !== 'Login' || $row['context'] !== 'MtGO Login Success') {
             return;
@@ -170,6 +174,7 @@ class IngestLog
         $username = static::extractLoginUsername($row['raw_text']);
 
         if ($username) {
+            $currentUsername = $username;
             $cursor->local_username = $username;
             Account::registerAndActivate($username);
         }
