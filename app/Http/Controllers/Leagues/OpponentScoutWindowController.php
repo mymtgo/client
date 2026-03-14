@@ -12,7 +12,7 @@ class OpponentScoutWindowController extends Controller
 {
     public function __invoke(): Response
     {
-        $currentMatch = MtgoMatch::where('state', MatchState::InProgress)
+        $currentMatch = MtgoMatch::whereIn('state', [MatchState::Started, MatchState::InProgress])
             ->latest('started_at')
             ->first();
 
