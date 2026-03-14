@@ -52,6 +52,13 @@ class AdvanceMatchState
         );
 
         if (! $joinedState) {
+            Log::debug("AdvanceMatchState: no join event for token={$matchToken} id={$matchId}", [
+                'events_count' => $events->count(),
+                'state_changes_count' => $stateChanges->count(),
+                'state_change_contexts' => $stateChanges->pluck('context')->toArray(),
+                'event_types' => $events->pluck('event_type')->unique()->toArray(),
+            ]);
+
             return null;
         }
 
