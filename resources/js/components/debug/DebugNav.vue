@@ -9,6 +9,7 @@ const tabs = [
     { label: 'Log Events', href: '/debug/log-events' },
     { label: 'Decks', href: '/debug/decks' },
     { label: 'Deck Versions', href: '/debug/deck-versions' },
+    { label: 'Log Cursors', href: '/debug/log-cursors' },
 ];
 
 const isActive = (href: string) => page.url.startsWith(href);

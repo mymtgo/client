@@ -141,5 +141,8 @@ Route::group([], function (Router $router) {
         // Deck Versions
         $group->get('deck-versions', App\Http\Controllers\Debug\DeckVersions\IndexController::class)->name('debug.deck-versions.index');
         $group->patch('deck-versions/{deckVersion}', App\Http\Controllers\Debug\DeckVersions\UpdateController::class)->name('debug.deck-versions.update');
+
+        // Log Cursors
+        $group->get('log-cursors', App\Http\Controllers\Debug\LogCursors\IndexController::class)->name('debug.log-cursors.index');
     });
 });
