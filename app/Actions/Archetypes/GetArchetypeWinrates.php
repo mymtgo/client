@@ -26,6 +26,7 @@ class GetArchetypeWinrates
             ->join('matches as m', 'm.id', '=', 'ma.mtgo_match_id')
             ->where('ma.archetype_id', $archetype->id)
             ->where('m.state', MatchState::Complete->value)
+            ->whereNull('m.deleted_at')
             ->whereExists(function ($q) use ($isLocal) {
                 $q->selectRaw('1')
                     ->from('game_player as gp')
