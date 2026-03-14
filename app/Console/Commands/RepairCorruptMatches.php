@@ -2,8 +2,10 @@
 
 namespace App\Console\Commands;
 
+use App\Actions\Matches\DetermineMatchResult;
 use App\Actions\Matches\GetGameLog;
 use App\Facades\Mtgo;
+use App\Models\LogEvent;
 use App\Models\MtgoMatch;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
@@ -58,14 +60,11 @@ class RepairCorruptMatches extends Command
         $skipped = 0;
 
         foreach ($matches as $match) {
-            $stateChanges = DB::table('log_events')
-                ->where('match_token', $match->token)
+            $stateChanges = LogEvent::where('match_token', $match->token)
                 ->where('event_type', 'match_state_changed')
-                ->pluck('context');
+                ->get();
 
-            $localConceded = $stateChanges->contains(
-                fn ($c) => str_contains($c ?? '', 'MatchConcedeReqState to MatchNotJoinedEventUnderwayState')
-            );
+            $localConceded = DetermineMatchResult::localPlayerConceded($stateChanges);
 
             $gameLog = GetGameLog::run($match->token);
 
