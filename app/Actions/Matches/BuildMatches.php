@@ -6,6 +6,7 @@ use App\Facades\Mtgo;
 use App\Models\Account;
 use App\Models\LogEvent;
 use App\Models\MtgoMatch;
+use Illuminate\Support\Facades\Log;
 
 class BuildMatches
 {
@@ -14,6 +15,8 @@ class BuildMatches
         $username = Account::current()->value('username');
 
         if (! $username) {
+            Log::debug('BuildMatches: no current account username, aborting');
+
             return;
         }
 
@@ -22,6 +25,8 @@ class BuildMatches
         $account = Account::where('username', $username)->first();
 
         if ($account && ! $account->tracked) {
+            Log::debug("BuildMatches: account {$username} is not tracked, aborting");
+
             return;
         }
 
@@ -37,12 +42,16 @@ class BuildMatches
             ->distinct()
             ->pluck('match_id', 'match_token');
 
+        Log::debug("BuildMatches: found {$matchTokens->count()} unprocessed tokens, {$matchIds->count()} new match IDs");
+
         foreach ($matchIds as $matchToken => $matchId) {
             if (MtgoMatch::where('mtgo_id', $matchId)->exists()) {
                 continue;
             }
 
-            AdvanceMatchState::run($matchToken, $matchId);
+            Log::debug("BuildMatches: creating match token={$matchToken} id={$matchId}");
+            $result = AdvanceMatchState::run($matchToken, $matchId);
+            Log::debug('BuildMatches: AdvanceMatchState returned '.($result ? "match #{$result->id} state={$result->state->value}" : 'null'));
         }
 
         // 2. State advancement — advance all incomplete matches
