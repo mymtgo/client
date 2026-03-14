@@ -42,12 +42,12 @@ class AdvanceMatchState
             ->values();
 
         // ── Gate: require a join event ──────────────────────────────
-        // Check both collections: state changes have match_token but
-        // not match_id, while game events have match_id. The join
-        // event may appear in either depending on MTGO log format.
-        $joinedState = $stateChanges->first(
+        // Prefer the $events version (game_management_json) because it
+        // contains the key-value metadata block (PlayFormatCd, etc).
+        // Fall back to state changes which only have the header line.
+        $joinedState = $events->first(
             fn (LogEvent $event) => str_contains($event->context ?? '', 'MatchJoinedEventUnderwayState')
-        ) ?? $events->first(
+        ) ?? $stateChanges->first(
             fn (LogEvent $event) => str_contains($event->context ?? '', 'MatchJoinedEventUnderwayState')
         );
 
