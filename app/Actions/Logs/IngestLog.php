@@ -96,15 +96,7 @@ class IngestLog
 
                         if ($row) {
                             $rows[] = $row;
-
-                            // Detect login events — always update (accounts can switch mid-session)
-                            if ($row['category'] === 'Login' && $row['context'] === 'MtGO Login Success') {
-                                $u = static::extractLoginUsername($row['raw_text']);
-                                if ($u) {
-                                    $cursor->local_username = $u;
-                                    Account::registerAndActivate($u);
-                                }
-                            }
+                            static::detectLogin($row, $cursor);
                         }
 
                         // safe to advance to the start of this new line
@@ -134,15 +126,7 @@ class IngestLog
 
                 if ($row) {
                     $rows[] = $row;
-
-                    // Detect login events — always update (accounts can switch mid-session)
-                    if ($row['category'] === 'Login' && $row['context'] === 'MtGO Login Success') {
-                        $u = static::extractLoginUsername($row['raw_text']);
-                        if ($u) {
-                            $cursor->local_username = $u;
-                            Account::registerAndActivate($u);
-                        }
-                    }
+                    static::detectLogin($row, $cursor);
                 }
 
                 $safeOffset = $eofOffset;
@@ -177,13 +161,18 @@ class IngestLog
         return preg_match('/^\d{2}:\d{2}:\d{2} \[(INF|ERR|DBG|WRN|TRC)\]/', $line) === 1;
     }
 
-    protected static function extractUsername(string $raw): ?string
+    protected static function detectLogin(array $row, LogCursor $cursor): void
     {
-        if (preg_match('/\bUsername=([^\s]+)/', $raw, $m)) {
-            return $m[1];
+        if ($row['category'] !== 'Login' || $row['context'] !== 'MtGO Login Success') {
+            return;
         }
 
-        return null;
+        $username = static::extractLoginUsername($row['raw_text']);
+
+        if ($username) {
+            $cursor->local_username = $username;
+            Account::registerAndActivate($username);
+        }
     }
 
     protected static function extractLoginUsername(string $raw): ?string
