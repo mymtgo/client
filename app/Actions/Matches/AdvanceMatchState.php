@@ -91,7 +91,7 @@ class AdvanceMatchState
 
             // ── Create any games whose events arrived after Started → InProgress ──
             if ($match->state === MatchState::InProgress || $match->state === MatchState::Ended) {
-                self::createMissingGames($match, $events);
+                self::createOrUpdateGames($match, $events);
             }
 
             // ── InProgress → Ended ──────────────────────────────────────
@@ -130,30 +130,7 @@ class AdvanceMatchState
         }
 
         // ── Create games (idempotent — CreateGames uses firstOrCreate) ──
-        $games = $events->groupBy('game_id')->filter(
-            fn ($group, $key) => $key !== '' && $key !== null
-        );
-
-        $gameIds = $games->keys();
-
-        $decksEvents = LogEvent::where('event_type', LogEventType::DECK_USED->value)
-            ->whereIn('game_id', $gameIds)
-            ->get();
-
-        $gameIndex = 0;
-
-        foreach ($games as $gameId => $gameEvents) {
-            $playerDeck = $decksEvents->first(
-                fn ($event) => (int) $event->game_id === (int) $gameId
-            );
-
-            $deckJson = $playerDeck
-                ? (ExtractJson::run($playerDeck->raw_text)->first() ?: [])
-                : [];
-
-            CreateGames::run($match, $gameId, $gameEvents, $gameIndex, $deckJson);
-            $gameIndex++;
-        }
+        self::createOrUpdateGames($match, $events);
 
         // ── Link deck (if not already linked) ──
         if (! $match->deck_version_id) {
@@ -287,12 +264,11 @@ class AdvanceMatchState
     /**
      * Create or update games from log events.
      *
-     * Events for later games may arrive after the Started → InProgress
-     * transition, and existing games may have incomplete timeline data.
-     * Re-running CreateGames is safe — it upserts the game record and
-     * replaces timeline entries idempotently.
+     * Groups events by game_id, fetches associated deck data, and runs
+     * CreateGames for each. Safe to call multiple times — CreateGames
+     * upserts game records and replaces timeline entries idempotently.
      */
-    private static function createMissingGames(MtgoMatch $match, Collection $events): void
+    private static function createOrUpdateGames(MtgoMatch $match, Collection $events): void
     {
         $games = $events->groupBy('game_id')->filter(
             fn ($group, $key) => $key !== '' && $key !== null
