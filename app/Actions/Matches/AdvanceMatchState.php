@@ -194,28 +194,7 @@ class AdvanceMatchState
                 || str_contains($event->context, 'MatchClosedState')
         );
 
-        // Concede sequence detection (same logic as BuildMatch)
-        $idxConcede = $stateChanges->search(
-            fn ($e) => str_contains($e->context ?? '', 'MatchConcedeReq')
-        );
-        $idxNotJoined = $stateChanges->search(
-            fn ($e) => str_contains($e->context ?? '', 'NotJoined')
-        );
-        $idxConcedeFulfilled = $stateChanges->search(
-            fn ($e) => preg_match('/ConcedeReqState to .+NotJoined/', $e->context ?? '')
-        );
-
-        $concededAndQuit = ($idxConcede !== false
-            && $idxNotJoined !== false
-            && $idxNotJoined > $idxConcede) || $idxConcedeFulfilled;
-
-        $idxCompletedAfterNotJoined = $events
-            ->slice($idxNotJoined ?: 0)
-            ->search(fn ($e) => str_contains($e->message ?? '', 'MatchCompleted'));
-
-        $concededAndQuit = $concededAndQuit
-            && $idxCompletedAfterNotJoined !== false
-            || $idxConcedeFulfilled !== false;
+        $concededAndQuit = DetermineMatchResult::localPlayerConceded($stateChanges);
 
         if (! $matchEnded && ! $concededAndQuit) {
             return false;
