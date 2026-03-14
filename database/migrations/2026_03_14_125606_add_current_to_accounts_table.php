@@ -21,7 +21,21 @@ return new class extends Migration
         if ($username) {
             DB::table('accounts')
                 ->where('username', $username)
-                ->update(['current' => true]);
+                ->update(['current' => true, 'active' => true]);
+        }
+
+        // Fallback: if only one account exists and none is current, mark it
+        if (! DB::table('accounts')->where('current', true)->exists()) {
+            $onlyAccount = DB::table('accounts')->when(
+                DB::table('accounts')->count() === 1,
+                fn ($q) => $q->limit(1)
+            )->first();
+
+            if ($onlyAccount) {
+                DB::table('accounts')
+                    ->where('id', $onlyAccount->id)
+                    ->update(['current' => true, 'active' => true]);
+            }
         }
     }
 };
