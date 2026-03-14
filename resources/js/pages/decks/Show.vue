@@ -63,7 +63,7 @@ const props = defineProps<{
     chartData: { date: string; wins: number; losses: number; winrate: string | null }[];
     // Deferred props — undefined until background request resolves
     matches?: any;
-    leagues?: App.Data.Front.LeagueData[];
+    leagues?: any[];
     archetypes?: App.Data.Front.ArchetypeData[];
     matchupSpread?: any[];
     versionDecklists?: Record<string, VersionDecklist>;
@@ -301,7 +301,7 @@ const decklistOrgUrl = computed(() => {
                             </Deferred>
                         </TabsContent>
                         <TabsContent value="leagues">
-                            <Deferred :data="['leagues', 'archetypes']">
+                            <Deferred data="leagues">
                                 <template #fallback>
                                     <Card class="gap-0 overflow-hidden p-0">
                                         <CardContent class="flex flex-col gap-2 px-4 py-4">
@@ -311,7 +311,7 @@ const decklistOrgUrl = computed(() => {
                                         </CardContent>
                                     </Card>
                                 </template>
-                                <DeckLeagues :leagues="leagues!" :archetypes="archetypes!" />
+                                <DeckLeagues :leagues="leagues!" />
                             </Deferred>
                         </TabsContent>
                     </Tabs>
