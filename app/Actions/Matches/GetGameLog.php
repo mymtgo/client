@@ -4,6 +4,7 @@ namespace App\Actions\Matches;
 
 use App\Facades\Mtgo;
 use App\Models\GameLog;
+use Illuminate\Support\Facades\Log;
 
 class GetGameLog
 {
@@ -27,6 +28,10 @@ class GetGameLog
         }
 
         if ($raw === false) {
+            Log::warning("GetGameLog: game log file not found for match token {$token}", [
+                'stored_path' => $log->file_path,
+            ]);
+
             return null;
         }
 
