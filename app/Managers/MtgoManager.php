@@ -2,7 +2,9 @@
 
 namespace App\Managers;
 
+use App\Actions\Logs\FindMtgoLogPath;
 use App\Actions\Logs\GetLogFilePaths;
+use App\Actions\Logs\IngestLog;
 use App\Actions\RegisterDevice;
 use App\Actions\Settings\ValidatePath;
 use App\Jobs\DownloadArchetypes;
@@ -11,6 +13,7 @@ use App\Jobs\ProcessLogEvents;
 use App\Jobs\StoreGameLogs;
 use App\Jobs\SubmitMatch;
 use App\Jobs\SyncDecks;
+use App\Models\Account;
 use App\Models\Archetype;
 use App\Models\Deck;
 use App\Models\LogCursor;
@@ -78,7 +81,7 @@ class MtgoManager
 
     public function getUsername(): ?string
     {
-        return LogCursor::first()?->local_username;
+        return Account::current()->value('username');
     }
 
     public function retryUnsubmittedMatches(): void
@@ -125,9 +128,17 @@ class MtgoManager
         $this->ingestGameLogs(sync: false);
 
         // Register account from existing cursor data (upgrade path)
-        if ($this->getUsername() && ! \App\Models\Account::exists()) {
-            $account = \App\Models\Account::registerAndActivate($this->getUsername());
-            \App\Models\Deck::whereNull('account_id')->update(['account_id' => $account->id]);
+        if ($this->getUsername() && ! Account::exists()) {
+            $account = Account::registerAndActivate($this->getUsername());
+            Deck::whereNull('account_id')->update(['account_id' => $account->id]);
+        }
+
+        // Ensure an account is marked current (upgrade from pre-current schema)
+        if (Account::exists() && ! Account::current()->exists()) {
+            $cursorUsername = LogCursor::first()?->local_username;
+            if ($cursorUsername) {
+                Account::where('username', $cursorUsername)->first()?->markAsCurrent();
+            }
         }
     }
 
@@ -160,8 +171,8 @@ class MtgoManager
             return;
         }
 
-        \App\Actions\Logs\IngestLog::run(
-            \App\Actions\Logs\FindMtgoLogPath::run()
+        IngestLog::run(
+            FindMtgoLogPath::run()
         );
     }
 

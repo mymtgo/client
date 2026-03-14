@@ -4,7 +4,6 @@ namespace App\Actions\Matches;
 
 use App\Facades\Mtgo;
 use App\Models\Account;
-use App\Models\LogCursor;
 use App\Models\LogEvent;
 use App\Models\MtgoMatch;
 
@@ -12,7 +11,7 @@ class BuildMatches
 {
     public static function run()
     {
-        $username = LogCursor::first()?->local_username;
+        $username = Account::current()->value('username');
 
         if (! $username) {
             return;
