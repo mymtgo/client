@@ -12,17 +12,25 @@ class DetermineMatchArchetypes
     {
         $matchArchetypes = [];
 
-        $player = $match->games->first()->localPlayers->first();
+        $firstGame = $match->games->first();
 
-        $playerDeck = $player->pivot->deck_json;
-        $archetype = DetermineDeckArchetype::run(collect($playerDeck), $match->format, $match->id, $player->id);
+        if (! $firstGame) {
+            return;
+        }
 
-        if ($archetype) {
-            $matchArchetypes[] = [
-                'archetype_id' => $archetype['archetype_id'],
-                'confidence' => $archetype['confidence'],
-                'player_id' => $player->id,
-            ];
+        $player = $firstGame->localPlayers->first();
+
+        if ($player) {
+            $playerDeck = $player->pivot->deck_json;
+            $archetype = DetermineDeckArchetype::run(collect($playerDeck), $match->format, $match->id, $player->id);
+
+            if ($archetype) {
+                $matchArchetypes[] = [
+                    'archetype_id' => $archetype['archetype_id'],
+                    'confidence' => $archetype['confidence'],
+                    'player_id' => $player->id,
+                ];
+            }
         }
 
         $opponentDecks = [];

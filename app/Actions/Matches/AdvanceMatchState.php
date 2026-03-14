@@ -19,6 +19,7 @@ use App\Models\LogEvent;
 use App\Models\MtgoMatch;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Native\Desktop\Facades\Settings;
 
@@ -268,7 +269,13 @@ class AdvanceMatchState
 
         SyncGameResults::run($match, $gameLog['results'] ?? []);
 
-        DetermineMatchArchetypes::run($match);
+        // Post-completion steps: each is independent and should not
+        // prevent the others from running if one fails.
+        try {
+            DetermineMatchArchetypes::run($match);
+        } catch (\Throwable $e) {
+            Log::warning("Failed to determine archetypes for match {$match->id}: {$e->getMessage()}");
+        }
 
         SubmitMatch::dispatch($match->id);
 
