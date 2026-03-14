@@ -25,9 +25,10 @@ onMounted(() => {
 
 function install() {
     installing.value = true;
-    router.post(InstallController.url(), {}, {
-        preserveScroll: true,
-    });
+
+    setTimeout(() => {
+        router.get(InstallController.url());
+    }, 3000);
 }
 </script>
 

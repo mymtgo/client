@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Updates;
 
 use Illuminate\Support\Facades\Cache;
+use Inertia\Inertia;
 use Native\Desktop\Facades\AutoUpdater;
 
 class InstallController
@@ -11,8 +12,12 @@ class InstallController
     {
         Cache::forget('available_update');
 
-        AutoUpdater::quitAndInstall();
+        try {
+            AutoUpdater::quitAndInstall();
+        } catch (\Throwable $e) {
+            report($e);
+        }
 
-        return redirect()->back();
+        return Inertia::render('updates/Install');
     }
 }
