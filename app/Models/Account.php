@@ -17,6 +17,7 @@ class Account extends Model
     protected $casts = [
         'active' => 'boolean',
         'tracked' => 'boolean',
+        'current' => 'boolean',
     ];
 
     public function decks(): HasMany
@@ -34,6 +35,11 @@ class Account extends Model
         return $query->where('tracked', true);
     }
 
+    public function scopeCurrent(Builder $query): Builder
+    {
+        return $query->where('current', true);
+    }
+
     /**
      * Set this account as active, deactivating all others.
      */
@@ -44,7 +50,16 @@ class Account extends Model
     }
 
     /**
-     * Find or create an account, and activate it.
+     * Mark this account as the one currently logged into MTGO.
+     */
+    public function markAsCurrent(): void
+    {
+        static::where('current', true)->update(['current' => false]);
+        $this->update(['current' => true]);
+    }
+
+    /**
+     * Find or create an account, activate it, and mark as current.
      */
     public static function registerAndActivate(string $username): static
     {
@@ -54,6 +69,7 @@ class Account extends Model
         );
 
         $account->activate();
+        $account->markAsCurrent();
 
         if ($account->wasRecentlyCreated) {
             AccountCreated::dispatch($account);

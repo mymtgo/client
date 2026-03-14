@@ -4,7 +4,7 @@ namespace App\Jobs;
 
 use App\Actions\Matches\AdvanceMatchState;
 use App\Facades\Mtgo;
-use App\Models\LogCursor;
+use App\Models\Account;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 
@@ -19,7 +19,7 @@ class BuildMatch implements ShouldQueue
 
     public function handle(): void
     {
-        $username = LogCursor::first()?->local_username;
+        $username = Account::current()->value('username');
 
         if (! $username) {
             return;
