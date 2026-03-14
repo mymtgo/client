@@ -269,12 +269,13 @@ class AdvanceMatchState
         );
 
         // Mark all related log events as processed
-        LogEvent::where('match_id', $match->mtgo_id)
-            ->orWhere('match_token', $match->token)
-            ->orWhereIn('game_id', $match->games->pluck('mtgo_id'))
-            ->update([
-                'processed_at' => now(),
-            ]);
+        LogEvent::where(function ($query) use ($match) {
+            $query->where('match_id', $match->mtgo_id)
+                ->orWhere('match_token', $match->token)
+                ->orWhereIn('game_id', $match->games->pluck('mtgo_id'));
+        })->update([
+            'processed_at' => now(),
+        ]);
 
         // If deck wasn't linked during InProgress (race with deck sync),
         // trigger a sync now — its backfill will re-link this match
