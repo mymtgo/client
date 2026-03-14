@@ -282,8 +282,8 @@ const decklistOrgUrl = computed(() => {
                     <!-- Tabs -->
                     <Tabs default-value="matches">
                         <TabsList>
-                            <TabsTrigger value="matches">Matches</TabsTrigger>
-                            <TabsTrigger value="leagues">Leagues</TabsTrigger>
+                            <TabsTrigger value="matches">Matches ({{ matchesWon + matchesLost }})</TabsTrigger>
+                            <TabsTrigger value="leagues">Leagues{{ leagues ? ` (${leagues.length})` : '' }}</TabsTrigger>
                         </TabsList>
                         <TabsContent value="matches">
                             <Deferred :data="['matches', 'archetypes']">
