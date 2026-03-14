@@ -16,6 +16,10 @@ class DetermineMatchDeck
     {
         $games = $match->games()->orderBy('started_at')->pluck('mtgo_id');
 
+        if ($games->isEmpty()) {
+            return;
+        }
+
         $decksEvents = LogEvent::where('event_type', 'deck_used')
             ->whereIn('game_id', $games)->orderBy('logged_at', 'asc')->get();
 
@@ -25,7 +29,17 @@ class DetermineMatchDeck
             fn ($event) => (int) $event->game_id == $firstGameId
         );
 
-        $firstGameDeckCards = collect(ExtractJson::run($firstGameDeck->raw_text)->first())->map(function ($card) {
+        if (! $firstGameDeck) {
+            return;
+        }
+
+        $deckCards = ExtractJson::run($firstGameDeck->raw_text)->first();
+
+        if (empty($deckCards)) {
+            return;
+        }
+
+        $firstGameDeckCards = collect($deckCards)->map(function ($card) {
             return [
                 'mtgo_id' => $card['CatalogId'],
                 'quantity' => $card['Quantity'],

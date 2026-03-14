@@ -11,6 +11,7 @@ use App\Models\LogEvent;
 use App\Models\MtgoMatch;
 use App\Models\Player;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
 
 class CreateGames
 {
@@ -21,28 +22,49 @@ class CreateGames
         $gameStateEvents = $gameEvents->filter(
             fn (LogEvent $event) => $event->event_type == 'game_state_update'
         );
-        $firstStateEvent = $gameStateEvents->first();
-        $lastStateEvent = $gameStateEvents->last();
         $gameLog = GetGameLog::run($match->token);
 
-        $players = ExtractJson::run($gameStateEvents->first()->raw_text)->first()['Players'];
+        $firstStateEvent = $gameStateEvents->first();
+        $lastStateEvent = $gameStateEvents->last();
 
+        // Always create the game record, even with incomplete data
         $gameModel = Game::where('mtgo_id', $gameId)->firstOrCreate([
             'match_id' => $match->id,
             'mtgo_id' => $gameId,
         ], [
             'won' => $gameLog['results'][$gameIndex] ?? null,
-            'started_at' => now()->parse($firstStateEvent->logged_at)->setTimeFromTimeString($firstStateEvent->timestamp),
-            'ended_at' => now()->parse($lastStateEvent->logged_at)->setTimeFromTimeString($lastStateEvent->timestamp),
+            'started_at' => $firstStateEvent
+                ? now()->parse($firstStateEvent->logged_at)->setTimeFromTimeString($firstStateEvent->timestamp)
+                : null,
+            'ended_at' => $lastStateEvent
+                ? now()->parse($lastStateEvent->logged_at)->setTimeFromTimeString($lastStateEvent->timestamp)
+                : null,
         ]);
 
         // Update fields that may have been unavailable at creation time
         $gameModel->update([
             'won' => $gameLog['results'][$gameIndex] ?? $gameModel->won,
-            'ended_at' => now()->parse($lastStateEvent->logged_at)->setTimeFromTimeString($lastStateEvent->timestamp),
+            'ended_at' => $lastStateEvent
+                ? now()->parse($lastStateEvent->logged_at)->setTimeFromTimeString($lastStateEvent->timestamp)
+                : $gameModel->ended_at,
         ]);
 
-        $playerModels = collect();
+        // If we have no state events yet, the game record exists for later backfill
+        if (! $firstStateEvent) {
+            Log::debug("CreateGames: no state events yet for game {$gameId} in match {$match->mtgo_id}");
+
+            return;
+        }
+
+        $parsedState = ExtractJson::run($firstStateEvent->raw_text)->first();
+        $players = $parsedState['Players'] ?? [];
+
+        if (empty($players)) {
+            Log::warning("CreateGames: no players found in state event for game {$gameId} in match {$match->mtgo_id}");
+
+            return;
+        }
+
         $playerModelMapping = [];
 
         foreach ($players as $player) {
@@ -64,20 +86,18 @@ class CreateGames
             }
 
             if (! $isYou) {
-                $deck = collect(
-                    ExtractJson::run(
-                        $gameStateEvents->last()->raw_text
-                    )->first()['Cards'] ?? []
-                )->filter(
-                    fn ($card) => $card['Owner'] == $player['Id']
-                )->groupBy('CatalogID')->map(function ($cards) {
+                $lastParsedState = ExtractJson::run($lastStateEvent->raw_text)->first();
 
-                    return [
-                        'mtgo_id' => $cards[0]['CatalogID'],
-                        'quantity' => $cards->count(),
-                        'sideboard' => false,
-                    ];
-                })->values()->toArray();
+                $deck = collect($lastParsedState['Cards'] ?? [])
+                    ->filter(fn ($card) => $card['Owner'] == $player['Id'])
+                    ->groupBy('CatalogID')
+                    ->map(function ($cards) {
+                        return [
+                            'mtgo_id' => $cards[0]['CatalogID'],
+                            'quantity' => $cards->count(),
+                            'sideboard' => false,
+                        ];
+                    })->values()->toArray();
             }
 
             $onPlay = $gameLog['on_play'][$gameIndex] ?? false;
@@ -88,8 +108,6 @@ class CreateGames
                 'is_local' => $isYou,
                 'deck_json' => $deck,
             ];
-
-            $playerModels->push($playerModel);
         }
 
         $gameModel->players()->sync($playerModelMapping);
