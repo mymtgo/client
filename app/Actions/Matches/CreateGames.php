@@ -131,8 +131,14 @@ class CreateGames
 
         CreateMissingCards::run(array_unique($timelineCatalogIds));
 
-        // Replace timeline entries — events may have grown since last call
-        GameTimeline::where('game_id', $gameModel->id)->delete();
-        GameTimeline::insert($events);
+        // Replace timeline entries — events may have grown since last call.
+        // Non-critical: if the DB is locked by concurrent ingestion, skip
+        // and let the next pass fill them in.
+        try {
+            GameTimeline::where('game_id', $gameModel->id)->delete();
+            GameTimeline::insert($events);
+        } catch (\Illuminate\Database\QueryException $e) {
+            Log::debug("CreateGames: timeline update skipped for game {$gameModel->id}: {$e->getMessage()}");
+        }
     }
 }

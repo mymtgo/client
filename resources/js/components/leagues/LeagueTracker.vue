@@ -25,6 +25,17 @@ const props = withDefaults(
         textColor: '#ffffff',
     },
 );
+
+function gameDotClass(game: { won: boolean | null; ended: boolean } | undefined, index: number) {
+    if (!game) return 'border-2 border-white/20 bg-transparent';
+    if (game.won === true) return 'bg-green-500';
+    if (game.won === false) return 'bg-red-500';
+
+    const isCurrentGame = index === (props.league?.games.length ?? 0) - 1;
+    if (isCurrentGame) return 'animate-pulse border-2 border-white/70 bg-transparent';
+
+    return 'border-2 border-white/40 bg-transparent';
+}
 </script>
 
 <template>
@@ -49,19 +60,13 @@ const props = withDefaults(
                     {{ league.format }}
                     <PhantomBadge v-if="league.phantom" :label="false" />
                 </span>
-                <span class="inline-flex items-center gap-1.5">
-                    <span v-if="league.hasActiveMatch" class="inline-flex items-center gap-1">
-                        <template v-for="(game, i) in league.games" :key="i">
-                            <span
-                                class="inline-block size-2.5 rounded-full"
-                                :class="{
-                                    'bg-green-500': game.won === true,
-                                    'bg-red-500': game.won === false && game.ended,
-                                    'border border-white/40 bg-transparent': !game.ended,
-                                }"
-                            />
-                        </template>
-                    </span>
+                <span v-if="league.hasActiveMatch" class="inline-flex items-center gap-1">
+                    <span
+                        v-for="i in 3"
+                        :key="i"
+                        class="inline-block size-3 rounded-full"
+                        :class="gameDotClass(league.games[i - 1], i - 1)"
+                    />
                 </span>
             </div>
         </template>
