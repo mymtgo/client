@@ -4,6 +4,7 @@ namespace App\Actions\Logs;
 
 use App\Actions\Util\ExtractJson;
 use App\Models\LogEvent;
+use Illuminate\Support\Facades\Log;
 
 class ClassifyLogEvent
 {
@@ -47,6 +48,10 @@ class ClassifyLogEvent
                     'game_id' => isset($json['GameID']) ? (int) $json['GameID'] : null,
                 ]);
             }
+
+            Log::warning('ClassifyLogEvent: matched JSON pattern but extraction failed', [
+                'text_preview' => mb_substr($text, 0, 200),
+            ]);
         }
 
         return $event;
