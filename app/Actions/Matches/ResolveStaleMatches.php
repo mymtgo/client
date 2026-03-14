@@ -25,15 +25,12 @@ class ResolveStaleMatches
             return;
         }
 
+        // Pre-compute the latest match start time to avoid N+1 queries.
+        // Any incomplete match started before this is stale.
         $latestMatchStart = MtgoMatch::latest('started_at')->value('started_at');
 
         foreach ($incompleteMatches as $match) {
-            // A match is stale if a newer match exists after it
-            $newerMatchExists = MtgoMatch::where('id', '!=', $match->id)
-                ->where('started_at', '>', $match->started_at)
-                ->exists();
-
-            if (! $newerMatchExists) {
+            if ($match->started_at >= $latestMatchStart) {
                 continue;
             }
 
