@@ -8,7 +8,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (! Schema::hasTable('log_events') || ! Schema::hasTable('mtgo_matches')) {
+        if (! Schema::hasTable('log_events') || ! Schema::hasTable('matches')) {
             return;
         }
 
@@ -22,9 +22,9 @@ return new class extends Migration
             SET processed_at = NULL
             WHERE processed_at IS NOT NULL
             AND (
-                (match_id IS NOT NULL AND match_id NOT IN (SELECT mtgo_id FROM mtgo_matches))
+                (match_id IS NOT NULL AND match_id NOT IN (SELECT mtgo_id FROM matches))
                 OR
-                (match_token IS NOT NULL AND match_token NOT IN (SELECT token FROM mtgo_matches))
+                (match_token IS NOT NULL AND match_token NOT IN (SELECT token FROM matches))
             )
         ');
     }
