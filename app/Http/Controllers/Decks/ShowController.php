@@ -277,6 +277,7 @@ class ShowController extends Controller
             ->join('game_player as gp', fn ($j) => $j->on('gp.game_id', '=', 'games.id')->where('gp.is_local', 1))
             ->join('matches as m', 'm.id', '=', 'games.match_id')
             ->whereIn('m.deck_version_id', $versionIds)
+            ->whereNull('m.deleted_at')
             ->whereBetween('m.started_at', [$from, $to])
             ->selectRaw('m.deck_version_id, gp.on_play, SUM(CASE WHEN games.won = 1 THEN 1 ELSE 0 END) as won, SUM(CASE WHEN games.won = 0 THEN 1 ELSE 0 END) as lost')
             ->groupBy('m.deck_version_id', 'gp.on_play')
