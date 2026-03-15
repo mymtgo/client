@@ -208,10 +208,6 @@ class MtgoManager
         )->everyMinute()->name('submit_matches')->withoutOverlapping(60);
 
         $schedule->call(
-            fn () => $this->syncDecks()
-        )->everyMinute()->name('sync_decks')->withoutOverlapping(60);
-
-        $schedule->call(
             fn () => $this->ingestGameLogs()
         )->everyTenSeconds()->name('store_game_logs')->withoutOverlapping(10);
         //
