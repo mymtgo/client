@@ -149,6 +149,13 @@ class AdvanceMatchState
             DetermineMatchDeck::run($match);
             $match->refresh();
 
+            // No match found — sync decks from disk and retry
+            if (! $match->deck_version_id) {
+                SyncDecks::dispatchSync();
+                DetermineMatchDeck::run($match);
+                $match->refresh();
+            }
+
             if ($match->deck_version_id) {
                 DeckLinkedToMatch::dispatch($match);
             }
@@ -266,11 +273,6 @@ class AdvanceMatchState
             'processed_at' => now(),
         ]);
 
-        // If deck wasn't linked during InProgress (race with deck sync),
-        // trigger a sync now — its backfill will re-link this match
-        if (! $match->deck_version_id) {
-            SyncDecks::dispatch();
-        }
     }
 
     /**
