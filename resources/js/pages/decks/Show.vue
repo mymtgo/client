@@ -66,6 +66,7 @@ const props = defineProps<{
     leagues?: any[];
     archetypes?: App.Data.Front.ArchetypeData[];
     matchupSpread?: any[];
+    leagueResults?: Record<string, number>;
     versionDecklists?: Record<string, VersionDecklist>;
 }>();
 
@@ -81,6 +82,32 @@ const activeVersion = computed((): VersionStats => {
 const activeDecklist = computed((): VersionDecklist => {
     return props.versionDecklists?.[selectedVersionKey.value] ?? { maindeck: props.maindeck, sideboard: props.sideboard };
 });
+
+const MIN_MATCHES_THRESHOLD = 3;
+
+
+const bestArchetype = computed(() => {
+    if (!props.matchupSpread?.length) return null;
+    const eligible = props.matchupSpread.filter((m: any) => m.matches >= MIN_MATCHES_THRESHOLD);
+    if (!eligible.length) return null;
+    return eligible.reduce((best: any, m: any) => m.match_winrate > best.match_winrate ? m : best);
+});
+
+const worstArchetype = computed(() => {
+    if (!props.matchupSpread?.length) return null;
+    const eligible = props.matchupSpread.filter((m: any) => m.matches >= MIN_MATCHES_THRESHOLD);
+    if (!eligible.length) return null;
+    return eligible.reduce((worst: any, m: any) => m.match_winrate < worst.match_winrate ? m : worst);
+});
+
+const activeLeagueResults = computed(() => props.leagueResults ?? { '5-0': 0, '4-1': 0, '3-2': 0, '2-3': 0, '1-4': 0, '0-5': 0 });
+
+const leagueResultsTotal = computed(() => {
+    const sum = Object.values(activeLeagueResults.value).reduce((a, b) => a + b, 0);
+    return sum || 1;
+});
+
+const leagueResultsBuckets = ['5-0', '4-1', '3-2', '2-3', '1-4', '0-5'];
 
 const decklistOrgUrl = computed(() => {
     const dl = activeDecklist.value;
@@ -155,6 +182,7 @@ const decklistOrgUrl = computed(() => {
 
                     <TabsContent value="stats" class="space-y-4">
                     <p class="text-xs text-muted-foreground">Stats from the last 2 months</p>
+
                     <!-- KPI Cards -->
                     <div class="grid grid-cols-5 gap-4">
                         <Card class="gap-0 py-0">
@@ -218,7 +246,7 @@ const decklistOrgUrl = computed(() => {
                         </Card>
                     </div>
 
-                    <!-- Chart + Matchup Spread -->
+                    <!-- Chart + League Results & Best/Worst Archetype -->
                     <div class="grid grid-cols-3 gap-4">
                         <Card class="col-span-2">
                             <CardContent>
@@ -232,8 +260,9 @@ const decklistOrgUrl = computed(() => {
                             </CardContent>
                         </Card>
 
-                        <div>
-                            <Deferred data="matchupSpread">
+                        <div class="flex flex-col gap-4">
+                            <!-- League Results -->
+                            <Deferred data="leagueResults">
                                 <template #fallback>
                                     <Card class="gap-0 p-0">
                                         <CardContent class="flex flex-col gap-2 p-4">
@@ -244,8 +273,121 @@ const decklistOrgUrl = computed(() => {
                                     </Card>
                                 </template>
                                 <Card class="gap-0 overflow-hidden p-0">
-                                    <CardContent class="max-h-[460px] overflow-y-auto px-0 scrollbar-none">
-                                        <p v-if="!matchupSpread?.length" class="text-muted-foreground py-8 text-center text-sm">
+                                    <CardContent class="p-4">
+                                        <p class="mb-3 text-xs font-medium tracking-wide text-muted-foreground uppercase">League Results</p>
+                                        <div class="flex flex-col gap-2">
+                                            <div v-for="bucket in leagueResultsBuckets" :key="bucket" class="flex items-center gap-3">
+                                                <span class="w-8 text-right text-sm tabular-nums font-medium">{{ bucket }}</span>
+                                                <div class="relative h-5 flex-1 rounded bg-muted">
+                                                    <div
+                                                        class="h-full rounded"
+                                                        :class="parseInt(bucket) > parseInt(bucket.split('-')[1]) ? 'bg-success' : parseInt(bucket) < parseInt(bucket.split('-')[1]) ? 'bg-destructive' : 'bg-muted-foreground'"
+                                                        :style="{ width: `${((activeLeagueResults[bucket] ?? 0) / leagueResultsTotal) * 100}%` }"
+                                                    />
+                                                </div>
+                                                <span class="w-6 text-right text-sm tabular-nums text-muted-foreground">{{ activeLeagueResults[bucket] ?? 0 }}</span>
+                                            </div>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            </Deferred>
+
+                            <!-- Best/Worst Archetype -->
+                            <Deferred data="matchupSpread">
+                                <template #fallback>
+                                    <div class="grid grid-cols-2 gap-4">
+                                        <Card class="gap-0 py-0"><CardContent class="p-3"><Skeleton class="h-12 w-full" /></CardContent></Card>
+                                        <Card class="gap-0 py-0"><CardContent class="p-3"><Skeleton class="h-12 w-full" /></CardContent></Card>
+                                    </div>
+                                </template>
+                                <div class="grid grid-cols-2 gap-4">
+                                    <Card class="gap-0 py-0">
+                                        <CardContent class="flex flex-col gap-0.5 p-3">
+                                            <span class="text-xs tracking-wide text-muted-foreground uppercase">Best Matchup</span>
+                                            <template v-if="bestArchetype">
+                                                <div class="flex items-center gap-2">
+                                                    <ManaSymbols :symbols="bestArchetype.color_identity" class="shrink-0" />
+                                                    <span class="truncate font-medium">{{ bestArchetype.name }}</span>
+                                                </div>
+                                                <div class="flex items-center gap-2">
+                                                    <span class="text-sm tabular-nums text-muted-foreground">{{ bestArchetype.match_record }}</span>
+                                                    <span class="text-sm font-medium tabular-nums text-success">{{ bestArchetype.match_winrate }}%</span>
+                                                </div>
+                                            </template>
+                                            <span v-else class="text-sm text-muted-foreground">Not enough data</span>
+                                        </CardContent>
+                                    </Card>
+                                    <Card class="gap-0 py-0">
+                                        <CardContent class="flex flex-col gap-0.5 p-3">
+                                            <span class="text-xs tracking-wide text-muted-foreground uppercase">Worst Matchup</span>
+                                            <template v-if="worstArchetype">
+                                                <div class="flex items-center gap-2">
+                                                    <ManaSymbols :symbols="worstArchetype.color_identity" class="shrink-0" />
+                                                    <span class="truncate font-medium">{{ worstArchetype.name }}</span>
+                                                </div>
+                                                <div class="flex items-center gap-2">
+                                                    <span class="text-sm tabular-nums text-muted-foreground">{{ worstArchetype.match_record }}</span>
+                                                    <span class="text-sm font-medium tabular-nums text-destructive">{{ worstArchetype.match_winrate }}%</span>
+                                                </div>
+                                            </template>
+                                            <span v-else class="text-sm text-muted-foreground">Not enough data</span>
+                                        </CardContent>
+                                    </Card>
+                                </div>
+                            </Deferred>
+                        </div>
+                    </div>
+
+                    <!-- Tabs -->
+                    <Tabs default-value="matches">
+                        <TabsList>
+                            <TabsTrigger value="matches">Matches ({{ matchesWon + matchesLost }})</TabsTrigger>
+                            <TabsTrigger value="leagues">Leagues{{ leagues ? ` (${leagues.length})` : '' }}</TabsTrigger>
+                            <TabsTrigger value="matchups">Matchups</TabsTrigger>
+                        </TabsList>
+                        <TabsContent value="matches">
+                            <Deferred :data="['matches', 'archetypes']">
+                                <template #fallback>
+                                    <Card class="gap-0 overflow-hidden p-0">
+                                        <CardContent class="flex flex-col gap-2 px-4 py-4">
+                                            <Skeleton class="h-8 w-full" />
+                                            <Skeleton class="h-8 w-full" />
+                                            <Skeleton class="h-8 w-full" />
+                                            <Skeleton class="h-8 w-4/5" />
+                                        </CardContent>
+                                    </Card>
+                                </template>
+                                <DeckMatches :matches="matches!" :archetypes="archetypes!" />
+                            </Deferred>
+                        </TabsContent>
+                        <TabsContent value="leagues">
+                            <Deferred data="leagues">
+                                <template #fallback>
+                                    <Card class="gap-0 overflow-hidden p-0">
+                                        <CardContent class="flex flex-col gap-2 px-4 py-4">
+                                            <Skeleton class="h-8 w-full" />
+                                            <Skeleton class="h-8 w-full" />
+                                            <Skeleton class="h-8 w-2/3" />
+                                        </CardContent>
+                                    </Card>
+                                </template>
+                                <DeckLeagues :leagues="leagues!" />
+                            </Deferred>
+                        </TabsContent>
+                        <TabsContent value="matchups">
+                            <Deferred data="matchupSpread">
+                                <template #fallback>
+                                    <Card class="gap-0 overflow-hidden p-0">
+                                        <CardContent class="flex flex-col gap-2 px-4 py-4">
+                                            <Skeleton class="h-8 w-full" />
+                                            <Skeleton class="h-8 w-full" />
+                                            <Skeleton class="h-8 w-3/4" />
+                                        </CardContent>
+                                    </Card>
+                                </template>
+                                <Card class="gap-0 overflow-hidden p-0">
+                                    <CardContent class="px-0">
+                                        <p v-if="!matchupSpread?.length" class="py-8 text-center text-sm text-muted-foreground">
                                             No matchup data yet.
                                         </p>
                                         <table v-else class="w-full text-sm">
@@ -275,43 +417,6 @@ const decklistOrgUrl = computed(() => {
                                         </table>
                                     </CardContent>
                                 </Card>
-                            </Deferred>
-                        </div>
-                    </div>
-
-                    <!-- Tabs -->
-                    <Tabs default-value="matches">
-                        <TabsList>
-                            <TabsTrigger value="matches">Matches ({{ matchesWon + matchesLost }})</TabsTrigger>
-                            <TabsTrigger value="leagues">Leagues{{ leagues ? ` (${leagues.length})` : '' }}</TabsTrigger>
-                        </TabsList>
-                        <TabsContent value="matches">
-                            <Deferred :data="['matches', 'archetypes']">
-                                <template #fallback>
-                                    <Card class="gap-0 overflow-hidden p-0">
-                                        <CardContent class="flex flex-col gap-2 px-4 py-4">
-                                            <Skeleton class="h-8 w-full" />
-                                            <Skeleton class="h-8 w-full" />
-                                            <Skeleton class="h-8 w-full" />
-                                            <Skeleton class="h-8 w-4/5" />
-                                        </CardContent>
-                                    </Card>
-                                </template>
-                                <DeckMatches :matches="matches!" :archetypes="archetypes!" />
-                            </Deferred>
-                        </TabsContent>
-                        <TabsContent value="leagues">
-                            <Deferred data="leagues">
-                                <template #fallback>
-                                    <Card class="gap-0 overflow-hidden p-0">
-                                        <CardContent class="flex flex-col gap-2 px-4 py-4">
-                                            <Skeleton class="h-8 w-full" />
-                                            <Skeleton class="h-8 w-full" />
-                                            <Skeleton class="h-8 w-2/3" />
-                                        </CardContent>
-                                    </Card>
-                                </template>
-                                <DeckLeagues :leagues="leagues!" />
                             </Deferred>
                         </TabsContent>
                     </Tabs>
