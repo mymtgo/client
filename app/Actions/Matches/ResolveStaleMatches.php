@@ -5,6 +5,7 @@ namespace App\Actions\Matches;
 use App\Enums\MatchState;
 use App\Events\AppNotification;
 use App\Models\MtgoMatch;
+use Illuminate\Support\Facades\Log;
 
 class ResolveStaleMatches
 {
@@ -29,8 +30,13 @@ class ResolveStaleMatches
         // Any incomplete match started before this is stale.
         $latestMatchStart = MtgoMatch::latest('started_at')->value('started_at');
 
+        Log::channel('pipeline')->info("ResolveStaleMatches: evaluating {$incompleteMatches->count()} incomplete matches", [
+            'latest_start' => $latestMatchStart,
+        ]);
+
         foreach ($incompleteMatches as $match) {
             if ($match->started_at >= $latestMatchStart) {
+                Log::channel('pipeline')->info("ResolveStaleMatches: match {$match->mtgo_id} skipped (is latest)");
                 continue;
             }
 
@@ -50,6 +56,12 @@ class ResolveStaleMatches
                 // Real league: mark as Ended so it's visible but indicates incomplete
                 $match->update(['state' => MatchState::Ended]);
 
+                Log::channel('pipeline')->warning("ResolveStaleMatches: match {$match->mtgo_id} ended (incomplete)", [
+                    'reason' => 'stale, real league',
+                    'state_before' => $match->getOriginal('state'),
+                    'started_at' => $match->started_at,
+                ]);
+
                 AppNotification::dispatch(
                     type: 'match_incomplete',
                     title: 'Match recorded but some data is missing',
@@ -59,6 +71,12 @@ class ResolveStaleMatches
             } else {
                 // Casual: void it completely
                 $match->update(['state' => MatchState::Voided]);
+
+                Log::channel('pipeline')->warning("ResolveStaleMatches: match {$match->mtgo_id} voided", [
+                    'reason' => 'stale, phantom/casual league',
+                    'state_before' => $match->getOriginal('state'),
+                    'started_at' => $match->started_at,
+                ]);
 
                 AppNotification::dispatch(
                     type: 'match_voided',

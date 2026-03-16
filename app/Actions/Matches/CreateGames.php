@@ -51,7 +51,7 @@ class CreateGames
 
         // If we have no state events yet, the game record exists for later backfill
         if (! $firstStateEvent) {
-            Log::debug("CreateGames: no state events yet for game {$gameId} in match {$match->mtgo_id}");
+            Log::channel('pipeline')->info("CreateGames: no state events yet for game {$gameId} in match {$match->mtgo_id}");
 
             return;
         }
@@ -60,7 +60,7 @@ class CreateGames
         $players = $parsedState['Players'] ?? [];
 
         if (empty($players)) {
-            Log::warning("CreateGames: no players found in state event for game {$gameId} in match {$match->mtgo_id}");
+            Log::channel('pipeline')->warning("CreateGames: no players found in state event for game {$gameId} in match {$match->mtgo_id}");
 
             return;
         }
@@ -112,6 +112,8 @@ class CreateGames
 
         $gameModel->players()->sync($playerModelMapping);
 
+        Log::channel('pipeline')->info("Match {$match->mtgo_id}: game {$gameId} — " . ($gameModel->wasRecentlyCreated ? 'created' : 'updated') . ", {$gameModel->players()->count()} players synced");
+
         $events = [];
         $timelineCatalogIds = [];
 
@@ -138,7 +140,7 @@ class CreateGames
             GameTimeline::where('game_id', $gameModel->id)->delete();
             GameTimeline::insert($events);
         } catch (\Illuminate\Database\QueryException $e) {
-            Log::debug("CreateGames: timeline update skipped for game {$gameModel->id}: {$e->getMessage()}");
+            Log::channel('pipeline')->info("CreateGames: timeline update skipped for game {$gameModel->id}: {$e->getMessage()}");
         }
     }
 }

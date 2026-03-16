@@ -10,6 +10,7 @@ const tabs = [
     { label: 'Decks', href: '/debug/decks' },
     { label: 'Deck Versions', href: '/debug/deck-versions' },
     { label: 'Log Cursors', href: '/debug/log-cursors' },
+    { label: 'Pipeline Log', href: '/debug/pipeline-log' },
 ];
 
 const isActive = (href: string) => page.url.startsWith(href);

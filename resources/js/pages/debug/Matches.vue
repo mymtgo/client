@@ -2,14 +2,17 @@
 import DebugNav from '@/components/debug/DebugNav.vue';
 import EditableCell from '@/components/debug/EditableCell.vue';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useSpinGuard } from '@/composables/useSpinGuard';
 import { useToast } from '@/composables/useToast';
-import { router } from '@inertiajs/vue3';
+import { router, usePoll } from '@inertiajs/vue3';
 import { RefreshCw } from 'lucide-vue-next';
-import { reactive } from 'vue';
+import { reactive, ref } from 'vue';
 
 const { add: toast } = useToast();
+
+usePoll(1000);
 
 type SelectOption = { label: string; value: string };
 
@@ -55,6 +58,30 @@ function restoreMatch(id: number) {
     router.patch(`/debug/matches/${id}/restore`, {}, {
         preserveScroll: true,
         onSuccess: () => toast({ type: 'success', title: 'Restored', message: `Match #${id} restored.`, duration: 2000 }),
+    });
+}
+
+function forceDeleteMatch(id: number) {
+    if (!confirm('Permanently delete this match and reset its log events? This cannot be undone.')) return;
+    router.delete(`/debug/matches/${id}/force`, {
+        preserveScroll: true,
+        onSuccess: () => toast({ type: 'success', title: 'Purged', message: `Match #${id} permanently deleted. Log events reset for reingestion.`, duration: 3000 }),
+    });
+}
+
+const resetIdentifier = ref('');
+const [resetting, startResetting] = useSpinGuard();
+
+function resetMatch() {
+    if (!resetIdentifier.value) return;
+    const stop = startResetting();
+    router.post('/debug/matches/reset', { identifier: resetIdentifier.value }, {
+        preserveScroll: true,
+        onSuccess: () => {
+            toast({ type: 'success', title: 'Reset', message: `Match ${resetIdentifier.value} purged and events reset for reingestion.`, duration: 3000 });
+            resetIdentifier.value = '';
+        },
+        onFinish: stop,
     });
 }
 
@@ -105,7 +132,19 @@ function refresh() {
     <div class="flex flex-1 flex-col overflow-hidden">
         <DebugNav />
         <div class="flex-1 overflow-auto p-4">
-            <div class="mb-4 flex items-center justify-end gap-2">
+            <div class="mb-4 flex items-center gap-2">
+                <Input
+                    v-model="resetIdentifier"
+                    type="text"
+                    placeholder="Match ID or token..."
+                    class="h-8 w-48 text-xs"
+                    @keyup.enter="resetMatch"
+                />
+                <Button size="sm" variant="outline" class="h-8" :disabled="!resetIdentifier || resetting" @click="resetMatch">
+                    <RefreshCw class="mr-1.5 h-3.5 w-3.5" :class="{ 'animate-spin': resetting }" />
+                    Reset &amp; Rebuild
+                </Button>
+                <div class="flex-1" />
                 <Button size="sm" class="h-8" :disabled="processing" @click="processNow">
                     <RefreshCw class="mr-1.5 h-3.5 w-3.5" :class="{ 'animate-spin': processing }" />
                     Process Now
@@ -141,16 +180,25 @@ function refresh() {
                                 :flash="flashState[`${match.id}-${col.key}`]"
                                 @save="(val: unknown) => saveField(match.id as number, col.key, val)"
                             />
-                            <td class="px-2 py-1">
-                                <Button
-                                    v-if="match.deleted_at"
-                                    variant="outline"
-                                    size="sm"
-                                    class="h-7 text-xs"
-                                    @click="restoreMatch(match.id as number)"
-                                >
-                                    Restore
-                                </Button>
+                            <td class="whitespace-nowrap px-2 py-1">
+                                <template v-if="match.deleted_at">
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        class="mr-1 h-7 text-xs"
+                                        @click="restoreMatch(match.id as number)"
+                                    >
+                                        Restore
+                                    </Button>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        class="h-7 text-xs text-destructive"
+                                        @click="forceDeleteMatch(match.id as number)"
+                                    >
+                                        Force Delete
+                                    </Button>
+                                </template>
                                 <Button
                                     v-else
                                     variant="ghost"

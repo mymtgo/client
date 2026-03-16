@@ -4,10 +4,12 @@ import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useSpinGuard } from '@/composables/useSpinGuard';
 import { useToast } from '@/composables/useToast';
-import { router } from '@inertiajs/vue3';
+import { router, usePoll } from '@inertiajs/vue3';
 import { RefreshCw } from 'lucide-vue-next';
 
 const { add: toast } = useToast();
+
+usePoll(1000);
 
 const props = defineProps<{
     logCursors: {
