@@ -154,6 +154,7 @@ class AdvanceMatchState
                 'total_events' => $events->count(),
                 'event_types' => $events->pluck('event_type')->countBy()->toArray(),
             ]);
+
             return false;
         }
 
@@ -220,6 +221,7 @@ class AdvanceMatchState
                 'state_changes' => $stateChanges->count(),
                 'contexts' => $stateChanges->pluck('context')->toArray(),
             ]);
+
             return false;
         }
 
