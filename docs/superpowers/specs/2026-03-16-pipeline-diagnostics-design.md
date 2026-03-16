@@ -109,11 +109,10 @@ Existing `debug/Matches` page.
 Deletion must follow this order to respect FK constraints (no `cascadeOnDelete` on these FKs):
 
 1. `match_archetypes` where `mtgo_match_id` = match id
-2. `archetype_attempts` where `match_id` = match id
-3. `game_timelines` where `game_id` in match's game ids
-4. `game_player` where `game_id` in match's game ids
-5. `games` where `match_id` = match id
-6. The match record itself (`forceDelete()`)
+2. `game_timelines` where `game_id` in match's game ids
+3. `game_player` where `game_id` in match's game ids
+4. `games` where `match_id` = match id
+5. The match record itself (`forceDelete()`)
 
 Then reset `processed_at` to `null` on all `log_events` where:
 - `match_id` = the match's `mtgo_id`, OR
