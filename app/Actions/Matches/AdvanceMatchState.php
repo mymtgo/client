@@ -52,7 +52,7 @@ class AdvanceMatchState
         );
 
         if (! $joinedState) {
-            Log::debug("AdvanceMatchState: no join event for token={$matchToken} id={$matchId}", [
+            Log::channel('pipeline')->warning("AdvanceMatchState: no join event for token={$matchToken} id={$matchId}", [
                 'events_count' => $events->count(),
                 'state_changes_count' => $stateChanges->count(),
                 'state_change_contexts' => $stateChanges->pluck('context')->toArray(),
@@ -83,6 +83,12 @@ class AdvanceMatchState
                     'ended_at' => $started, // placeholder until real end is known
                     'state' => MatchState::Started,
                 ]);
+
+                Log::channel('pipeline')->info("Match {$matchId}: created in Started state", [
+                    'token' => $matchToken,
+                    'format' => $match->format,
+                    'match_type' => $match->match_type,
+                ]);
             }
 
             // ── No regression ───────────────────────────────────────────
@@ -91,6 +97,11 @@ class AdvanceMatchState
             }
 
             $gameMeta ??= ExtractKeyValueBlock::run($joinedState->raw_text);
+
+            Log::channel('pipeline')->info("Match {$match->mtgo_id}: gameMeta keys", [
+                'keys' => array_keys($gameMeta),
+                'has_league_token' => ! empty($gameMeta['League Token']),
+            ]);
 
             // ── Started → InProgress ────────────────────────────────────
             if ($match->state === MatchState::Started) {
@@ -138,6 +149,11 @@ class AdvanceMatchState
         );
 
         if ($gameStateEvents->isEmpty()) {
+            Log::channel('pipeline')->warning("Match {$match->mtgo_id}: Started → InProgress FAILED", [
+                'reason' => '0 game_state_update events',
+                'total_events' => $events->count(),
+                'event_types' => $events->pluck('event_type')->countBy()->toArray(),
+            ]);
             return false;
         }
 
@@ -168,6 +184,13 @@ class AdvanceMatchState
 
         $match->update(['state' => MatchState::InProgress]);
 
+        Log::channel('pipeline')->info("Match {$match->mtgo_id}: Started → InProgress", [
+            'game_state_events' => $gameStateEvents->count(),
+            'game_ids' => $gameStateEvents->pluck('game_id')->unique()->values()->toArray(),
+            'deck_linked' => (bool) $match->deck_version_id,
+            'league_id' => $match->league_id,
+        ]);
+
         if ($match->league_id) {
             LeagueMatchStarted::dispatch();
         }
@@ -193,6 +216,10 @@ class AdvanceMatchState
         $concededAndQuit = DetermineMatchResult::localPlayerConceded($stateChanges);
 
         if (! $matchEnded && ! $concededAndQuit) {
+            Log::channel('pipeline')->info("Match {$match->mtgo_id}: InProgress → Ended waiting", [
+                'state_changes' => $stateChanges->count(),
+                'contexts' => $stateChanges->pluck('context')->toArray(),
+            ]);
             return false;
         }
 
@@ -203,6 +230,10 @@ class AdvanceMatchState
         $match->update([
             'ended_at' => $ended,
             'state' => MatchState::Ended,
+        ]);
+
+        Log::channel('pipeline')->info("Match {$match->mtgo_id}: InProgress → Ended", [
+            'signal' => $matchEnded ? $matchEnded->context : 'local_concede',
         ]);
 
         return true;
@@ -232,6 +263,11 @@ class AdvanceMatchState
             'games_won' => $result['wins'],
             'games_lost' => $result['losses'],
             'state' => MatchState::Complete,
+        ]);
+
+        Log::channel('pipeline')->info("Match {$match->mtgo_id}: Ended → Complete", [
+            'result' => "{$result['wins']}-{$result['losses']}",
+            'game_log_results' => count($logResults),
         ]);
 
         if (
@@ -345,6 +381,12 @@ class AdvanceMatchState
         }
 
         $match->update(['league_id' => $league->id]);
+
+        Log::channel('pipeline')->info("Match {$match->mtgo_id}: assigned to league #{$league->id}", [
+            'league_name' => $league->name,
+            'phantom' => $league->phantom,
+            'has_league_token' => ! empty($gameMeta['League Token']),
+        ]);
     }
 
     /**

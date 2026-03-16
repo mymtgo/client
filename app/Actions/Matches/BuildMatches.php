@@ -24,7 +24,7 @@ class BuildMatches
             ->distinct()
             ->pluck('match_id', 'match_token');
 
-        Log::debug("BuildMatches: found {$matchTokens->count()} unprocessed tokens, {$matchIds->count()} new match IDs");
+        Log::channel('pipeline')->info("BuildMatches: found {$matchTokens->count()} unprocessed tokens, {$matchIds->count()} new match IDs");
 
         foreach ($matchIds as $matchToken => $matchId) {
             if (MtgoMatch::where('mtgo_id', $matchId)->exists()) {
@@ -36,7 +36,7 @@ class BuildMatches
                 ->value('username');
 
             if (! $username) {
-                Log::debug("BuildMatches: no username on events for token={$matchToken}, skipping");
+                Log::channel('pipeline')->info("BuildMatches: no username on events for token={$matchToken}, skipping");
 
                 continue;
             }
@@ -44,16 +44,16 @@ class BuildMatches
             $account = Account::where('username', $username)->first();
 
             if ($account && ! $account->tracked) {
-                Log::debug("BuildMatches: account {$username} is not tracked, skipping token={$matchToken}");
+                Log::channel('pipeline')->info("BuildMatches: account {$username} is not tracked, skipping token={$matchToken}");
 
                 continue;
             }
 
             Mtgo::setUsername($username);
 
-            Log::debug("BuildMatches: creating match token={$matchToken} id={$matchId} username={$username}");
+            Log::channel('pipeline')->info("BuildMatches: creating match token={$matchToken} id={$matchId} username={$username}");
             $result = AdvanceMatchState::run($matchToken, $matchId);
-            Log::debug('BuildMatches: AdvanceMatchState returned '.($result ? "match #{$result->id} state={$result->state->value}" : 'null'));
+            Log::channel('pipeline')->info('BuildMatches: AdvanceMatchState returned '.($result ? "match #{$result->id} state={$result->state->value}" : 'null'));
         }
 
         // 2. State advancement — advance all incomplete matches

@@ -8,11 +8,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useSpinGuard } from '@/composables/useSpinGuard';
 import { useToast } from '@/composables/useToast';
-import { router } from '@inertiajs/vue3';
+import { router, usePoll } from '@inertiajs/vue3';
 import { RefreshCw } from 'lucide-vue-next';
 import { reactive, ref } from 'vue';
 
 const { add: toast } = useToast();
+
+usePoll(1000);
 
 type SelectOption = { label: string; value: string };
 

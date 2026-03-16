@@ -8,6 +8,7 @@ use App\Models\LogCursor;
 use App\Models\LogEvent;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class IngestLog
 {
@@ -51,6 +52,10 @@ class IngestLog
         if ($truncated || $replaced || $mtimeBackwards) {
             $cursor->byte_offset = 0;
             $cursor->local_username = null; // clean slate for new log instance
+            Log::channel('pipeline')->info('Log rotation detected — cursor reset to 0', [
+                'file' => $logPath,
+                'reason' => $truncated ? 'truncated' : ($replaced ? 'replaced' : 'mtime_backwards'),
+            ]);
         }
 
         $cursor->file_mtime = $mtime;
@@ -143,6 +148,17 @@ class IngestLog
 
         // Batch all DB writes in a single transaction to minimise lock duration.
         $hadNewEvents = ! empty($rows);
+
+        if ($hadNewEvents) {
+            $classified = collect($rows)->whereNotNull('event_type')->countBy('event_type');
+            $unclassified = collect($rows)->whereNull('event_type')->count();
+
+            Log::channel('pipeline')->info("Ingested " . count($rows) . " events from {$logPath}", [
+                'cursor' => "{$cursor->byte_offset} → {$safeOffset}",
+                'classified' => $classified->toArray(),
+                'unclassified' => $unclassified,
+            ]);
+        }
 
         DB::transaction(function () use ($rows, $cursor, $safeOffset) {
             if (! empty($rows)) {
