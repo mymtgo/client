@@ -16,15 +16,17 @@ it('generates dek file and triggers save dialog', function () {
     ]);
     $archetype->cards()->attach($card->id, ['quantity' => 4, 'sideboard' => false]);
 
-    $response = $this->post("/archetypes/{$archetype->id}/export");
+    $response = $this->postJson("/archetypes/{$archetype->id}/export");
 
-    $response->assertRedirect();
+    $response->assertOk();
+    $response->assertJsonStructure(['success']);
 });
 
-it('redirects back when dialog is cancelled', function () {
+it('returns cancelled when dialog is dismissed', function () {
     $archetype = Archetype::factory()->withDecklist()->create();
 
-    $response = $this->post("/archetypes/{$archetype->id}/export");
+    $response = $this->postJson("/archetypes/{$archetype->id}/export");
 
-    $response->assertRedirect();
+    $response->assertOk();
+    $response->assertJson(['success' => false, 'cancelled' => true]);
 });

@@ -33,10 +33,10 @@ const isActive = (href: string) => {
             v-for="item in nav"
             :key="item.label"
             :href="item.href"
-            class="relative inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm font-medium text-white transition-colors"
+            class="relative inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm font-medium transition-colors"
             :class="{
-                'border-blue-500/40 bg-blue-500/10 shadow-inner shadow-black text-blue-300 outline-[1px] outline-white/2': isActive(item.href),
-                'bevel border-black/60 hover:bg-accent/50 hover:text-accent-foreground': !isActive(item.href),
+                'text-background-accent border-black shadow-inner shadow-black outline-[1px] outline-white/10': isActive(item.href),
+                'bevel border-black/60 text-white hover:bg-accent/50 hover:text-accent-foreground': !isActive(item.href),
             }"
         >
             <component :is="item.icon" class="size-4" />
@@ -47,7 +47,7 @@ const isActive = (href: string) => {
             href="/debug/matches"
             class="relative inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm font-medium text-white transition-colors"
             :class="{
-                'border-blue-500/40 bg-blue-500/10 shadow-inner shadow-black text-blue-300 outline-[1px] outline-white/2': isActive('/debug'),
+                'text-background-accent border-black shadow-inner shadow-black outline-[1px] outline-white/10': isActive('/debug'),
                 'bevel border-black/60 hover:bg-accent/50 hover:text-accent-foreground': !isActive('/debug'),
             }"
         >

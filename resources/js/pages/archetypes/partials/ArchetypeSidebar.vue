@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import ShowController from '@/actions/App/Http/Controllers/Archetypes/ShowController';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import ManaSymbols from '@/components/ManaSymbols.vue';
 import { Link, router, usePage } from '@inertiajs/vue3';
 import { ChevronLeft, ChevronRight } from 'lucide-vue-next';
@@ -54,16 +55,17 @@ function goToPage(page: number) {
     <aside class="flex h-full w-full flex-col border-r border-black/60">
         <div class="flex gap-2 border-b border-black/60 p-3">
             <Input v-model="search" placeholder="Search..." class="h-8 basis-2/3 text-sm" />
-            <select
-                v-model="format"
-                class="basis-1/3 rounded-md border border-input bg-background px-2 py-1.5 text-sm"
-                @change="onFormatChange"
-            >
-                <option value="">All</option>
-                <option v-for="(label, value) in formats" :key="value" :value="value">
-                    {{ label }}
-                </option>
-            </select>
+            <Select :modelValue="format || '__all__'" @update:modelValue="(val: string) => { format = val === '__all__' ? '' : val; onFormatChange(); }">
+                <SelectTrigger class="h-8 basis-1/3 text-sm">
+                    <SelectValue placeholder="All" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="__all__">All</SelectItem>
+                    <SelectItem v-for="(label, value) in formats" :key="value" :value="value as string">
+                        {{ label }}
+                    </SelectItem>
+                </SelectContent>
+            </Select>
         </div>
 
         <div class="flex-1 overflow-y-auto">
