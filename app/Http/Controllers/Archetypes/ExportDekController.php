@@ -4,14 +4,14 @@ namespace App\Http\Controllers\Archetypes;
 
 use App\Actions\Archetypes\GenerateDekFile;
 use App\Models\Archetype;
-use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 use Native\Desktop\Dialog;
 
 class ExportDekController
 {
-    public function __invoke(Archetype $archetype): RedirectResponse
+    public function __invoke(Archetype $archetype): JsonResponse
     {
         $xml = GenerateDekFile::run($archetype);
         $suggestedName = Str::slug($archetype->name).'.dek';
@@ -25,9 +25,9 @@ class ExportDekController
         if ($path) {
             File::put($path, $xml);
 
-            return redirect()->back()->with('success', 'Deck file saved.');
+            return response()->json(['success' => true, 'path' => $path]);
         }
 
-        return redirect()->back();
+        return response()->json(['success' => false, 'cancelled' => true]);
     }
 }

@@ -48,9 +48,9 @@ it('downloads decklist from API and stores cards', function () {
 
     $archetype = Archetype::factory()->create(['uuid' => 'test-uuid']);
 
-    $response = $this->post("/archetypes/{$archetype->id}/download");
+    $response = $this->postJson("/archetypes/{$archetype->id}/download");
 
-    $response->assertRedirect();
+    $response->assertOk();
 
     $archetype->refresh();
     expect($archetype->decklist_downloaded_at)->not->toBeNull();
@@ -123,10 +123,10 @@ it('flashes error on API failure', function () {
 
     $archetype = Archetype::factory()->create();
 
-    $response = $this->post("/archetypes/{$archetype->id}/download");
+    $response = $this->postJson("/archetypes/{$archetype->id}/download");
 
-    $response->assertRedirect();
-    $response->assertSessionHas('error');
+    $response->assertUnprocessable();
+    $response->assertJsonStructure(['error']);
 
     $archetype->refresh();
     expect($archetype->decklist_downloaded_at)->toBeNull();
@@ -157,9 +157,9 @@ it('retries on 401 after re-registration', function () {
 
     $archetype = Archetype::factory()->create(['uuid' => 'test-uuid']);
 
-    $response = $this->post("/archetypes/{$archetype->id}/download");
+    $response = $this->postJson("/archetypes/{$archetype->id}/download");
 
-    $response->assertRedirect();
+    $response->assertOk();
     $archetype->refresh();
     expect($archetype->decklist_downloaded_at)->not->toBeNull();
     expect($archetype->cards)->toHaveCount(1);

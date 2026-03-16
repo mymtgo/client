@@ -4,18 +4,18 @@ namespace App\Http\Controllers\Archetypes;
 
 use App\Actions\Archetypes\DownloadArchetypeDecklist;
 use App\Models\Archetype;
-use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\JsonResponse;
 
 class DownloadDecklistController
 {
-    public function __invoke(Archetype $archetype): RedirectResponse
+    public function __invoke(Archetype $archetype): JsonResponse
     {
         try {
             DownloadArchetypeDecklist::run($archetype);
         } catch (\RuntimeException $e) {
-            return redirect()->back()->with('error', $e->getMessage());
+            return response()->json(['error' => $e->getMessage()], 422);
         }
 
-        return redirect()->back();
+        return response()->json(['success' => true]);
     }
 }

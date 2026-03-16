@@ -16,30 +16,42 @@ const props = defineProps<{
 const downloading = ref(false);
 const exporting = ref(false);
 
-function downloadDecklist() {
+async function downloadDecklist() {
     downloading.value = true;
-    router.post(
-        DownloadDecklistController.url({ archetype: props.detail.archetype.id }),
-        {},
-        {
-            preserveState: true,
+    try {
+        const xsrf = document.cookie.match(/XSRF-TOKEN=([^;]+)/)?.[1] ?? '';
+        await fetch(DownloadDecklistController.url({ archetype: props.detail.archetype.id }), {
+            method: 'POST',
+            headers: {
+                'X-XSRF-TOKEN': decodeURIComponent(xsrf),
+                'Accept': 'application/json',
+            },
+        });
+        router.reload({
+            only: ['detail'],
             preserveScroll: true,
+            preserveState: true,
             onFinish: () => { downloading.value = false; },
-        },
-    );
+        });
+    } catch {
+        downloading.value = false;
+    }
 }
 
-function exportDek() {
+async function exportDek() {
     exporting.value = true;
-    router.post(
-        ExportDekController.url({ archetype: props.detail.archetype.id }),
-        {},
-        {
-            preserveState: true,
-            preserveScroll: true,
-            onFinish: () => { exporting.value = false; },
-        },
-    );
+    try {
+        const xsrf = document.cookie.match(/XSRF-TOKEN=([^;]+)/)?.[1] ?? '';
+        await fetch(ExportDekController.url({ archetype: props.detail.archetype.id }), {
+            method: 'POST',
+            headers: {
+                'X-XSRF-TOKEN': decodeURIComponent(xsrf),
+                'Accept': 'application/json',
+            },
+        });
+    } finally {
+        exporting.value = false;
+    }
 }
 
 const maindeck = computed(() => {
