@@ -37,6 +37,7 @@ class ResolveStaleMatches
         foreach ($incompleteMatches as $match) {
             if ($match->started_at >= $latestMatchStart) {
                 Log::channel('pipeline')->info("ResolveStaleMatches: match {$match->mtgo_id} skipped (is latest)");
+
                 continue;
             }
 

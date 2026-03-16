@@ -153,7 +153,7 @@ class IngestLog
             $classified = collect($rows)->whereNotNull('event_type')->countBy('event_type');
             $unclassified = collect($rows)->whereNull('event_type')->count();
 
-            Log::channel('pipeline')->info("Ingested " . count($rows) . " events from {$logPath}", [
+            Log::channel('pipeline')->info('Ingested '.count($rows)." events from {$logPath}", [
                 'cursor' => "{$cursor->byte_offset} → {$safeOffset}",
                 'classified' => $classified->toArray(),
                 'unclassified' => $unclassified,

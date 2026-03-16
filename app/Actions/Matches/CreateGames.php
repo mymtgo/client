@@ -112,7 +112,7 @@ class CreateGames
 
         $gameModel->players()->sync($playerModelMapping);
 
-        Log::channel('pipeline')->info("Match {$match->mtgo_id}: game {$gameId} — " . ($gameModel->wasRecentlyCreated ? 'created' : 'updated') . ", {$gameModel->players()->count()} players synced");
+        Log::channel('pipeline')->info("Match {$match->mtgo_id}: game {$gameId} — ".($gameModel->wasRecentlyCreated ? 'created' : 'updated').", {$gameModel->players()->count()} players synced");
 
         $events = [];
         $timelineCatalogIds = [];
