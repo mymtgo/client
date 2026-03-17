@@ -196,7 +196,7 @@ class ShowController extends Controller
                 foreach ($leagueRecords as $record) {
                     $key = "{$record->wins}-{$record->losses}";
                     if ($buckets->has($key)) {
-                        $buckets[$key]++;
+                        $buckets->put($key, $buckets->get($key) + 1);
                     }
                 }
 
