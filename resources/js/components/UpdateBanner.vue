@@ -21,6 +21,7 @@ const ipcUpdate = ref<{ version: string; releaseName: string; releaseNotes: stri
 const update = computed(() => page.props.availableUpdate ?? ipcUpdate.value);
 const installing = ref(false);
 const showModal = ref(false);
+const dismissedVersion = ref<string | null>(sessionStorage.getItem('update_dismissed'));
 
 onMounted(() => {
     window.Native?.on('Native\\Desktop\\Events\\AutoUpdater\\UpdateDownloaded', (payload: Record<string, unknown>) => {
@@ -32,12 +33,20 @@ onMounted(() => {
     });
 });
 
-// Auto-open modal when an update becomes available
+// Auto-open modal when an update becomes available (once per version)
 watch(update, (val) => {
-    if (val && !installing.value) {
+    if (val && !installing.value && dismissedVersion.value !== val.version) {
         showModal.value = true;
     }
 }, { immediate: true });
+
+function dismiss() {
+    showModal.value = false;
+    if (update.value) {
+        dismissedVersion.value = update.value.version;
+        sessionStorage.setItem('update_dismissed', update.value.version);
+    }
+}
 
 function install() {
     installing.value = true;
@@ -88,7 +97,7 @@ function install() {
             </div>
 
             <DialogFooter>
-                <Button variant="outline" @click="showModal = false">Later</Button>
+                <Button variant="outline" @click="dismiss">Later</Button>
                 <Button @click="install">
                     <Download class="mr-1.5 size-4" />
                     Install & Restart
