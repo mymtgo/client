@@ -155,6 +155,22 @@ class ShowController extends Controller
             'matchupSpread' => Inertia::defer(
                 fn () => GetArchetypeMatchupSpread::run($deck, $from, $to),
             ),
+
+            // Card stats — per-card performance aggregated from card_game_stats
+            'cardStats' => Inertia::defer(function () use ($deckVersion, $request) {
+                if (! $deckVersion) {
+                    return ['stats' => [], 'archetypes' => []];
+                }
+
+                $opponentArchetypeId = $request->filled('card_stats_archetype')
+                    ? (int) $request->input('card_stats_archetype')
+                    : null;
+
+                return [
+                    'stats' => \App\Actions\Cards\GetCardGameStats::run($deckVersion, $opponentArchetypeId),
+                    'archetypes' => \App\Actions\Cards\GetCardGameStats::availableArchetypes($deckVersion),
+                ];
+            }),
             'leagueResults' => Inertia::defer(function () use ($deck, $allMatchIds) {
                 $buckets = collect(['5-0' => 0, '4-1' => 0, '3-2' => 0, '2-3' => 0, '1-4' => 0, '0-5' => 0]);
 
@@ -204,7 +220,7 @@ class ShowController extends Controller
                     ->whereNull('m.deleted_at')
                     ->where('m.state', 'complete')
                     ->where('d.id', $deck->id)
-                    ->select('m.id', 'm.league_id', 'm.games_won', 'm.games_lost', 'm.started_at', 'd.id as deck_id', 'd.name as deck_name')
+                    ->select('m.id', 'm.league_id', 'm.games_won', 'm.games_lost', 'm.started_at', 'd.id as deck_id', 'd.name as deck_name', 'd.color_identity as deck_color_identity')
                     ->orderBy('m.started_at')
                     ->get();
 
@@ -228,51 +244,53 @@ class ShowController extends Controller
 
                 $matchesByLeague = $matchRows->groupBy('league_id');
 
-                return $leagues->map(function (League $league) use ($matchesByLeague, $opponentByMatch) {
-                    $matches = $matchesByLeague[$league->id] ?? collect();
+                return $leagues->filter(fn (League $league) => isset($matchesByLeague[$league->id]) && $matchesByLeague[$league->id]->isNotEmpty())
+                    ->values()
+                    ->map(function (League $league) use ($matchesByLeague, $opponentByMatch) {
+                        $matches = $matchesByLeague[$league->id];
 
-                    $deck = $matches->groupBy('deck_id')
-                        ->map->count()
-                        ->sortDesc()
-                        ->keys()
-                        ->map(fn ($deckId) => $matches->firstWhere('deck_id', $deckId))
-                        ->map(fn ($row) => ['id' => $row->deck_id, 'name' => $row->deck_name])
-                        ->first();
+                        $deck = $matches->groupBy('deck_id')
+                            ->map->count()
+                            ->sortDesc()
+                            ->keys()
+                            ->map(fn ($deckId) => $matches->firstWhere('deck_id', $deckId))
+                            ->map(fn ($row) => ['id' => $row->deck_id, 'name' => $row->deck_name, 'colorIdentity' => $row->deck_color_identity])
+                            ->first();
 
-                    $matchData = $matches->map(function ($row) use ($opponentByMatch) {
-                        $opp = $opponentByMatch[$row->id] ?? null;
-                        $won = $row->games_won > $row->games_lost;
+                        $matchData = $matches->map(function ($row) use ($opponentByMatch) {
+                            $opp = $opponentByMatch[$row->id] ?? null;
+                            $won = $row->games_won > $row->games_lost;
+
+                            return [
+                                'id' => $row->id,
+                                'result' => $won ? 'W' : 'L',
+                                'opponentName' => $opp?->username,
+                                'opponentArchetype' => $opp?->archetype_name,
+                                'games' => "{$row->games_won}-{$row->games_lost}",
+                                'startedAt' => $row->started_at,
+                            ];
+                        })->values()->all();
+
+                        $results = array_map(fn ($m) => $m['result'], $matchData);
+
+                        if (! $league->phantom) {
+                            while (count($results) < 5) {
+                                $results[] = null;
+                            }
+                        }
 
                         return [
-                            'id' => $row->id,
-                            'result' => $won ? 'W' : 'L',
-                            'opponentName' => $opp?->username,
-                            'opponentArchetype' => $opp?->archetype_name,
-                            'games' => "{$row->games_won}-{$row->games_lost}",
-                            'startedAt' => $row->started_at,
+                            'id' => $league->id,
+                            'name' => $league->name,
+                            'format' => MtgoMatch::displayFormat($league->format),
+                            'phantom' => (bool) $league->phantom,
+                            'state' => $league->state?->value ?? 'active',
+                            'startedAt' => $league->started_at,
+                            'deck' => $deck,
+                            'results' => $results,
+                            'matches' => $matchData,
                         ];
                     })->values()->all();
-
-                    $results = array_map(fn ($m) => $m['result'], $matchData);
-
-                    if (! $league->phantom) {
-                        while (count($results) < 5) {
-                            $results[] = null;
-                        }
-                    }
-
-                    return [
-                        'id' => $league->id,
-                        'name' => $league->name,
-                        'format' => MtgoMatch::displayFormat($league->format),
-                        'phantom' => (bool) $league->phantom,
-                        'state' => $league->state?->value ?? 'active',
-                        'startedAt' => $league->started_at,
-                        'deck' => $deck,
-                        'results' => $results,
-                        'matches' => $matchData,
-                    ];
-                })->values()->all();
             }, 'tabs'),
 
             // Versions group — sidebar deck version selector

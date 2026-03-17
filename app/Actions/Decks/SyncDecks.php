@@ -79,6 +79,8 @@ class SyncDecks
                 'modified_at' => $fileModified,
             ]);
 
+            ComputeDeckIdentity::run($deck);
+
             $deckIds[] = $deck->id;
         }
 
