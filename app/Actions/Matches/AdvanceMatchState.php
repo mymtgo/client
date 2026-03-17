@@ -291,6 +291,7 @@ class AdvanceMatchState
         }
 
         SubmitMatch::dispatch($match->id);
+        \App\Jobs\ComputeCardGameStats::dispatch($match->id);
 
         $won = $match->games_won > $match->games_lost;
         $opponentArchetype = $match->opponentArchetypes()->with('archetype')->first()?->archetype?->name ?? 'Unknown';

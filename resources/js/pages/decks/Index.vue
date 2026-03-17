@@ -8,6 +8,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenu
 import { Input } from '@/components/ui/input';
 import { Pagination, PaginationContent, PaginationItem, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import ManaSymbols from '@/components/ManaSymbols.vue';
 import WinRateBar from '@/components/WinRateBar.vue';
 import { router } from '@inertiajs/vue3';
 import dayjs from 'dayjs';
@@ -163,7 +164,10 @@ function updatePage(page: number) {
                         <CardContent class="flex flex-col gap-3">
                             <!-- Name + meta -->
                             <div class="flex justify-between gap-1">
-                                <span class="truncate leading-tight font-semibold">{{ deck.name }}</span>
+                                <div class="flex items-center gap-1.5">
+                                    <span class="truncate leading-tight font-semibold">{{ deck.name }}</span>
+                                    <ManaSymbols v-if="deck.colorIdentity" :symbols="deck.colorIdentity" class="shrink-0" />
+                                </div>
                                 <div class="flex shrink-0 items-center gap-2 text-xs text-muted-foreground">
                                     <Badge variant="outline" class="py-0 text-xs">{{ deck.format }}</Badge>
                                     <span>·</span>

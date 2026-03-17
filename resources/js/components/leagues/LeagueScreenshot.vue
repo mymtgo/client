@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import ManaSymbols from '@/components/ManaSymbols.vue';
+
 type LeagueMatch = {
     id: number;
     result: 'W' | 'L';
@@ -12,7 +14,7 @@ type LeagueRun = {
     id: number;
     name: string;
     format: string;
-    deck: { id: number; name: string } | null;
+    deck: { id: number; name: string; colorIdentity?: string | null } | null;
     startedAt: string;
     results: ('W' | 'L' | null)[];
     phantom: boolean;
@@ -48,8 +50,11 @@ const colors = {
         <!-- Header -->
         <div :style="{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }">
             <div>
-                <div :style="{ fontSize: '16px', fontWeight: '700', lineHeight: '1.2' }">
-                    {{ league.deck?.name ?? 'Unknown Deck' }}
+                <div :style="{ display: 'flex', alignItems: 'center', gap: '8px' }">
+                    <span :style="{ fontSize: '16px', fontWeight: '700', lineHeight: '1.2' }">
+                        {{ league.deck?.name ?? 'Unknown Deck' }}
+                    </span>
+                    <ManaSymbols v-if="league.deck?.colorIdentity" :symbols="league.deck.colorIdentity" class="[&_svg]:w-3" :style="{ display: 'flex', gap: '1px' }" />
                 </div>
                 <div :style="{ fontSize: '12px', color: colors.muted, marginTop: '2px' }">
                     {{ league.format }}

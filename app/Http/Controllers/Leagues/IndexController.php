@@ -20,6 +20,7 @@ class IndexController extends Controller
 
         $leagues = League::query()
             ->when($hidePhantom, fn ($q) => $q->where('phantom', false))
+            ->whereHas('matches', fn ($q) => $q->where('state', 'complete')->whereNull('deleted_at'))
             ->orderByDesc('started_at')
             ->get();
 
@@ -37,7 +38,7 @@ class IndexController extends Controller
             ->whereNull('m.deleted_at')
             ->where('m.state', 'complete')
             ->when($activeAccountId, fn ($q, $id) => $q->where('d.account_id', $id))
-            ->select('m.id', 'm.league_id', 'm.games_won', 'm.games_lost', 'm.started_at', 'd.id as deck_id', 'd.name as deck_name')
+            ->select('m.id', 'm.league_id', 'm.games_won', 'm.games_lost', 'm.started_at', 'd.id as deck_id', 'd.name as deck_name', 'd.color_identity as deck_color_identity')
             ->orderBy('m.started_at')
             ->get();
 
@@ -71,7 +72,7 @@ class IndexController extends Controller
                 ->sortDesc()
                 ->keys()
                 ->map(fn ($deckId) => $matches->firstWhere('deck_id', $deckId))
-                ->map(fn ($row) => ['id' => $row->deck_id, 'name' => $row->deck_name])
+                ->map(fn ($row) => ['id' => $row->deck_id, 'name' => $row->deck_name, 'colorIdentity' => $row->deck_color_identity])
                 ->first();
 
             $matchData = $matches->map(function ($row) use ($opponentByMatch) {
