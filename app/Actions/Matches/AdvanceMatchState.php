@@ -3,7 +3,6 @@
 namespace App\Actions\Matches;
 
 use App\Actions\DetermineMatchArchetypes;
-use App\Actions\Util\ExtractJson;
 use App\Actions\Util\ExtractKeyValueBlock;
 use App\Enums\LeagueState;
 use App\Enums\LogEventType;
@@ -13,15 +12,11 @@ use App\Events\DeckLinkedToMatch;
 use App\Events\LeagueMatchStarted;
 use App\Jobs\SubmitMatch;
 use App\Jobs\SyncDecks;
-use App\Models\DeckVersion;
-use App\Models\League;
 use App\Models\LogEvent;
 use App\Models\MtgoMatch;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
-use Native\Desktop\Facades\Settings;
 
 class AdvanceMatchState
 {
@@ -114,8 +109,8 @@ class AdvanceMatchState
 
             // ── Create any games whose events arrived after Started → InProgress ──
             if ($match->state === MatchState::InProgress || $match->state === MatchState::Ended) {
-                self::createOrUpdateGames($match, $events);
-                self::syncLiveGameResults($match);
+                CreateOrUpdateGames::run($match, $events);
+                SyncLiveGameResults::run($match);
             }
 
             // ── InProgress → Ended ──────────────────────────────────────
@@ -160,7 +155,7 @@ class AdvanceMatchState
         }
 
         // ── Create games (idempotent — CreateGames uses firstOrCreate) ──
-        self::createOrUpdateGames($match, $events);
+        CreateOrUpdateGames::run($match, $events);
 
         // ── Link deck (if not already linked) ──
         if (! $match->deck_version_id) {
@@ -181,7 +176,7 @@ class AdvanceMatchState
 
         // ── Assign league (if not already assigned) ──
         if (! $match->league_id) {
-            self::assignLeague($match, $gameMeta);
+            AssignLeague::run($match, $gameMeta);
         }
 
         $match->update(['state' => MatchState::InProgress]);
@@ -313,169 +308,5 @@ class AdvanceMatchState
             'processed_at' => now(),
         ]);
 
-    }
-
-    /**
-     * Create or update games from log events.
-     *
-     * Groups events by game_id, fetches associated deck data, and runs
-     * CreateGames for each. Safe to call multiple times — CreateGames
-     * upserts game records and replaces timeline entries idempotently.
-     */
-    private static function createOrUpdateGames(MtgoMatch $match, Collection $events): void
-    {
-        $games = $events->groupBy('game_id')->filter(
-            fn ($group, $key) => $key !== '' && $key !== null
-        );
-
-        $gameIds = $games->keys();
-
-        $decksEvents = LogEvent::where('event_type', LogEventType::DECK_USED->value)
-            ->whereIn('game_id', $gameIds)
-            ->get();
-
-        $gameIndex = 0;
-
-        foreach ($games as $gameId => $gameEvents) {
-            $playerDeck = $decksEvents->first(
-                fn ($event) => (int) $event->game_id === (int) $gameId
-            );
-
-            $deckJson = $playerDeck
-                ? (ExtractJson::run($playerDeck->raw_text)->first() ?: [])
-                : [];
-
-            CreateGames::run($match, $gameId, $gameEvents, $gameIndex, $deckJson);
-            $gameIndex++;
-        }
-    }
-
-    /**
-     * Sync live game results from the binary game log file.
-     *
-     * Incrementally parses the .dat file and updates Game.won for any
-     * games that have completed but don't have a result yet.
-     */
-    private static function syncLiveGameResults(MtgoMatch $match): void
-    {
-        $gameLog = GetGameLog::run($match->token);
-
-        if (! $gameLog || empty($gameLog['results'])) {
-            return;
-        }
-
-        $games = $match->games()->orderBy('started_at')->get();
-
-        foreach ($games as $index => $game) {
-            // Skip games that already have a result
-            if ($game->won !== null) {
-                continue;
-            }
-
-            // Check if the game log has a result for this game index
-            if (! isset($gameLog['results'][$index])) {
-                continue;
-            }
-
-            $game->update(['won' => $gameLog['results'][$index]]);
-
-            Log::channel('pipeline')->info("Match {$match->mtgo_id}: live game result synced", [
-                'game_id' => $game->mtgo_id,
-                'game_index' => $index,
-                'won' => $gameLog['results'][$index],
-            ]);
-        }
-    }
-
-    /**
-     * Assign a league to the match — real league if token present, phantom otherwise.
-     */
-    private static function assignLeague(MtgoMatch $match, array $gameMeta): void
-    {
-        if (! empty($gameMeta['League Token'])) {
-            $leagueKey = [
-                'token' => $gameMeta['League Token'],
-                'format' => $gameMeta['PlayFormatCd'],
-            ];
-
-            // Include deck version in the composite key when available,
-            // so re-entering the same league with a different deck creates a new run.
-            if ($match->deck_version_id) {
-                $leagueKey['deck_version_id'] = $match->deck_version_id;
-            }
-
-            $league = League::firstOrCreate($leagueKey, [
-                'started_at' => now(),
-                'name' => trim(($gameMeta['GameStructureCd'] ?? '').' League '.now()->format('d-m-Y h:ma')),
-            ]);
-
-            if ($league->wasRecentlyCreated) {
-                // Mark older active leagues with the same token as partial
-                League::where('token', $gameMeta['League Token'])
-                    ->where('format', $gameMeta['PlayFormatCd'])
-                    ->where('state', LeagueState::Active)
-                    ->where('id', '!=', $league->id)
-                    ->where('started_at', '<=', $league->started_at)
-                    ->update(['state' => LeagueState::Partial]);
-            }
-        } elseif (! Settings::get('hide_phantom_leagues')) {
-            $match->refresh();
-
-            $deckId = $match->deck_version_id
-                ? DeckVersion::find($match->deck_version_id)?->deck_id
-                : null;
-
-            $league = self::findOrCreatePhantomLeague($gameMeta, $deckId, $match->deck_version_id);
-        } else {
-            return;
-        }
-
-        $match->update(['league_id' => $league->id]);
-
-        Log::channel('pipeline')->info("Match {$match->mtgo_id}: assigned to league #{$league->id}", [
-            'league_name' => $league->name,
-            'phantom' => $league->phantom,
-            'has_league_token' => ! empty($gameMeta['League Token']),
-        ]);
-    }
-
-    /**
-     * Find an existing phantom league for the given deck and format, or create a new one.
-     *
-     * We only append to a phantom league when:
-     *  - It belongs to the same deck (prevents cross-deck contamination)
-     *  - It is not already flagged as having a deck change
-     *  - It has fewer than 5 matches (league run limit)
-     *
-     * If the deck is unknown (DetermineMatchDeck found no signature match) we always
-     * create a fresh league rather than risk polluting an existing one.
-     */
-    private static function findOrCreatePhantomLeague(array $gameMeta, ?int $deckId, ?int $deckVersionId = null): League
-    {
-        if ($deckId) {
-            $existing = League::where('format', $gameMeta['PlayFormatCd'])
-                ->where('phantom', true)
-                ->where('deck_change_detected', false)
-                ->has('matches', '<', 5)
-                ->whereHas('matches', fn ($q) => $q
-                    ->join('deck_versions as dv', 'dv.id', '=', 'matches.deck_version_id')
-                    ->where('dv.deck_id', $deckId)
-                )
-                ->latest('started_at')
-                ->first();
-
-            if ($existing) {
-                return $existing;
-            }
-        }
-
-        return League::create([
-            'token' => Str::random(),
-            'format' => $gameMeta['PlayFormatCd'],
-            'phantom' => true,
-            'deck_version_id' => $deckVersionId,
-            'started_at' => now(),
-            'name' => 'Phantom '.trim(($gameMeta['GameStructureCd'] ?? '').' League '.now()->format('d-m-Y h:ma')),
-        ]);
     }
 }

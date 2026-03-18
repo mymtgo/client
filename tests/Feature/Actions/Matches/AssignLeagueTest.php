@@ -1,6 +1,6 @@
 <?php
 
-use App\Actions\Matches\AdvanceMatchState;
+use App\Actions\Matches\AssignLeague;
 use App\Enums\LeagueState;
 use App\Models\DeckVersion;
 use App\Models\League;
@@ -15,13 +15,9 @@ uses(RefreshDatabase::class);
 |--------------------------------------------------------------------------
 */
 
-/**
- * Call the private assignLeague method via reflection.
- */
 function callAssignLeague(MtgoMatch $match, array $gameMeta): void
 {
-    $method = new ReflectionMethod(AdvanceMatchState::class, 'assignLeague');
-    $method->invoke(null, $match, $gameMeta);
+    AssignLeague::run($match, $gameMeta);
 }
 
 function makeMatchWithDeck(DeckVersion $deckVersion, array $overrides = []): MtgoMatch

@@ -1,6 +1,6 @@
 <?php
 
-use App\Actions\Matches\AdvanceMatchState;
+use App\Actions\Matches\SyncLiveGameResults;
 use App\Facades\Mtgo;
 use App\Models\Game;
 use App\Models\GameLog;
@@ -11,8 +11,7 @@ uses(RefreshDatabase::class);
 
 function callSyncLiveGameResults(MtgoMatch $match): void
 {
-    $method = new ReflectionMethod(AdvanceMatchState::class, 'syncLiveGameResults');
-    $method->invoke(null, $match);
+    SyncLiveGameResults::run($match);
 }
 
 it('updates game.won when game log has results', function () {
