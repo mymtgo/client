@@ -355,20 +355,29 @@ class AdvanceMatchState
     private static function assignLeague(MtgoMatch $match, array $gameMeta): void
     {
         if (! empty($gameMeta['League Token'])) {
-            $league = League::firstOrCreate([
+            $leagueKey = [
                 'token' => $gameMeta['League Token'],
                 'format' => $gameMeta['PlayFormatCd'],
-            ], [
+            ];
+
+            // Include deck version in the composite key when available,
+            // so re-entering the same league with a different deck creates a new run.
+            if ($match->deck_version_id) {
+                $leagueKey['deck_version_id'] = $match->deck_version_id;
+            }
+
+            $league = League::firstOrCreate($leagueKey, [
                 'started_at' => now(),
                 'name' => trim(($gameMeta['GameStructureCd'] ?? '').' League '.now()->format('d-m-Y h:ma')),
             ]);
 
             if ($league->wasRecentlyCreated) {
-                League::where('format', $gameMeta['PlayFormatCd'])
-                    ->where('phantom', false)
+                // Mark older active leagues with the same token as partial
+                League::where('token', $gameMeta['League Token'])
+                    ->where('format', $gameMeta['PlayFormatCd'])
                     ->where('state', LeagueState::Active)
                     ->where('id', '!=', $league->id)
-                    ->where('started_at', '<', $league->started_at)
+                    ->where('started_at', '<=', $league->started_at)
                     ->update(['state' => LeagueState::Partial]);
             }
         } elseif (! Settings::get('hide_phantom_leagues')) {
@@ -378,7 +387,7 @@ class AdvanceMatchState
                 ? DeckVersion::find($match->deck_version_id)?->deck_id
                 : null;
 
-            $league = self::findOrCreatePhantomLeague($gameMeta, $deckId);
+            $league = self::findOrCreatePhantomLeague($gameMeta, $deckId, $match->deck_version_id);
         } else {
             return;
         }
@@ -403,7 +412,7 @@ class AdvanceMatchState
      * If the deck is unknown (DetermineMatchDeck found no signature match) we always
      * create a fresh league rather than risk polluting an existing one.
      */
-    private static function findOrCreatePhantomLeague(array $gameMeta, ?int $deckId): League
+    private static function findOrCreatePhantomLeague(array $gameMeta, ?int $deckId, ?int $deckVersionId = null): League
     {
         if ($deckId) {
             $existing = League::where('format', $gameMeta['PlayFormatCd'])
@@ -426,6 +435,7 @@ class AdvanceMatchState
             'token' => Str::random(),
             'format' => $gameMeta['PlayFormatCd'],
             'phantom' => true,
+            'deck_version_id' => $deckVersionId,
             'started_at' => now(),
             'name' => 'Phantom '.trim(($gameMeta['GameStructureCd'] ?? '').' League '.now()->format('d-m-Y h:ma')),
         ]);
