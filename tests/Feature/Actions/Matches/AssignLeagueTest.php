@@ -153,6 +153,58 @@ it('assigns null-deck match to existing league when deck-versioned league exists
 
 /*
 |--------------------------------------------------------------------------
+| Re-entry After Completion
+|--------------------------------------------------------------------------
+*/
+
+it('creates a new league when re-entering with same deck after completing 5 matches', function () {
+    $deckVersion = DeckVersion::factory()->create();
+
+    // First run: 5 matches, league marked complete
+    $league1 = League::factory()->complete()->create([
+        'token' => 'league-token-123',
+        'format' => 'CStandard',
+        'deck_version_id' => $deckVersion->id,
+    ]);
+
+    // Create 5 completed matches in the league
+    for ($i = 0; $i < 5; $i++) {
+        makeMatchWithDeck($deckVersion, ['league_id' => $league1->id]);
+    }
+
+    // New match in the same league with the same deck (re-entry)
+    $newMatch = makeMatchWithDeck($deckVersion);
+    callAssignLeague($newMatch, defaultGameMeta());
+
+    $newMatch->refresh();
+
+    // Should be in a NEW league, not the completed one
+    expect($newMatch->league_id)->not->toBe($league1->id);
+    expect($newMatch->league->token)->toBe('league-token-123');
+    expect($newMatch->league->deck_version_id)->toBe($deckVersion->id);
+});
+
+it('reuses active league when it has fewer than 5 matches', function () {
+    $deckVersion = DeckVersion::factory()->create();
+
+    $league = League::factory()->create([
+        'token' => 'league-token-123',
+        'format' => 'CStandard',
+        'deck_version_id' => $deckVersion->id,
+    ]);
+
+    makeMatchWithDeck($deckVersion, ['league_id' => $league->id]);
+
+    // Second match, same league, same deck — should reuse
+    $match2 = makeMatchWithDeck($deckVersion);
+    callAssignLeague($match2, defaultGameMeta());
+
+    $match2->refresh();
+    expect($match2->league_id)->toBe($league->id);
+});
+
+/*
+|--------------------------------------------------------------------------
 | Phantom League Assignment
 |--------------------------------------------------------------------------
 */

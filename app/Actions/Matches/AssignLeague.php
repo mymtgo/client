@@ -29,12 +29,24 @@ class AssignLeague
                 $leagueKey['deck_version_id'] = $match->deck_version_id;
             }
 
-            $league = League::firstOrCreate($leagueKey, [
-                'started_at' => now(),
-                'name' => trim(($gameMeta['GameStructureCd'] ?? '').' League '.now()->format('d-m-Y h:ma')),
-            ]);
+            // Find the most recent league matching these keys that is still active
+            // (not complete). If the user re-enters a league with the same deck
+            // after completing a 5-match run, we create a new league row.
+            $league = League::where($leagueKey)
+                ->where('state', '!=', LeagueState::Complete)
+                ->latest('started_at')
+                ->first();
 
-            if ($league->wasRecentlyCreated) {
+            $isNew = false;
+            if (! $league) {
+                $league = League::create(array_merge($leagueKey, [
+                    'started_at' => now(),
+                    'name' => trim(($gameMeta['GameStructureCd'] ?? '').' League '.now()->format('d-m-Y h:ma')),
+                ]));
+                $isNew = true;
+            }
+
+            if ($isNew) {
                 // Mark older active leagues with the same token as partial
                 League::where('token', $gameMeta['League Token'])
                     ->where('format', $gameMeta['PlayFormatCd'])
