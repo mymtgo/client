@@ -15,6 +15,7 @@ type LeagueRun = {
     name: string;
     format: string;
     deck: { id: number; name: string; colorIdentity?: string | null } | null;
+    versionLabel: string | null;
     startedAt: string;
     results: ('W' | 'L' | null)[];
     phantom: boolean;

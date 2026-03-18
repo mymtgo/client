@@ -30,6 +30,7 @@ type LeagueRun = {
     name: string;
     format: string;
     deck: { id: number; name: string } | null;
+    versionLabel: string | null;
     startedAt: string;
     results: ('W' | 'L' | null)[];
     phantom: boolean;
@@ -80,6 +81,7 @@ function copyScreenshot() {
                 >
                     {{ league.deck.name }}
                 </span>
+                <span v-if="league.versionLabel" class="text-xs text-muted-foreground">{{ league.versionLabel }}</span>
                 <PhantomBadge v-if="league.phantom" />
             </div>
 
