@@ -77,7 +77,10 @@ class IndexController extends Controller
             if ($id = $this->activeAccountId()) {
                 $q->whereHas('deckVersion', fn ($q2) => $q2->whereHas('deck', fn ($q3) => $q3->where('account_id', $id)));
             }
-        })->latest('started_at')->first();
+        })
+            ->with(['deckVersion.deck'])
+            ->latest('started_at')
+            ->first();
 
         if (! $league) {
             return null;
@@ -94,13 +97,23 @@ class IndexController extends Controller
         $wins = $matches->filter(fn ($m) => $m->games_won > $m->games_lost)->count();
         $losses = $matches->filter(fn ($m) => $m->games_won <= $m->games_lost)->count();
 
+        // Derive version label from chronological position within the deck's versions
+        $versionLabel = null;
+        if ($league->deckVersion) {
+            $versionIndex = $league->deckVersion->deck->versions()
+                ->where('modified_at', '<=', $league->deckVersion->modified_at)
+                ->count();
+            $versionLabel = 'v'.$versionIndex;
+        }
+
         return [
             'name' => $league->name,
             'format' => MtgoMatch::displayFormat($league->format),
             'phantom' => $league->phantom,
             'isActive' => $matches->count() < 5,
             'isTrophy' => $wins === 5,
-            'deckName' => $matches->last()?->deck?->name,
+            'deckName' => $league->deckVersion?->deck?->name ?? $matches->last()?->deck?->name,
+            'versionLabel' => $versionLabel,
             'results' => $matches
                 ->map(fn ($m) => $m->games_won > $m->games_lost ? 'W' : 'L')
                 ->pad(5, null)
