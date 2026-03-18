@@ -23,7 +23,7 @@ class AssignLeague
             // 1. Best path: find by event_id (set by ProcessLeagueEvents)
             if (! empty($gameMeta['EventId'])) {
                 $league = League::where('event_id', (int) $gameMeta['EventId'])
-                    ->where('state', '!=', LeagueState::Complete)
+                    ->where('state', LeagueState::Active)
                     ->latest('started_at')
                     ->first();
             }
@@ -40,7 +40,7 @@ class AssignLeague
                 }
 
                 $league = League::where($leagueKey)
-                    ->where('state', '!=', LeagueState::Complete)
+                    ->where('state', LeagueState::Active)
                     ->latest('started_at')
                     ->first();
             }
