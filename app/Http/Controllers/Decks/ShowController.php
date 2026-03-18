@@ -204,6 +204,7 @@ class ShowController extends Controller
             }),
             'leagues' => Inertia::defer(function () use ($deck, $allMatchIds) {
                 $leagues = League::whereHas('matches', fn ($q) => $q->whereIn('matches.id', $allMatchIds))
+                    ->with(['deckVersion.deck'])
                     ->orderByDesc('started_at')
                     ->get();
 
@@ -249,13 +250,19 @@ class ShowController extends Controller
                     ->map(function (League $league) use ($matchesByLeague, $opponentByMatch) {
                         $matches = $matchesByLeague[$league->id];
 
-                        $deck = $matches->groupBy('deck_id')
-                            ->map->count()
-                            ->sortDesc()
-                            ->keys()
-                            ->map(fn ($deckId) => $matches->firstWhere('deck_id', $deckId))
-                            ->map(fn ($row) => ['id' => $row->deck_id, 'name' => $row->deck_name, 'colorIdentity' => $row->deck_color_identity])
-                            ->first();
+                        // Prefer league's direct deck version; fall back to match-derived
+                        if ($league->deck_version_id && $league->deckVersion?->deck) {
+                            $deckModel = $league->deckVersion->deck;
+                            $deck = ['id' => $deckModel->id, 'name' => $deckModel->name, 'colorIdentity' => $deckModel->color_identity];
+                        } else {
+                            $deck = $matches->groupBy('deck_id')
+                                ->map->count()
+                                ->sortDesc()
+                                ->keys()
+                                ->map(fn ($deckId) => $matches->firstWhere('deck_id', $deckId))
+                                ->map(fn ($row) => ['id' => $row->deck_id, 'name' => $row->deck_name, 'colorIdentity' => $row->deck_color_identity])
+                                ->first();
+                        }
 
                         $matchData = $matches->map(function ($row) use ($opponentByMatch) {
                             $opp = $opponentByMatch[$row->id] ?? null;
