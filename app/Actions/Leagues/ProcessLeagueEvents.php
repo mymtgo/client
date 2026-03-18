@@ -40,14 +40,14 @@ class ProcessLeagueEvents
             $format = $m[1];
         }
 
-        // Require a FlsLeagueUserJoinReqMessage within 10 seconds before this
-        // GameDetailsView event. Without it, this is just the UI re-displaying
-        // the league view — not an actual join.
-        // logged_at is a datetime, timestamp is a time-only string (HH:MM:SS).
-        $windowStart = Carbon::parse($event->logged_at)->subSeconds(10);
+        // Require a FlsLeagueUserJoinReqMessage within 10 seconds of this event.
+        // On first join, the request comes BEFORE the GameDetailsView.
+        // On re-entry, the Join Event fires BEFORE the request.
+        // So we check both directions within the window.
+        $eventTime = Carbon::parse($event->logged_at);
         $hasJoinRequest = LogEvent::where('event_type', 'league_join_request')
-            ->where('logged_at', '>=', $windowStart)
-            ->where('logged_at', '<=', $event->logged_at)
+            ->where('logged_at', '>=', $eventTime->copy()->subSeconds(10))
+            ->where('logged_at', '<=', $eventTime->copy()->addSeconds(10))
             ->exists();
 
         // Check for an existing active league with this token.

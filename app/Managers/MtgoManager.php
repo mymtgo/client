@@ -5,6 +5,7 @@ namespace App\Managers;
 use App\Actions\Logs\FindMtgoLogPath;
 use App\Actions\Logs\GetLogFilePaths;
 use App\Actions\Logs\IngestLog;
+use App\Actions\Matches\SyncLiveGameResults;
 use App\Actions\RegisterDevice;
 use App\Actions\Settings\ValidatePath;
 use App\Jobs\DownloadArchetypes;
@@ -167,6 +168,19 @@ class MtgoManager
         );
     }
 
+    public function syncLiveGameResults(): void
+    {
+        if (! $this->canRun()) {
+            return;
+        }
+
+        $matches = MtgoMatch::incomplete()->get();
+
+        foreach ($matches as $match) {
+            SyncLiveGameResults::run($match);
+        }
+    }
+
     public function ingestGameLogs(bool $sync = false): void
     {
         if (! $this->canRun()) {
@@ -210,6 +224,10 @@ class MtgoManager
         $schedule->call(
             fn () => $this->ingestGameLogs()
         )->everyTenSeconds()->name('store_game_logs')->withoutOverlapping(10);
+
+        $schedule->call(
+            fn () => $this->syncLiveGameResults()
+        )->everyTenSeconds()->name('sync_live_results')->withoutOverlapping(10);
         //
         $schedule->call(
             fn () => $this->ingestLogs()

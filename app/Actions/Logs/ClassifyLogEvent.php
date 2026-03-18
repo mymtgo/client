@@ -61,10 +61,11 @@ class ClassifyLogEvent
             ]);
         }
 
-        // League view — "(UI|Creating GameDetailsView) League" with EventToken and EventId.
-        // This fires on every league view (not just joins), so ProcessLeagueEvents
-        // correlates it with a preceding league_join_request to confirm a real join.
-        if (str_contains($text, 'Creating GameDetailsView') && preg_match('/Creating GameDetailsView\) League\b/', $text)) {
+        // League view — fired when MTGO displays the league details panel.
+        // Two variants: "Creating GameDetailsView) League" (first join) and
+        // "Join Event) League" (re-entry). Both carry EventToken and EventId.
+        // ProcessLeagueEvents correlates with a preceding league_join_request.
+        if (preg_match('/(?:Creating GameDetailsView|Join Event)\) League\b/', $text)) {
             $eventToken = null;
             $eventId = null;
 

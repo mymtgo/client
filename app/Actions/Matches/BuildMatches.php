@@ -31,6 +31,11 @@ class BuildMatches
 
         foreach ($matchIds as $matchToken => $matchId) {
             if (MtgoMatch::where('mtgo_id', $matchId)->exists()) {
+                // Late-arriving events for an already-created match — mark processed
+                LogEvent::where('match_token', $matchToken)
+                    ->whereNull('processed_at')
+                    ->update(['processed_at' => now()]);
+
                 continue;
             }
 
