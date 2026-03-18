@@ -21,6 +21,7 @@ class IndexController extends Controller
         $leagues = League::query()
             ->when($hidePhantom, fn ($q) => $q->where('phantom', false))
             ->whereHas('matches', fn ($q) => $q->where('state', 'complete')->whereNull('deleted_at'))
+            ->with(['deckVersion.deck'])
             ->orderByDesc('started_at')
             ->get();
 
@@ -66,14 +67,19 @@ class IndexController extends Controller
         $runs = $leagues->map(function (League $league) use ($matchesByLeague, $opponentByMatch) {
             $matches = $matchesByLeague[$league->id] ?? collect();
 
-            // Use the most common deck across the run's matches
-            $deck = $matches->groupBy('deck_id')
-                ->map->count()
-                ->sortDesc()
-                ->keys()
-                ->map(fn ($deckId) => $matches->firstWhere('deck_id', $deckId))
-                ->map(fn ($row) => ['id' => $row->deck_id, 'name' => $row->deck_name, 'colorIdentity' => $row->deck_color_identity])
-                ->first();
+            // Prefer league's direct deck version; fall back to most common deck in matches
+            if ($league->deck_version_id && $league->deckVersion?->deck) {
+                $deckModel = $league->deckVersion->deck;
+                $deck = ['id' => $deckModel->id, 'name' => $deckModel->name, 'colorIdentity' => $deckModel->color_identity];
+            } else {
+                $deck = $matches->groupBy('deck_id')
+                    ->map->count()
+                    ->sortDesc()
+                    ->keys()
+                    ->map(fn ($deckId) => $matches->firstWhere('deck_id', $deckId))
+                    ->map(fn ($row) => ['id' => $row->deck_id, 'name' => $row->deck_name, 'colorIdentity' => $row->deck_color_identity])
+                    ->first();
+            }
 
             $matchData = $matches->map(function ($row) use ($opponentByMatch) {
                 $opp = $opponentByMatch[$row->id] ?? null;
@@ -98,6 +104,15 @@ class IndexController extends Controller
                 }
             }
 
+            // Compute version label
+            $versionLabel = null;
+            if ($league->deckVersion) {
+                $versionIndex = $league->deckVersion->deck->versions()
+                    ->where('modified_at', '<=', $league->deckVersion->modified_at)
+                    ->count();
+                $versionLabel = 'v'.$versionIndex;
+            }
+
             return [
                 'id' => $league->id,
                 'name' => $league->name,
@@ -106,6 +121,7 @@ class IndexController extends Controller
                 'state' => $league->state?->value ?? 'active',
                 'startedAt' => $league->started_at,
                 'deck' => $deck,
+                'versionLabel' => $versionLabel,
                 'results' => $results,
                 'matches' => $matchData,
             ];
