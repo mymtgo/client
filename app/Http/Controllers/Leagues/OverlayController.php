@@ -20,6 +20,7 @@ class OverlayController extends Controller
             'matches as losses_count' => fn ($q) => $q->where('state', MatchState::Complete)->whereColumn('games_lost', '>', 'games_won'),
             'matches as total_matches_count' => fn ($q) => $q->where('state', '!=', MatchState::Voided),
         ])
+            ->with(['deckVersion.deck'])
             ->where('leagues.state', LeagueState::Active)
             ->has('matches')
             ->latest('started_at')
@@ -42,11 +43,12 @@ class OverlayController extends Controller
             ])->values()->all()
             : [];
 
-        $deckName = $league->matches()
-            ->whereNotNull('deck_version_id')
-            ->with('deck')
-            ->first()
-            ?->deck?->name;
+        $deckName = $league->deckVersion?->deck?->name
+            ?? $league->matches()
+                ->whereNotNull('deck_version_id')
+                ->with('deck')
+                ->first()
+                ?->deck?->name;
 
         return Inertia::render('leagues/Overlay', [
             'league' => [
