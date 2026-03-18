@@ -12,6 +12,7 @@ type League = {
     isActive: boolean;
     isTrophy: boolean;
     deckName: string | null;
+    versionLabel: string | null;
     results: ('W' | 'L' | null)[];
     wins: number;
     losses: number;
@@ -37,7 +38,10 @@ defineProps<{
         <CardContent class="flex items-center justify-between gap-6">
             <!-- Left: deck info + record -->
             <div class="flex flex-col gap-1">
-                <span class="text-lg font-semibold leading-tight">{{ league.deckName ?? league.name }}</span>
+                <span class="text-lg font-semibold leading-tight">
+                    {{ league.deckName ?? league.name }}
+                    <span v-if="league.versionLabel" class="text-sm font-normal text-muted-foreground">{{ league.versionLabel }}</span>
+                </span>
                 <div class="flex items-center gap-2">
                     <Badge variant="outline">{{ league.format }}</Badge>
                     <PhantomBadge v-if="league.phantom" />
