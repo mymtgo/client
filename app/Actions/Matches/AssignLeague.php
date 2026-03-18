@@ -18,31 +18,43 @@ class AssignLeague
     public static function run(MtgoMatch $match, array $gameMeta): void
     {
         if (! empty($gameMeta['League Token'])) {
-            $leagueKey = [
-                'token' => $gameMeta['League Token'],
-                'format' => $gameMeta['PlayFormatCd'],
-            ];
+            $league = null;
 
-            // Include deck version in the composite key when available,
-            // so re-entering the same league with a different deck creates a new run.
-            if ($match->deck_version_id) {
-                $leagueKey['deck_version_id'] = $match->deck_version_id;
+            // 1. Best path: find by event_id (set by ProcessLeagueEvents)
+            if (! empty($gameMeta['EventId'])) {
+                $league = League::where('event_id', (int) $gameMeta['EventId'])
+                    ->where('state', '!=', LeagueState::Complete)
+                    ->latest('started_at')
+                    ->first();
             }
 
-            // Find the most recent league matching these keys that is still active
-            // (not complete). If the user re-enters a league with the same deck
-            // after completing a 5-match run, we create a new league row.
-            $league = League::where($leagueKey)
-                ->where('state', '!=', LeagueState::Complete)
-                ->latest('started_at')
-                ->first();
+            // 2. Fallback: find by token + deck_version_id
+            if (! $league) {
+                $leagueKey = [
+                    'token' => $gameMeta['League Token'],
+                    'format' => $gameMeta['PlayFormatCd'],
+                ];
 
+                if ($match->deck_version_id) {
+                    $leagueKey['deck_version_id'] = $match->deck_version_id;
+                }
+
+                $league = League::where($leagueKey)
+                    ->where('state', '!=', LeagueState::Complete)
+                    ->latest('started_at')
+                    ->first();
+            }
+
+            // 3. Safety net: create reactively
             $isNew = false;
             if (! $league) {
-                $league = League::create(array_merge($leagueKey, [
+                $league = League::create([
+                    'token' => $gameMeta['League Token'],
+                    'format' => $gameMeta['PlayFormatCd'],
+                    'deck_version_id' => $match->deck_version_id,
                     'started_at' => now(),
                     'name' => trim(($gameMeta['GameStructureCd'] ?? '').' League '.now()->format('d-m-Y h:ma')),
-                ]));
+                ]);
                 $isNew = true;
             }
 

@@ -205,6 +205,61 @@ it('reuses active league when it has fewer than 5 matches', function () {
 
 /*
 |--------------------------------------------------------------------------
+| Event ID Lookup
+|--------------------------------------------------------------------------
+*/
+
+it('finds league by event_id when available in gameMeta', function () {
+    $deckVersion = DeckVersion::factory()->create();
+
+    $league = League::factory()->create([
+        'token' => 'league-token-123',
+        'event_id' => 10397,
+        'state' => LeagueState::Active,
+    ]);
+
+    $match = makeMatchWithDeck($deckVersion);
+
+    $gameMeta = defaultGameMeta();
+    $gameMeta['EventId'] = '10397';
+
+    callAssignLeague($match, $gameMeta);
+
+    $match->refresh();
+    expect($match->league_id)->toBe($league->id);
+});
+
+it('falls back to composite key when event_id not in gameMeta', function () {
+    $deckVersion = DeckVersion::factory()->create();
+
+    $league = League::factory()->create([
+        'token' => 'league-token-123',
+        'event_id' => 10397,
+        'deck_version_id' => $deckVersion->id,
+        'state' => LeagueState::Active,
+    ]);
+
+    $match = makeMatchWithDeck($deckVersion);
+
+    callAssignLeague($match, defaultGameMeta());
+
+    $match->refresh();
+    expect($match->league_id)->toBe($league->id);
+});
+
+it('creates league reactively when no pre-existing league found', function () {
+    $deckVersion = DeckVersion::factory()->create();
+    $match = makeMatchWithDeck($deckVersion);
+
+    callAssignLeague($match, defaultGameMeta());
+
+    $match->refresh();
+    expect($match->league_id)->not->toBeNull();
+    expect($match->league->token)->toBe('league-token-123');
+});
+
+/*
+|--------------------------------------------------------------------------
 | Phantom League Assignment
 |--------------------------------------------------------------------------
 */
