@@ -21,6 +21,9 @@ class AssignLeague
             $league = null;
 
             // 1. Best path: find by event_id (set by ProcessLeagueEvents)
+            //    Active-only: Partial leagues are dropped runs — new matches
+            //    should never attach to them. ProcessLeagueEvents uses != Complete
+            //    for backfilling event_id, but match assignment is stricter.
             if (! empty($gameMeta['EventId'])) {
                 $league = League::where('event_id', (int) $gameMeta['EventId'])
                     ->where('state', LeagueState::Active)

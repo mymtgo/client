@@ -45,7 +45,7 @@ class IndexController extends Controller
 
         $matchIds = $matchRows->pluck('id');
 
-        // Opponent name + archetype per match (non-local players only)
+        // Opponent name + archetype per match (from match_archetypes when available)
         $opponentByMatch = DB::table('match_archetypes as ma')
             ->join('players as p', 'p.id', '=', 'ma.player_id')
             ->leftJoin('archetypes as a', 'a.id', '=', 'ma.archetype_id')
@@ -61,6 +61,26 @@ class IndexController extends Controller
             ->select('ma.mtgo_match_id', 'p.username', 'a.name as archetype_name')
             ->get()
             ->keyBy('mtgo_match_id');
+
+        // Fallback: opponent name from game_player for matches missing from match_archetypes
+        // (e.g. hard concedes where not enough cards were seen for archetype detection)
+        $missingOpponentIds = $matchIds->diff($opponentByMatch->keys());
+        if ($missingOpponentIds->isNotEmpty()) {
+            DB::table('game_player as gp')
+                ->join('games as g', 'g.id', '=', 'gp.game_id')
+                ->join('players as p', 'p.id', '=', 'gp.player_id')
+                ->whereIn('g.match_id', $missingOpponentIds)
+                ->where('gp.is_local', false)
+                ->select('g.match_id as mtgo_match_id', 'p.username')
+                ->groupBy('g.match_id', 'p.username')
+                ->get()
+                ->each(function ($row) use ($opponentByMatch) {
+                    if (! $opponentByMatch->has($row->mtgo_match_id)) {
+                        $row->archetype_name = null;
+                        $opponentByMatch[$row->mtgo_match_id] = $row;
+                    }
+                });
+        }
 
         $matchesByLeague = $matchRows->groupBy('league_id');
 

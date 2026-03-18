@@ -29,6 +29,18 @@ it('does not classify non-league GameDetailsView events', function () {
     expect($result->event_type)->toBeNull();
 });
 
+it('classifies FlsLeagueUserJoinReqMessage as league_join_request', function () {
+    $event = new LogEvent([
+        'raw_text' => '12:24:23 [INF] (DEFAULT|) Send Class: FlsLeagueUserJoinReqMessage',
+        'context' => '',
+        'category' => 'DEFAULT',
+    ]);
+
+    $result = ClassifyLogEvent::run($event);
+
+    expect($result->event_type)->toBe('league_join_request');
+});
+
 it('extracts format from league join event', function () {
     $event = new LogEvent([
         'raw_text' => "12:24:23 [INF] (UI|Creating GameDetailsView) League\nEventToken=abc-def\nEventId=12345\nPlayFormatCd=CPauper\nGameStructureCd= Pauper",

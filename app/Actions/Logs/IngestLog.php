@@ -273,7 +273,7 @@ class IngestLog
     protected static function parseHeader(string $raw): ?array
     {
         preg_match(
-            '/^(?<time>\d{2}:\d{2}:\d{2}) \[(?<level>\w+)\] \((?<cat>[^|]+)\|(?<ctx>[^\)]+)\)/',
+            '/^(?<time>\d{2}:\d{2}:\d{2}) \[(?<level>\w+)\] \((?<cat>[^|]+)\|(?<ctx>[^\)]*)\)/',
             $raw,
             $m
         );

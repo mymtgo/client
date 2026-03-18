@@ -54,7 +54,16 @@ class ClassifyLogEvent
             ]);
         }
 
-        // League joined — "(UI|Creating GameDetailsView) League" with EventToken and EventId
+        // League join request — the authoritative signal that the user clicked "Join"
+        if (str_contains($text, 'FlsLeagueUserJoinReqMessage')) {
+            return $event->fill([
+                'event_type' => 'league_join_request',
+            ]);
+        }
+
+        // League view — "(UI|Creating GameDetailsView) League" with EventToken and EventId.
+        // This fires on every league view (not just joins), so ProcessLeagueEvents
+        // correlates it with a preceding league_join_request to confirm a real join.
         if (str_contains($text, 'Creating GameDetailsView') && preg_match('/Creating GameDetailsView\) League\b/', $text)) {
             $eventToken = null;
             $eventId = null;

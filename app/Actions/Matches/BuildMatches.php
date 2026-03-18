@@ -13,9 +13,12 @@ class BuildMatches
     public static function run()
     {
         // 1. New match detection — find unprocessed match tokens
+        //    Exclude league_joined events — they reuse match_token/match_id
+        //    for EventToken/EventId and are handled by ProcessLeagueEvents.
         $matchTokens = LogEvent::whereNotNull('match_id')
             ->whereNotNull('match_token')
             ->whereNull('processed_at')
+            ->where('event_type', '!=', 'league_joined')
             ->distinct()
             ->pluck('match_token');
 
@@ -50,6 +53,36 @@ class BuildMatches
             }
 
             Mtgo::setUsername($username);
+
+            // Pre-check: does a join event exist for this token? If not,
+            // AdvanceMatchState will return null — skip to avoid wasted work.
+            $hasJoinEvent = LogEvent::where('match_token', $matchToken)
+                ->where(function ($q) {
+                    $q->where('context', 'like', '%MatchJoinedEventUnderwayState%')
+                        ->orWhere('raw_text', 'like', '%MatchJoinedEventUnderwayState%');
+                })
+                ->exists();
+
+            if (! $hasJoinEvent) {
+                // Mark events older than 2 minutes as processed to break the
+                // retry loop. Fresh events get a grace window for out-of-order
+                // delivery. AdvanceMatchState queries by match_id regardless of
+                // processed_at, so it will still see them when the join arrives.
+                $stale = LogEvent::where('match_token', $matchToken)
+                    ->whereNull('processed_at')
+                    ->where('ingested_at', '<', now()->subMinutes(2))
+                    ->exists();
+
+                if ($stale) {
+                    LogEvent::where('match_token', $matchToken)
+                        ->whereNull('processed_at')
+                        ->update(['processed_at' => now()]);
+
+                    Log::channel('pipeline')->info("BuildMatches: marked stale events processed for token={$matchToken} (no join event after 2 min)");
+                }
+
+                continue;
+            }
 
             Log::channel('pipeline')->info("BuildMatches: creating match token={$matchToken} id={$matchId} username={$username}");
             $result = AdvanceMatchState::run($matchToken, $matchId);

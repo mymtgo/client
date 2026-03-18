@@ -10,6 +10,7 @@ use App\Enums\MatchState;
 use App\Events\AppNotification;
 use App\Events\DeckLinkedToMatch;
 use App\Events\LeagueMatchStarted;
+use App\Jobs\ComputeCardGameStats;
 use App\Jobs\SubmitMatch;
 use App\Jobs\SyncDecks;
 use App\Models\LogEvent;
@@ -208,6 +209,7 @@ class AdvanceMatchState
                 || str_contains($event->context, 'MatchCompletedState')
                 || str_contains($event->context, 'MatchEndedState')
                 || str_contains($event->context, 'MatchClosedState')
+                || str_contains($event->context, 'JoinedCompletedState')
         );
 
         $concededAndQuit = DetermineMatchResult::localPlayerConceded($stateChanges);
@@ -287,7 +289,7 @@ class AdvanceMatchState
         }
 
         SubmitMatch::dispatch($match->id);
-        \App\Jobs\ComputeCardGameStats::dispatch($match->id);
+        ComputeCardGameStats::dispatch($match->id);
 
         $won = $match->games_won > $match->games_lost;
         $opponentArchetype = $match->opponentArchetypes()->with('archetype')->first()?->archetype?->name ?? 'Unknown';
