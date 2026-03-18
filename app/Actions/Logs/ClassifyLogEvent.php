@@ -54,6 +54,27 @@ class ClassifyLogEvent
             ]);
         }
 
+        // League joined — "(UI|Creating GameDetailsView) League" with EventToken and EventId
+        if (str_contains($text, 'Creating GameDetailsView') && preg_match('/Creating GameDetailsView\) League\b/', $text)) {
+            $eventToken = null;
+            $eventId = null;
+
+            if (preg_match('/EventToken=(\S+)/', $text, $m)) {
+                $eventToken = $m[1];
+            }
+            if (preg_match('/EventId=(\d+)/', $text, $m)) {
+                $eventId = $m[1];
+            }
+
+            if ($eventToken && $eventId) {
+                return $event->fill([
+                    'event_type' => 'league_joined',
+                    'match_token' => $eventToken,
+                    'match_id' => $eventId,
+                ]);
+            }
+        }
+
         return $event;
     }
 }
