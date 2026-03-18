@@ -1,12 +1,18 @@
 {
     "agents": [
-        "claude_code",
-        "phpstorm"
+        "claude_code"
     ],
-    "editors": [
-        "claude_code",
-        "phpstorm"
+    "guidelines": true,
+    "herd_mcp": true,
+    "mcp": true,
+    "packages": [
+        "inertiajs/inertia-laravel"
     ],
-    "guidelines": [],
-    "herd_mcp": true
+    "sail": false,
+    "skills": [
+        "wayfinder-development",
+        "pest-testing",
+        "inertia-vue-development",
+        "tailwindcss-development"
+    ]
 }
