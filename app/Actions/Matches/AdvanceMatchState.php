@@ -115,6 +115,7 @@ class AdvanceMatchState
             // ── Create any games whose events arrived after Started → InProgress ──
             if ($match->state === MatchState::InProgress || $match->state === MatchState::Ended) {
                 self::createOrUpdateGames($match, $events);
+                self::syncLiveGameResults($match);
             }
 
             // ── InProgress → Ended ──────────────────────────────────────
@@ -346,6 +347,43 @@ class AdvanceMatchState
 
             CreateGames::run($match, $gameId, $gameEvents, $gameIndex, $deckJson);
             $gameIndex++;
+        }
+    }
+
+    /**
+     * Sync live game results from the binary game log file.
+     *
+     * Incrementally parses the .dat file and updates Game.won for any
+     * games that have completed but don't have a result yet.
+     */
+    private static function syncLiveGameResults(MtgoMatch $match): void
+    {
+        $gameLog = GetGameLog::run($match->token);
+
+        if (! $gameLog || empty($gameLog['results'])) {
+            return;
+        }
+
+        $games = $match->games()->orderBy('started_at')->get();
+
+        foreach ($games as $index => $game) {
+            // Skip games that already have a result
+            if ($game->won !== null) {
+                continue;
+            }
+
+            // Check if the game log has a result for this game index
+            if (! isset($gameLog['results'][$index])) {
+                continue;
+            }
+
+            $game->update(['won' => $gameLog['results'][$index]]);
+
+            Log::channel('pipeline')->info("Match {$match->mtgo_id}: live game result synced", [
+                'game_id' => $game->mtgo_id,
+                'game_index' => $index,
+                'won' => $gameLog['results'][$index],
+            ]);
         }
     }
 
