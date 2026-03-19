@@ -125,7 +125,7 @@ const leagueResultsBuckets = ['5-0', '4-1', '3-2', '2-3', '1-4', '0-5'];
             </Card>
         </div>
 
-        <!-- Chart + League Results & Best/Worst Archetype -->
+        <!-- Chart + League Finishes & Best/Worst Archetype -->
         <div class="grid grid-cols-3 gap-4">
             <Card class="col-span-2">
                 <CardContent>
@@ -140,7 +140,7 @@ const leagueResultsBuckets = ['5-0', '4-1', '3-2', '2-3', '1-4', '0-5'];
             </Card>
 
             <div class="flex flex-col gap-4">
-                <!-- League Results -->
+                <!-- League Finishes -->
                 <Deferred data="leagueResults">
                     <template #fallback>
                         <Card class="gap-0 p-0">
@@ -153,7 +153,7 @@ const leagueResultsBuckets = ['5-0', '4-1', '3-2', '2-3', '1-4', '0-5'];
                     </template>
                     <Card class="gap-0 overflow-hidden p-0">
                         <CardContent class="p-4">
-                            <p class="mb-3 text-xs font-medium tracking-wide text-muted-foreground uppercase">League Results</p>
+                            <p class="mb-3 text-xs font-medium tracking-wide text-muted-foreground uppercase">League Finishes</p>
                             <div class="flex flex-col gap-2">
                                 <div v-for="bucket in leagueResultsBuckets" :key="bucket" class="flex items-center gap-3">
                                     <span class="w-8 text-right text-sm tabular-nums font-medium">{{ bucket }}</span>
