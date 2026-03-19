@@ -13,6 +13,10 @@ const props = defineProps<{
     currentTimestamp: string;
 }>();
 
+const emit = defineEmits<{
+    seekToTimestamp: [timestamp: string];
+}>();
+
 const player = computed(() => props.event?.content.Players?.find((p: any) => p.IsLocal));
 const opponent = computed(() => props.event?.content.Players?.find((p: any) => !p.IsLocal));
 
@@ -223,9 +227,9 @@ const hasOpenPanels = computed(() => openPanels.value.size > 0);
                 </div>
             </div>
 
-            <!-- Opponent creatures -->
-            <div class="min-h-24 border-b p-2">
-                <div v-if="opponentZones.creatures.length" class="flex flex-wrap gap-1">
+            <!-- Opponent creatures (stretches to fill) -->
+            <div class="flex min-h-24 flex-1 border-b p-2">
+                <div v-if="opponentZones.creatures.length" class="flex flex-wrap content-start gap-1">
                     <HoverCard v-for="card in opponentZones.creatures" :key="card.Id">
                         <HoverCardTrigger as-child>
                             <img :src="card.image" :alt="card.name ?? 'card'" class="w-24 cursor-pointer rounded-[7px]" />
@@ -235,12 +239,12 @@ const hasOpenPanels = computed(() => openPanels.value.size > 0);
                         </HoverCardContent>
                     </HoverCard>
                 </div>
-                <div v-else class="flex h-full min-h-16 items-center justify-center text-xs text-muted-foreground">No creatures</div>
+                <div v-else class="flex w-full items-center justify-center text-xs text-muted-foreground">No creatures</div>
             </div>
 
-            <!-- Player creatures -->
-            <div class="min-h-24 border-b p-2">
-                <div v-if="playerZones.creatures.length" class="flex flex-wrap gap-1">
+            <!-- Player creatures (stretches to fill) -->
+            <div class="flex min-h-24 flex-1 border-b p-2">
+                <div v-if="playerZones.creatures.length" class="flex flex-wrap content-end gap-1">
                     <HoverCard v-for="card in playerZones.creatures" :key="card.Id">
                         <HoverCardTrigger as-child>
                             <img :src="card.image" :alt="card.name ?? 'card'" class="w-24 cursor-pointer rounded-[7px]" />
@@ -250,7 +254,7 @@ const hasOpenPanels = computed(() => openPanels.value.size > 0);
                         </HoverCardContent>
                     </HoverCard>
                 </div>
-                <div v-else class="flex h-full min-h-16 items-center justify-center text-xs text-muted-foreground">No creatures</div>
+                <div v-else class="flex w-full items-center justify-center text-xs text-muted-foreground">No creatures</div>
             </div>
 
             <!-- Player lands + non-creatures (side by side) -->
@@ -301,7 +305,7 @@ const hasOpenPanels = computed(() => openPanels.value.size > 0);
 
         <!-- Right panel: Game Log -->
         <div v-if="gameLog.length" class="w-72 shrink-0 border-l">
-            <GameLogPanel :entries="gameLog" :active-timestamp="currentTimestamp" />
+            <GameLogPanel :entries="gameLog" :active-timestamp="currentTimestamp" @seek="(ts) => emit('seekToTimestamp', ts)" />
         </div>
     </div>
 </template>

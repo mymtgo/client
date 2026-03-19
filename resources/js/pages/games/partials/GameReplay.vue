@@ -113,6 +113,18 @@ function scheduleNext() {
     }, interval);
 }
 
+function seekToTimestamp(timestamp: string) {
+    // Find the closest timeline event at or before the target timestamp
+    let bestIndex = 0;
+    for (let i = 0; i < sortedEvents.value.length; i++) {
+        if (sortedEvents.value[i].timestamp <= timestamp) {
+            bestIndex = i;
+        }
+    }
+    pause();
+    currentIndex.value = bestIndex;
+}
+
 function setSpeed(speed: number) {
     playbackSpeed.value = speed;
     // If playing, restart scheduling with new speed
@@ -148,7 +160,7 @@ onUnmounted(() => {
         <!-- Replay UI -->
         <template v-else>
             <!-- Snapshot display + game log -->
-            <GameReplaySnapshot :event="currentEvent" :game-log="gameLog" :current-timestamp="currentEvent?.timestamp ?? ''" />
+            <GameReplaySnapshot :event="currentEvent" :game-log="gameLog" :current-timestamp="currentEvent?.timestamp ?? ''" @seek-to-timestamp="seekToTimestamp" />
 
             <!-- Timeline scrubber -->
             <GameReplayTimeline :events="sortedEvents" :current-index="currentIndex" @seek="goToEvent" />
