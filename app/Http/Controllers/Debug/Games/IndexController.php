@@ -15,7 +15,6 @@ class IndexController extends Controller
         return Inertia::render('debug/Games', [
             'games' => Game::query()->orderByDesc('id')->paginate(50),
             'matchOptions' => MtgoMatch::query()
-                ->withTrashed()
                 ->orderByDesc('id')
                 ->limit(200)
                 ->get(['id', 'token'])
