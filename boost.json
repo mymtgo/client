@@ -5,9 +5,7 @@
     "guidelines": true,
     "herd_mcp": true,
     "mcp": true,
-    "packages": [
-        "inertiajs/inertia-laravel"
-    ],
+    "nightwatch_mcp": false,
     "sail": false,
     "skills": [
         "wayfinder-development",

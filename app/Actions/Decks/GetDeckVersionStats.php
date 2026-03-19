@@ -1,0 +1,125 @@
+<?php
+
+namespace App\Actions\Decks;
+
+use App\Models\Deck;
+use App\Models\Game;
+use Carbon\Carbon;
+
+class GetDeckVersionStats
+{
+    /**
+     * Get per-version stats for a deck within a date range.
+     * Returns an array with an "All versions" aggregate row first,
+     * then one row per version with match/game/OTP/OTD stats.
+     */
+    public static function run(Deck $deck, Carbon $from, Carbon $to): array
+    {
+        $dateScope = fn ($q) => $q->whereBetween('started_at', [$from, $to]);
+
+        $versions = $deck->versions()
+            ->withCount([
+                'matches' => $dateScope,
+                'matches as won_matches_count' => fn ($q) => $dateScope($q)->whereRaw('games_won > games_lost'),
+                'matches as lost_matches_count' => fn ($q) => $dateScope($q)->whereRaw('games_lost > games_won'),
+            ])
+            ->withSum(['matches' => $dateScope], 'games_won')
+            ->withSum(['matches' => $dateScope], 'games_lost')
+            ->orderBy('modified_at')
+            ->get();
+
+        $latestVersionId = $versions->last()?->id;
+        $versionIds = $versions->pluck('id');
+
+        // Single batch query for OTP/OTD stats across all versions
+        $otpStats = Game::query()
+            ->join('game_player as gp', fn ($j) => $j->on('gp.game_id', '=', 'games.id')->where('gp.is_local', 1))
+            ->join('matches as m', 'm.id', '=', 'games.match_id')
+            ->whereIn('m.deck_version_id', $versionIds)
+            ->where('m.state', 'complete')
+            ->whereBetween('m.started_at', [$from, $to])
+            ->selectRaw('m.deck_version_id, gp.on_play, SUM(CASE WHEN games.won = 1 THEN 1 ELSE 0 END) as won, SUM(CASE WHEN games.won = 0 THEN 1 ELSE 0 END) as lost')
+            ->groupBy('m.deck_version_id', 'gp.on_play')
+            ->get()
+            ->groupBy('deck_version_id');
+
+        // Compute aggregate across all versions
+        $totalWins = $versions->sum('won_matches_count');
+        $totalLosses = $versions->sum('lost_matches_count');
+        $totalGamesWon = (int) $versions->sum('matches_sum_games_won');
+        $totalGamesLost = (int) $versions->sum('matches_sum_games_lost');
+        $allOtp = $otpStats->flatten(1)->where('on_play', 1);
+        $allOtd = $otpStats->flatten(1)->where('on_play', 0);
+        $aggOtpWon = (int) $allOtp->sum('won');
+        $aggOtpLost = (int) $allOtp->sum('lost');
+        $aggOtdWon = (int) $allOtd->sum('won');
+        $aggOtdLost = (int) $allOtd->sum('lost');
+
+        $result = [self::buildRow(
+            id: null,
+            label: 'All versions',
+            isCurrent: false,
+            dateLabel: null,
+            wins: $totalWins,
+            losses: $totalLosses,
+            gamesWon: $totalGamesWon,
+            gamesLost: $totalGamesLost,
+            otpWon: $aggOtpWon,
+            otpLost: $aggOtpLost,
+            otdWon: $aggOtdWon,
+            otdLost: $aggOtdLost,
+        )];
+
+        foreach ($versions as $i => $version) {
+            $vOtp = $otpStats->get($version->id, collect())->first(fn ($r) => (int) $r->on_play === 1);
+            $vOtd = $otpStats->get($version->id, collect())->first(fn ($r) => (int) $r->on_play === 0);
+
+            $nextVersion = $versions[$i + 1] ?? null;
+            $dateLabel = $version->modified_at->format('M d')
+                .' - '
+                .($nextVersion ? $nextVersion->modified_at->format('M d') : 'now');
+
+            $result[] = self::buildRow(
+                id: $version->id,
+                label: 'v'.($i + 1),
+                isCurrent: $version->id === $latestVersionId,
+                dateLabel: $dateLabel,
+                wins: (int) ($version->won_matches_count ?? 0),
+                losses: (int) ($version->lost_matches_count ?? 0),
+                gamesWon: (int) ($version->matches_sum_games_won ?? 0),
+                gamesLost: (int) ($version->matches_sum_games_lost ?? 0),
+                otpWon: (int) ($vOtp?->won ?? 0),
+                otpLost: (int) ($vOtp?->lost ?? 0),
+                otdWon: (int) ($vOtd?->won ?? 0),
+                otdLost: (int) ($vOtd?->lost ?? 0),
+            );
+        }
+
+        return $result;
+    }
+
+    private static function buildRow(
+        ?int $id, string $label, bool $isCurrent, ?string $dateLabel,
+        int $wins, int $losses, int $gamesWon, int $gamesLost,
+        int $otpWon, int $otpLost, int $otdWon, int $otdLost,
+    ): array {
+        return [
+            'id' => $id,
+            'label' => $label,
+            'isCurrent' => $isCurrent,
+            'dateLabel' => $dateLabel,
+            'matchesWon' => $wins,
+            'matchesLost' => $losses,
+            'gamesWon' => $gamesWon,
+            'gamesLost' => $gamesLost,
+            'matchWinrate' => round(100 * ($wins / (($wins + $losses) ?: 1))),
+            'gameWinrate' => round(100 * ($gamesWon / (($gamesWon + $gamesLost) ?: 1))),
+            'gamesOtpWon' => $otpWon,
+            'gamesOtpLost' => $otpLost,
+            'otpRate' => round(100 * ($otpWon / (($otpWon + $otpLost) ?: 1))),
+            'gamesOtdWon' => $otdWon,
+            'gamesOtdLost' => $otdLost,
+            'otdRate' => round(100 * ($otdWon / (($otdWon + $otdLost) ?: 1))),
+        ];
+    }
+}

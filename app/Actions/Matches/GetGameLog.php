@@ -8,6 +8,14 @@ use Illuminate\Support\Facades\Log;
 
 class GetGameLog
 {
+    /**
+     * Get structured game results for a match.
+     *
+     * Uses stored decoded entries if available, otherwise parses the binary
+     * .dat file incrementally and stores the result for future access.
+     *
+     * @return array{results: array<int, bool>, on_play: array<int, bool>, starting_hands: array}|null
+     */
     public static function run(string $token): ?array
     {
         $log = GameLog::where('match_token', $token)->first();
@@ -16,10 +24,98 @@ class GetGameLog
             return null;
         }
 
+        $you = Mtgo::getUsername();
+
+        if (! $you) {
+            throw new \RuntimeException('MTGO username not set');
+        }
+
+        // Sync entries from the .dat file (incremental if partially parsed)
+        $entries = self::syncEntries($log);
+
+        if (empty($entries)) {
+            Log::channel('pipeline')->warning("GetGameLog: no entries decoded for match token {$token}");
+
+            return null;
+        }
+
+        // Extract structured results
+        $extracted = ExtractGameResults::run($entries, $you);
+
+        return [
+            'results' => $extracted['results'],
+            'on_play' => $extracted['on_play'],
+            'starting_hands' => $extracted['starting_hands'],
+        ];
+    }
+
+    /**
+     * Ensure decoded_entries is populated and up-to-date.
+     *
+     * If the .dat file has grown since last parse (byte_offset < file size),
+     * incrementally parse new entries and append.
+     *
+     * @return array<int, array{timestamp: string, message: string}>
+     */
+    private static function syncEntries(GameLog $log): array
+    {
+        $entries = $log->decoded_entries ?? [];
+
+        // If already decoded and parser version is current, check if file has grown
+        if (! empty($entries) && $log->decoded_version >= ParseGameLogBinary::VERSION) {
+            $fileSize = self::getFileSize($log);
+
+            // No new data to parse (file same size or missing)
+            if ($fileSize === null || $log->byte_offset >= $fileSize) {
+                return $entries;
+            }
+        }
+
+        // Need to parse (full or incremental)
+        $raw = self::readFile($log);
+
+        if ($raw === null) {
+            return $entries; // Return whatever we have stored
+        }
+
+        $offset = ! empty($entries) ? $log->byte_offset : null;
+        $parsed = ParseGameLogBinary::run($raw, $offset);
+
+        if ($parsed === null) {
+            return $entries;
+        }
+
+        if (! empty($parsed['entries'])) {
+            // Deduplication: guard against overlapping entries on app restart
+            if (! empty($entries) && ! empty($parsed['entries'])) {
+                $lastStored = end($entries);
+                $firstNew = $parsed['entries'][0];
+                if ($lastStored['timestamp'] === $firstNew['timestamp']
+                    && $lastStored['message'] === $firstNew['message']) {
+                    array_shift($parsed['entries']);
+                }
+            }
+
+            $entries = array_merge($entries, $parsed['entries']);
+
+            $log->update([
+                'decoded_entries' => $entries,
+                'decoded_at' => now(),
+                'byte_offset' => $parsed['byte_offset'],
+                'decoded_version' => ParseGameLogBinary::VERSION,
+            ]);
+        }
+
+        return $entries;
+    }
+
+    /**
+     * Read the raw .dat file contents with Windows path fallback.
+     */
+    private static function readFile(GameLog $log): ?string
+    {
         $raw = @file_get_contents($log->file_path);
 
-        // Fallback: stored path may be a Windows path on a different machine.
-        // Reconstruct from storage using the hash directory embedded in the path.
         if ($raw === false) {
             $hashDir = basename(dirname(str_replace('\\', '/', $log->file_path)));
             $filename = basename(str_replace('\\', '/', $log->file_path));
@@ -28,167 +124,30 @@ class GetGameLog
         }
 
         if ($raw === false) {
-            Log::warning("GetGameLog: game log file not found for match token {$token}", [
+            Log::channel('pipeline')->warning('GetGameLog: file not found', [
                 'stored_path' => $log->file_path,
             ]);
 
             return null;
         }
 
-        /**
-         * Clean log
-         */
-        $clean = preg_replace('/[^\x20-\x7E]/', ' ', $raw);
-        $clean = str_replace('@P', "\n@P", $clean);
-        $clean = preg_replace('/[ \t]+/', ' ', $clean);
+        return $raw;
+    }
 
-        // ✅ single source of truth
-        $you = Mtgo::getUsername();
+    /**
+     * Get the file size, returning null if file doesn't exist.
+     */
+    private static function getFileSize(GameLog $log): ?int
+    {
+        $size = @filesize($log->file_path);
 
-        if (! $you) {
-            throw new \RuntimeException('MTGO username not set');
+        if ($size === false) {
+            $hashDir = basename(dirname(str_replace('\\', '/', $log->file_path)));
+            $filename = basename(str_replace('\\', '/', $log->file_path));
+            $fallback = storage_path("app/{$hashDir}/{$filename}");
+            $size = @filesize($fallback);
         }
 
-        /**
-         * ===============================
-         * TURN ORDER
-         * ===============================
-         */
-        preg_match_all(
-            '/@P(?<player>[A-Za-z0-9_-]{3,20}) chooses to play (first|second)/',
-            $clean,
-            $turnOrder,
-            PREG_SET_ORDER
-        );
-
-        /**
-         * ===============================
-         * MULLIGANS / STARTING HANDS
-         * ===============================
-         */
-        preg_match_all(
-            '/@P(?<player>[A-Za-z0-9_-]{3,20})\s+.*?\bbegins the game with\s+(?<hand>(?:\d+|one|two|three|four|five|six|seven))\s+cards?\s+in\s+hand\b/i',
-            $clean,
-            $mulligans,
-            PREG_SET_ORDER
-        );
-
-        /**
-         * ===============================
-         * GAME END EVENTS
-         * ===============================
-         */
-
-        // Explicit wins
-        preg_match_all(
-            '/@P(?<player>[A-Za-z0-9_-]{3,20})\s+wins the game\b/i',
-            $clean,
-            $winMatches,
-            PREG_SET_ORDER | PREG_OFFSET_CAPTURE
-        );
-
-        // Terminal losses (concede / disconnect)
-        preg_match_all(
-            '/@P(?<player>[A-Za-z0-9_-]{3,20})\s+has\s+(?<reason>conceded from the game|lost connection to the game)\b/i',
-            $clean,
-            $terminalMatches,
-            PREG_SET_ORDER | PREG_OFFSET_CAPTURE
-        );
-
-        /**
-         * Merge + sort events by file position
-         */
-        $events = [];
-
-        foreach ($winMatches as $m) {
-            $events[] = [
-                'type' => 'win',
-                'player' => $m['player'][0],
-                'offset' => $m[0][1],
-            ];
-        }
-
-        foreach ($terminalMatches as $m) {
-            $events[] = [
-                'type' => 'terminal',
-                'player' => $m['player'][0], // loser
-                'offset' => $m[0][1],
-                'reason' => strtolower($m['reason'][0]),
-            ];
-        }
-
-        usort($events, fn ($a, $b) => $a['offset'] <=> $b['offset']);
-
-        /**
-         * Build game results
-         */
-        $gameResults = [];
-        $pendingLoser = null;
-
-        foreach ($events as $e) {
-
-            if ($e['type'] === 'terminal') {
-                // remember loser in case MTGO never prints a win line
-                $pendingLoser = $e['player'];
-
-                continue;
-            }
-
-            if ($e['type'] === 'win') {
-                $winner = $e['player'];
-
-                $pendingLoser = null;
-
-                $gameResults[] = ($winner === $you);
-            }
-        }
-
-        /**
-         * Fallback:
-         * terminal event but no explicit "wins the game"
-         */
-        if ($pendingLoser !== null && count($gameResults) < 3) {
-            $gameResults[] = ($pendingLoser !== $you);
-        }
-
-        /**
-         * ===============================
-         * ON PLAY / DRAW
-         * ===============================
-         */
-        $onPlay = [];
-
-        foreach ($turnOrder as $turn) {
-            $isYou = $turn['player'] === $you;
-            $onPlay[] = $isYou && str_contains($turn[0], 'first');
-        }
-
-        /**
-         * ===============================
-         * NORMALISE STARTING HANDS
-         * ===============================
-         */
-        $map = [
-            'one' => 1, 'two' => 2, 'three' => 3, 'four' => 4,
-            'five' => 5, 'six' => 6, 'seven' => 7,
-        ];
-
-        $starts = collect($mulligans)->map(function ($m) use ($map) {
-            $handRaw = strtolower($m['hand']);
-            $hand = ctype_digit($handRaw)
-                ? (int) $handRaw
-                : ($map[$handRaw] ?? null);
-
-            return [
-                'player' => $m['player'],
-                'starting_hand' => $hand,
-            ];
-        })->values();
-
-        return [
-            'results' => $gameResults,
-            'on_play' => $onPlay,
-            'starting_hands' => $starts->toArray(),
-        ];
+        return $size !== false ? $size : null;
     }
 }
