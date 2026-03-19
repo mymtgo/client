@@ -39,7 +39,7 @@ class ShowController extends Controller
         $from = now()->subMonths(2)->startOfDay();
         $to = now()->endOfDay();
 
-        $matchesQuery = $deck->matches()->select('matches.*')->whereNull('deleted_at')
+        $matchesQuery = $deck->matches()->select('matches.*')->where('state', 'complete')
             ->whereBetween('started_at', [$from, $to]);
 
         $losses = $matchesQuery->clone()->whereRaw('games_won < games_lost')->count();
@@ -67,7 +67,7 @@ class ShowController extends Controller
         $gamesotdCount = $gamesotdWon + $gamesotdLost;
 
         // All match IDs for this deck (used by leagues tab)
-        $allMatchIds = $deck->matches()->select('matches.id')->whereNull('deleted_at')->pluck('matches.id');
+        $allMatchIds = $deck->matches()->select('matches.id')->where('state', 'complete')->pluck('matches.id');
 
         // Trophies = leagues where all matches were won (5-0)
         $trophies = League::whereHas('matches', fn ($q) => $q->whereIn('matches.id', $allMatchIds))
@@ -107,7 +107,7 @@ class ShowController extends Controller
             // ── Deferred: auto-loaded in background after initial render ─────
             // Default group — matches tab (loads immediately after paint)
             'matches' => Inertia::defer(function () use ($deck, $request) {
-                $query = $deck->matches()->select('matches.*')->whereNull('deleted_at');
+                $query = $deck->matches()->select('matches.*')->where('state', 'complete');
 
                 if ($from = $request->input('filter_from')) {
                     $query->where('started_at', '>=', Carbon::parse($from)->startOfDay());
@@ -187,7 +187,6 @@ class ShowController extends Controller
                     ->join('deck_versions as dv', 'dv.id', '=', 'm.deck_version_id')
                     ->whereIn('m.league_id', $leagues)
                     ->where('dv.deck_id', $deck->id)
-                    ->whereNull('m.deleted_at')
                     ->where('m.state', 'complete')
                     ->selectRaw('m.league_id, SUM(CASE WHEN m.games_won > m.games_lost THEN 1 ELSE 0 END) as wins, SUM(CASE WHEN m.games_won < m.games_lost THEN 1 ELSE 0 END) as losses')
                     ->groupBy('m.league_id')
@@ -218,7 +217,6 @@ class ShowController extends Controller
                     ->join('deck_versions as dv', 'dv.id', '=', 'm.deck_version_id')
                     ->join('decks as d', 'd.id', '=', 'dv.deck_id')
                     ->whereIn('m.league_id', $leagueIds)
-                    ->whereNull('m.deleted_at')
                     ->where('m.state', 'complete')
                     ->where('d.id', $deck->id)
                     ->select('m.id', 'm.league_id', 'm.games_won', 'm.games_lost', 'm.started_at', 'd.id as deck_id', 'd.name as deck_name', 'd.color_identity as deck_color_identity')
@@ -411,7 +409,7 @@ class ShowController extends Controller
             ->join('game_player as gp', fn ($j) => $j->on('gp.game_id', '=', 'games.id')->where('gp.is_local', 1))
             ->join('matches as m', 'm.id', '=', 'games.match_id')
             ->whereIn('m.deck_version_id', $versionIds)
-            ->whereNull('m.deleted_at')
+            ->where('m.state', 'complete')
             ->whereBetween('m.started_at', [$from, $to])
             ->selectRaw('m.deck_version_id, gp.on_play, SUM(CASE WHEN games.won = 1 THEN 1 ELSE 0 END) as won, SUM(CASE WHEN games.won = 0 THEN 1 ELSE 0 END) as lost')
             ->groupBy('m.deck_version_id', 'gp.on_play')
@@ -487,7 +485,7 @@ class ShowController extends Controller
         $results = MtgoMatch::complete()
             ->selectRaw("strftime('%Y-%m-%d', started_at) as period, SUM(CASE WHEN games_won > games_lost THEN 1 ELSE 0 END) as wins, COUNT(*) as total")
             ->whereIn('deck_version_id', $versionIds)
-            ->whereNull('deleted_at')
+            ->where('state', 'complete')
             ->whereBetween('started_at', [$from, $to])
             ->groupBy('period')
             ->orderBy('period')

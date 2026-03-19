@@ -20,7 +20,7 @@ class IndexController extends Controller
 
         $leagues = League::query()
             ->when($hidePhantom, fn ($q) => $q->where('phantom', false))
-            ->whereHas('matches', fn ($q) => $q->where('state', 'complete')->whereNull('deleted_at'))
+            ->whereHas('matches', fn ($q) => $q->where('state', 'complete'))
             ->with(['deckVersion.deck'])
             ->orderByDesc('started_at')
             ->get();
@@ -31,12 +31,11 @@ class IndexController extends Controller
 
         $leagueIds = $leagues->pluck('id');
 
-        // All non-deleted matches per league with deck info
+        // All complete matches per league with deck info
         $matchRows = DB::table('matches as m')
             ->join('deck_versions as dv', 'dv.id', '=', 'm.deck_version_id')
             ->join('decks as d', 'd.id', '=', 'dv.deck_id')
             ->whereIn('m.league_id', $leagueIds)
-            ->whereNull('m.deleted_at')
             ->where('m.state', 'complete')
             ->when($activeAccountId, fn ($q, $id) => $q->where('d.account_id', $id))
             ->select('m.id', 'm.league_id', 'm.games_won', 'm.games_lost', 'm.started_at', 'd.id as deck_id', 'd.name as deck_name', 'd.color_identity as deck_color_identity')
