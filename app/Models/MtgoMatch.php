@@ -3,7 +3,9 @@
 namespace App\Models;
 
 use App\Enums\MatchState;
+use App\Observers\MtgoMatchObserver;
 use Carbon\CarbonInterface;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -11,6 +13,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOneThrough;
 
+#[ObservedBy(MtgoMatchObserver::class)]
 class MtgoMatch extends Model
 {
     use HasFactory;
