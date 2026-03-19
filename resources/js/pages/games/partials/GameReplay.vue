@@ -11,6 +11,7 @@ export type GameTimelineEvent = {
 
 const props = defineProps<{
     timeline: GameTimelineEvent[];
+    gameLog: Array<{ timestamp: string; message: string }>;
 }>();
 
 // Sort events by timestamp, preserving original order for duplicates
@@ -146,8 +147,8 @@ onUnmounted(() => {
 
         <!-- Replay UI -->
         <template v-else>
-            <!-- Snapshot display -->
-            <GameReplaySnapshot :event="currentEvent" />
+            <!-- Snapshot display + game log -->
+            <GameReplaySnapshot :event="currentEvent" :game-log="gameLog" :current-timestamp="currentEvent?.timestamp ?? ''" />
 
             <!-- Timeline scrubber -->
             <GameReplayTimeline :events="sortedEvents" :current-index="currentIndex" @seek="goToEvent" />
