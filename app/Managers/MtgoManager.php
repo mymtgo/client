@@ -234,10 +234,6 @@ class MtgoManager
         )->everySecond()->name('ingest_logs');
 
         $schedule->call(
-            fn () => $this->processLogEvents()
-        )->everyMinute()->name('process_log_events_fallback')->withoutOverlapping(60);
-
-        $schedule->call(
             fn () => $this->downloadArchetypes()
         )->weekly();
 
