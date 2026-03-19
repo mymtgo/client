@@ -227,7 +227,7 @@ class MtgoManager
 
         $schedule->call(
             fn () => $this->syncLiveGameResults()
-        )->everyTenSeconds()->name('sync_live_results')->withoutOverlapping(10);
+        )->everyFiveSeconds()->name('sync_live_results')->withoutOverlapping(10);
         //
         $schedule->call(
             fn () => $this->ingestLogs()

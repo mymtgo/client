@@ -111,7 +111,6 @@ class AdvanceMatchState
             // ── Create any games whose events arrived after Started → InProgress ──
             if ($match->state === MatchState::InProgress || $match->state === MatchState::Ended) {
                 CreateOrUpdateGames::run($match, $events);
-                SyncLiveGameResults::run($match);
             }
 
             // ── InProgress → Ended ──────────────────────────────────────
