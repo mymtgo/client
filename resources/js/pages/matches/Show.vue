@@ -29,6 +29,7 @@ type GameDetail = {
 const props = defineProps<{
     match: App.Data.Front.MatchData;
     games: GameDetail[];
+    gameLogs: Record<number, Array<{ timestamp: string; message: string }>>;
     archetypes: App.Data.Front.ArchetypeData[];
 }>();
 
@@ -142,6 +143,7 @@ const opponentArchetype = computed(() => {
                     v-for="game in games"
                     :key="game.id"
                     :game="game"
+                    :game-log="gameLogs[game.id] ?? []"
                     :opponent-name="(match.opponentName as string) ?? 'Opponent'"
                 />
             </div>

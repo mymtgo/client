@@ -1,6 +1,6 @@
 <?php
 
-use App\Actions\Matches\AdvanceMatchState;
+use App\Actions\Matches\AssignLeague;
 use App\Enums\LeagueState;
 use App\Models\DeckVersion;
 use App\Models\League;
@@ -15,13 +15,9 @@ uses(RefreshDatabase::class);
 |--------------------------------------------------------------------------
 */
 
-/**
- * Call the private assignLeague method via reflection.
- */
 function callAssignLeague(MtgoMatch $match, array $gameMeta): void
 {
-    $method = new ReflectionMethod(AdvanceMatchState::class, 'assignLeague');
-    $method->invoke(null, $match, $gameMeta);
+    AssignLeague::run($match, $gameMeta);
 }
 
 function makeMatchWithDeck(DeckVersion $deckVersion, array $overrides = []): MtgoMatch
@@ -153,6 +149,113 @@ it('assigns null-deck match to existing league when deck-versioned league exists
     // The null-deck match falls back to [token, format] lookup which finds
     // the existing league (firstOrCreate matches on provided keys only)
     expect($matchWithoutDeck->league_id)->toBe($matchWithDeck->league_id);
+});
+
+/*
+|--------------------------------------------------------------------------
+| Re-entry After Completion
+|--------------------------------------------------------------------------
+*/
+
+it('creates a new league when re-entering with same deck after completing 5 matches', function () {
+    $deckVersion = DeckVersion::factory()->create();
+
+    // First run: 5 matches, league marked complete
+    $league1 = League::factory()->complete()->create([
+        'token' => 'league-token-123',
+        'format' => 'CStandard',
+        'deck_version_id' => $deckVersion->id,
+    ]);
+
+    // Create 5 completed matches in the league
+    for ($i = 0; $i < 5; $i++) {
+        makeMatchWithDeck($deckVersion, ['league_id' => $league1->id]);
+    }
+
+    // New match in the same league with the same deck (re-entry)
+    $newMatch = makeMatchWithDeck($deckVersion);
+    callAssignLeague($newMatch, defaultGameMeta());
+
+    $newMatch->refresh();
+
+    // Should be in a NEW league, not the completed one
+    expect($newMatch->league_id)->not->toBe($league1->id);
+    expect($newMatch->league->token)->toBe('league-token-123');
+    expect($newMatch->league->deck_version_id)->toBe($deckVersion->id);
+});
+
+it('reuses active league when it has fewer than 5 matches', function () {
+    $deckVersion = DeckVersion::factory()->create();
+
+    $league = League::factory()->create([
+        'token' => 'league-token-123',
+        'format' => 'CStandard',
+        'deck_version_id' => $deckVersion->id,
+    ]);
+
+    makeMatchWithDeck($deckVersion, ['league_id' => $league->id]);
+
+    // Second match, same league, same deck — should reuse
+    $match2 = makeMatchWithDeck($deckVersion);
+    callAssignLeague($match2, defaultGameMeta());
+
+    $match2->refresh();
+    expect($match2->league_id)->toBe($league->id);
+});
+
+/*
+|--------------------------------------------------------------------------
+| Event ID Lookup
+|--------------------------------------------------------------------------
+*/
+
+it('finds league by event_id when available in gameMeta', function () {
+    $deckVersion = DeckVersion::factory()->create();
+
+    $league = League::factory()->create([
+        'token' => 'league-token-123',
+        'event_id' => 10397,
+        'state' => LeagueState::Active,
+    ]);
+
+    $match = makeMatchWithDeck($deckVersion);
+
+    $gameMeta = defaultGameMeta();
+    $gameMeta['EventId'] = '10397';
+
+    callAssignLeague($match, $gameMeta);
+
+    $match->refresh();
+    expect($match->league_id)->toBe($league->id);
+});
+
+it('falls back to composite key when event_id not in gameMeta', function () {
+    $deckVersion = DeckVersion::factory()->create();
+
+    $league = League::factory()->create([
+        'token' => 'league-token-123',
+        'event_id' => 10397,
+        'deck_version_id' => $deckVersion->id,
+        'state' => LeagueState::Active,
+    ]);
+
+    $match = makeMatchWithDeck($deckVersion);
+
+    callAssignLeague($match, defaultGameMeta());
+
+    $match->refresh();
+    expect($match->league_id)->toBe($league->id);
+});
+
+it('creates league reactively when no pre-existing league found', function () {
+    $deckVersion = DeckVersion::factory()->create();
+    $match = makeMatchWithDeck($deckVersion);
+
+    callAssignLeague($match, defaultGameMeta());
+
+    $match->refresh();
+    expect($match->league_id)->not->toBeNull();
+    expect($match->league->token)->toBe('league-token-123');
 });
 
 /*

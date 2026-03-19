@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class DeckVersion extends Model
 {
     use HasFactory;
+
     protected $guarded = [];
 
     protected $casts = [

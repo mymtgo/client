@@ -13,55 +13,34 @@ class ResolveStaleMatches
      * Detect and resolve matches stuck in Started/InProgress/Ended.
      *
      * A match is stale if a newer match has been created since it started.
-     * We give AdvanceMatchState one final pass, then void or end the match
-     * depending on whether it belongs to a real league.
+     * BuildMatches has already given every match with unprocessed events
+     * a chance to advance — this handles the ones that couldn't.
      */
     public static function run(): void
     {
-        $incompleteMatches = MtgoMatch::incomplete()
-            ->orderBy('started_at')
-            ->get();
+        $latestMatchStart = MtgoMatch::latest('started_at')->value('started_at');
 
-        if ($incompleteMatches->isEmpty()) {
+        if (! $latestMatchStart) {
             return;
         }
 
-        // Pre-compute the latest match start time to avoid N+1 queries.
-        // Any incomplete match started before this is stale.
-        $latestMatchStart = MtgoMatch::latest('started_at')->value('started_at');
+        $staleMatches = MtgoMatch::incomplete()
+            ->where('started_at', '<', $latestMatchStart)
+            ->get();
 
-        Log::channel('pipeline')->info("ResolveStaleMatches: evaluating {$incompleteMatches->count()} incomplete matches", [
-            'latest_start' => $latestMatchStart,
-        ]);
+        if ($staleMatches->isEmpty()) {
+            return;
+        }
 
-        foreach ($incompleteMatches as $match) {
-            if ($match->started_at >= $latestMatchStart) {
-                Log::channel('pipeline')->info("ResolveStaleMatches: match {$match->mtgo_id} skipped (is latest)");
+        Log::channel('pipeline')->info("ResolveStaleMatches: found {$staleMatches->count()} stale matches");
 
-                continue;
-            }
-
-            // Give AdvanceMatchState one final attempt
-            AdvanceMatchState::run($match->token, $match->mtgo_id);
-            $match->refresh();
-
-            // If it completed, we're done
-            if ($match->state === MatchState::Complete) {
-                continue;
-            }
-
-            // Determine if this is a real league match (non-phantom, has league)
+        foreach ($staleMatches as $match) {
             $isRealLeague = $match->league_id && ! $match->league?->phantom;
 
             if ($isRealLeague) {
-                // Real league: mark as Ended so it's visible but indicates incomplete
                 $match->update(['state' => MatchState::Ended]);
 
-                Log::channel('pipeline')->warning("ResolveStaleMatches: match {$match->mtgo_id} ended (incomplete)", [
-                    'reason' => 'stale, real league',
-                    'state_before' => $match->getOriginal('state'),
-                    'started_at' => $match->started_at,
-                ]);
+                Log::channel('pipeline')->warning("ResolveStaleMatches: match {$match->mtgo_id} ended (incomplete real league)");
 
                 AppNotification::dispatch(
                     type: 'match_incomplete',
@@ -70,14 +49,9 @@ class ResolveStaleMatches
                     route: '/matches/'.$match->id,
                 );
             } else {
-                // Casual: void it completely
                 $match->update(['state' => MatchState::Voided]);
 
-                Log::channel('pipeline')->warning("ResolveStaleMatches: match {$match->mtgo_id} voided", [
-                    'reason' => 'stale, phantom/casual league',
-                    'state_before' => $match->getOriginal('state'),
-                    'started_at' => $match->started_at,
-                ]);
+                Log::channel('pipeline')->warning("ResolveStaleMatches: match {$match->mtgo_id} voided (stale casual)");
 
                 AppNotification::dispatch(
                     type: 'match_voided',

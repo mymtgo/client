@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Actions\Matches\DetermineMatchResult;
 use App\Actions\Matches\GetGameLog;
+use App\Enums\MatchState;
 use App\Facades\Mtgo;
 use App\Models\LogEvent;
 use App\Models\MtgoMatch;
@@ -39,7 +40,7 @@ class RepairCorruptMatches extends Command
         Mtgo::setUsername($localUsername);
         $this->line("Local player: <info>{$localUsername}</info>");
 
-        $matches = MtgoMatch::whereNull('deleted_at')
+        $matches = MtgoMatch::where('state', MatchState::Complete)
             ->where(function ($q) {
                 $q->whereRaw('(games_won + games_lost) < 2')
                     ->orWhereRaw('(games_won = 1 AND games_lost = 1)');

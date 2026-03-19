@@ -13,7 +13,7 @@ class UpdateController extends Controller
 {
     public function __invoke(Request $request, int $id): RedirectResponse
     {
-        $match = MtgoMatch::withTrashed()->findOrFail($id);
+        $match = MtgoMatch::findOrFail($id);
 
         $allowed = [
             'token', 'mtgo_id', 'league_id', 'deck_version_id',
