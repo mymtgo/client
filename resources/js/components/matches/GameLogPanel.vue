@@ -11,6 +11,10 @@ const props = defineProps<{
     activeTimestamp?: string;
 }>();
 
+const emit = defineEmits<{
+    seek: [timestamp: string];
+}>();
+
 const logContainer = ref<HTMLElement | null>(null);
 
 // Find the index of the latest log entry at or before the active timestamp
@@ -32,6 +36,10 @@ watch(activeLogIndex, async (index) => {
     const el = logContainer.value.querySelector(`[data-log-index="${index}"]`);
     el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
 });
+
+function seekTo(entry: GameLogEntry) {
+    emit('seek', entry.timestamp);
+}
 </script>
 
 <template>
@@ -45,7 +53,11 @@ watch(activeLogIndex, async (index) => {
                 :key="i"
                 :data-log-index="i"
                 class="border-b border-border/50 px-1 py-1 text-xs last:border-0"
-                :class="i === activeLogIndex ? 'bg-primary/10 font-medium' : 'text-muted-foreground'"
+                :class="[
+                    i === activeLogIndex ? 'bg-primary/10 font-medium' : 'text-muted-foreground',
+                    activeTimestamp !== undefined ? 'cursor-pointer hover:bg-muted/50' : '',
+                ]"
+                @click="activeTimestamp !== undefined && seekTo(entry)"
             >
                 <span class="mr-1.5 font-mono text-[10px] opacity-60">{{ entry.timestamp }}</span>
                 <span>{{ entry.message }}</span>
