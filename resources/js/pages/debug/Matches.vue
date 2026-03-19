@@ -2,12 +2,14 @@
 import DebugNav from '@/components/debug/DebugNav.vue';
 import EditableCell from '@/components/debug/EditableCell.vue';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useSpinGuard } from '@/composables/useSpinGuard';
 import { useToast } from '@/composables/useToast';
 import { router, usePoll } from '@inertiajs/vue3';
-import { RefreshCw } from 'lucide-vue-next';
+import { EllipsisVertical, RefreshCw, Trash2, RotateCcw } from 'lucide-vue-next';
 import { reactive, ref } from 'vue';
 
 const { add: toast } = useToast();
@@ -47,41 +49,32 @@ function saveField(matchId: number, field: string, value: unknown) {
     });
 }
 
-function deleteMatch(id: number) {
+// Delete confirmation dialog
+const deleteDialogOpen = ref(false);
+const matchToDelete = ref<{ id: number; token: string } | null>(null);
+
+function confirmDelete(match: Record<string, unknown>) {
+    matchToDelete.value = { id: match.id as number, token: match.token as string };
+    deleteDialogOpen.value = true;
+}
+
+function executeDelete() {
+    if (!matchToDelete.value) return;
+    const { id } = matchToDelete.value;
     router.delete(`/debug/matches/${id}`, {
         preserveScroll: true,
-        onSuccess: () => toast({ type: 'success', title: 'Deleted', message: `Match #${id} soft-deleted.`, duration: 2000 }),
-    });
-}
-
-function restoreMatch(id: number) {
-    router.patch(`/debug/matches/${id}/restore`, {}, {
-        preserveScroll: true,
-        onSuccess: () => toast({ type: 'success', title: 'Restored', message: `Match #${id} restored.`, duration: 2000 }),
-    });
-}
-
-function forceDeleteMatch(id: number) {
-    if (!confirm('Permanently delete this match and reset its log events? This cannot be undone.')) return;
-    router.delete(`/debug/matches/${id}/force`, {
-        preserveScroll: true,
-        onSuccess: () => toast({ type: 'success', title: 'Purged', message: `Match #${id} permanently deleted. Log events reset for reingestion.`, duration: 3000 }),
-    });
-}
-
-const resetIdentifier = ref('');
-const [resetting, startResetting] = useSpinGuard();
-
-function resetMatch() {
-    if (!resetIdentifier.value) return;
-    const stop = startResetting();
-    router.post('/debug/matches/reset', { identifier: resetIdentifier.value }, {
-        preserveScroll: true,
         onSuccess: () => {
-            toast({ type: 'success', title: 'Reset', message: `Match ${resetIdentifier.value} purged and events reset for reingestion.`, duration: 3000 });
-            resetIdentifier.value = '';
+            toast({ type: 'success', title: 'Deleted', message: `Match #${id} permanently deleted.`, duration: 2000 });
+            deleteDialogOpen.value = false;
+            matchToDelete.value = null;
         },
-        onFinish: stop,
+    });
+}
+
+function reprocessMatch(id: number) {
+    router.post('/debug/matches/reset', { identifier: String(id) }, {
+        preserveScroll: true,
+        onSuccess: () => toast({ type: 'success', title: 'Voided', message: `Match #${id} voided.`, duration: 2000 }),
     });
 }
 
@@ -133,17 +126,6 @@ function refresh() {
         <DebugNav />
         <div class="flex-1 overflow-auto p-4">
             <div class="mb-4 flex items-center gap-2">
-                <Input
-                    v-model="resetIdentifier"
-                    type="text"
-                    placeholder="Match ID or token..."
-                    class="h-8 w-48 text-xs"
-                    @keyup.enter="resetMatch"
-                />
-                <Button size="sm" variant="outline" class="h-8" :disabled="!resetIdentifier || resetting" @click="resetMatch">
-                    <RefreshCw class="mr-1.5 h-3.5 w-3.5" :class="{ 'animate-spin': resetting }" />
-                    Reset &amp; Rebuild
-                </Button>
                 <div class="flex-1" />
                 <Button size="sm" class="h-8" :disabled="processing" @click="processNow">
                     <RefreshCw class="mr-1.5 h-3.5 w-3.5" :class="{ 'animate-spin': processing }" />
@@ -161,14 +143,14 @@ function refresh() {
                             <TableHead v-for="col in columns" :key="col.key" class="whitespace-nowrap px-2 text-xs">
                                 {{ col.label }}
                             </TableHead>
-                            <TableHead class="px-2 text-xs">Actions</TableHead>
+                            <TableHead class="w-10 px-2 text-xs" />
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         <tr
                             v-for="match in matches.data"
                             :key="match.id as number"
-                            :class="{ 'opacity-40 line-through': match.deleted_at }"
+                            :class="{ 'opacity-40': match.state === 'voided' }"
                         >
                             <EditableCell
                                 v-for="col in columns"
@@ -180,34 +162,37 @@ function refresh() {
                                 :flash="flashState[`${match.id}-${col.key}`]"
                                 @save="(val: unknown) => saveField(match.id as number, col.key, val)"
                             />
-                            <td class="whitespace-nowrap px-2 py-1">
-                                <template v-if="match.deleted_at">
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        class="mr-1 h-7 text-xs"
-                                        @click="restoreMatch(match.id as number)"
-                                    >
-                                        Restore
-                                    </Button>
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        class="h-7 text-xs text-destructive"
-                                        @click="forceDeleteMatch(match.id as number)"
-                                    >
-                                        Force Delete
-                                    </Button>
-                                </template>
-                                <Button
-                                    v-else
-                                    variant="ghost"
-                                    size="sm"
-                                    class="h-7 text-xs text-destructive"
-                                    @click="deleteMatch(match.id as number)"
-                                >
-                                    Delete
-                                </Button>
+                            <td class="px-2 py-1">
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger as-child>
+                                        <Button variant="ghost" size="icon" class="h-7 w-7">
+                                            <EllipsisVertical class="h-4 w-4" />
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                        <DropdownMenuItem
+                                            v-if="match.state === 'voided'"
+                                            @click="saveField(match.id as number, 'state', 'complete')"
+                                        >
+                                            <RotateCcw class="h-4 w-4" />
+                                            Restore
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem
+                                            v-if="match.state !== 'voided'"
+                                            @click="reprocessMatch(match.id as number)"
+                                        >
+                                            <RotateCcw class="h-4 w-4" />
+                                            Void
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem
+                                            class="text-destructive"
+                                            @click="confirmDelete(match)"
+                                        >
+                                            <Trash2 class="h-4 w-4" />
+                                            Delete
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
                             </td>
                         </tr>
                     </TableBody>
@@ -230,5 +215,24 @@ function refresh() {
                 </template>
             </div>
         </div>
+
+        <!-- Delete confirmation dialog -->
+        <Dialog v-model:open="deleteDialogOpen">
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Delete Match</DialogTitle>
+                    <DialogDescription>
+                        This will permanently delete match
+                        <span class="font-mono font-semibold">#{{ matchToDelete?.id }}</span>
+                        and all associated data (games, archetypes, timelines, log events).
+                        This action cannot be undone.
+                    </DialogDescription>
+                </DialogHeader>
+                <DialogFooter>
+                    <Button variant="outline" @click="deleteDialogOpen = false">Cancel</Button>
+                    <Button variant="destructive" @click="executeDelete">Delete permanently</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
     </div>
 </template>

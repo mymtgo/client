@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Actions\Leagues\ProcessLeagueEvents;
 use App\Actions\Matches\BuildMatches;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -17,6 +18,7 @@ class ProcessLogEvents implements ShouldBeUnique, ShouldQueue
 
     public function handle(): void
     {
+        ProcessLeagueEvents::run();
         BuildMatches::run();
     }
 }

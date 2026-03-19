@@ -2,10 +2,12 @@
 import { ref } from 'vue';
 import { Link } from '@inertiajs/vue3';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import ResultBadge from '@/components/matches/ResultBadge.vue';
+import GameLogPanel from '@/components/matches/GameLogPanel.vue';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { SwordsIcon, ChevronRight, Play } from 'lucide-vue-next';
+import { SwordsIcon, ChevronRight, Play, ScrollText } from 'lucide-vue-next';
 import GameShowController from '@/actions/App/Http/Controllers/Games/ShowController';
 
 const props = defineProps<{
@@ -22,6 +24,7 @@ const props = defineProps<{
         keptHand: { name: string; image: string | null; bottomed: boolean }[];
         sideboardChanges: { name: string; image: string | null; quantity: number; type: 'in' | 'out' }[];
     };
+    gameLog: Array<{ timestamp: string; message: string }>;
     opponentName: string;
 }>();
 
@@ -49,6 +52,22 @@ const sideboardOpen = ref(false);
             <div class="ml-auto flex items-center gap-2 text-xs text-muted-foreground">
                 <span v-if="game.localMulligans > 0">You mulliganed {{ game.localMulligans }}x</span>
                 <span v-if="game.opponentMulligans > 0">{{ opponentName }} mulliganed {{ game.opponentMulligans }}x</span>
+                <Dialog v-if="gameLog.length">
+                    <DialogTrigger as-child>
+                        <Button variant="ghost" size="sm" class="h-6 px-2 text-xs">
+                            <ScrollText :size="11" />
+                            Game Log
+                        </Button>
+                    </DialogTrigger>
+                    <DialogContent class="max-h-[80vh] max-w-lg p-0">
+                        <DialogHeader class="px-4 pt-4">
+                            <DialogTitle>Game {{ game.number }} Log</DialogTitle>
+                        </DialogHeader>
+                        <div class="h-[60vh]">
+                            <GameLogPanel :entries="gameLog" />
+                        </div>
+                    </DialogContent>
+                </Dialog>
                 <Button variant="ghost" size="sm" as-child class="h-6 px-2 text-xs">
                     <Link :href="GameShowController(game.id).url" class="inline-flex items-center gap-1">
                         <Play :size="11" />

@@ -121,8 +121,6 @@ Route::group([], function (Router $router) {
         $group->delete('matches/{match}', DestroyController::class)->name('debug.matches.destroy');
         $group->patch('matches/{match}/restore', RestoreController::class)->name('debug.matches.restore');
         $group->post('matches/process', ProcessController::class)->name('debug.matches.process');
-        $group->delete('matches/{match}/force', App\Http\Controllers\Debug\Matches\ForceDeleteController::class)->name('debug.matches.force-delete');
-        $group->post('matches/reset', App\Http\Controllers\Debug\Matches\ResetController::class)->name('debug.matches.reset');
 
         // Games
         $group->get('games', App\Http\Controllers\Debug\Games\IndexController::class)->name('debug.games.index');

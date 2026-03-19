@@ -23,7 +23,6 @@ class IndexController extends Controller
             ->join('deck_versions as dv', 'dv.id', '=', 'm.deck_version_id')
             ->join('decks as d', 'd.id', '=', 'dv.deck_id')
             ->where('gp.is_local', false)
-            ->whereNull('m.deleted_at')
             ->where('m.state', 'complete')
             ->when($activeAccountId, fn ($q, $id) => $q->where('d.account_id', $id))
             ->select('p.id as player_id', 'p.username', 'm.id as match_id', 'm.games_won', 'm.games_lost', 'm.format', 'm.started_at')

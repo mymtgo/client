@@ -54,6 +54,37 @@ class ClassifyLogEvent
             ]);
         }
 
+        // League join request — the authoritative signal that the user clicked "Join"
+        if (str_contains($text, 'FlsLeagueUserJoinReqMessage')) {
+            return $event->fill([
+                'event_type' => 'league_join_request',
+            ]);
+        }
+
+        // League view — fired when MTGO displays the league details panel.
+        // Two variants: "Creating GameDetailsView) League" (first join) and
+        // "Join Event) League" (re-entry). Both carry EventToken and EventId.
+        // ProcessLeagueEvents correlates with a preceding league_join_request.
+        if (preg_match('/(?:Creating GameDetailsView|Join Event)\) League\b/', $text)) {
+            $eventToken = null;
+            $eventId = null;
+
+            if (preg_match('/EventToken=(\S+)/', $text, $m)) {
+                $eventToken = $m[1];
+            }
+            if (preg_match('/EventId=(\d+)/', $text, $m)) {
+                $eventId = $m[1];
+            }
+
+            if ($eventToken && $eventId) {
+                return $event->fill([
+                    'event_type' => 'league_joined',
+                    'match_token' => $eventToken,
+                    'match_id' => $eventId,
+                ]);
+            }
+        }
+
         return $event;
     }
 }

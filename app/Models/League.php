@@ -17,6 +17,7 @@ class League extends Model
 
     protected $casts = [
         'started_at' => 'datetime',
+        'joined_at' => 'datetime',
         'state' => LeagueState::class,
     ];
 
