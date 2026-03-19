@@ -6,6 +6,7 @@ import MatchShowController from '@/actions/App/Http/Controllers/Matches/ShowCont
 defineProps<{
     game: App.Data.Front.GameData & { match_id: number };
     timeline: App.Data.Front.GameTimelineData[];
+    gameLog: Array<{ timestamp: string; message: string }>;
 }>();
 </script>
 
@@ -16,6 +17,6 @@ defineProps<{
                 label="Back to match"
             />
             <h1 class="text-2xl font-bold tracking-tight">Game Replay</h1>
-            <GameReplay :timeline="timeline" />
+            <GameReplay :timeline="timeline" :game-log="gameLog" />
     </div>
 </template>

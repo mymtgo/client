@@ -1,12 +1,16 @@
 <script setup lang="ts">
 import { Button } from '@/components/ui/button';
+import GameLogPanel from '@/components/matches/GameLogPanel.vue';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
 import { BookOpen, Hand, Heart, X } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 import type { GameTimelineEvent } from './GameReplay.vue';
+import type { GameLogEntry } from '@/components/matches/GameLogPanel.vue';
 
 const props = defineProps<{
     event: GameTimelineEvent | null;
+    gameLog: GameLogEntry[];
+    currentTimestamp: string;
 }>();
 
 const player = computed(() => props.event?.content.Players?.find((p: any) => p.IsLocal));
@@ -293,6 +297,11 @@ const hasOpenPanels = computed(() => openPanels.value.size > 0);
                 </div>
                 <div v-else class="flex h-12 items-center justify-center text-xs text-muted-foreground">Empty hand</div>
             </div>
+        </div>
+
+        <!-- Right panel: Game Log -->
+        <div v-if="gameLog.length" class="w-72 shrink-0 border-l">
+            <GameLogPanel :entries="gameLog" :active-timestamp="currentTimestamp" />
         </div>
     </div>
 </template>

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Matches;
 
 use App\Actions\Matches\BuildMatchGameData;
+use App\Actions\Matches\GetGameLogEntries;
 use App\Data\Front\ArchetypeData;
 use App\Data\Front\MatchData;
 use App\Http\Controllers\Controller;
@@ -49,16 +50,21 @@ class ShowController extends Controller
         $registeredOracleIds = collect($registeredCards)->pluck('oracle_id')->filter()->unique();
         $cardsByOracleId = Card::whereIn('oracle_id', $registeredOracleIds)->get()->keyBy('oracle_id');
 
-        $games = $match->games
-            ->sortBy('started_at')
-            ->values()
-            ->map(fn ($game, $index) => BuildMatchGameData::run(
-                $game, $index + 1, $cardsByMtgoId, $cardsByOracleId, $registeredCards
-            ));
+        $sortedGames = $match->games->sortBy('started_at')->values();
+
+        $games = $sortedGames->map(fn ($game, $index) => BuildMatchGameData::run(
+            $game, $index + 1, $cardsByMtgoId, $cardsByOracleId, $registeredCards
+        ));
+
+        // Game log entries per game (keyed by game ID)
+        $gameLogs = $sortedGames->mapWithKeys(fn ($game) => [
+            $game->id => GetGameLogEntries::run($game),
+        ]);
 
         return Inertia::render('matches/Show', [
             'match' => MatchData::from($match),
             'games' => $games,
+            'gameLogs' => $gameLogs,
             'archetypes' => ArchetypeData::collect(Archetype::orderBy('name')->get()),
         ]);
     }

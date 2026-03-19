@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Games;
 
+use App\Actions\Matches\GetGameLogEntries;
 use App\Data\Front\GameTimelineData;
 use App\Http\Controllers\Controller;
 use App\Models\Card;
@@ -48,6 +49,7 @@ class ShowController extends Controller
         return Inertia::render('games/Show', [
             'game' => $game,
             'timeline' => GameTimelineData::collect($events),
+            'gameLog' => GetGameLogEntries::run($game),
         ]);
     }
 }
