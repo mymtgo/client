@@ -227,7 +227,7 @@ class MtgoManager
 
         $schedule->call(
             fn () => $this->syncLiveGameResults()
-        )->everyFiveSeconds()->name('sync_live_results')->withoutOverlapping(10);
+        )->everyFiveSeconds()->name('sync_live_results')->withoutOverlapping(5);
         //
         $schedule->call(
             fn () => $this->ingestLogs()
@@ -245,11 +245,8 @@ class MtgoManager
             fn () => $this->populateMissingCardData()
         )->hourly();
 
-        // \Illuminate\Support\Facades\Schedule::call(
-        //    fn() => \App\Models\LogEvent::whereNotNull('processed_at')->orWhere(function ($query) {
-        //        $query->whereNull('match_token')->whereNull('game_id')->whereNull('match_id');
-        //    })->delete()
-        // )->everyFiveMinutes();
-
+        $schedule->call(
+            fn () => \App\Actions\Logs\PruneProcessedLogEvents::run()
+        )->daily()->name('prune_log_events');
     }
 }

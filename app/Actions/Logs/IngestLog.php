@@ -249,6 +249,13 @@ class IngestLog
 
         $event = ClassifyLogEvent::run($event);
 
+        // Only store classified events — unclassified events are noise
+        // (other players' matches, UI chatter, Twitch info, etc).
+        // Login events are the exception: always stored for username tracking.
+        if (! $event->event_type && $category !== 'Login') {
+            return null;
+        }
+
         // Convert to DB row (avoid model->save() to keep locks minimal).
         return [
             'file_path' => $event->file_path,

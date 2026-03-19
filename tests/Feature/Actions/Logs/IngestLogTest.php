@@ -117,13 +117,13 @@ it('handles null path gracefully', function () {
 
 it('processes only new content on subsequent runs', function () {
     $logPath = $this->tempDir.'/test.log';
-    file_put_contents($logPath, "15:04:11 [INF] (SESSION|Start Session) First event.\n");
+    file_put_contents($logPath, "15:04:11 [INF] (Game Management|Match State Changed for aaaa-1111 from X to Y) First event.\n");
 
     IngestLog::run($logPath);
     $countAfterFirst = LogEvent::count();
 
-    // Append new content
-    file_put_contents($logPath, "15:04:12 [INF] (SESSION|Second) Second event.\n", FILE_APPEND);
+    // Append new content (classifiable event so it gets stored)
+    file_put_contents($logPath, "15:04:12 [INF] (Game Management|Match State Changed for bbbb-2222 from X to Y) Second event.\n", FILE_APPEND);
 
     IngestLog::run($logPath);
     $countAfterSecond = LogEvent::count();
@@ -145,13 +145,13 @@ it('classifies match state changed events correctly', function () {
 
 it('handles incomplete events at end of file', function () {
     $logPath = $this->tempDir.'/test.log';
-    // Write an incomplete event (no newline at end)
-    file_put_contents($logPath, "15:04:11 [INF] (SESSION|Start Session) Complete event.\n15:04:12 [INF] (SESSION|Incomplete) This has no newline");
+    // Write a complete classifiable event + an incomplete one (no newline at end)
+    file_put_contents($logPath, "15:04:11 [INF] (Game Management|Match State Changed for cccc-3333 from X to Y) Complete event.\n15:04:12 [INF] (Game Management|Match State Changed for dddd-4444 from X to Y) This has no newline");
 
     IngestLog::run($logPath);
 
     // Should only process the complete event
     $events = LogEvent::all();
     expect($events)->toHaveCount(1);
-    expect($events->first()->context)->toBe('Start Session');
+    expect($events->first()->match_token)->toBe('cccc-3333');
 });
