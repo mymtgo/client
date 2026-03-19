@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Decks;
 use App\Actions\Cards\GetCards;
 use App\Actions\Decks\BuildDecklist;
 use App\Actions\Decks\GetArchetypeMatchupSpread;
+use App\Actions\Decks\GetDeckVersionStats;
 use App\Actions\Leagues\FormatLeagueRuns;
 use App\Data\Front\ArchetypeData;
 use App\Data\Front\CardData;
@@ -103,7 +104,7 @@ class ShowController extends Controller
 
             // ── Lazy closures: skipped on partial reloads that exclude them ──
             'chartData' => fn () => $this->buildDeckChartData($deck, $from, $to),
-            'versions' => fn () => $this->buildVersionsList($deck, $from, $to, $wins, $losses, $gamesWon, $gamesLost, $matchWinrate, $gameWinrate, $gamesotpWon, $gamesotpLost, $otpRate, $gamesotdWon, $gamesotdLost, $otdRate),
+            'versions' => fn () => GetDeckVersionStats::run($deck, $from, $to),
 
             // ── Deferred: auto-loaded in background after initial render ─────
             // Default group — matches tab (loads immediately after paint)
@@ -257,105 +258,6 @@ class ShowController extends Controller
             $result[(string) $version->id] = [
                 'maindeck' => $mainDeck,
                 'sideboard' => $sideboard,
-            ];
-        }
-
-        return $result;
-    }
-
-    private function buildVersionsList(
-        Deck $deck,
-        Carbon $from, Carbon $to,
-        int $wins, int $losses,
-        int $gamesWon, int $gamesLost,
-        int $matchWinrate, int $gameWinrate,
-        int $gamesOtpWon, int $gamesOtpLost, int $otpRate,
-        int $gamesOtdWon, int $gamesOtdLost, int $otdRate,
-    ): array {
-        $dateScope = fn ($q) => $q->whereBetween('started_at', [$from, $to]);
-
-        $versions = $deck->versions()
-            ->withCount([
-                'matches' => $dateScope,
-                'matches as won_matches_count' => fn ($q) => $dateScope($q)->whereRaw('games_won > games_lost'),
-                'matches as lost_matches_count' => fn ($q) => $dateScope($q)->whereRaw('games_lost > games_won'),
-            ])
-            ->withSum(['matches' => $dateScope], 'games_won')
-            ->withSum(['matches' => $dateScope], 'games_lost')
-            ->orderBy('modified_at')
-            ->get();
-
-        $latestVersionId = $versions->last()?->id;
-        $versionIds = $versions->pluck('id');
-
-        // Single batch query for OTP/OTD stats across all versions
-        $otpStats = Game::query()
-            ->join('game_player as gp', fn ($j) => $j->on('gp.game_id', '=', 'games.id')->where('gp.is_local', 1))
-            ->join('matches as m', 'm.id', '=', 'games.match_id')
-            ->whereIn('m.deck_version_id', $versionIds)
-            ->where('m.state', 'complete')
-            ->whereBetween('m.started_at', [$from, $to])
-            ->selectRaw('m.deck_version_id, gp.on_play, SUM(CASE WHEN games.won = 1 THEN 1 ELSE 0 END) as won, SUM(CASE WHEN games.won = 0 THEN 1 ELSE 0 END) as lost')
-            ->groupBy('m.deck_version_id', 'gp.on_play')
-            ->get()
-            ->groupBy('deck_version_id');
-
-        // All-time aggregate as first entry
-        $result = [[
-            'id' => null,
-            'label' => 'All versions',
-            'isCurrent' => false,
-            'dateLabel' => null,
-            'matchesWon' => $wins,
-            'matchesLost' => $losses,
-            'gamesWon' => $gamesWon,
-            'gamesLost' => $gamesLost,
-            'matchWinrate' => $matchWinrate,
-            'gameWinrate' => $gameWinrate,
-            'gamesOtpWon' => $gamesOtpWon,
-            'gamesOtpLost' => $gamesOtpLost,
-            'otpRate' => $otpRate,
-            'gamesOtdWon' => $gamesOtdWon,
-            'gamesOtdLost' => $gamesOtdLost,
-            'otdRate' => $otdRate,
-        ]];
-
-        foreach ($versions as $i => $version) {
-            $vOtp = $otpStats->get($version->id, collect())->first(fn ($r) => (int) $r->on_play === 1);
-            $vOtd = $otpStats->get($version->id, collect())->first(fn ($r) => (int) $r->on_play === 0);
-
-            $vOtpWon = (int) ($vOtp?->won ?? 0);
-            $vOtpLost = (int) ($vOtp?->lost ?? 0);
-            $vOtdWon = (int) ($vOtd?->won ?? 0);
-            $vOtdLost = (int) ($vOtd?->lost ?? 0);
-
-            $vWins = (int) ($version->won_matches_count ?? 0);
-            $vLosses = (int) ($version->lost_matches_count ?? 0);
-            $vGamesWon = (int) ($version->matches_sum_games_won ?? 0);
-            $vGamesLost = (int) ($version->matches_sum_games_lost ?? 0);
-
-            $nextVersion = $versions[$i + 1] ?? null;
-            $dateLabel = $version->modified_at->format('M d')
-                .' - '
-                .($nextVersion ? $nextVersion->modified_at->format('M d') : 'now');
-
-            $result[] = [
-                'id' => $version->id,
-                'label' => 'v'.($i + 1),
-                'isCurrent' => $version->id === $latestVersionId,
-                'dateLabel' => $dateLabel,
-                'matchesWon' => $vWins,
-                'matchesLost' => $vLosses,
-                'gamesWon' => $vGamesWon,
-                'gamesLost' => $vGamesLost,
-                'matchWinrate' => round(100 * ($vWins / (($vWins + $vLosses) ?: 1))),
-                'gameWinrate' => round(100 * ($vGamesWon / (($vGamesWon + $vGamesLost) ?: 1))),
-                'gamesOtpWon' => $vOtpWon,
-                'gamesOtpLost' => $vOtpLost,
-                'otpRate' => round(100 * ($vOtpWon / (($vOtpWon + $vOtpLost) ?: 1))),
-                'gamesOtdWon' => $vOtdWon,
-                'gamesOtdLost' => $vOtdLost,
-                'otdRate' => round(100 * ($vOtdWon / (($vOtdWon + $vOtdLost) ?: 1))),
             ];
         }
 
