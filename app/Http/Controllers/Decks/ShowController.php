@@ -5,8 +5,10 @@ namespace App\Http\Controllers\Decks;
 use App\Actions\Cards\GetCards;
 use App\Actions\Decks\BuildDecklist;
 use App\Actions\Decks\GetArchetypeMatchupSpread;
+use App\Actions\Decks\GetDeckStats;
 use App\Actions\Decks\GetDeckVersionStats;
 use App\Actions\Leagues\FormatLeagueRuns;
+use App\Actions\Leagues\GetLeagueResultDistribution;
 use App\Data\Front\ArchetypeData;
 use App\Data\Front\CardData;
 use App\Data\Front\DeckData;
@@ -14,13 +16,11 @@ use App\Data\Front\MatchData;
 use App\Http\Controllers\Controller;
 use App\Models\Archetype;
 use App\Models\Deck;
-use App\Models\Game;
 use App\Models\League;
 use App\Models\MtgoMatch;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 class ShowController extends Controller
@@ -41,66 +41,29 @@ class ShowController extends Controller
         $from = now()->subMonths(2)->startOfDay();
         $to = now()->endOfDay();
 
-        $matchesQuery = $deck->matches()->select('matches.*')->where('state', 'complete')
-            ->whereBetween('started_at', [$from, $to]);
-
-        $losses = $matchesQuery->clone()->whereRaw('games_won < games_lost')->count();
-        $wins = $matchesQuery->clone()->whereRaw('games_won > games_lost')->count();
-        $gamesWon = $matchesQuery->clone()->sum('games_won');
-        $gamesLost = $matchesQuery->clone()->sum('games_lost');
-
-        $matchIds = $matchesQuery->clone()->select('matches.id')->pluck('matches.id');
-        $matchGamesQuery = Game::whereHas('match', fn ($q) => $q->whereIn('match_id', $matchIds));
-
-        $gamesotp = $matchGamesQuery->clone()->whereHas('localPlayers', fn ($q) => $q->where('on_play', 1));
-        $gamesotd = $matchGamesQuery->clone()->whereHas('localPlayers', fn ($q) => $q->where('on_play', 0));
-
-        $gamesotpWon = $gamesotp->clone()->where('won', 1)->count();
-        $gamesotpLost = $gamesotp->clone()->where('won', 0)->count();
-        $gamesotdWon = $gamesotd->clone()->where('won', 1)->count();
-        $gamesotdLost = $gamesotd->clone()->where('won', 0)->count();
-
-        $totalMatches = $matchesQuery->count();
-        $matchWinrate = round(100 * ($wins / ($totalMatches ?: 1)));
-        $gameWinrate = round(100 * ($gamesWon / (($gamesWon + $gamesLost) ?: 1)));
-        $otpRate = round(100 * ($gamesotpWon / (($gamesotpWon + $gamesotpLost) ?: 1)));
-        $otdRate = round(100 * ($gamesotdWon / (($gamesotdWon + $gamesotdLost) ?: 1)));
-        $gamesotpCount = $gamesotpWon + $gamesotpLost;
-        $gamesotdCount = $gamesotdWon + $gamesotdLost;
-
-        // All match IDs for this deck (used by leagues tab)
-        $allMatchIds = $deck->matches()->select('matches.id')->where('state', 'complete')->pluck('matches.id');
-
-        // Trophies = leagues where all matches were won (5-0)
-        $trophies = League::whereHas('matches', fn ($q) => $q->whereIn('matches.id', $allMatchIds))
-            ->withCount([
-                'matches as won_count' => fn ($q) => $q->whereIn('matches.id', $allMatchIds)->whereRaw('games_won > games_lost'),
-                'matches as total_count' => fn ($q) => $q->whereIn('matches.id', $allMatchIds),
-            ])
-            ->get()
-            ->filter(fn ($l) => $l->total_count === 5 && $l->won_count === 5)
-            ->count();
+        $stats = GetDeckStats::run($deck, $from, $to);
+        $allMatchIds = $stats['allMatchIds'];
 
         return Inertia::render('decks/Show', [
             // ── Eager: needed for the initial render ─────────────────────────
             'deck' => DeckData::from($deck),
-            'trophies' => $trophies,
+            'trophies' => $stats['trophies'],
             'maindeck' => $mainDeck,
             'sideboard' => $sideboard,
-            'matchesWon' => $wins,
-            'matchesLost' => $losses,
-            'gamesWon' => $gamesWon,
-            'gamesLost' => $gamesLost,
-            'matchWinrate' => $matchWinrate,
-            'gameWinrate' => $gameWinrate,
-            'gamesOtp' => $gamesotpCount,
-            'gamesOtpWon' => $gamesotpWon,
-            'gamesOtpLost' => $gamesotpLost,
-            'otpRate' => $otpRate,
-            'gamesOtd' => $gamesotdCount,
-            'gamesOtdWon' => $gamesotdWon,
-            'gamesOtdLost' => $gamesotdLost,
-            'otdRate' => $otdRate,
+            'matchesWon' => $stats['wins'],
+            'matchesLost' => $stats['losses'],
+            'gamesWon' => $stats['gamesWon'],
+            'gamesLost' => $stats['gamesLost'],
+            'matchWinrate' => $stats['matchWinrate'],
+            'gameWinrate' => $stats['gameWinrate'],
+            'gamesOtp' => $stats['otpWon'] + $stats['otpLost'],
+            'gamesOtpWon' => $stats['otpWon'],
+            'gamesOtpLost' => $stats['otpLost'],
+            'otpRate' => $stats['otpRate'],
+            'gamesOtd' => $stats['otdWon'] + $stats['otdLost'],
+            'gamesOtdWon' => $stats['otdWon'],
+            'gamesOtdLost' => $stats['otdLost'],
+            'otdRate' => $stats['otdRate'],
 
             // ── Lazy closures: skipped on partial reloads that exclude them ──
             'chartData' => fn () => $this->buildDeckChartData($deck, $from, $to),
@@ -173,36 +136,9 @@ class ShowController extends Controller
                     'archetypes' => \App\Actions\Cards\GetCardGameStats::availableArchetypes($deckVersion),
                 ];
             }),
-            'leagueResults' => Inertia::defer(function () use ($deck, $allMatchIds) {
-                $buckets = collect(['5-0' => 0, '4-1' => 0, '3-2' => 0, '2-3' => 0, '1-4' => 0, '0-5' => 0]);
-
-                $leagues = League::whereHas('matches', fn ($q) => $q->whereIn('matches.id', $allMatchIds))
-                    ->where('phantom', false)
-                    ->where('state', 'complete')
-                    ->pluck('id');
-
-                if ($leagues->isEmpty()) {
-                    return $buckets->all();
-                }
-
-                $leagueRecords = DB::table('matches as m')
-                    ->join('deck_versions as dv', 'dv.id', '=', 'm.deck_version_id')
-                    ->whereIn('m.league_id', $leagues)
-                    ->where('dv.deck_id', $deck->id)
-                    ->where('m.state', 'complete')
-                    ->selectRaw('m.league_id, SUM(CASE WHEN m.games_won > m.games_lost THEN 1 ELSE 0 END) as wins, SUM(CASE WHEN m.games_won < m.games_lost THEN 1 ELSE 0 END) as losses')
-                    ->groupBy('m.league_id')
-                    ->get();
-
-                foreach ($leagueRecords as $record) {
-                    $key = "{$record->wins}-{$record->losses}";
-                    if ($buckets->has($key)) {
-                        $buckets->put($key, $buckets->get($key) + 1);
-                    }
-                }
-
-                return $buckets->all();
-            }),
+            'leagueResults' => Inertia::defer(
+                fn () => GetLeagueResultDistribution::run($deck, $allMatchIds),
+            ),
             'leagues' => Inertia::defer(function () use ($deck, $allMatchIds) {
                 $leagues = League::whereHas('matches', fn ($q) => $q->whereIn('matches.id', $allMatchIds))
                     ->with(['deckVersion.deck'])
