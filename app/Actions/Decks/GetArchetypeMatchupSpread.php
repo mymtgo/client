@@ -16,8 +16,7 @@ class GetArchetypeMatchupSpread
             ->join('match_archetypes as ma', 'ma.mtgo_match_id', '=', 'm.id')
             ->join('archetypes as a', 'a.id', '=', 'ma.archetype_id')
             ->whereIn('m.deck_version_id', $deckVersions->toArray())
-            ->where('m.state', 'complete')
-            ->whereNull('m.deleted_at');
+            ->where('m.state', 'complete');
 
         if ($from && $to) {
             $query->whereBetween('m.started_at', [$from, $to]);

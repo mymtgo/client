@@ -5,6 +5,7 @@ namespace App\Managers;
 use App\Actions\Logs\FindMtgoLogPath;
 use App\Actions\Logs\GetLogFilePaths;
 use App\Actions\Logs\IngestLog;
+use App\Actions\Matches\SyncLiveGameResults;
 use App\Actions\RegisterDevice;
 use App\Actions\Settings\ValidatePath;
 use App\Jobs\DownloadArchetypes;
@@ -167,6 +168,19 @@ class MtgoManager
         );
     }
 
+    public function syncLiveGameResults(): void
+    {
+        if (! $this->canRun()) {
+            return;
+        }
+
+        $matches = MtgoMatch::incomplete()->get();
+
+        foreach ($matches as $match) {
+            SyncLiveGameResults::run($match);
+        }
+    }
+
     public function ingestGameLogs(bool $sync = false): void
     {
         if (! $this->canRun()) {
@@ -210,14 +224,14 @@ class MtgoManager
         $schedule->call(
             fn () => $this->ingestGameLogs()
         )->everyTenSeconds()->name('store_game_logs')->withoutOverlapping(10);
+
+        $schedule->call(
+            fn () => $this->syncLiveGameResults()
+        )->everyFiveSeconds()->name('sync_live_results')->withoutOverlapping(5);
         //
         $schedule->call(
             fn () => $this->ingestLogs()
         )->everySecond()->name('ingest_logs');
-
-        $schedule->call(
-            fn () => $this->processLogEvents()
-        )->everyMinute()->name('process_log_events_fallback')->withoutOverlapping(60);
 
         $schedule->call(
             fn () => $this->downloadArchetypes()
@@ -227,11 +241,8 @@ class MtgoManager
             fn () => $this->populateMissingCardData()
         )->hourly();
 
-        // \Illuminate\Support\Facades\Schedule::call(
-        //    fn() => \App\Models\LogEvent::whereNotNull('processed_at')->orWhere(function ($query) {
-        //        $query->whereNull('match_token')->whereNull('game_id')->whereNull('match_id');
-        //    })->delete()
-        // )->everyFiveMinutes();
-
+        $schedule->call(
+            fn () => \App\Actions\Logs\PruneProcessedLogEvents::run()
+        )->daily()->name('prune_log_events');
     }
 }

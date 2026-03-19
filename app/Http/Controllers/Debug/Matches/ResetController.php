@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers\Debug\Matches;
 
-use App\Actions\Matches\PurgeMatch;
+use App\Enums\MatchState;
 use App\Http\Controllers\Controller;
 use App\Models\MtgoMatch;
 use Illuminate\Http\RedirectResponse;
@@ -18,17 +18,14 @@ class ResetController extends Controller
 
         $identifier = $request->input('identifier');
 
-        $match = MtgoMatch::withTrashed()
-            ->where('mtgo_id', $identifier)
+        $match = MtgoMatch::where('mtgo_id', $identifier)
             ->orWhere('token', $identifier)
             ->first();
 
         if ($match) {
-            $resetCount = PurgeMatch::run($match);
-        } else {
-            $resetCount = PurgeMatch::resetEventsByIdentifier($identifier);
+            $match->update(['state' => MatchState::Voided]);
         }
 
-        return back()->with('resetCount', $resetCount);
+        return back();
     }
 }
