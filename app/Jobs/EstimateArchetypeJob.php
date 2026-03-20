@@ -5,7 +5,6 @@ namespace App\Jobs;
 use App\Actions\RegisterDevice;
 use App\Events\ArchetypeEstimateUpdated;
 use App\Models\Archetype;
-use App\Models\Card;
 use App\Models\MtgoMatch;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -31,34 +30,9 @@ class EstimateArchetypeJob implements ShouldQueue
             return;
         }
 
-        $cardNames = Cache::get("archetype_detect:{$this->matchToken}:cards", []);
+        $cards = Cache::get("archetype_detect:{$this->matchToken}:cards", []);
 
-        if (empty($cardNames)) {
-            return;
-        }
-
-        $cards = collect($cardNames)->map(function (array $item) {
-            $card = Card::whereRaw('LOWER(name) = ?', [strtolower($item['card_name'])])->first();
-
-            if (! $card) {
-                $card = Card::where('name', 'like', $item['card_name'].' // %')->first();
-            }
-
-            if (! $card) {
-                Log::channel('pipeline')->debug('EstimateArchetypeJob: card not found', [
-                    'card_name' => $item['card_name'],
-                ]);
-
-                return null;
-            }
-
-            return [
-                'mtgo_id' => $card->mtgo_id,
-                'quantity' => $item['quantity'],
-            ];
-        })->filter()->values();
-
-        if ($cards->isEmpty()) {
+        if (empty($cards)) {
             return;
         }
 
@@ -68,13 +42,15 @@ class EstimateArchetypeJob implements ShouldQueue
             return;
         }
 
+        $playerName = Cache::get("archetype_detect:{$this->matchToken}:player", 'Unknown');
+
         try {
             $response = Http::withHeaders([
                 'X-Device-Id' => Settings::get('device_id'),
                 'X-Api-Key' => RegisterDevice::retrieveKey(),
             ])->post(config('mymtgo_api.url').'/api/archetypes/estimate', [
                 'format' => strtolower($match->format),
-                'cards' => $cards->toArray(),
+                'cards' => $cards,
             ]);
 
             if (! $response->ok()) {
@@ -94,15 +70,13 @@ class EstimateArchetypeJob implements ShouldQueue
                 return;
             }
 
-            $playerName = $cardNames[0]['player'] ?? 'Unknown';
-
             ArchetypeEstimateUpdated::dispatch(
                 matchToken: $this->matchToken,
                 playerName: $playerName,
                 archetypeName: $archetype->name,
                 archetypeColorIdentity: $archetype->color_identity,
                 confidence: (int) round(($best['confidence'] ?? 0) * 100),
-                cardsSeen: count($cardNames),
+                cardsSeen: count($cards),
             );
         } catch (\Throwable $e) {
             Log::channel('pipeline')->warning('EstimateArchetypeJob: API call failed', [
