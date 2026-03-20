@@ -6,6 +6,7 @@ use App\Actions\DetermineMatchArchetypes;
 use App\Actions\Util\ExtractKeyValueBlock;
 use App\Enums\LeagueState;
 use App\Enums\LogEventType;
+use App\Enums\MatchOutcome;
 use App\Enums\MatchState;
 use App\Events\AppNotification;
 use App\Events\DeckLinkedToMatch;
@@ -19,6 +20,10 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
+/**
+ * @deprecated Superseded by the event-driven pipeline (DispatchDomainEvents + listeners).
+ *             Retained for manual debug workflows via BuildMatches and legacy compatibility.
+ */
 class AdvanceMatchState
 {
     /**
@@ -259,8 +264,7 @@ class AdvanceMatchState
         $result = DetermineMatchResult::run($logResults, $stateChanges, $gameMeta['GameStructureCd'] ?? '');
 
         $match->update([
-            'games_won' => $result['wins'],
-            'games_lost' => $result['losses'],
+            'outcome' => MtgoMatch::determineOutcome($result['wins'], $result['losses']),
             'state' => MatchState::Complete,
         ]);
 
@@ -290,13 +294,13 @@ class AdvanceMatchState
         SubmitMatch::dispatch($match->id);
         ComputeCardGameStats::dispatch($match->id);
 
-        $won = $match->games_won > $match->games_lost;
+        $won = $match->outcome === MatchOutcome::Win;
         $opponentArchetype = $match->opponentArchetypes()->with('archetype')->first()?->archetype?->name ?? 'Unknown';
 
         AppNotification::dispatch(
             type: $won ? 'match_win' : 'match_loss',
             title: ($won ? 'Win' : 'Loss').' vs '.$opponentArchetype,
-            message: $match->games_won.'-'.$match->games_lost,
+            message: $match->gamesWon().'-'.$match->gamesLost(),
             route: '/matches/'.$match->id,
         );
 

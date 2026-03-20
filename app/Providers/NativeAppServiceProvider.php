@@ -6,7 +6,10 @@ use App\Actions\Decks\OpenMostRecentDeckPopout;
 use App\Actions\Leagues\OpenOpponentScoutWindow;
 use App\Actions\Leagues\OpenOverlayWindow;
 use App\Facades\Mtgo;
+use Illuminate\Support\Facades\Event;
 use Native\Desktop\Contracts\ProvidesPhpIni;
+use Native\Desktop\Events\ChildProcess\ProcessSpawned;
+use Native\Desktop\Facades\ChildProcess;
 use Native\Desktop\Facades\Menu;
 use Native\Desktop\Facades\Settings;
 use Native\Desktop\Facades\Window;
@@ -34,6 +37,29 @@ class NativeAppServiceProvider implements ProvidesPhpIni
 
         Mtgo::runInitialSetup();
         Mtgo::retryUnsubmittedMatches();
+
+        // Parse any existing log data — covers case where MTGO was opened
+        // before the tracker, or data exists from a previous session.
+        // IngestLog is cursor-based so this is safe to call on every boot.
+        Mtgo::ingestLogs();
+
+        // Start file watcher for real-time log ingestion
+        if (Mtgo::canRun()) {
+            ChildProcess::node('resources/js/file-watcher.js', alias: 'file-watcher', persistent: true);
+
+            // Send watch paths after process spawns
+            Event::listen(ProcessSpawned::class, function (ProcessSpawned $event) {
+                if ($event->alias === 'file-watcher') {
+                    ChildProcess::message(json_encode([
+                        'type' => 'configure',
+                        'paths' => [
+                            Mtgo::getLogPath(),
+                            Mtgo::getLogDataPath(),
+                        ],
+                    ]), 'file-watcher');
+                }
+            });
+        }
 
         if (Settings::get('league_window')) {
             OpenOverlayWindow::run();

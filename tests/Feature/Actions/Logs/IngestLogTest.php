@@ -1,9 +1,11 @@
 <?php
 
 use App\Actions\Logs\IngestLog;
+use App\Events\MatchEnded;
 use App\Models\LogCursor;
 use App\Models\LogEvent;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Event;
 
 uses(RefreshDatabase::class);
 
@@ -141,6 +143,34 @@ it('classifies match state changed events correctly', function () {
 
     expect($matchEvent)->not->toBeNull()
         ->and($matchEvent->match_token)->toBe('1b60d302-5391-4947-bff5-70a8108dc509');
+});
+
+it('dispatches domain events after ingestion', function () {
+    Event::fake();
+
+    $logPath = $this->tempDir.'/test.log';
+    copy(base_path('tests/Fixtures/sample_log.txt'), $logPath);
+
+    IngestLog::run($logPath);
+
+    // The fixture contains a match_state_changed event with TournamentMatchClosedState
+    // which should dispatch MatchEnded.
+    Event::assertDispatched(MatchEnded::class);
+});
+
+it('does not dispatch domain events when no new events are ingested', function () {
+    $logPath = $this->tempDir.'/test.log';
+    copy(base_path('tests/Fixtures/sample_log.txt'), $logPath);
+
+    // First run to advance the cursor to EOF
+    IngestLog::run($logPath);
+
+    Event::fake([MatchEnded::class]);
+
+    // Second run — cursor is at EOF, no new events
+    IngestLog::run($logPath);
+
+    Event::assertNotDispatched(MatchEnded::class);
 });
 
 it('handles incomplete events at end of file', function () {

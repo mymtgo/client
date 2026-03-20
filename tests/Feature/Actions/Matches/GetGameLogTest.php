@@ -1,14 +1,15 @@
 <?php
 
 use App\Actions\Matches\GetGameLog;
-use App\Facades\Mtgo;
+use App\Models\Account;
 use App\Models\GameLog;
+use App\Models\LogEvent;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 
 it('returns null when no game log record exists', function () {
-    Mtgo::shouldReceive('getUsername')->andReturn('anticloser');
+    Account::registerAndActivate('anticloser');
 
     expect(GetGameLog::run('nonexistent-token'))->toBeNull();
 });
@@ -20,7 +21,10 @@ it('parses and stores decoded entries on first access', function () {
         'file_path' => $fixturePath,
     ]);
 
-    Mtgo::shouldReceive('getUsername')->andReturn('anticloser');
+    LogEvent::factory()->create([
+        'match_token' => 'test-token-123',
+        'username' => 'anticloser',
+    ]);
 
     $result = GetGameLog::run('test-token-123');
 
@@ -42,7 +46,10 @@ it('uses stored entries on subsequent access without re-reading file', function 
         'file_path' => $fixturePath,
     ]);
 
-    Mtgo::shouldReceive('getUsername')->andReturn('anticloser');
+    LogEvent::factory()->create([
+        'match_token' => 'test-token-456',
+        'username' => 'anticloser',
+    ]);
 
     // First call: parses and stores
     GetGameLog::run('test-token-456');
@@ -64,7 +71,10 @@ it('returns results in backward-compatible format', function () {
         'file_path' => $fixturePath,
     ]);
 
-    Mtgo::shouldReceive('getUsername')->andReturn('anticloser');
+    LogEvent::factory()->create([
+        'match_token' => 'test-token-789',
+        'username' => 'anticloser',
+    ]);
 
     $result = GetGameLog::run('test-token-789');
 

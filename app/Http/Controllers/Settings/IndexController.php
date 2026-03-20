@@ -27,7 +27,7 @@ class IndexController extends Controller
             'shareStats' => Settings::get('share_stats') === null ? false : (bool) Settings::get('share_stats'),
             'pendingMatches' => MtgoMatch::submittable()
                 ->latest('started_at')
-                ->get(['id', 'format', 'games_won', 'games_lost', 'started_at']),
+                ->get(['id', 'format', 'outcome', 'started_at']),
             'hidePhantomLeagues' => (bool) Settings::get('hide_phantom_leagues'),
             'accounts' => Account::orderBy('username')->get(['id', 'username', 'tracked', 'active']),
             'debugMode' => (bool) Settings::get('debug_mode'),

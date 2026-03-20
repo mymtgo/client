@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\MatchOutcome;
 use App\Enums\MatchState;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -35,12 +36,12 @@ class Deck extends Model
 
     public function lostMatches(): HasManyThrough
     {
-        return $this->matches()->whereRaw('games_lost > games_won');
+        return $this->matches()->where('outcome', MatchOutcome::Loss);
     }
 
     public function wonMatches(): HasManyThrough
     {
-        return $this->matches()->whereRaw('games_lost < games_won');
+        return $this->matches()->where('outcome', MatchOutcome::Win);
     }
 
     public function account(): BelongsTo
