@@ -26,7 +26,9 @@ class AdvanceMatchToInProgress
             $match->update(['mtgo_id' => $logEvent->match_id]);
         }
 
-        $gameStateEvents = LogEvent::where('match_id', $logEvent->match_id)
+        $matchId = $match->mtgo_id ?? $logEvent->match_id;
+
+        $gameStateEvents = LogEvent::where('match_id', $matchId)
             ->where('event_type', 'game_state_update')
             ->get();
 
@@ -35,7 +37,7 @@ class AdvanceMatchToInProgress
         }
 
         // Create games from all available match events
-        $allEvents = LogEvent::where('match_id', $logEvent->match_id)
+        $allEvents = LogEvent::where('match_id', $matchId)
             ->orderBy('timestamp')
             ->get();
 
