@@ -25,26 +25,5 @@ class SyncGameResults
             }
         }
 
-        // Backfill any remaining null games from the match-level result.
-        // This covers match-level concedes where the game log has no
-        // per-game win/loss lines.
-        $nullGames = $games->filter(fn ($g) => is_null($g->won));
-
-        if ($nullGames->isNotEmpty() && ($match->games_won + $match->games_lost) > 0) {
-            $knownWins = $games->filter(fn ($g) => $g->won === true)->count();
-            $knownLosses = $games->filter(fn ($g) => $g->won === false)->count();
-            $missingWins = $match->games_won - $knownWins;
-            $missingLosses = $match->games_lost - $knownLosses;
-
-            foreach ($nullGames as $game) {
-                if ($missingWins > 0) {
-                    $game->update(['won' => true]);
-                    $missingWins--;
-                } elseif ($missingLosses > 0) {
-                    $game->update(['won' => false]);
-                    $missingLosses--;
-                }
-            }
-        }
     }
 }

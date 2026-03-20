@@ -8,6 +8,7 @@ use App\Actions\Matches\GetGameLog;
 use App\Actions\Matches\SyncGameResults;
 use App\Actions\Util\ExtractKeyValueBlock;
 use App\Enums\LeagueState;
+use App\Enums\MatchOutcome;
 use App\Enums\MatchState;
 use App\Events\AppNotification;
 use App\Events\MatchEnded;
@@ -47,9 +48,10 @@ class CompleteMatch
 
         $result = DetermineMatchResult::run($logResults, $stateChanges, $gameMeta['GameStructureCd'] ?? '');
 
+        $outcome = MtgoMatch::determineOutcome($result['wins'], $result['losses']);
+
         $match->update([
-            'games_won' => $result['wins'],
-            'games_lost' => $result['losses'],
+            'outcome' => $outcome,
             'state' => MatchState::Complete,
         ]);
 
@@ -78,13 +80,13 @@ class CompleteMatch
         SubmitMatch::dispatch($match->id);
         ComputeCardGameStats::dispatch($match->id);
 
-        $won = $match->games_won > $match->games_lost;
+        $won = $outcome === MatchOutcome::Win;
         $opponentArchetype = $match->opponentArchetypes()->with('archetype')->first()?->archetype?->name ?? 'Unknown';
 
         AppNotification::dispatch(
             type: $won ? 'match_win' : 'match_loss',
             title: ($won ? 'Win' : 'Loss').' vs '.$opponentArchetype,
-            message: $match->games_won.'-'.$match->games_lost,
+            message: $result['wins'].'-'.$result['losses'],
             route: '/matches/'.$match->id,
         );
 
