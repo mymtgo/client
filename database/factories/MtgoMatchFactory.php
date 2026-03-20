@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\MatchOutcome;
 use App\Enums\MatchState;
 use App\Models\MtgoMatch;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -21,8 +22,7 @@ class MtgoMatchFactory extends Factory
             'format' => 'CStandard',
             'match_type' => 'Constructed',
             'state' => MatchState::Complete,
-            'games_won' => 2,
-            'games_lost' => 1,
+            'outcome' => MatchOutcome::Win,
             'started_at' => now(),
             'ended_at' => now()->addMinutes(30),
         ];
@@ -30,11 +30,11 @@ class MtgoMatchFactory extends Factory
 
     public function won(): static
     {
-        return $this->state(fn () => ['games_won' => 2, 'games_lost' => 1]);
+        return $this->state(fn () => ['outcome' => MatchOutcome::Win]);
     }
 
     public function lost(): static
     {
-        return $this->state(fn () => ['games_won' => 1, 'games_lost' => 2]);
+        return $this->state(fn () => ['outcome' => MatchOutcome::Loss]);
     }
 }

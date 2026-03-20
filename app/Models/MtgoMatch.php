@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\MatchOutcome;
 use App\Enums\MatchState;
 use App\Observers\MtgoMatchObserver;
 use Carbon\CarbonInterface;
@@ -21,8 +22,7 @@ class MtgoMatch extends Model
     protected $guarded = [];
 
     protected $casts = [
-        'games_won' => 'integer',
-        'games_lost' => 'integer',
+        'outcome' => MatchOutcome::class,
         'started_at' => 'datetime',
         'ended_at' => 'datetime',
         'submitted_at' => 'datetime',
@@ -113,5 +113,35 @@ class MtgoMatch extends Model
     public function league(): BelongsTo
     {
         return $this->belongsTo(League::class);
+    }
+
+    public function gamesWon(): int
+    {
+        return $this->games()->where('won', true)->count();
+    }
+
+    public function gamesLost(): int
+    {
+        return $this->games()->where('won', false)->count();
+    }
+
+    /**
+     * Determine the match outcome from game results.
+     */
+    public static function determineOutcome(int $wins, int $losses): MatchOutcome
+    {
+        if ($wins > $losses) {
+            return MatchOutcome::Win;
+        }
+
+        if ($losses > $wins) {
+            return MatchOutcome::Loss;
+        }
+
+        if ($wins > 0 && $wins === $losses) {
+            return MatchOutcome::Draw;
+        }
+
+        return MatchOutcome::Unknown;
     }
 }
