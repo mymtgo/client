@@ -2,6 +2,7 @@
 
 namespace App\Actions\Decks;
 
+use App\Enums\MatchOutcome;
 use App\Models\Deck;
 use App\Models\Game;
 use Carbon\Carbon;
@@ -20,16 +21,25 @@ class GetDeckVersionStats
         $versions = $deck->versions()
             ->withCount([
                 'matches' => $dateScope,
-                'matches as won_matches_count' => fn ($q) => $dateScope($q)->whereRaw('games_won > games_lost'),
-                'matches as lost_matches_count' => fn ($q) => $dateScope($q)->whereRaw('games_lost > games_won'),
+                'matches as won_matches_count' => fn ($q) => $dateScope($q)->where('outcome', MatchOutcome::Win),
+                'matches as lost_matches_count' => fn ($q) => $dateScope($q)->where('outcome', MatchOutcome::Loss),
             ])
-            ->withSum(['matches' => $dateScope], 'games_won')
-            ->withSum(['matches' => $dateScope], 'games_lost')
             ->orderBy('modified_at')
             ->get();
 
         $latestVersionId = $versions->last()?->id;
         $versionIds = $versions->pluck('id');
+
+        // Batch query for game-level win/loss counts per version
+        $gameStats = Game::query()
+            ->join('matches as m', 'm.id', '=', 'games.match_id')
+            ->whereIn('m.deck_version_id', $versionIds)
+            ->where('m.state', 'complete')
+            ->whereBetween('m.started_at', [$from, $to])
+            ->selectRaw('m.deck_version_id, SUM(CASE WHEN games.won = 1 THEN 1 ELSE 0 END) as games_won, SUM(CASE WHEN games.won = 0 THEN 1 ELSE 0 END) as games_lost')
+            ->groupBy('m.deck_version_id')
+            ->get()
+            ->keyBy('deck_version_id');
 
         // Single batch query for OTP/OTD stats across all versions
         $otpStats = Game::query()
@@ -46,8 +56,8 @@ class GetDeckVersionStats
         // Compute aggregate across all versions
         $totalWins = $versions->sum('won_matches_count');
         $totalLosses = $versions->sum('lost_matches_count');
-        $totalGamesWon = (int) $versions->sum('matches_sum_games_won');
-        $totalGamesLost = (int) $versions->sum('matches_sum_games_lost');
+        $totalGamesWon = (int) $gameStats->sum('games_won');
+        $totalGamesLost = (int) $gameStats->sum('games_lost');
         $allOtp = $otpStats->flatten(1)->where('on_play', 1);
         $allOtd = $otpStats->flatten(1)->where('on_play', 0);
         $aggOtpWon = (int) $allOtp->sum('won');
@@ -73,6 +83,7 @@ class GetDeckVersionStats
         foreach ($versions as $i => $version) {
             $vOtp = $otpStats->get($version->id, collect())->first(fn ($r) => (int) $r->on_play === 1);
             $vOtd = $otpStats->get($version->id, collect())->first(fn ($r) => (int) $r->on_play === 0);
+            $vGameStats = $gameStats->get($version->id);
 
             $nextVersion = $versions[$i + 1] ?? null;
             $dateLabel = $version->modified_at->format('M d')
@@ -86,8 +97,8 @@ class GetDeckVersionStats
                 dateLabel: $dateLabel,
                 wins: (int) ($version->won_matches_count ?? 0),
                 losses: (int) ($version->lost_matches_count ?? 0),
-                gamesWon: (int) ($version->matches_sum_games_won ?? 0),
-                gamesLost: (int) ($version->matches_sum_games_lost ?? 0),
+                gamesWon: (int) ($vGameStats?->games_won ?? 0),
+                gamesLost: (int) ($vGameStats?->games_lost ?? 0),
                 otpWon: (int) ($vOtp?->won ?? 0),
                 otpLost: (int) ($vOtp?->lost ?? 0),
                 otdWon: (int) ($vOtd?->won ?? 0),
