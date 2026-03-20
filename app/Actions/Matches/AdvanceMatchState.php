@@ -19,6 +19,10 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
+/**
+ * @deprecated Superseded by the event-driven pipeline (DispatchDomainEvents + listeners).
+ *             Retained for manual debug workflows via BuildMatches and legacy compatibility.
+ */
 class AdvanceMatchState
 {
     /**

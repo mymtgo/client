@@ -5,6 +5,10 @@ namespace App\Actions\Matches;
 use App\Models\MtgoMatch;
 use Illuminate\Support\Facades\Log;
 
+/**
+ * @deprecated Superseded by the event-driven pipeline (ResolveGameResult listener).
+ *             Retained for legacy compatibility and scheduled reconciliation.
+ */
 class SyncLiveGameResults
 {
     /**
