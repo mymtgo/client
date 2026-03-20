@@ -121,7 +121,7 @@ class MtgoMatch extends Model
 
     public function getMatchTimeAttribute()
     {
-        return $this->ended_at->diffForHumans($this->started_at, CarbonInterface::DIFF_ABSOLUTE);
+        return $this->ended_at?->diffForHumans($this->started_at, CarbonInterface::DIFF_ABSOLUTE);
     }
 
     public function deckVersion(): BelongsTo
