@@ -2,13 +2,15 @@
 
 namespace App\Listeners\Pipeline;
 
-use App\Events\CardRevealed;
+use App\Actions\Util\ExtractJson;
+use App\Events\GameStateChanged;
+use App\Facades\Mtgo;
 use App\Jobs\EstimateArchetypeJob;
 use Illuminate\Support\Facades\Cache;
 
 class DetectArchetype
 {
-    public function handle(CardRevealed $event): void
+    public function handle(GameStateChanged $event): void
     {
         $logEvent = $event->logEvent;
         $matchToken = $logEvent->match_token;
@@ -17,46 +19,66 @@ class DetectArchetype
             return;
         }
 
-        $data = json_decode($logEvent->raw_text, true);
+        $localPlayer = Mtgo::getUsername();
+        if (! $localPlayer) {
+            return;
+        }
 
-        if (! is_array($data) || ! isset($data['card_name'], $data['player'])) {
+        // Parse the game state JSON
+        $content = ExtractJson::run($logEvent->raw_text)->first();
+        if (! is_array($content)) {
+            return;
+        }
+
+        $players = $content['Players'] ?? [];
+        $cards = $content['Cards'] ?? [];
+
+        if (empty($players) || empty($cards)) {
+            return;
+        }
+
+        // Find the opponent's player instance ID
+        $opponentId = null;
+        $opponentName = null;
+        foreach ($players as $player) {
+            if ($player['Name'] !== $localPlayer) {
+                $opponentId = $player['Id'];
+                $opponentName = $player['Name'];
+                break;
+            }
+        }
+
+        if (! $opponentId) {
+            return;
+        }
+
+        // Extract opponent's cards with mtgo_ids directly
+        $opponentCards = collect($cards)
+            ->filter(fn ($card) => $card['Owner'] === $opponentId)
+            ->groupBy('CatalogID')
+            ->map(fn ($group) => [
+                'mtgo_id' => $group[0]['CatalogID'],
+                'quantity' => min($group->count(), 4),
+            ])
+            ->values()
+            ->toArray();
+
+        if (empty($opponentCards)) {
             return;
         }
 
         $cacheKey = "archetype_detect:{$matchToken}:cards";
         $versionKey = "archetype_detect:{$matchToken}:version";
+        $playerKey = "archetype_detect:{$matchToken}:player";
 
-        $cards = Cache::get($cacheKey, []);
-        $found = false;
+        // Replace cache with latest full card state (game state events contain ALL cards seen so far)
+        Cache::put($cacheKey, $opponentCards, now()->addHour());
+        Cache::put($playerKey, $opponentName, now()->addHour());
 
-        foreach ($cards as &$card) {
-            if (strcasecmp($card['card_name'], $data['card_name']) === 0) {
-                if ($card['quantity'] < 4) {
-                    $card['quantity']++;
-                }
-                $found = true;
-                break;
-            }
-        }
-        unset($card);
-
-        if (! $found) {
-            $cards[] = [
-                'card_name' => $data['card_name'],
-                'quantity' => 1,
-                'player' => $data['player'],
-            ];
-        }
-
-        Cache::put($cacheKey, $cards, now()->addHour());
-
-        // Use get+put instead of increment+put for cross-driver consistency
         $version = Cache::get($versionKey, 0) + 1;
         Cache::put($versionKey, $version, now()->addHour());
 
         EstimateArchetypeJob::dispatch($matchToken, $version)
             ->delay(now()->addSeconds(5));
-
-        $logEvent->update(['processed_at' => now()]);
     }
 }

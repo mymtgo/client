@@ -94,6 +94,7 @@ class CompleteMatch
         // Clear progressive archetype detection cache
         Cache::forget("archetype_detect:{$match->token}:cards");
         Cache::forget("archetype_detect:{$match->token}:version");
+        Cache::forget("archetype_detect:{$match->token}:player");
 
         // Mark all related log events as processed
         LogEvent::where(function ($query) use ($match) {

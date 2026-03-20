@@ -1,6 +1,7 @@
 <?php
 
-use App\Events\CardRevealed;
+use App\Events\GameStateChanged;
+use App\Facades\Mtgo;
 use App\Jobs\EstimateArchetypeJob;
 use App\Listeners\Pipeline\DetectArchetype;
 use App\Models\LogEvent;
@@ -10,171 +11,223 @@ use Illuminate\Support\Facades\Queue;
 
 uses(RefreshDatabase::class);
 
-it('accumulates cards in cache and dispatches EstimateArchetypeJob', function () {
+function makeGameStateRawText(array $players, array $cards): string
+{
+    return json_encode([
+        'Players' => $players,
+        'Cards' => $cards,
+    ]);
+}
+
+it('extracts opponent cards from game state and dispatches EstimateArchetypeJob', function () {
     Queue::fake();
+    Mtgo::shouldReceive('getUsername')->andReturn('LocalPlayer');
+
+    $rawText = makeGameStateRawText(
+        [
+            ['Id' => 1, 'Name' => 'LocalPlayer'],
+            ['Id' => 2, 'Name' => 'OpponentPlayer'],
+        ],
+        [
+            ['CatalogID' => 12345, 'Owner' => 2],
+            ['CatalogID' => 67890, 'Owner' => 2],
+            ['CatalogID' => 11111, 'Owner' => 1],
+        ]
+    );
 
     $logEvent = LogEvent::factory()->create([
         'match_token' => 'token-detect-1',
-        'event_type' => 'card_revealed',
-        'raw_text' => json_encode(['card_name' => 'Lightning Bolt', 'player' => 'Opponent']),
-        'processed_at' => null,
+        'event_type' => 'game_state_update',
+        'raw_text' => $rawText,
     ]);
 
     $listener = new DetectArchetype;
-    $listener->handle(new CardRevealed($logEvent));
+    $listener->handle(new GameStateChanged($logEvent));
 
     $cards = Cache::get('archetype_detect:token-detect-1:cards');
-    expect($cards)->toHaveCount(1);
-    expect($cards[0]['card_name'])->toBe('Lightning Bolt');
-    expect($cards[0]['quantity'])->toBe(1);
-    expect($cards[0]['player'])->toBe('Opponent');
+    expect($cards)->toHaveCount(2);
+
+    $mtgoIds = array_column($cards, 'mtgo_id');
+    expect($mtgoIds)->toContain(12345);
+    expect($mtgoIds)->toContain(67890);
+    expect($mtgoIds)->not->toContain(11111);
+
+    expect(Cache::get('archetype_detect:token-detect-1:player'))->toBe('OpponentPlayer');
 
     Queue::assertPushed(EstimateArchetypeJob::class, function ($job) {
         return $job->matchToken === 'token-detect-1' && $job->version === 1;
     });
 });
 
-it('increments quantity for duplicate cards up to a maximum of 4', function () {
+it('caps quantity at 4 for duplicate cards', function () {
     Queue::fake();
+    Mtgo::shouldReceive('getUsername')->andReturn('LocalPlayer');
 
-    $token = 'token-detect-2';
-    $cacheKey = "archetype_detect:{$token}:cards";
+    // 5 copies of the same card (opponent owns all)
+    $cards = [];
+    for ($i = 0; $i < 5; $i++) {
+        $cards[] = ['CatalogID' => 12345, 'Owner' => 2];
+    }
 
-    // Pre-seed cache with 3 copies already seen
-    Cache::put($cacheKey, [
-        ['card_name' => 'Lightning Bolt', 'quantity' => 3, 'player' => 'Opponent'],
-    ], now()->addHour());
-    Cache::put("archetype_detect:{$token}:version", 3, now()->addHour());
+    $rawText = makeGameStateRawText(
+        [
+            ['Id' => 1, 'Name' => 'LocalPlayer'],
+            ['Id' => 2, 'Name' => 'Opponent'],
+        ],
+        $cards
+    );
 
     $logEvent = LogEvent::factory()->create([
-        'match_token' => $token,
-        'event_type' => 'card_revealed',
-        'raw_text' => json_encode(['card_name' => 'Lightning Bolt', 'player' => 'Opponent']),
-        'processed_at' => null,
+        'match_token' => 'token-detect-2',
+        'event_type' => 'game_state_update',
+        'raw_text' => $rawText,
     ]);
 
     $listener = new DetectArchetype;
-    $listener->handle(new CardRevealed($logEvent));
+    $listener->handle(new GameStateChanged($logEvent));
 
-    $cards = Cache::get($cacheKey);
-    expect($cards[0]['quantity'])->toBe(4);
-
-    // Trigger again — should cap at 4
-    $logEvent2 = LogEvent::factory()->create([
-        'match_token' => $token,
-        'event_type' => 'card_revealed',
-        'raw_text' => json_encode(['card_name' => 'Lightning Bolt', 'player' => 'Opponent']),
-        'processed_at' => null,
-    ]);
-
-    $listener->handle(new CardRevealed($logEvent2));
-
-    $cards = Cache::get($cacheKey);
-    expect($cards[0]['quantity'])->toBe(4); // Still capped at 4
+    $cached = Cache::get('archetype_detect:token-detect-2:cards');
+    expect($cached)->toHaveCount(1);
+    expect($cached[0]['quantity'])->toBe(4);
 });
 
-it('accumulates different cards separately', function () {
+it('replaces cache with latest state on each event', function () {
     Queue::fake();
+    Mtgo::shouldReceive('getUsername')->andReturn('LocalPlayer');
 
-    $token = 'token-detect-3';
+    $listener = new DetectArchetype;
 
+    // First event: one opponent card
     $logEvent1 = LogEvent::factory()->create([
-        'match_token' => $token,
-        'event_type' => 'card_revealed',
-        'raw_text' => json_encode(['card_name' => 'Lightning Bolt', 'player' => 'Opponent']),
-        'processed_at' => null,
+        'match_token' => 'token-detect-3',
+        'event_type' => 'game_state_update',
+        'raw_text' => makeGameStateRawText(
+            [['Id' => 1, 'Name' => 'LocalPlayer'], ['Id' => 2, 'Name' => 'Opp']],
+            [['CatalogID' => 111, 'Owner' => 2]]
+        ),
     ]);
+    $listener->handle(new GameStateChanged($logEvent1));
 
+    expect(Cache::get('archetype_detect:token-detect-3:cards'))->toHaveCount(1);
+
+    // Second event: two opponent cards (full state replacement)
     $logEvent2 = LogEvent::factory()->create([
-        'match_token' => $token,
-        'event_type' => 'card_revealed',
-        'raw_text' => json_encode(['card_name' => 'Goblin Guide', 'player' => 'Opponent']),
-        'processed_at' => null,
+        'match_token' => 'token-detect-3',
+        'event_type' => 'game_state_update',
+        'raw_text' => makeGameStateRawText(
+            [['Id' => 1, 'Name' => 'LocalPlayer'], ['Id' => 2, 'Name' => 'Opp']],
+            [['CatalogID' => 111, 'Owner' => 2], ['CatalogID' => 222, 'Owner' => 2]]
+        ),
+    ]);
+    $listener->handle(new GameStateChanged($logEvent2));
+
+    $cards = Cache::get('archetype_detect:token-detect-3:cards');
+    expect($cards)->toHaveCount(2);
+    expect(Cache::get('archetype_detect:token-detect-3:version'))->toBe(2);
+});
+
+it('excludes local player cards', function () {
+    Queue::fake();
+    Mtgo::shouldReceive('getUsername')->andReturn('LocalPlayer');
+
+    $rawText = makeGameStateRawText(
+        [
+            ['Id' => 1, 'Name' => 'LocalPlayer'],
+            ['Id' => 2, 'Name' => 'Opponent'],
+        ],
+        [
+            ['CatalogID' => 11111, 'Owner' => 1],
+            ['CatalogID' => 22222, 'Owner' => 1],
+        ]
+    );
+
+    $logEvent = LogEvent::factory()->create([
+        'match_token' => 'token-detect-4',
+        'event_type' => 'game_state_update',
+        'raw_text' => $rawText,
     ]);
 
     $listener = new DetectArchetype;
-    $listener->handle(new CardRevealed($logEvent1));
-    $listener->handle(new CardRevealed($logEvent2));
+    $listener->handle(new GameStateChanged($logEvent));
 
-    $cards = Cache::get("archetype_detect:{$token}:cards");
-    expect($cards)->toHaveCount(2);
-
-    $cardNames = array_column($cards, 'card_name');
-    expect($cardNames)->toContain('Lightning Bolt');
-    expect($cardNames)->toContain('Goblin Guide');
+    // No opponent cards, so nothing cached
+    expect(Cache::get('archetype_detect:token-detect-4:cards'))->toBeNull();
+    Queue::assertNotPushed(EstimateArchetypeJob::class);
 });
 
 it('does nothing for events without a match_token', function () {
     Queue::fake();
+    Mtgo::shouldReceive('getUsername')->andReturn('LocalPlayer');
 
     $logEvent = LogEvent::factory()->create([
         'match_token' => null,
-        'event_type' => 'card_revealed',
-        'raw_text' => json_encode(['card_name' => 'Lightning Bolt', 'player' => 'Opponent']),
-        'processed_at' => null,
+        'event_type' => 'game_state_update',
+        'raw_text' => makeGameStateRawText(
+            [['Id' => 1, 'Name' => 'LocalPlayer'], ['Id' => 2, 'Name' => 'Opp']],
+            [['CatalogID' => 111, 'Owner' => 2]]
+        ),
     ]);
 
     $listener = new DetectArchetype;
-    $listener->handle(new CardRevealed($logEvent));
+    $listener->handle(new GameStateChanged($logEvent));
 
     Queue::assertNotPushed(EstimateArchetypeJob::class);
-    expect(Cache::get('archetype_detect::cards'))->toBeNull();
 });
 
-it('marks the LogEvent as processed', function () {
+it('does nothing without a local player configured', function () {
     Queue::fake();
-
-    $logEvent = LogEvent::factory()->create([
-        'match_token' => 'token-detect-5',
-        'event_type' => 'card_revealed',
-        'raw_text' => json_encode(['card_name' => 'Thoughtseize', 'player' => 'Opponent']),
-        'processed_at' => null,
-    ]);
-
-    $listener = new DetectArchetype;
-    $listener->handle(new CardRevealed($logEvent));
-
-    $logEvent->refresh();
-    expect($logEvent->processed_at)->not->toBeNull();
-});
-
-it('does nothing when raw_text is missing required fields', function () {
-    Queue::fake();
+    Mtgo::shouldReceive('getUsername')->andReturn(null);
 
     $logEvent = LogEvent::factory()->create([
         'match_token' => 'token-detect-6',
-        'event_type' => 'card_revealed',
-        'raw_text' => json_encode(['only_card_name' => 'Lightning Bolt']), // missing 'player'
-        'processed_at' => null,
+        'event_type' => 'game_state_update',
+        'raw_text' => makeGameStateRawText(
+            [['Id' => 1, 'Name' => 'SomePlayer'], ['Id' => 2, 'Name' => 'Opp']],
+            [['CatalogID' => 111, 'Owner' => 2]]
+        ),
     ]);
 
     $listener = new DetectArchetype;
-    $listener->handle(new CardRevealed($logEvent));
+    $listener->handle(new GameStateChanged($logEvent));
 
     Queue::assertNotPushed(EstimateArchetypeJob::class);
-    expect(Cache::get('archetype_detect:token-detect-6:cards'))->toBeNull();
 });
 
-it('increments version counter on each card reveal', function () {
+it('does nothing when JSON has no Players or Cards', function () {
     Queue::fake();
+    Mtgo::shouldReceive('getUsername')->andReturn('LocalPlayer');
 
-    $token = 'token-detect-7';
-    $versionKey = "archetype_detect:{$token}:version";
+    $logEvent = LogEvent::factory()->create([
+        'match_token' => 'token-detect-7',
+        'event_type' => 'game_state_update',
+        'raw_text' => json_encode(['Players' => [], 'Cards' => []]),
+    ]);
 
     $listener = new DetectArchetype;
+    $listener->handle(new GameStateChanged($logEvent));
 
-    foreach (['CardA', 'CardB', 'CardC'] as $cardName) {
+    Queue::assertNotPushed(EstimateArchetypeJob::class);
+});
+
+it('increments version counter on each game state event', function () {
+    Queue::fake();
+    Mtgo::shouldReceive('getUsername')->andReturn('LocalPlayer');
+
+    $listener = new DetectArchetype;
+    $token = 'token-detect-8';
+
+    for ($i = 0; $i < 3; $i++) {
         $logEvent = LogEvent::factory()->create([
             'match_token' => $token,
-            'event_type' => 'card_revealed',
-            'raw_text' => json_encode(['card_name' => $cardName, 'player' => 'Opp']),
-            'processed_at' => null,
+            'event_type' => 'game_state_update',
+            'raw_text' => makeGameStateRawText(
+                [['Id' => 1, 'Name' => 'LocalPlayer'], ['Id' => 2, 'Name' => 'Opp']],
+                [['CatalogID' => 111 + $i, 'Owner' => 2]]
+            ),
         ]);
-
-        $listener->handle(new CardRevealed($logEvent));
+        $listener->handle(new GameStateChanged($logEvent));
     }
 
-    expect(Cache::get($versionKey))->toBe(3);
-
+    expect(Cache::get("archetype_detect:{$token}:version"))->toBe(3);
     Queue::assertPushed(EstimateArchetypeJob::class, 3);
 });
