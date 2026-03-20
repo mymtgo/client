@@ -55,43 +55,14 @@ class ReconcileMatchState
 
     /**
      * Backfill null game results from completed matches.
+     *
+     * No-op: the event-driven pipeline handles game results as they arrive.
+     * Match-level win/loss counts are no longer stored; backfilling from them
+     * is not possible. Results are recorded per-game via SyncGameResults.
      */
     private static function backfillGameResults(): void
     {
-        $matches = MtgoMatch::where('state', MatchState::Complete)
-            ->whereHas('games', fn ($q) => $q->whereNull('won'))
-            ->with('games')
-            ->get();
-
-        foreach ($matches as $match) {
-            $gamesOrdered = $match->games->sortBy('started_at')->values();
-            $totalWins = $match->games_won ?? 0;
-            $totalLosses = $match->games_lost ?? 0;
-
-            // Simple backfill: assign wins first, then losses
-            $winCount = 0;
-            $lossCount = 0;
-
-            foreach ($gamesOrdered as $game) {
-                if ($game->won !== null) {
-                    if ($game->won) {
-                        $winCount++;
-                    } else {
-                        $lossCount++;
-                    }
-
-                    continue;
-                }
-
-                if ($winCount < $totalWins) {
-                    $game->update(['won' => true]);
-                    $winCount++;
-                } elseif ($lossCount < $totalLosses) {
-                    $game->update(['won' => false]);
-                    $lossCount++;
-                }
-            }
-        }
+        // Intentionally empty — see docblock.
     }
 
     /**
