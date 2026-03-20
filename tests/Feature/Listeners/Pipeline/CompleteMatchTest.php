@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\MatchOutcome;
 use App\Enums\MatchState;
 use App\Events\MatchEnded;
 use App\Jobs\ComputeCardGameStats;
@@ -22,8 +23,7 @@ it('transitions an Ended match to Complete with results', function () {
     $match = MtgoMatch::factory()->create([
         'token' => 'token-complete',
         'state' => MatchState::Ended,
-        'games_won' => 0,
-        'games_lost' => 0,
+        'outcome' => MatchOutcome::Unknown,
     ]);
 
     // Create join event for metadata extraction
@@ -46,9 +46,8 @@ it('transitions an Ended match to Complete with results', function () {
 
     $match->refresh();
     expect($match->state)->toBe(MatchState::Complete);
-    // No game log + no concede = assumed win (2-0)
-    expect($match->games_won)->toBe(2);
-    expect($match->games_lost)->toBe(0);
+    // No game log + no concede = assumed win
+    expect($match->outcome)->toBe(MatchOutcome::Win);
 });
 
 it('detects a loss when local player conceded', function () {
@@ -57,8 +56,7 @@ it('detects a loss when local player conceded', function () {
     $match = MtgoMatch::factory()->create([
         'token' => 'token-concede',
         'state' => MatchState::Ended,
-        'games_won' => 0,
-        'games_lost' => 0,
+        'outcome' => MatchOutcome::Unknown,
     ]);
 
     LogEvent::factory()->create([
@@ -86,8 +84,7 @@ it('detects a loss when local player conceded', function () {
 
     $match->refresh();
     expect($match->state)->toBe(MatchState::Complete);
-    expect($match->games_won)->toBe(0);
-    expect($match->games_lost)->toBe(2);
+    expect($match->outcome)->toBe(MatchOutcome::Loss);
 });
 
 it('does nothing if match is not in Ended state', function () {
@@ -133,8 +130,7 @@ it('marks log events as processed', function () {
         'token' => 'token-processed',
         'mtgo_id' => '12345',
         'state' => MatchState::Ended,
-        'games_won' => 0,
-        'games_lost' => 0,
+        'outcome' => MatchOutcome::Unknown,
     ]);
 
     $joinEvent = LogEvent::factory()->create([
@@ -169,8 +165,7 @@ it('dispatches SubmitMatch and ComputeCardGameStats jobs', function () {
     $match = MtgoMatch::factory()->create([
         'token' => 'token-jobs',
         'state' => MatchState::Ended,
-        'games_won' => 0,
-        'games_lost' => 0,
+        'outcome' => MatchOutcome::Unknown,
     ]);
 
     LogEvent::factory()->create([
