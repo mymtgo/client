@@ -16,6 +16,7 @@ use App\Jobs\ComputeCardGameStats;
 use App\Jobs\SubmitMatch;
 use App\Models\LogEvent;
 use App\Models\MtgoMatch;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 class CompleteMatch
@@ -89,6 +90,10 @@ class CompleteMatch
             message: $result['wins'].'-'.$result['losses'],
             route: '/matches/'.$match->id,
         );
+
+        // Clear progressive archetype detection cache
+        Cache::forget("archetype_detect:{$match->token}:cards");
+        Cache::forget("archetype_detect:{$match->token}:version");
 
         // Mark all related log events as processed
         LogEvent::where(function ($query) use ($match) {

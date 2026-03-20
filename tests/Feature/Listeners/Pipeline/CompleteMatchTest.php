@@ -8,6 +8,7 @@ use App\Jobs\SubmitMatch;
 use App\Models\LogEvent;
 use App\Models\MtgoMatch;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Queue;
 
 uses(RefreshDatabase::class);
@@ -157,6 +158,38 @@ it('marks log events as processed', function () {
 
     expect($joinEvent->processed_at)->not->toBeNull();
     expect($endEvent->processed_at)->not->toBeNull();
+});
+
+it('clears archetype detection cache on match completion', function () {
+    Queue::fake();
+
+    $match = MtgoMatch::factory()->create([
+        'token' => 'some-token',
+        'state' => MatchState::Ended,
+        'outcome' => MatchOutcome::Unknown,
+    ]);
+
+    LogEvent::factory()->create([
+        'match_token' => 'some-token',
+        'event_type' => 'match_state_changed',
+        'context' => 'MatchJoinedEventUnderwayState',
+        'raw_text' => "Receiver: match\nPlayFormatCd=Modern\nGameStructureCd=Constructed",
+    ]);
+
+    Cache::put('archetype_detect:some-token:cards', [['card_name' => 'Bolt', 'quantity' => 1, 'player' => 'Opp']]);
+    Cache::put('archetype_detect:some-token:version', 5);
+
+    $triggerEvent = LogEvent::factory()->create([
+        'match_token' => 'some-token',
+        'event_type' => 'match_state_changed',
+        'context' => 'TournamentMatchClosedState',
+    ]);
+
+    $listener = new \App\Listeners\Pipeline\CompleteMatch;
+    $listener->handle(new MatchEnded($triggerEvent));
+
+    expect(Cache::get('archetype_detect:some-token:cards'))->toBeNull();
+    expect(Cache::get('archetype_detect:some-token:version'))->toBeNull();
 });
 
 it('dispatches SubmitMatch and ComputeCardGameStats jobs', function () {
