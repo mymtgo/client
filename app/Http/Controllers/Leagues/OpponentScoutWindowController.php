@@ -29,8 +29,8 @@ class OpponentScoutWindowController extends Controller
                     ->whereHas('games.opponents', fn ($q) => $q->where('players.id', $opponentPlayer->id))
                     ->where('matches.id', '!=', $currentMatch->id);
 
-                $wins = (clone $previousMatches)->whereRaw('games_won > games_lost')->count();
-                $losses = (clone $previousMatches)->whereRaw('games_won < games_lost')->count();
+                $wins = (clone $previousMatches)->where('outcome', 'win')->count();
+                $losses = (clone $previousMatches)->where('outcome', 'loss')->count();
                 $totalPrevious = $wins + $losses;
 
                 $lastArchetype = $opponentPlayer->matchArchetypes()

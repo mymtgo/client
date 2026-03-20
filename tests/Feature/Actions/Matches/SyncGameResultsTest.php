@@ -1,6 +1,7 @@
 <?php
 
 use App\Actions\Matches\SyncGameResults;
+use App\Enums\MatchOutcome;
 use App\Enums\MatchState;
 use App\Models\Game;
 use App\Models\MtgoMatch;
@@ -18,8 +19,7 @@ function createMatchForSync(array $overrides = []): MtgoMatch
         'started_at' => now()->subHour(),
         'ended_at' => now(),
         'state' => MatchState::Complete,
-        'games_won' => 2,
-        'games_lost' => 0,
+        'outcome' => MatchOutcome::Win,
     ], $overrides));
 }
 
@@ -89,7 +89,7 @@ it('handles more log results than games', function () {
 });
 
 it('syncs a mix of wins and losses', function () {
-    $match = createMatchForSync(['games_won' => 2, 'games_lost' => 1]);
+    $match = createMatchForSync(['outcome' => MatchOutcome::Win]);
     $game1 = createGameForSync($match, ['won' => false, 'started_at' => now()->subMinutes(45)]);
     $game2 = createGameForSync($match, ['won' => false, 'started_at' => now()->subMinutes(30)]);
     $game3 = createGameForSync($match, ['won' => false, 'started_at' => now()->subMinutes(15)]);

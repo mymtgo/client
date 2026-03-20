@@ -1,6 +1,7 @@
 <?php
 
 use App\Actions\Archetypes\GetArchetypeWinrates;
+use App\Enums\MatchOutcome;
 use App\Models\Archetype;
 use App\Models\Game;
 use App\Models\MatchArchetype;
@@ -18,8 +19,7 @@ function createMatch(array $attributes = []): MtgoMatch
         'format' => 'modern',
         'match_type' => 'league',
         'state' => 'complete',
-        'games_won' => 2,
-        'games_lost' => 1,
+        'outcome' => MatchOutcome::Win,
         'started_at' => now(),
         'ended_at' => now(),
     ], $attributes));
@@ -42,8 +42,7 @@ it('calculates playing-as winrate across multiple matches', function () {
     // Create 3 matches: 2 wins, 1 loss
     foreach ([true, true, false] as $won) {
         $match = createMatch([
-            'games_won' => $won ? 2 : 1,
-            'games_lost' => $won ? 1 : 2,
+            'outcome' => $won ? MatchOutcome::Win : MatchOutcome::Loss,
         ]);
 
         $game = Game::create(['match_id' => $match->id, 'mtgo_id' => fake()->unique()->numerify('######'), 'started_at' => now(), 'ended_at' => now()]);
@@ -74,8 +73,7 @@ it('calculates facing winrate', function () {
     // Create 2 matches where opponent is on this archetype: local wins 1, loses 1
     foreach ([true, false] as $localWon) {
         $match = createMatch([
-            'games_won' => $localWon ? 2 : 0,
-            'games_lost' => $localWon ? 0 : 2,
+            'outcome' => $localWon ? MatchOutcome::Win : MatchOutcome::Loss,
         ]);
 
         $game = Game::create(['match_id' => $match->id, 'mtgo_id' => fake()->unique()->numerify('######'), 'started_at' => now(), 'ended_at' => now()]);

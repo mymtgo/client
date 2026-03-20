@@ -2,6 +2,7 @@
 
 use App\Actions\Matches\AdvanceMatchState;
 use App\Enums\LogEventType;
+use App\Enums\MatchOutcome;
 use App\Enums\MatchState;
 use App\Models\LogEvent;
 use App\Models\MtgoMatch;
@@ -90,8 +91,7 @@ it('does not regress completed matches', function () {
         'started_at' => now()->subHour(),
         'ended_at' => now(),
         'state' => MatchState::Complete,
-        'games_won' => 2,
-        'games_lost' => 0,
+        'outcome' => MatchOutcome::Win,
     ]);
 
     txnLogEvent([
@@ -105,8 +105,7 @@ it('does not regress completed matches', function () {
     $result = AdvanceMatchState::run($match->token, $match->mtgo_id);
 
     expect($result->state)->toBe(MatchState::Complete);
-    expect($result->games_won)->toBe(2);
-    expect($result->games_lost)->toBe(0);
+    expect($result->outcome)->toBe(MatchOutcome::Win);
 });
 
 it('handles concurrent match advancement without duplicates', function () {

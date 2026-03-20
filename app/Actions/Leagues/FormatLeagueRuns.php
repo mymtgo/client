@@ -46,7 +46,7 @@ class FormatLeagueRuns
             ->where('m.state', 'complete')
             ->when($accountId, fn ($q, $id) => $q->where('d.account_id', $id))
             ->when($deckId, fn ($q, $id) => $q->where('d.id', $id))
-            ->select('m.id', 'm.league_id', 'm.games_won', 'm.games_lost', 'm.started_at', 'd.id as deck_id', 'd.name as deck_name', 'd.color_identity as deck_color_identity')
+            ->select('m.id', 'm.league_id', 'm.outcome', 'm.started_at', 'd.id as deck_id', 'd.name as deck_name', 'd.color_identity as deck_color_identity')
             ->orderBy('m.started_at')
             ->get();
     }
@@ -113,14 +113,14 @@ class FormatLeagueRuns
 
         $matchData = $matches->map(function ($row) use ($opponentByMatch) {
             $opp = $opponentByMatch[$row->id] ?? null;
-            $won = $row->games_won > $row->games_lost;
+            $won = $row->outcome === 'win';
 
             return [
                 'id' => $row->id,
                 'result' => $won ? 'W' : 'L',
                 'opponentName' => $opp?->username,
                 'opponentArchetype' => $opp?->archetype_name,
-                'games' => "{$row->games_won}-{$row->games_lost}",
+                'outcome' => $row->outcome,
                 'startedAt' => $row->started_at,
             ];
         })->values()->all();

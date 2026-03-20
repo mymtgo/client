@@ -18,7 +18,7 @@ class GetFormatChart
             ->when($accountId, fn ($q, $id) => $q
                 ->whereHas('deckVersion', fn ($q2) => $q2->whereHas('deck', fn ($q3) => $q3->where('account_id', $id)))
             )
-            ->selectRaw("strftime('%Y-%m', started_at) as month, format, SUM(CASE WHEN games_won > games_lost THEN 1 ELSE 0 END) as wins, COUNT(*) as total")
+            ->selectRaw("strftime('%Y-%m', started_at) as month, format, SUM(CASE WHEN outcome = 'win' THEN 1 ELSE 0 END) as wins, COUNT(*) as total")
             ->where('started_at', '>=', now()->subMonths(6)->startOfMonth())
             ->groupBy('month', 'format')
             ->get()

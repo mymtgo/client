@@ -7,6 +7,10 @@ use App\Models\Account;
 use App\Models\LogEvent;
 use Illuminate\Support\Facades\Log;
 
+/**
+ * @deprecated Superseded by the event-driven pipeline (DispatchDomainEvents + listeners).
+ *             Retained for manual debug workflows and legacy compatibility.
+ */
 class BuildMatches
 {
     public static function run()

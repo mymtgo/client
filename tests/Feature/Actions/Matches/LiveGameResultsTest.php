@@ -1,7 +1,7 @@
 <?php
 
 use App\Actions\Matches\SyncLiveGameResults;
-use App\Facades\Mtgo;
+use App\Models\Account;
 use App\Models\Game;
 use App\Models\GameLog;
 use App\Models\MtgoMatch;
@@ -15,7 +15,7 @@ function callSyncLiveGameResults(MtgoMatch $match): void
 }
 
 it('updates game.won when game log has results', function () {
-    Mtgo::shouldReceive('getUsername')->andReturn('anticloser');
+    Account::registerAndActivate('anticloser');
 
     $fixturePath = base_path('tests/fixtures/gamelogs/clean_2_0_win.dat');
     $match = MtgoMatch::factory()->create(['state' => 'in_progress']);
@@ -40,7 +40,7 @@ it('updates game.won when game log has results', function () {
 });
 
 it('leaves games as null when game log has no result for that index', function () {
-    Mtgo::shouldReceive('getUsername')->andReturn('anticloser');
+    Account::registerAndActivate('anticloser');
 
     // Use the disconnect fixture — only 1 game result
     $fixturePath = base_path('tests/fixtures/gamelogs/disconnect_game1.dat');
@@ -65,7 +65,7 @@ it('leaves games as null when game log has no result for that index', function (
 });
 
 it('is idempotent — calling twice does not cause issues', function () {
-    Mtgo::shouldReceive('getUsername')->andReturn('anticloser');
+    Account::registerAndActivate('anticloser');
 
     $fixturePath = base_path('tests/fixtures/gamelogs/clean_2_0_win.dat');
     $match = MtgoMatch::factory()->create(['state' => 'in_progress']);
@@ -85,7 +85,7 @@ it('is idempotent — calling twice does not cause issues', function () {
 });
 
 it('does not crash when no game log exists', function () {
-    Mtgo::shouldReceive('getUsername')->andReturn('anticloser');
+    Account::registerAndActivate('anticloser');
 
     $match = MtgoMatch::factory()->create(['state' => 'in_progress']);
 
@@ -97,7 +97,7 @@ it('does not crash when no game log exists', function () {
 });
 
 it('skips games that already have a result', function () {
-    Mtgo::shouldReceive('getUsername')->andReturn('anticloser');
+    Account::registerAndActivate('anticloser');
 
     $fixturePath = base_path('tests/fixtures/gamelogs/clean_2_1_win.dat');
     $match = MtgoMatch::factory()->create(['state' => 'in_progress']);

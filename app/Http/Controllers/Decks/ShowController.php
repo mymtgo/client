@@ -82,9 +82,9 @@ class ShowController extends Controller
                 }
                 if ($result = $request->input('filter_result')) {
                     if ($result === 'win') {
-                        $query->whereRaw('games_won > games_lost');
+                        $query->where('outcome', 'win');
                     } elseif ($result === 'loss') {
-                        $query->whereRaw('games_won < games_lost');
+                        $query->where('outcome', 'loss');
                     }
                 }
                 if ($type = $request->input('filter_type')) {
@@ -205,7 +205,7 @@ class ShowController extends Controller
         $versionIds = $deck->versions()->pluck('id');
 
         $results = MtgoMatch::complete()
-            ->selectRaw("strftime('%Y-%m-%d', started_at) as period, SUM(CASE WHEN games_won > games_lost THEN 1 ELSE 0 END) as wins, COUNT(*) as total")
+            ->selectRaw("strftime('%Y-%m-%d', started_at) as period, SUM(CASE WHEN outcome = 'win' THEN 1 ELSE 0 END) as wins, COUNT(*) as total")
             ->whereIn('deck_version_id', $versionIds)
             ->where('state', 'complete')
             ->whereBetween('started_at', [$from, $to])

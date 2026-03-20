@@ -2,8 +2,9 @@
 
 namespace App\Actions\Matches;
 
-use App\Facades\Mtgo;
+use App\Models\Account;
 use App\Models\GameLog;
+use App\Models\LogEvent;
 use Illuminate\Support\Facades\Log;
 
 class GetGameLog
@@ -16,7 +17,7 @@ class GetGameLog
      *
      * @return array{results: array<int, bool>, on_play: array<int, bool>, starting_hands: array}|null
      */
-    public static function run(string $token): ?array
+    public static function run(string $token, ?string $username = null): ?array
     {
         $log = GameLog::where('match_token', $token)->first();
 
@@ -24,10 +25,14 @@ class GetGameLog
             return null;
         }
 
-        $you = Mtgo::getUsername();
+        $you = $username
+            ?? LogEvent::where('match_token', $token)->whereNotNull('username')->value('username')
+            ?? Account::active()->value('username');
 
         if (! $you) {
-            throw new \RuntimeException('MTGO username not set');
+            Log::channel('pipeline')->warning("GetGameLog: no username available for token {$token}");
+
+            return null;
         }
 
         // Sync entries from the .dat file (incremental if partially parsed)

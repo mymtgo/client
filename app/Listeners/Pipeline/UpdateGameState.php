@@ -1,0 +1,36 @@
+<?php
+
+namespace App\Listeners\Pipeline;
+
+use App\Actions\Matches\CreateOrUpdateGames;
+use App\Enums\MatchState;
+use App\Events\GameStateChanged;
+use App\Models\LogEvent;
+use App\Models\MtgoMatch;
+
+class UpdateGameState
+{
+    public function handle(GameStateChanged $event): void
+    {
+        $logEvent = $event->logEvent;
+
+        $match = MtgoMatch::findByEvent($logEvent);
+
+        if (! $match) {
+            return;
+        }
+
+        // Only update game state for active matches
+        if (! in_array($match->state, [MatchState::InProgress, MatchState::Ended])) {
+            return;
+        }
+
+        $matchId = $match->mtgo_id ?? $logEvent->match_id;
+
+        $allEvents = LogEvent::where('match_id', $matchId)
+            ->orderBy('timestamp')
+            ->get();
+
+        CreateOrUpdateGames::run($match, $allEvents);
+    }
+}

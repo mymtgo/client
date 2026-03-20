@@ -2,7 +2,6 @@
 
 namespace App\Actions\Logs;
 
-use App\Events\LogEventsIngested;
 use App\Models\Account;
 use App\Models\LogCursor;
 use App\Models\LogEvent;
@@ -146,6 +145,8 @@ class IngestLog
             fclose($fh);
         }
 
+        $startingOffset = $cursor->byte_offset;
+
         // Batch all DB writes in a single transaction to minimise lock duration.
         $hadNewEvents = ! empty($rows);
 
@@ -172,7 +173,14 @@ class IngestLog
         });
 
         if ($hadNewEvents) {
-            LogEventsIngested::dispatch();
+            // Query for the newly inserted records by their unique byte offset constraints.
+            // insertOrIgnore doesn't return IDs, so we re-fetch by the known byte range.
+            $newEvents = LogEvent::where('file_path', $logPath)
+                ->where('byte_offset_start', '>=', $startingOffset)
+                ->where('byte_offset_end', '<=', $safeOffset)
+                ->get();
+
+            \App\Actions\Pipeline\DispatchDomainEvents::run($newEvents);
         }
     }
 

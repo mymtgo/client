@@ -3,6 +3,7 @@
 namespace App\Actions\Matches;
 
 use App\Actions\RegisterDevice;
+use App\Enums\MatchOutcome;
 use App\Models\Card;
 use App\Models\DeckVersion;
 use App\Models\MtgoMatch;
@@ -65,7 +66,7 @@ class SubmitMatchToApi
             'username' => $match->games->first()->localPlayers->first()->username,
             'player_archetype_uuid' => $playerArchetype->archetype->uuid,
             'opponent_archetype_uuid' => $opponentArchetype->archetype->uuid,
-            'result' => $match->games_won > $match->games_lost ? 'win' : 'loss',
+            'result' => $match->outcome === MatchOutcome::Win ? 'win' : 'loss',
             'format' => $match->format,
             'is_tournament' => $isTournament,
             'league_token' => $leagueToken,

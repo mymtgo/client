@@ -5,13 +5,12 @@ namespace App\Managers;
 use App\Actions\Logs\FindMtgoLogPath;
 use App\Actions\Logs\GetLogFilePaths;
 use App\Actions\Logs\IngestLog;
+use App\Actions\Logs\StoreGameLogFiles;
 use App\Actions\Matches\SyncLiveGameResults;
 use App\Actions\RegisterDevice;
 use App\Actions\Settings\ValidatePath;
 use App\Jobs\DownloadArchetypes;
 use App\Jobs\PopulateMissingCardData;
-use App\Jobs\ProcessLogEvents;
-use App\Jobs\StoreGameLogs;
 use App\Jobs\SubmitMatch;
 use App\Jobs\SyncDecks;
 use App\Models\Account;
@@ -181,24 +180,13 @@ class MtgoManager
         }
     }
 
-    public function ingestGameLogs(bool $sync = false): void
+    public function ingestGameLogs(): void
     {
         if (! $this->canRun()) {
             return;
         }
 
-        $sync ? StoreGameLogs::dispatchSync() : StoreGameLogs::dispatch();
-    }
-
-    public function processLogEvents(bool $force = false, bool $sync = false): void
-    {
-        if (! $this->canRun()) {
-            return;
-        }
-
-        if (Deck::count() || $force) {
-            $sync ? ProcessLogEvents::dispatchSync() : ProcessLogEvents::dispatch();
-        }
+        StoreGameLogFiles::run();
     }
 
     public function populateMissingCardData(bool $sync = false): void
@@ -222,16 +210,8 @@ class MtgoManager
         )->everyMinute()->name('submit_matches')->withoutOverlapping(60);
 
         $schedule->call(
-            fn () => $this->ingestGameLogs()
-        )->everyTenSeconds()->name('store_game_logs')->withoutOverlapping(10);
-
-        $schedule->call(
-            fn () => $this->syncLiveGameResults()
-        )->everyFiveSeconds()->name('sync_live_results')->withoutOverlapping(5);
-        //
-        $schedule->call(
-            fn () => $this->ingestLogs()
-        )->everySecond()->name('ingest_logs');
+            fn () => \App\Actions\Pipeline\ReconcileMatchState::run()
+        )->everyThirtySeconds()->name('reconcile_match_state')->withoutOverlapping(30);
 
         $schedule->call(
             fn () => $this->downloadArchetypes()
