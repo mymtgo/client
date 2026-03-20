@@ -25,7 +25,9 @@ class UpdateGameState
             return;
         }
 
-        $allEvents = LogEvent::where('match_id', $logEvent->match_id)
+        $matchId = $match->mtgo_id ?? $logEvent->match_id;
+
+        $allEvents = LogEvent::where('match_id', $matchId)
             ->orderBy('timestamp')
             ->get();
 
