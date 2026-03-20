@@ -14,16 +14,12 @@ class GetDashboardMatchupSpread
      */
     public static function run(?int $accountId, Carbon $from, Carbon $to): array
     {
-        if (! $accountId) {
-            return [];
-        }
-
         return DB::table('matches as m')
             ->join('deck_versions as dv', 'dv.id', '=', 'm.deck_version_id')
             ->join('decks as d', 'd.id', '=', 'dv.deck_id')
             ->join('match_archetypes as ma', 'ma.mtgo_match_id', '=', 'm.id')
             ->join('archetypes as a', 'a.id', '=', 'ma.archetype_id')
-            ->where('d.account_id', $accountId)
+            ->when($accountId, fn ($q, $id) => $q->where('d.account_id', $id))
             ->where('m.state', 'complete')
             ->whereBetween('m.started_at', [$from, $to])
             ->whereExists(function ($q) {

@@ -26,7 +26,7 @@ onMounted(() => {
 </script>
 
 <template>
-    <div class="flex h-screen flex-col">
+    <div class="flex h-screen flex-col overflow-hidden">
         <AppHeader />
         <UpdateBanner />
         <AppNav />

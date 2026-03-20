@@ -13,10 +13,6 @@ class GetWinrateDelta
      */
     public static function run(?int $accountId, Carbon $currentStart, Carbon $currentEnd, string $timeframe): array
     {
-        if (! $accountId) {
-            return ['matchDelta' => 0, 'gameDelta' => 0];
-        }
-
         [$previousStart, $previousEnd] = self::getPreviousTimeRange($timeframe, $currentStart);
 
         $currentMatchWinrate = self::matchWinrate($accountId, $currentStart, $currentEnd);
@@ -31,10 +27,10 @@ class GetWinrateDelta
         ];
     }
 
-    private static function matchWinrate(int $accountId, Carbon $from, Carbon $to): int
+    private static function matchWinrate(?int $accountId, Carbon $from, Carbon $to): int
     {
         $query = MtgoMatch::complete()
-            ->whereHas('deckVersion', fn ($q) => $q->whereHas('deck', fn ($q2) => $q2->where('account_id', $accountId)))
+            ->when($accountId, fn ($q, $id) => $q->whereHas('deckVersion', fn ($q2) => $q2->whereHas('deck', fn ($q3) => $q3->where('account_id', $id))))
             ->whereBetween('started_at', [$from, $to]);
 
         $stats = $query->selectRaw("
@@ -48,10 +44,10 @@ class GetWinrateDelta
         return $total > 0 ? (int) round(100 * $wins / $total) : 0;
     }
 
-    private static function gameWinrate(int $accountId, Carbon $from, Carbon $to): int
+    private static function gameWinrate(?int $accountId, Carbon $from, Carbon $to): int
     {
         $matchIds = MtgoMatch::complete()
-            ->whereHas('deckVersion', fn ($q) => $q->whereHas('deck', fn ($q2) => $q2->where('account_id', $accountId)))
+            ->when($accountId, fn ($q, $id) => $q->whereHas('deckVersion', fn ($q2) => $q2->whereHas('deck', fn ($q3) => $q3->where('account_id', $id))))
             ->whereBetween('started_at', [$from, $to])
             ->pluck('matches.id');
 
