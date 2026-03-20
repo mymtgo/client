@@ -222,16 +222,8 @@ class MtgoManager
         )->everyMinute()->name('submit_matches')->withoutOverlapping(60);
 
         $schedule->call(
-            fn () => $this->ingestGameLogs()
-        )->everyTenSeconds()->name('store_game_logs')->withoutOverlapping(10);
-
-        $schedule->call(
-            fn () => $this->syncLiveGameResults()
-        )->everyFiveSeconds()->name('sync_live_results')->withoutOverlapping(5);
-        //
-        $schedule->call(
-            fn () => $this->ingestLogs()
-        )->everySecond()->name('ingest_logs');
+            fn () => \App\Actions\Pipeline\ReconcileMatchState::run()
+        )->everyThirtySeconds()->name('reconcile_match_state')->withoutOverlapping(30);
 
         $schedule->call(
             fn () => $this->downloadArchetypes()
