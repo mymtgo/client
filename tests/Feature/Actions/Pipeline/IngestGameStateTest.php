@@ -93,3 +93,53 @@ it('skips game result creation when no local player is configured', function () 
     // But the cursor is still created and advanced
     expect(GameLogCursor::where('file_path', $path)->first()->byte_offset)->toBeGreaterThan(0);
 });
+
+it('creates card_revealed log events for opponent cards', function () {
+    Event::fake();
+
+    $path = gameLogFixture('clean_2_0_win.dat');
+
+    // anticloser is local player; Bordas99 is the opponent
+    Mtgo::shouldReceive('getUsername')->andReturn('anticloser');
+
+    IngestGameState::run($path);
+
+    $events = LogEvent::where('event_type', 'card_revealed')->get();
+    expect($events->count())->toBeGreaterThan(0);
+
+    // Every card_revealed event should be for the opponent, not the local player
+    foreach ($events as $event) {
+        $data = json_decode($event->raw_text, true);
+        expect($data['player'])->toBe('Bordas99');
+        expect($data['card_name'])->toBeString()->not->toBeEmpty();
+        expect($data['action'])->toBeIn(['casts', 'plays']);
+    }
+});
+
+it('excludes local player cards from card_revealed events', function () {
+    Event::fake();
+
+    $path = gameLogFixture('clean_2_0_win.dat');
+
+    // Set local player to anticloser — their cards should NOT appear
+    Mtgo::shouldReceive('getUsername')->andReturn('anticloser');
+
+    IngestGameState::run($path);
+
+    $events = LogEvent::where('event_type', 'card_revealed')->get();
+
+    foreach ($events as $event) {
+        $data = json_decode($event->raw_text, true);
+        expect($data['player'])->not->toBe('anticloser');
+    }
+});
+
+it('skips card_revealed events when no local player is configured', function () {
+    $path = gameLogFixture('clean_2_0_win.dat');
+
+    Mtgo::shouldReceive('getUsername')->andReturn(null);
+
+    IngestGameState::run($path);
+
+    expect(LogEvent::where('event_type', 'card_revealed')->count())->toBe(0);
+});

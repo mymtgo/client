@@ -55,6 +55,10 @@ class IngestGameState
         $localPlayer = Mtgo::getUsername();
         $rows = [];
         $now = now();
+        // Each row needs a unique byte_offset_start due to the
+        // (file_path, byte_offset_start) unique index. We use a
+        // sequential counter starting from the cursor position.
+        $syntheticOffset = $startingOffset;
 
         if ($localPlayer) {
             $gameResults = ExtractGameResults::run($parsed['entries'], $localPlayer);
@@ -62,7 +66,7 @@ class IngestGameState
             foreach ($gameResults['results'] as $index => $won) {
                 $rows[] = [
                     'file_path' => $datPath,
-                    'byte_offset_start' => $startingOffset,
+                    'byte_offset_start' => $syntheticOffset++,
                     'byte_offset_end' => $newByteOffset,
                     'timestamp' => $now->toTimeString(),
                     'level' => 'INF',
@@ -84,6 +88,34 @@ class IngestGameState
                     'created_at' => $now,
                     'updated_at' => $now,
                 ];
+            }
+
+            // Extract card reveals for opponent (for progressive archetype detection)
+            foreach ($parsed['entries'] as $entry) {
+                $cardReveal = self::extractCardReveal($entry['message'], $localPlayer);
+
+                if ($cardReveal) {
+                    $rows[] = [
+                        'file_path' => $datPath,
+                        'byte_offset_start' => $syntheticOffset++,
+                        'byte_offset_end' => $newByteOffset,
+                        'timestamp' => $entry['timestamp'] ?? $now->toTimeString(),
+                        'level' => 'INF',
+                        'category' => 'GameLog',
+                        'context' => 'card_revealed',
+                        'raw_text' => json_encode($cardReveal),
+                        'ingested_at' => $now,
+                        'event_type' => 'card_revealed',
+                        'logged_at' => $now,
+                        'match_token' => $matchToken,
+                        'match_id' => null,
+                        'game_id' => null,
+                        'username' => $localPlayer,
+                        'processed_at' => null,
+                        'created_at' => $now,
+                        'updated_at' => $now,
+                    ];
+                }
             }
         }
 
@@ -109,6 +141,42 @@ class IngestGameState
             'new_events' => count($rows),
             'byte_range' => "{$startingOffset} → {$newByteOffset}",
         ]);
+    }
+
+    /**
+     * Extract a card reveal from a game log message.
+     *
+     * Matches patterns like:
+     *
+     *   @P{player} casts @[CardName@:id,id:@]
+     *
+     *   @P{player} plays @[CardName@:id,id:@]
+     *
+     * Returns null if not a card reveal or if it's the local player's card.
+     *
+     * @return array{player: string, card_name: string, action: string}|null
+     */
+    private static function extractCardReveal(string $message, string $localPlayer): ?array
+    {
+        // Pattern: @P{player} casts/plays @[CardName@:digits,digits:@]
+        if (! preg_match('/^@P(\w+) (casts|plays) @\[([^@]+)@:\d+,\d+:@\]/', $message, $m)) {
+            return null;
+        }
+
+        $player = $m[1];
+        $action = $m[2];
+        $cardName = trim($m[3]);
+
+        // Skip local player's cards — we only need opponent reveals
+        if ($player === $localPlayer) {
+            return null;
+        }
+
+        return [
+            'player' => $player,
+            'card_name' => $cardName,
+            'action' => $action,
+        ];
     }
 
     /**
