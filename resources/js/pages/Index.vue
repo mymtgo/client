@@ -117,6 +117,20 @@ function setTimeframe(value: string) {
 
 <template>
     <div class="flex flex-col gap-4 p-3 lg:p-4">
+        <!-- Timeframe selector -->
+        <div class="flex items-center gap-1 self-start rounded-md border p-1">
+            <Button
+                v-for="tf in timeframes"
+                :key="tf.value"
+                size="sm"
+                :variant="timeframe === tf.value ? 'default' : 'ghost'"
+                class="h-7 px-3 text-xs"
+                @click="setTimeframe(tf.value)"
+            >
+                {{ tf.label }}
+            </Button>
+        </div>
+
         <!-- KPI Strip -->
         <DashboardKpiStrip
             :streak="streak"
@@ -131,20 +145,6 @@ function setTimeframe(value: string) {
             :games-won="gamesWon"
             :games-lost="gamesLost"
         />
-
-        <!-- Timeframe selector -->
-        <div class="flex items-center gap-1 self-start rounded-md border p-1">
-            <Button
-                v-for="tf in timeframes"
-                :key="tf.value"
-                size="sm"
-                :variant="timeframe === tf.value ? 'default' : 'ghost'"
-                class="h-7 px-3 text-xs"
-                @click="setTimeframe(tf.value)"
-            >
-                {{ tf.label }}
-            </Button>
-        </div>
 
         <!-- Empty state -->
         <div v-if="!hasData" class="flex flex-col items-center gap-2 py-16 text-center">

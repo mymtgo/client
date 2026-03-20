@@ -13,16 +13,12 @@ class GetDashboardLeagueDistribution
     {
         $buckets = collect(['5-0' => 0, '4-1' => 0, '3-2' => 0, '2-3' => 0, '1-4' => 0, '0-5' => 0]);
 
-        if (! $accountId) {
-            return ['buckets' => $buckets->all(), 'trophies' => 0, 'total' => 0];
-        }
-
         // Scope through match -> deck_version -> deck -> account
         $leagueRecords = DB::table('leagues as l')
             ->join('matches as m', 'm.league_id', '=', 'l.id')
             ->join('deck_versions as dv', 'dv.id', '=', 'm.deck_version_id')
             ->join('decks as d', 'd.id', '=', 'dv.deck_id')
-            ->where('d.account_id', $accountId)
+            ->when($accountId, fn ($q, $id) => $q->where('d.account_id', $id))
             ->where('l.phantom', false)
             ->where('l.state', 'complete')
             ->where('m.state', 'complete')

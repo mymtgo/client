@@ -13,12 +13,10 @@ class GetStreak
      */
     public static function run(?int $accountId, Carbon $from, Carbon $to): array
     {
-        if (! $accountId) {
-            return ['current' => null, 'bestWin' => 0, 'bestLoss' => 0];
-        }
-
         $accountScope = fn ($q) => $q
-            ->whereHas('deckVersion', fn ($q2) => $q2->whereHas('deck', fn ($q3) => $q3->where('account_id', $accountId)));
+            ->when($accountId, fn ($q2, $id) => $q2
+                ->whereHas('deckVersion', fn ($q3) => $q3->whereHas('deck', fn ($q4) => $q4->where('account_id', $id)))
+            );
 
         $recentMatches = MtgoMatch::complete()
             ->where(fn ($q) => $accountScope($q))

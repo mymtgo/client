@@ -13,12 +13,8 @@ class GetPlayDrawSplit
      */
     public static function run(?int $accountId, Carbon $from, Carbon $to): array
     {
-        if (! $accountId) {
-            return ['otpWinrate' => 0, 'otdWinrate' => 0];
-        }
-
         $matchIds = MtgoMatch::complete()
-            ->whereHas('deckVersion', fn ($q) => $q->whereHas('deck', fn ($q2) => $q2->where('account_id', $accountId)))
+            ->when($accountId, fn ($q, $id) => $q->whereHas('deckVersion', fn ($q2) => $q2->whereHas('deck', fn ($q3) => $q3->where('account_id', $id))))
             ->whereBetween('started_at', [$from, $to])
             ->pluck('matches.id');
 

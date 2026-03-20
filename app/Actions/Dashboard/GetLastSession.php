@@ -14,12 +14,8 @@ class GetLastSession
      */
     public static function run(?int $accountId): ?array
     {
-        if (! $accountId) {
-            return null;
-        }
-
         $matches = MtgoMatch::complete()
-            ->whereHas('deckVersion', fn ($q) => $q->whereHas('deck', fn ($q2) => $q2->where('account_id', $accountId)))
+            ->when($accountId, fn ($q, $id) => $q->whereHas('deckVersion', fn ($q2) => $q2->whereHas('deck', fn ($q3) => $q3->where('account_id', $id))))
             ->with(['opponentArchetypes.archetype', 'games'])
             ->orderByDesc('started_at')
             ->limit(50)

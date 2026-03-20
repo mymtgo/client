@@ -95,8 +95,26 @@ class FormatLeagueRuns
         return $opponentByMatch;
     }
 
+    /**
+     * @return Collection<int, object{match_id: int, won: int, lost: int}>
+     */
+    private static function getGameCountsByMatch(Collection $matchIds): Collection
+    {
+        if ($matchIds->isEmpty()) {
+            return collect();
+        }
+
+        return DB::table('games')
+            ->whereIn('match_id', $matchIds)
+            ->groupBy('match_id')
+            ->selectRaw('match_id, SUM(CASE WHEN won = 1 THEN 1 ELSE 0 END) as won, SUM(CASE WHEN won = 0 THEN 1 ELSE 0 END) as lost')
+            ->get()
+            ->keyBy('match_id');
+    }
+
     private static function formatRun(League $league, Collection $matches, Collection $opponentByMatch): array
     {
+        $gameCounts = self::getGameCountsByMatch($matches->pluck('id'));
         // Prefer league's direct deck version; fall back to most common deck in matches
         if ($league->deck_version_id && $league->deckVersion?->deck) {
             $deckModel = $league->deckVersion->deck;
@@ -111,9 +129,10 @@ class FormatLeagueRuns
                 ->first();
         }
 
-        $matchData = $matches->map(function ($row) use ($opponentByMatch) {
+        $matchData = $matches->map(function ($row) use ($opponentByMatch, $gameCounts) {
             $opp = $opponentByMatch[$row->id] ?? null;
             $won = $row->outcome === 'win';
+            $gc = $gameCounts[$row->id] ?? null;
 
             return [
                 'id' => $row->id,
@@ -122,6 +141,7 @@ class FormatLeagueRuns
                 'opponentArchetype' => $opp?->archetype_name,
                 'outcome' => $row->outcome,
                 'startedAt' => $row->started_at,
+                'games' => $gc ? "{$gc->won}-{$gc->lost}" : null,
             ];
         })->values()->all();
 

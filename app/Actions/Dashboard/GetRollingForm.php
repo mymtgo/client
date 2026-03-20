@@ -14,12 +14,10 @@ class GetRollingForm
     {
         $empty = ['results' => [], 'winrate' => 0, 'allTimeWinrate' => 0, 'delta' => 0];
 
-        if (! $accountId) {
-            return $empty;
-        }
-
         $accountScope = fn ($q) => $q
-            ->whereHas('deckVersion', fn ($q2) => $q2->whereHas('deck', fn ($q3) => $q3->where('account_id', $accountId)));
+            ->when($accountId, fn ($q2, $id) => $q2
+                ->whereHas('deckVersion', fn ($q3) => $q3->whereHas('deck', fn ($q4) => $q4->where('account_id', $id)))
+            );
 
         $recent = MtgoMatch::complete()
             ->where(fn ($q) => $accountScope($q))

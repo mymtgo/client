@@ -172,8 +172,11 @@ function copyScreenshot() {
                 </Table>
         </div>
 
+    </Card>
+
+    <Teleport to="body">
         <div style="position: fixed; top: 0; left: 0; opacity: 0; pointer-events: none; z-index: -1;">
             <LeagueScreenshot ref="screenshotRef" :league="league" />
         </div>
-    </Card>
+    </Teleport>
 </template>
