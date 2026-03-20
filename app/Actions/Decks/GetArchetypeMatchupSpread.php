@@ -31,32 +31,33 @@ class GetArchetypeMatchupSpread
                     ->whereColumn('gp.player_id', 'ma.player_id')
                     ->where('gp.is_local', 0);
             })
+            ->leftJoin('games as g', 'g.match_id', '=', 'm.id')
             ->groupBy('a.id', 'a.name')
-            ->selectRaw('
+            ->selectRaw("
         a.id as archetype_id,
         a.name as archetype_name,
         a.color_identity as color_identity,
 
-        SUM(m.games_won) as games_won,
-        SUM(m.games_lost) as games_lost,
-        SUM(m.games_won + m.games_lost) as total_games,
+        SUM(CASE WHEN g.won = 1 THEN 1 ELSE 0 END) as games_won,
+        SUM(CASE WHEN g.won = 0 THEN 1 ELSE 0 END) as games_lost,
+        COUNT(g.id) as total_games,
 
-        SUM(CASE WHEN m.games_won > m.games_lost THEN 1 ELSE 0 END) as match_wins,
-        SUM(CASE WHEN m.games_won < m.games_lost THEN 1 ELSE 0 END) as match_losses,
-        COUNT(*) as match_count,
+        COUNT(DISTINCT CASE WHEN m.outcome = 'win' THEN m.id END) as match_wins,
+        COUNT(DISTINCT CASE WHEN m.outcome = 'loss' THEN m.id END) as match_losses,
+        COUNT(DISTINCT m.id) as match_count,
 
         ROUND(
-            100.0 * SUM(CASE WHEN m.games_won > m.games_lost THEN 1 ELSE 0 END)
-            / NULLIF(COUNT(*), 0),
+            100.0 * COUNT(DISTINCT CASE WHEN m.outcome = 'win' THEN m.id END)
+            / NULLIF(COUNT(DISTINCT m.id), 0),
             0
         ) as match_winrate_pct,
 
         ROUND(
-            100.0 * SUM(m.games_won)
-            / NULLIF(SUM(m.games_won + m.games_lost), 0),
+            100.0 * SUM(CASE WHEN g.won = 1 THEN 1 ELSE 0 END)
+            / NULLIF(COUNT(g.id), 0),
             0
         ) as game_winrate_pct
-    ')
+    ")
             ->orderByDesc('game_winrate_pct')
             ->get()
             ->map(fn ($r) => [
