@@ -4,7 +4,7 @@ namespace App\Actions\Pipeline;
 
 use App\Actions\Matches\ExtractGameResults;
 use App\Actions\Matches\ParseGameLogBinary;
-use App\Facades\Mtgo;
+use App\Models\Account;
 use App\Models\GameLogCursor;
 use App\Models\LogEvent;
 use Illuminate\Support\Facades\DB;
@@ -52,7 +52,7 @@ class IngestGameState
             return;
         }
 
-        $localPlayer = Mtgo::getUsername();
+        $localPlayer = Account::active()->value('username');
         $rows = [];
         $now = now();
         // Each row needs a unique byte_offset_start due to the

@@ -1,7 +1,6 @@
 <?php
 
 use App\Events\GameStateChanged;
-use App\Facades\Mtgo;
 use App\Jobs\EstimateArchetypeJob;
 use App\Listeners\Pipeline\DetectArchetype;
 use App\Models\LogEvent;
@@ -21,7 +20,6 @@ function makeGameStateRawText(array $players, array $cards): string
 
 it('extracts opponent cards from game state and dispatches EstimateArchetypeJob', function () {
     Queue::fake();
-    Mtgo::shouldReceive('getUsername')->andReturn('LocalPlayer');
 
     $rawText = makeGameStateRawText(
         [
@@ -38,6 +36,7 @@ it('extracts opponent cards from game state and dispatches EstimateArchetypeJob'
     $logEvent = LogEvent::factory()->create([
         'match_token' => 'token-detect-1',
         'event_type' => 'game_state_update',
+        'username' => 'LocalPlayer',
         'raw_text' => $rawText,
     ]);
 
@@ -61,7 +60,6 @@ it('extracts opponent cards from game state and dispatches EstimateArchetypeJob'
 
 it('caps quantity at 4 for duplicate cards', function () {
     Queue::fake();
-    Mtgo::shouldReceive('getUsername')->andReturn('LocalPlayer');
 
     // 5 copies of the same card (opponent owns all)
     $cards = [];
@@ -80,6 +78,7 @@ it('caps quantity at 4 for duplicate cards', function () {
     $logEvent = LogEvent::factory()->create([
         'match_token' => 'token-detect-2',
         'event_type' => 'game_state_update',
+        'username' => 'LocalPlayer',
         'raw_text' => $rawText,
     ]);
 
@@ -93,7 +92,6 @@ it('caps quantity at 4 for duplicate cards', function () {
 
 it('replaces cache with latest state on each event', function () {
     Queue::fake();
-    Mtgo::shouldReceive('getUsername')->andReturn('LocalPlayer');
 
     $listener = new DetectArchetype;
 
@@ -101,6 +99,7 @@ it('replaces cache with latest state on each event', function () {
     $logEvent1 = LogEvent::factory()->create([
         'match_token' => 'token-detect-3',
         'event_type' => 'game_state_update',
+        'username' => 'LocalPlayer',
         'raw_text' => makeGameStateRawText(
             [['Id' => 1, 'Name' => 'LocalPlayer'], ['Id' => 2, 'Name' => 'Opp']],
             [['CatalogID' => 111, 'Owner' => 2]]
@@ -114,6 +113,7 @@ it('replaces cache with latest state on each event', function () {
     $logEvent2 = LogEvent::factory()->create([
         'match_token' => 'token-detect-3',
         'event_type' => 'game_state_update',
+        'username' => 'LocalPlayer',
         'raw_text' => makeGameStateRawText(
             [['Id' => 1, 'Name' => 'LocalPlayer'], ['Id' => 2, 'Name' => 'Opp']],
             [['CatalogID' => 111, 'Owner' => 2], ['CatalogID' => 222, 'Owner' => 2]]
@@ -128,7 +128,6 @@ it('replaces cache with latest state on each event', function () {
 
 it('excludes local player cards', function () {
     Queue::fake();
-    Mtgo::shouldReceive('getUsername')->andReturn('LocalPlayer');
 
     $rawText = makeGameStateRawText(
         [
@@ -144,6 +143,7 @@ it('excludes local player cards', function () {
     $logEvent = LogEvent::factory()->create([
         'match_token' => 'token-detect-4',
         'event_type' => 'game_state_update',
+        'username' => 'LocalPlayer',
         'raw_text' => $rawText,
     ]);
 
@@ -157,11 +157,11 @@ it('excludes local player cards', function () {
 
 it('does nothing for events without a match_token', function () {
     Queue::fake();
-    Mtgo::shouldReceive('getUsername')->andReturn('LocalPlayer');
 
     $logEvent = LogEvent::factory()->create([
         'match_token' => null,
         'event_type' => 'game_state_update',
+        'username' => 'LocalPlayer',
         'raw_text' => makeGameStateRawText(
             [['Id' => 1, 'Name' => 'LocalPlayer'], ['Id' => 2, 'Name' => 'Opp']],
             [['CatalogID' => 111, 'Owner' => 2]]
@@ -176,11 +176,12 @@ it('does nothing for events without a match_token', function () {
 
 it('does nothing without a local player configured', function () {
     Queue::fake();
-    Mtgo::shouldReceive('getUsername')->andReturn(null);
 
+    // No username on the event and no active Account
     $logEvent = LogEvent::factory()->create([
         'match_token' => 'token-detect-6',
         'event_type' => 'game_state_update',
+        'username' => null,
         'raw_text' => makeGameStateRawText(
             [['Id' => 1, 'Name' => 'SomePlayer'], ['Id' => 2, 'Name' => 'Opp']],
             [['CatalogID' => 111, 'Owner' => 2]]
@@ -195,11 +196,11 @@ it('does nothing without a local player configured', function () {
 
 it('does nothing when JSON has no Players or Cards', function () {
     Queue::fake();
-    Mtgo::shouldReceive('getUsername')->andReturn('LocalPlayer');
 
     $logEvent = LogEvent::factory()->create([
         'match_token' => 'token-detect-7',
         'event_type' => 'game_state_update',
+        'username' => 'LocalPlayer',
         'raw_text' => json_encode(['Players' => [], 'Cards' => []]),
     ]);
 
@@ -211,7 +212,6 @@ it('does nothing when JSON has no Players or Cards', function () {
 
 it('increments version counter on each game state event', function () {
     Queue::fake();
-    Mtgo::shouldReceive('getUsername')->andReturn('LocalPlayer');
 
     $listener = new DetectArchetype;
     $token = 'token-detect-8';
@@ -220,6 +220,7 @@ it('increments version counter on each game state event', function () {
         $logEvent = LogEvent::factory()->create([
             'match_token' => $token,
             'event_type' => 'game_state_update',
+            'username' => 'LocalPlayer',
             'raw_text' => makeGameStateRawText(
                 [['Id' => 1, 'Name' => 'LocalPlayer'], ['Id' => 2, 'Name' => 'Opp']],
                 [['CatalogID' => 111 + $i, 'Owner' => 2]]

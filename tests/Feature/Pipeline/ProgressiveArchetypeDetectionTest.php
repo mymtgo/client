@@ -1,7 +1,6 @@
 <?php
 
 use App\Actions\Pipeline\DispatchDomainEvents;
-use App\Facades\Mtgo;
 use App\Jobs\EstimateArchetypeJob;
 use App\Models\LogEvent;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -12,11 +11,11 @@ uses(RefreshDatabase::class);
 
 it('game_state_update event triggers opponent card extraction and job dispatch', function () {
     Queue::fake();
-    Mtgo::shouldReceive('getUsername')->andReturn('LocalPlayer');
 
     $event = LogEvent::factory()->create([
         'event_type' => 'game_state_update',
         'match_token' => 'integration-tok',
+        'username' => 'LocalPlayer',
         'raw_text' => json_encode([
             'Players' => [
                 ['Id' => 1, 'Name' => 'LocalPlayer'],
@@ -46,7 +45,6 @@ it('game_state_update event triggers opponent card extraction and job dispatch',
 
 it('multiple game state events replace cache with latest state', function () {
     Queue::fake();
-    Mtgo::shouldReceive('getUsername')->andReturn('LocalPlayer');
 
     $events = [];
 
@@ -54,6 +52,7 @@ it('multiple game state events replace cache with latest state', function () {
     $events[] = LogEvent::factory()->create([
         'event_type' => 'game_state_update',
         'match_token' => 'accum-tok',
+        'username' => 'LocalPlayer',
         'raw_text' => json_encode([
             'Players' => [
                 ['Id' => 1, 'Name' => 'LocalPlayer'],
@@ -69,6 +68,7 @@ it('multiple game state events replace cache with latest state', function () {
     $events[] = LogEvent::factory()->create([
         'event_type' => 'game_state_update',
         'match_token' => 'accum-tok',
+        'username' => 'LocalPlayer',
         'raw_text' => json_encode([
             'Players' => [
                 ['Id' => 1, 'Name' => 'LocalPlayer'],
