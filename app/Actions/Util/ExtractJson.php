@@ -8,9 +8,16 @@ class ExtractJson
 {
     public static function run(string $text): Collection
     {
+        // Fast path: entire text is valid JSON (covers the majority of callers).
+        $decoded = json_decode($text, true);
+        if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+            return collect([$decoded]);
+        }
 
         $results = [];
         $len = strlen($text);
+        $scanBudget = min($len * 3, 500_000);
+        $scanned = 0;
 
         for ($i = 0; $i < $len; $i++) {
             $ch = $text[$i];
@@ -19,8 +26,12 @@ class ExtractJson
                 continue;
             }
 
-            $jsonString = static::extractBalancedJsonSubstring($text, $i);
+            $jsonString = static::extractBalancedJsonSubstring($text, $i, $scanBudget, $scanned);
             if ($jsonString === null) {
+                if ($scanned >= $scanBudget) {
+                    break;
+                }
+
                 continue;
             }
 
@@ -40,7 +51,7 @@ class ExtractJson
      * Returns the balanced JSON substring starting at $start, or null if not balanced.
      * String-aware and escape-aware.
      */
-    protected static function extractBalancedJsonSubstring(string $text, int $start): ?string
+    protected static function extractBalancedJsonSubstring(string $text, int $start, int $scanBudget, int &$scanned): ?string
     {
         $len = strlen($text);
         $open = $text[$start];
@@ -51,6 +62,11 @@ class ExtractJson
         $escape = false;
 
         for ($i = $start; $i < $len; $i++) {
+            $scanned++;
+            if ($scanned >= $scanBudget) {
+                return null;
+            }
+
             $ch = $text[$i];
 
             if ($inString) {

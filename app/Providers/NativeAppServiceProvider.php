@@ -6,9 +6,7 @@ use App\Actions\Decks\OpenMostRecentDeckPopout;
 use App\Actions\Leagues\OpenOpponentScoutWindow;
 use App\Actions\Leagues\OpenOverlayWindow;
 use App\Facades\Mtgo;
-use Illuminate\Support\Facades\Event;
 use Native\Desktop\Contracts\ProvidesPhpIni;
-use Native\Desktop\Events\ChildProcess\ProcessSpawned;
 use Native\Desktop\Facades\ChildProcess;
 use Native\Desktop\Facades\Menu;
 use Native\Desktop\Facades\Settings;
@@ -45,20 +43,11 @@ class NativeAppServiceProvider implements ProvidesPhpIni
 
         // Start file watcher for real-time log ingestion
         if (Mtgo::canRun()) {
-            ChildProcess::node('resources/js/file-watcher.js', alias: 'file-watcher', persistent: true);
-
-            // Send watch paths after process spawns
-            Event::listen(ProcessSpawned::class, function (ProcessSpawned $event) {
-                if ($event->alias === 'file-watcher') {
-                    ChildProcess::message(json_encode([
-                        'type' => 'configure',
-                        'paths' => [
-                            Mtgo::getLogPath(),
-                            Mtgo::getLogDataPath(),
-                        ],
-                    ]), 'file-watcher');
-                }
-            });
+            ChildProcess::node([
+                'resources/js/file-watcher.js',
+                Mtgo::getLogPath(),
+                Mtgo::getLogDataPath(),
+            ], alias: 'file-watcher', persistent: true);
         }
 
         if (Settings::get('league_window')) {

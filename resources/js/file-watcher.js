@@ -1,50 +1,46 @@
 import chokidar from 'chokidar'
+import { basename } from 'node:path'
 
-// Receive watch paths from parent process via stdin
-let watchPaths = []
-let watcher = null
+// Watch paths are passed as command-line arguments
+const watchPaths = process.argv.slice(2).filter(Boolean)
 
-process.stdin.on('data', (data) => {
-    try {
-        const message = JSON.parse(data.toString().trim())
-        if (message.type === 'configure') {
-            watchPaths = message.paths || []
-            startWatching()
-        }
-    } catch {
-        // Ignore non-JSON input
+if (watchPaths.length === 0) {
+    process.stderr.write(JSON.stringify({ type: 'error', message: 'No watch paths provided' }) + '\n')
+    process.exit(1)
+}
+
+function classifyFile(filePath) {
+    const name = basename(filePath)
+
+    if (name === 'mtgo.log') return 'log_changed'
+    if (name.startsWith('Match_GameLog_') && name.endsWith('.dat')) return 'game_log_changed'
+
+    return null
+}
+
+const watcher = chokidar.watch(watchPaths, {
+    persistent: true,
+    ignoreInitial: true,
+    awaitWriteFinish: {
+        stabilityThreshold: 150,
+        pollInterval: 50,
+    },
+})
+
+watcher.on('change', (filePath) => {
+    const type = classifyFile(filePath)
+    if (type) {
+        process.stdout.write(JSON.stringify({ type, path: filePath }) + '\n')
     }
 })
 
-function startWatching() {
-    if (watchPaths.length === 0) return
-
-    // Clean up existing watcher if reconfiguring
-    if (watcher) {
-        watcher.close()
-    }
-
-    watcher = chokidar.watch(watchPaths, {
-        persistent: true,
-        ignoreInitial: true,
-        awaitWriteFinish: {
-            stabilityThreshold: 150,
-            pollInterval: 50,
-        },
-    })
-
-    watcher.on('change', (filePath) => {
-        const isGameLog = filePath.includes('Match_GameLog_') && filePath.endsWith('.dat')
-        const type = isGameLog ? 'game_log_changed' : 'log_changed'
-
-        process.stdout.write(JSON.stringify({ type, path: filePath }) + '\n')
-    })
-
-    watcher.on('add', (filePath) => {
+watcher.on('add', (filePath) => {
+    const type = classifyFile(filePath)
+    if (type) {
         process.stdout.write(JSON.stringify({ type: 'file_added', path: filePath }) + '\n')
-    })
+    }
+})
 
-    watcher.on('error', (error) => {
-        process.stderr.write(JSON.stringify({ type: 'error', message: error.message }) + '\n')
-    })
-}
+watcher.on('error', (error) => {
+    process.stderr.write(JSON.stringify({ type: 'error', message: error.message }) + '\n')
+})
