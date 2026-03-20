@@ -20,7 +20,7 @@ it('calls CreateOrUpdateGames for an InProgress match', function () {
 
     $logEvent = LogEvent::factory()->create([
         'match_id' => '5555',
-        'match_token' => 'token-in-progress',
+        'match_token' => null,
         'event_type' => 'game_state_update',
         'game_id' => 1,
     ]);
@@ -41,7 +41,7 @@ it('calls CreateOrUpdateGames for an InProgress match', function () {
 it('does nothing if match does not exist', function () {
     $logEvent = LogEvent::factory()->create([
         'match_id' => '9999',
-        'match_token' => 'nonexistent-token',
+        'match_token' => null,
         'event_type' => 'game_state_update',
     ]);
 
@@ -49,7 +49,7 @@ it('does nothing if match does not exist', function () {
     $listener = new UpdateGameState;
     $listener->handle(new GameStateChanged($logEvent));
 
-    expect(MtgoMatch::where('token', 'nonexistent-token')->exists())->toBeFalse();
+    expect(MtgoMatch::where('mtgo_id', '9999')->exists())->toBeFalse();
 });
 
 it('does nothing if match is in Started state', function () {
@@ -61,7 +61,7 @@ it('does nothing if match is in Started state', function () {
 
     $logEvent = LogEvent::factory()->create([
         'match_id' => '1111',
-        'match_token' => 'token-started',
+        'match_token' => null,
         'event_type' => 'game_state_update',
     ]);
 
@@ -82,7 +82,7 @@ it('does nothing if match is in Complete state', function () {
 
     $logEvent = LogEvent::factory()->create([
         'match_id' => '2222',
-        'match_token' => 'token-complete',
+        'match_token' => null,
         'event_type' => 'game_state_update',
     ]);
 

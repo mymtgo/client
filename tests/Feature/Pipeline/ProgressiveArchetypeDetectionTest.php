@@ -1,8 +1,10 @@
 <?php
 
 use App\Actions\Pipeline\DispatchDomainEvents;
+use App\Enums\MatchState;
 use App\Jobs\EstimateArchetypeJob;
 use App\Models\LogEvent;
+use App\Models\MtgoMatch;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Queue;
@@ -11,6 +13,11 @@ uses(RefreshDatabase::class);
 
 it('game_state_update event triggers opponent card extraction and job dispatch', function () {
     Queue::fake();
+
+    MtgoMatch::factory()->create([
+        'token' => 'integration-tok',
+        'state' => MatchState::InProgress,
+    ]);
 
     $event = LogEvent::factory()->create([
         'event_type' => 'game_state_update',
@@ -45,6 +52,11 @@ it('game_state_update event triggers opponent card extraction and job dispatch',
 
 it('multiple game state events replace cache with latest state', function () {
     Queue::fake();
+
+    MtgoMatch::factory()->create([
+        'token' => 'accum-tok',
+        'state' => MatchState::InProgress,
+    ]);
 
     $events = [];
 

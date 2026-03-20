@@ -6,6 +6,7 @@ use App\Actions\Util\ExtractJson;
 use App\Events\GameStateChanged;
 use App\Jobs\EstimateArchetypeJob;
 use App\Models\Account;
+use App\Models\MtgoMatch;
 use Illuminate\Support\Facades\Cache;
 
 class DetectArchetype
@@ -13,11 +14,14 @@ class DetectArchetype
     public function handle(GameStateChanged $event): void
     {
         $logEvent = $event->logEvent;
-        $matchToken = $logEvent->match_token;
 
-        if (! $matchToken) {
+        $match = MtgoMatch::findByEvent($logEvent);
+
+        if (! $match) {
             return;
         }
+
+        $matchToken = $match->token;
 
         $localPlayer = $logEvent->username ?? Account::active()->value('username');
 
