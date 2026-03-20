@@ -14,8 +14,7 @@ class UpdateGameState
     {
         $logEvent = $event->logEvent;
 
-        $match = MtgoMatch::where('mtgo_id', $logEvent->match_id)->first()
-            ?? MtgoMatch::where('token', $logEvent->match_token)->first();
+        $match = MtgoMatch::findByEvent($logEvent);
 
         if (! $match) {
             return;

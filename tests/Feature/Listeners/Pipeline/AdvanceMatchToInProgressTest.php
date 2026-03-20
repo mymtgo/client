@@ -16,11 +16,11 @@ it('advances a Started match to InProgress when game state events exist', functi
         'state' => MatchState::Started,
     ]);
 
-    // The triggering game_state_update event
+    // game_state_update events carry match_id but NOT match_token
     $logEvent = LogEvent::factory()->create([
         'event_type' => 'game_state_update',
         'match_id' => '12345',
-        'match_token' => 'token-abc',
+        'match_token' => null,
         'game_id' => '1',
     ]);
 
@@ -40,7 +40,7 @@ it('does nothing if match is not in Started state', function () {
     $logEvent = LogEvent::factory()->create([
         'event_type' => 'game_state_update',
         'match_id' => '12346',
-        'match_token' => 'token-def',
+        'match_token' => null,
         'game_id' => '1',
     ]);
 
@@ -54,7 +54,7 @@ it('does nothing if no match exists yet', function () {
     $logEvent = LogEvent::factory()->create([
         'event_type' => 'game_state_update',
         'match_id' => '99999',
-        'match_token' => 'token-nonexistent',
+        'match_token' => null,
         'game_id' => '1',
     ]);
 
@@ -71,6 +71,8 @@ it('backfills mtgo_id on the match if it was null', function () {
         'state' => MatchState::Started,
     ]);
 
+    // game_state_update has match_id and match_token (from IngestGameState path)
+    // findByEvent finds the match via match_token, then backfills mtgo_id
     $logEvent = LogEvent::factory()->create([
         'event_type' => 'game_state_update',
         'match_id' => '77777',
@@ -94,12 +96,10 @@ it('does nothing if no game_state_update events exist in DB for the match', func
     ]);
 
     // Only the triggering event — no additional game_state_update rows in DB
-    // (simulate: the event exists in memory but not yet persisted as a query result)
-    // We use a non-game_state_update event type so the DB query returns empty
     $logEvent = LogEvent::factory()->create([
         'event_type' => 'game_state_update',
         'match_id' => '55555',
-        'match_token' => 'token-jkl',
+        'match_token' => null,
         'game_id' => null,
     ]);
 

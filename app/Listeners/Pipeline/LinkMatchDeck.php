@@ -12,7 +12,7 @@ class LinkMatchDeck
 {
     public function handle(MatchJoined $event): void
     {
-        $match = MtgoMatch::where('token', $event->logEvent->match_token)->first();
+        $match = MtgoMatch::findByEvent($event->logEvent);
 
         if (! $match || $match->deck_version_id) {
             return;

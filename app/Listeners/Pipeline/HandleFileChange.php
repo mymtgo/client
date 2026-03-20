@@ -28,7 +28,19 @@ class HandleFileChange
         match ($data['type']) {
             'log_changed' => IngestLog::run($data['path']),
             'game_log_changed' => IngestGameState::run($data['path']),
+            'file_added' => self::handleFileAdded($data['path']),
             default => null,
         };
+    }
+
+    private static function handleFileAdded(string $path): void
+    {
+        $basename = basename($path);
+
+        if (str_contains($basename, 'Match_GameLog_') && str_ends_with($basename, '.dat')) {
+            IngestGameState::run($path);
+        } else {
+            IngestLog::run($path);
+        }
     }
 }

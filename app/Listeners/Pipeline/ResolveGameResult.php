@@ -12,21 +12,31 @@ class ResolveGameResult
     {
         $logEvent = $event->logEvent;
 
-        $match = MtgoMatch::where('token', $logEvent->match_token)->first();
+        $match = MtgoMatch::findByEvent($logEvent);
 
         if (! $match) {
             return;
         }
 
-        $game = Game::where('match_id', $match->id)
-            ->where('mtgo_id', $logEvent->game_id)
-            ->first();
+        $game = null;
+
+        if ($logEvent->game_id) {
+            $game = Game::where('match_id', $match->id)
+                ->where('mtgo_id', $logEvent->game_id)
+                ->first();
+        } else {
+            // IngestGameState creates game_result events with game_index instead of game_id
+            $data = json_decode($logEvent->raw_text, true);
+            if (isset($data['game_index'])) {
+                $game = $match->games()->orderBy('started_at')->skip($data['game_index'])->first();
+            }
+        }
 
         if (! $game || $game->won !== null) {
             return;
         }
 
-        $data = json_decode($logEvent->raw_text, true);
+        $data = $data ?? json_decode($logEvent->raw_text, true);
 
         if (! is_array($data) || ! isset($data['won'])) {
             return;

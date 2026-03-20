@@ -14,10 +14,9 @@ class CreateMatch
     public function handle(MatchJoined $event): void
     {
         $logEvent = $event->logEvent;
-        $matchToken = $logEvent->match_token;
 
-        // Look up by token — match_state_changed events don't carry match_id
-        $existing = MtgoMatch::where('token', $matchToken)->first();
+        // Look up by event identifiers — match_state_changed events don't carry match_id
+        $existing = MtgoMatch::findByEvent($logEvent);
 
         if ($existing) {
             return;
@@ -29,7 +28,7 @@ class CreateMatch
             ->setTimeFromTimeString($logEvent->timestamp);
 
         MtgoMatch::create([
-            'token' => $matchToken,
+            'token' => $logEvent->match_token,
             'format' => $gameMeta['PlayFormatCd'] ?? 'Unknown',
             'match_type' => $gameMeta['GameStructureCd'] ?? 'Unknown',
             'started_at' => $started,
@@ -40,7 +39,7 @@ class CreateMatch
         ]);
 
         Log::channel('pipeline')->info('Match created in Started state', [
-            'token' => $matchToken,
+            'token' => $logEvent->match_token,
         ]);
     }
 }

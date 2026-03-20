@@ -15,11 +15,7 @@ class AdvanceMatchToInProgress
     {
         $logEvent = $event->logEvent;
 
-        // game_state_update events carry match_id, but the match may have been
-        // created with mtgo_id = null (from match_state_changed which only has token).
-        // Try both lookups.
-        $match = MtgoMatch::where('mtgo_id', $logEvent->match_id)->first()
-            ?? MtgoMatch::where('token', $logEvent->match_token)->first();
+        $match = MtgoMatch::findByEvent($logEvent);
 
         if (! $match || $match->state !== MatchState::Started) {
             return;

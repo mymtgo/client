@@ -2,18 +2,31 @@
 
 use App\Enums\MatchState;
 use App\Events\MatchEnded;
-use App\Listeners\Pipeline\EndMatch;
+use App\Listeners\Pipeline\CompleteMatch;
 use App\Models\LogEvent;
 use App\Models\MtgoMatch;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Queue;
 
 uses(RefreshDatabase::class);
 
-it('transitions an InProgress match to Ended', function () {
+it('transitions an InProgress match to Ended (and then Complete)', function () {
+    Queue::fake();
+
     $match = MtgoMatch::factory()->create([
         'token' => 'token-end',
         'state' => MatchState::InProgress,
         'ended_at' => now(),
+    ]);
+
+    // Create join event for metadata extraction (needed by CompleteMatch)
+    LogEvent::factory()->create([
+        'match_token' => 'token-end',
+        'event_type' => 'match_state_changed',
+        'context' => 'MatchJoinedEventUnderwayState',
+        'raw_text' => "Receiver: match\nPlayFormatCd=Modern\nGameStructureCd=Constructed",
+        'timestamp' => '15:00:00',
+        'logged_at' => '2026-03-20',
     ]);
 
     $logEvent = LogEvent::factory()->create([
@@ -24,34 +37,31 @@ it('transitions an InProgress match to Ended', function () {
         'logged_at' => '2026-03-20',
     ]);
 
-    $listener = new EndMatch;
+    $listener = new CompleteMatch;
     $listener->handle(new MatchEnded($logEvent));
 
     $match->refresh();
-    expect($match->state)->toBe(MatchState::Ended);
+    // The merged listener transitions InProgress → Ended → Complete in one pass
+    expect($match->state)->toBe(MatchState::Complete);
 });
 
-it('does nothing if match is not InProgress', function () {
-    foreach ([MatchState::Started, MatchState::Ended, MatchState::Complete] as $state) {
-        $token = 'token-'.$state->value;
+it('does nothing if match is in Started state', function () {
+    $match = MtgoMatch::factory()->create([
+        'token' => 'token-started',
+        'state' => MatchState::Started,
+    ]);
 
-        MtgoMatch::factory()->create([
-            'token' => $token,
-            'state' => $state,
-        ]);
+    $logEvent = LogEvent::factory()->create([
+        'match_token' => 'token-started',
+        'event_type' => 'match_state_changed',
+        'context' => 'TournamentMatchClosedState',
+    ]);
 
-        $logEvent = LogEvent::factory()->create([
-            'match_token' => $token,
-            'event_type' => 'match_state_changed',
-            'context' => 'TournamentMatchClosedState',
-        ]);
+    $listener = new CompleteMatch;
+    $listener->handle(new MatchEnded($logEvent));
 
-        $listener = new EndMatch;
-        $listener->handle(new MatchEnded($logEvent));
-
-        $match = MtgoMatch::where('token', $token)->first();
-        expect($match->state)->toBe($state);
-    }
+    $match = MtgoMatch::where('token', 'token-started')->first();
+    expect($match->state)->toBe(MatchState::Started);
 });
 
 it('does nothing if match does not exist', function () {
@@ -61,24 +71,27 @@ it('does nothing if match does not exist', function () {
         'context' => 'TournamentMatchClosedState',
     ]);
 
-    $listener = new EndMatch;
+    $listener = new CompleteMatch;
     $listener->handle(new MatchEnded($logEvent));
 
     expect(MtgoMatch::where('token', 'nonexistent-token')->exists())->toBeFalse();
 });
 
-it('sets ended_at timestamp from the last log event', function () {
+it('sets ended_at timestamp from the last log event during InProgress → Ended transition', function () {
+    Queue::fake();
+
     $match = MtgoMatch::factory()->create([
         'token' => 'token-timestamp',
         'state' => MatchState::InProgress,
         'ended_at' => now()->subHour(),
     ]);
 
-    // Create an earlier event
+    // Create join event for metadata extraction
     LogEvent::factory()->create([
         'match_token' => 'token-timestamp',
         'event_type' => 'match_state_changed',
-        'context' => 'SomeEarlierState',
+        'context' => 'MatchJoinedEventUnderwayState',
+        'raw_text' => "Receiver: match\nPlayFormatCd=Modern\nGameStructureCd=Constructed",
         'timestamp' => '14:00:00',
         'logged_at' => '2026-03-20',
     ]);
@@ -92,7 +105,7 @@ it('sets ended_at timestamp from the last log event', function () {
         'logged_at' => '2026-03-20',
     ]);
 
-    $listener = new EndMatch;
+    $listener = new CompleteMatch;
     $listener->handle(new MatchEnded($triggerEvent));
 
     $match->refresh();

@@ -15,7 +15,7 @@ class StoreMatchMetadata
             return;
         }
 
-        $match = MtgoMatch::where('token', $logEvent->match_token)->first();
+        $match = MtgoMatch::findByEvent($logEvent);
 
         if (! $match) {
             return;

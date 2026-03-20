@@ -1,9 +1,10 @@
 <?php
 
+use App\Enums\MatchState;
 use App\Events\GameStateChanged;
 use App\Jobs\EstimateArchetypeJob;
-use App\Listeners\Pipeline\DetectArchetype;
 use App\Models\LogEvent;
+use App\Models\MtgoMatch;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Queue;
@@ -20,6 +21,11 @@ function makeGameStateRawText(array $players, array $cards): string
 
 it('extracts opponent cards from game state and dispatches EstimateArchetypeJob', function () {
     Queue::fake();
+
+    MtgoMatch::factory()->create([
+        'token' => 'token-detect-1',
+        'state' => MatchState::InProgress,
+    ]);
 
     $rawText = makeGameStateRawText(
         [
@@ -40,7 +46,7 @@ it('extracts opponent cards from game state and dispatches EstimateArchetypeJob'
         'raw_text' => $rawText,
     ]);
 
-    $listener = new DetectArchetype;
+    $listener = new \App\Listeners\Pipeline\DetectArchetype;
     $listener->handle(new GameStateChanged($logEvent));
 
     $cards = Cache::get('archetype_detect:token-detect-1:cards');
@@ -60,6 +66,11 @@ it('extracts opponent cards from game state and dispatches EstimateArchetypeJob'
 
 it('caps quantity at 4 for duplicate cards', function () {
     Queue::fake();
+
+    MtgoMatch::factory()->create([
+        'token' => 'token-detect-2',
+        'state' => MatchState::InProgress,
+    ]);
 
     // 5 copies of the same card (opponent owns all)
     $cards = [];
@@ -82,7 +93,7 @@ it('caps quantity at 4 for duplicate cards', function () {
         'raw_text' => $rawText,
     ]);
 
-    $listener = new DetectArchetype;
+    $listener = new \App\Listeners\Pipeline\DetectArchetype;
     $listener->handle(new GameStateChanged($logEvent));
 
     $cached = Cache::get('archetype_detect:token-detect-2:cards');
@@ -93,7 +104,12 @@ it('caps quantity at 4 for duplicate cards', function () {
 it('replaces cache with latest state on each event', function () {
     Queue::fake();
 
-    $listener = new DetectArchetype;
+    MtgoMatch::factory()->create([
+        'token' => 'token-detect-3',
+        'state' => MatchState::InProgress,
+    ]);
+
+    $listener = new \App\Listeners\Pipeline\DetectArchetype;
 
     // First event: one opponent card
     $logEvent1 = LogEvent::factory()->create([
@@ -129,6 +145,11 @@ it('replaces cache with latest state on each event', function () {
 it('excludes local player cards', function () {
     Queue::fake();
 
+    MtgoMatch::factory()->create([
+        'token' => 'token-detect-4',
+        'state' => MatchState::InProgress,
+    ]);
+
     $rawText = makeGameStateRawText(
         [
             ['Id' => 1, 'Name' => 'LocalPlayer'],
@@ -147,7 +168,7 @@ it('excludes local player cards', function () {
         'raw_text' => $rawText,
     ]);
 
-    $listener = new DetectArchetype;
+    $listener = new \App\Listeners\Pipeline\DetectArchetype;
     $listener->handle(new GameStateChanged($logEvent));
 
     // No opponent cards, so nothing cached
@@ -155,11 +176,12 @@ it('excludes local player cards', function () {
     Queue::assertNotPushed(EstimateArchetypeJob::class);
 });
 
-it('does nothing for events without a match_token', function () {
+it('does nothing for events without a match', function () {
     Queue::fake();
 
     $logEvent = LogEvent::factory()->create([
         'match_token' => null,
+        'match_id' => null,
         'event_type' => 'game_state_update',
         'username' => 'LocalPlayer',
         'raw_text' => makeGameStateRawText(
@@ -168,7 +190,7 @@ it('does nothing for events without a match_token', function () {
         ),
     ]);
 
-    $listener = new DetectArchetype;
+    $listener = new \App\Listeners\Pipeline\DetectArchetype;
     $listener->handle(new GameStateChanged($logEvent));
 
     Queue::assertNotPushed(EstimateArchetypeJob::class);
@@ -176,6 +198,11 @@ it('does nothing for events without a match_token', function () {
 
 it('does nothing without a local player configured', function () {
     Queue::fake();
+
+    MtgoMatch::factory()->create([
+        'token' => 'token-detect-6',
+        'state' => MatchState::InProgress,
+    ]);
 
     // No username on the event and no active Account
     $logEvent = LogEvent::factory()->create([
@@ -188,7 +215,7 @@ it('does nothing without a local player configured', function () {
         ),
     ]);
 
-    $listener = new DetectArchetype;
+    $listener = new \App\Listeners\Pipeline\DetectArchetype;
     $listener->handle(new GameStateChanged($logEvent));
 
     Queue::assertNotPushed(EstimateArchetypeJob::class);
@@ -197,6 +224,11 @@ it('does nothing without a local player configured', function () {
 it('does nothing when JSON has no Players or Cards', function () {
     Queue::fake();
 
+    MtgoMatch::factory()->create([
+        'token' => 'token-detect-7',
+        'state' => MatchState::InProgress,
+    ]);
+
     $logEvent = LogEvent::factory()->create([
         'match_token' => 'token-detect-7',
         'event_type' => 'game_state_update',
@@ -204,7 +236,7 @@ it('does nothing when JSON has no Players or Cards', function () {
         'raw_text' => json_encode(['Players' => [], 'Cards' => []]),
     ]);
 
-    $listener = new DetectArchetype;
+    $listener = new \App\Listeners\Pipeline\DetectArchetype;
     $listener->handle(new GameStateChanged($logEvent));
 
     Queue::assertNotPushed(EstimateArchetypeJob::class);
@@ -213,8 +245,14 @@ it('does nothing when JSON has no Players or Cards', function () {
 it('increments version counter on each game state event', function () {
     Queue::fake();
 
-    $listener = new DetectArchetype;
     $token = 'token-detect-8';
+
+    MtgoMatch::factory()->create([
+        'token' => $token,
+        'state' => MatchState::InProgress,
+    ]);
+
+    $listener = new \App\Listeners\Pipeline\DetectArchetype;
 
     for ($i = 0; $i < 3; $i++) {
         $logEvent = LogEvent::factory()->create([

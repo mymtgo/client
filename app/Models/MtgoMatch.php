@@ -126,6 +126,29 @@ class MtgoMatch extends Model
     }
 
     /**
+     * Find a match using whatever identifiers are available on the LogEvent.
+     * Tries match_token first (exact match on token), then match_id (on mtgo_id).
+     */
+    public static function findByEvent(LogEvent $event): ?static
+    {
+        if ($event->match_token) {
+            $match = static::where('token', $event->match_token)->first();
+            if ($match) {
+                return $match;
+            }
+        }
+
+        if ($event->match_id) {
+            $match = static::where('mtgo_id', $event->match_id)->first();
+            if ($match) {
+                return $match;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Determine the match outcome from game results.
      */
     public static function determineOutcome(int $wins, int $losses): MatchOutcome

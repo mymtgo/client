@@ -14,6 +14,7 @@ use App\Events\MatchMetadataReceived;
 use App\Events\UserLoggedIn;
 use App\Models\LogEvent;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
 
 class DispatchDomainEvents
 {
@@ -38,17 +39,24 @@ class DispatchDomainEvents
     public static function run(Collection $events): void
     {
         foreach ($events as $event) {
-            match ($event->event_type) {
-                'match_state_changed' => self::dispatchMatchStateEvent($event),
-                'game_state_update' => GameStateChanged::dispatch($event),
-                'game_result' => GameResultDetermined::dispatch($event),
-                'deck_used' => DeckUsedInGame::dispatch($event),
-                'card_revealed' => CardRevealed::dispatch($event),
-                'league_joined' => LeagueJoined::dispatch($event),
-                'league_join_request' => LeagueJoinRequested::dispatch($event),
-                'game_management_json' => MatchMetadataReceived::dispatch($event),
-                default => self::dispatchSpecialEvent($event),
-            };
+            try {
+                match ($event->event_type) {
+                    'match_state_changed' => self::dispatchMatchStateEvent($event),
+                    'game_state_update' => GameStateChanged::dispatch($event),
+                    'game_result' => GameResultDetermined::dispatch($event),
+                    'deck_used' => DeckUsedInGame::dispatch($event),
+                    'card_revealed' => CardRevealed::dispatch($event),
+                    'league_joined' => LeagueJoined::dispatch($event),
+                    'league_join_request' => LeagueJoinRequested::dispatch($event),
+                    'game_management_json' => MatchMetadataReceived::dispatch($event),
+                    default => self::dispatchSpecialEvent($event),
+                };
+            } catch (\Throwable $e) {
+                Log::channel('pipeline')->error("DispatchDomainEvents: failed to dispatch {$event->event_type}", [
+                    'event_id' => $event->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
         }
     }
 

@@ -88,8 +88,8 @@ it('detects a loss when local player conceded', function () {
     expect($match->outcome)->toBe(MatchOutcome::Loss);
 });
 
-it('does nothing if match is not in Ended state', function () {
-    foreach ([MatchState::Started, MatchState::InProgress, MatchState::Complete] as $state) {
+it('does nothing if match is not in Ended or InProgress state', function () {
+    foreach ([MatchState::Started, MatchState::Complete] as $state) {
         $token = 'token-'.$state->value;
 
         MtgoMatch::factory()->create([

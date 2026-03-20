@@ -6,6 +6,7 @@ use App\Actions\DetermineMatchArchetypes;
 use App\Actions\Matches\DetermineMatchResult;
 use App\Actions\Matches\GetGameLog;
 use App\Actions\Matches\SyncGameResults;
+use App\Actions\Pipeline\ArchiveGameLog;
 use App\Actions\Util\ExtractKeyValueBlock;
 use App\Enums\LeagueState;
 use App\Enums\MatchOutcome;
@@ -16,6 +17,7 @@ use App\Jobs\ComputeCardGameStats;
 use App\Jobs\SubmitMatch;
 use App\Models\LogEvent;
 use App\Models\MtgoMatch;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
@@ -24,9 +26,33 @@ class CompleteMatch
     public function handle(MatchEnded $event): void
     {
         $logEvent = $event->logEvent;
-        $match = MtgoMatch::where('token', $logEvent->match_token)->first();
+        $match = MtgoMatch::findByEvent($logEvent);
 
-        if (! $match || $match->state !== MatchState::Ended) {
+        if (! $match) {
+            return;
+        }
+
+        // Step 1: Transition InProgress → Ended (previously EndMatch listener)
+        if ($match->state === MatchState::InProgress) {
+            $lastEvent = LogEvent::where('match_token', $match->token)
+                ->orderBy('id', 'desc')
+                ->first();
+
+            $ended = Carbon::parse($lastEvent->logged_at ?? now())
+                ->setTimeFromTimeString($lastEvent->timestamp ?? now()->toTimeString());
+
+            $match->update([
+                'ended_at' => $ended,
+                'state' => MatchState::Ended,
+            ]);
+
+            Log::channel('pipeline')->info("Match {$match->mtgo_id}: InProgress → Ended", [
+                'signal' => $logEvent->context,
+            ]);
+        }
+
+        // Step 2: Transition Ended → Complete (previously the only logic in this listener)
+        if ($match->state !== MatchState::Ended) {
             return;
         }
 
@@ -70,6 +96,13 @@ class CompleteMatch
         }
 
         SyncGameResults::run($match, $gameLog['results'] ?? []);
+
+        // Archive the game log before post-completion steps
+        try {
+            ArchiveGameLog::run($match);
+        } catch (\Throwable $e) {
+            Log::warning("Failed to archive game log for match {$match->id}: {$e->getMessage()}");
+        }
 
         // Post-completion: each independent, non-critical
         try {

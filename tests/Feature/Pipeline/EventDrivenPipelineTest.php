@@ -80,10 +80,13 @@ it('advances match to InProgress when game state events arrive', function () {
     $match = MtgoMatch::where('token', 'inprogress-token')->first();
     expect($match->state)->toBe(MatchState::Started);
 
-    // Step 2: Game state event advances to InProgress
+    // Step 2: Game state event advances to InProgress (no match_token, uses match_id)
+    // First backfill mtgo_id so findByEvent can find the match
+    MtgoMatch::where('token', 'inprogress-token')->update(['mtgo_id' => '12345']);
+
     $gameStateEvent = LogEvent::factory()->create([
         'event_type' => 'game_state_update',
-        'match_token' => 'inprogress-token',
+        'match_token' => null,
         'match_id' => '12345',
         'game_id' => '99',
     ]);
@@ -113,7 +116,7 @@ it('transitions match to Ended when end signal arrives', function () {
 
     DispatchDomainEvents::run(collect([$endEvent]));
 
-    // EndMatch transitions to Ended; CompleteMatch tries to advance to Complete
+    // CompleteMatch transitions InProgress → Ended → Complete
     // but may stay at Ended without a game log file available
     $match->refresh();
     expect($match->state)->toBeIn([MatchState::Ended, MatchState::Complete]);
@@ -142,9 +145,12 @@ it('full event cascade creates and progresses a match through states', function 
     expect($match->state)->toBe(MatchState::Started);
 
     // Step 2: Game state event → AdvanceMatchToInProgress → InProgress
+    // Backfill mtgo_id so findByEvent can find the match via match_id
+    MtgoMatch::where('token', $token)->update(['mtgo_id' => '99999']);
+
     $gameStateEvent = LogEvent::factory()->create([
         'event_type' => 'game_state_update',
-        'match_token' => $token,
+        'match_token' => null,
         'match_id' => '99999',
         'game_id' => '1',
     ]);
@@ -153,7 +159,7 @@ it('full event cascade creates and progresses a match through states', function 
 
     expect($match->refresh()->state)->toBe(MatchState::InProgress);
 
-    // Step 3: End event → EndMatch → Ended (then CompleteMatch attempts Complete)
+    // Step 3: End event → CompleteMatch → Ended → Complete
     $endEvent = LogEvent::factory()->create([
         'event_type' => 'match_state_changed',
         'context' => 'TournamentMatchClosedState',
