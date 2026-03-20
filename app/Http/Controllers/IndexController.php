@@ -2,10 +2,16 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\Dashboard\GetDashboardLeagueDistribution;
+use App\Actions\Dashboard\GetDashboardMatchupSpread;
 use App\Actions\Dashboard\GetFormatChart;
+use App\Actions\Dashboard\GetLastSession;
+use App\Actions\Dashboard\GetPlayDrawSplit;
+use App\Actions\Dashboard\GetRollingForm;
+use App\Actions\Dashboard\GetStreak;
+use App\Actions\Dashboard\GetWinrateDelta;
 use App\Actions\Leagues\GetActiveLeague;
 use App\Data\Front\DeckData;
-use App\Data\Front\MatchData;
 use App\Models\Account;
 use App\Models\Deck;
 use App\Models\Game;
@@ -41,16 +47,6 @@ class IndexController extends Controller
         $gamesWon = Game::whereIn('match_id', $matchIds)->where('won', true)->count();
         $gamesLost = Game::whereIn('match_id', $matchIds)->where('won', false)->count();
 
-        // Recent matches (paginated)
-        $recentMatches = MtgoMatch::complete()
-            ->when($accountId, fn ($q, $id) => $q
-                ->whereHas('deckVersion', fn ($q2) => $q2->whereHas('deck', fn ($q3) => $q3->where('account_id', $id)))
-            )
-            ->with(['deck', 'games.players', 'opponentArchetypes.archetype', 'opponentArchetypes.player', 'league'])
-            ->whereBetween('started_at', [$start, $end])
-            ->orderByDesc('started_at')
-            ->paginate(25);
-
         // Deck performance summary
         $deckStats = Deck::forActiveAccount()->withCount([
             'wonMatches' => fn ($query) => $query->whereBetween('started_at', [$start, $end]),
@@ -62,17 +58,27 @@ class IndexController extends Controller
             ->map(fn ($deck) => DeckData::from($deck));
 
         return Inertia::render('Index', [
+            // Eager props
             'matchesWon' => $wins,
             'matchesLost' => $losses,
             'gamesWon' => $gamesWon,
             'gamesLost' => $gamesLost,
             'matchWinrate' => round(100 * ($wins / (($wins + $losses) ?: 1))),
             'gameWinrate' => round(100 * ($gamesWon / (($gamesWon + $gamesLost) ?: 1))),
-            'recentMatches' => MatchData::collect($recentMatches),
             'deckStats' => $deckStats,
             'timeframe' => $timeframe,
             'activeLeague' => GetActiveLeague::run(),
             'formatChart' => GetFormatChart::run(),
+            'streak' => GetStreak::run($accountId, $start, $end),
+            'matchWinrateDelta' => GetWinrateDelta::run($accountId, $start, $end, $timeframe)['matchDelta'],
+            'gameWinrateDelta' => GetWinrateDelta::run($accountId, $start, $end, $timeframe)['gameDelta'],
+            'playDrawSplit' => GetPlayDrawSplit::run($accountId, $start, $end),
+
+            // Deferred props
+            'lastSession' => Inertia::defer(fn () => GetLastSession::run($accountId)),
+            'matchupSpread' => Inertia::defer(fn () => GetDashboardMatchupSpread::run($accountId, $start, $end)),
+            'rollingForm' => Inertia::defer(fn () => GetRollingForm::run($accountId)),
+            'leagueDistribution' => Inertia::defer(fn () => GetDashboardLeagueDistribution::run($accountId)),
         ]);
     }
 
