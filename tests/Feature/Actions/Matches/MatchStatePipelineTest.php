@@ -1,6 +1,7 @@
 <?php
 
 use App\Actions\Matches\BuildMatches;
+use App\Enums\MatchOutcome;
 use App\Enums\MatchState;
 use App\Models\LogCursor;
 use App\Models\LogEvent;
@@ -44,8 +45,7 @@ it('filters complete vs incomplete matches correctly via scopes', function () {
         'format' => 'Pmodern',
         'match_type' => 'Constructed',
         'state' => MatchState::Complete,
-        'games_won' => 2,
-        'games_lost' => 1,
+        'outcome' => MatchOutcome::Win,
         'started_at' => now(),
         'ended_at' => now(),
     ]);

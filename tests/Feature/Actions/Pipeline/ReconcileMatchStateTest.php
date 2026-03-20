@@ -1,6 +1,7 @@
 <?php
 
 use App\Actions\Pipeline\ReconcileMatchState;
+use App\Enums\MatchOutcome;
 use App\Enums\MatchState;
 use App\Models\Deck;
 use App\Models\Game;
@@ -19,8 +20,7 @@ function makeMatch(array $overrides = []): MtgoMatch
         'started_at' => now()->subMinutes(30),
         'ended_at' => now(),
         'state' => MatchState::Started,
-        'games_won' => 0,
-        'games_lost' => 0,
+        'outcome' => MatchOutcome::Unknown,
     ], $overrides));
 }
 
@@ -94,30 +94,26 @@ it('does not touch an active match with recent events', function () {
     expect($activeMatch->fresh()->state)->toBe(MatchState::InProgress);
 });
 
-it('backfills null game results from complete matches', function () {
+it('does not backfill null game results (backfill is a no-op in event-driven pipeline)', function () {
     $match = makeMatch([
         'state' => MatchState::Complete,
-        'games_won' => 2,
-        'games_lost' => 1,
+        'outcome' => MatchOutcome::Win,
     ]);
 
     $game1 = makeGame($match, ['won' => null, 'started_at' => now()->subMinutes(30)]);
     $game2 = makeGame($match, ['won' => null, 'started_at' => now()->subMinutes(20)]);
-    $game3 = makeGame($match, ['won' => null, 'started_at' => now()->subMinutes(10)]);
 
     ReconcileMatchState::run();
 
-    // wins assigned first, then losses
-    expect($game1->fresh()->won)->toBeTrue();
-    expect($game2->fresh()->won)->toBeTrue();
-    expect($game3->fresh()->won)->toBeFalse();
+    // backfillGameResults is intentionally a no-op — results stay as-is
+    expect($game1->fresh()->won)->toBeNull();
+    expect($game2->fresh()->won)->toBeNull();
 });
 
-it('does not overwrite already-set game results when backfilling', function () {
+it('does not overwrite already-set game results', function () {
     $match = makeMatch([
         'state' => MatchState::Complete,
-        'games_won' => 2,
-        'games_lost' => 0,
+        'outcome' => MatchOutcome::Win,
     ]);
 
     $game1 = makeGame($match, ['won' => true, 'started_at' => now()->subMinutes(30)]);
@@ -125,8 +121,9 @@ it('does not overwrite already-set game results when backfilling', function () {
 
     ReconcileMatchState::run();
 
+    // backfillGameResults is intentionally a no-op — results stay as-is
     expect($game1->fresh()->won)->toBeTrue();
-    expect($game2->fresh()->won)->toBeTrue();
+    expect($game2->fresh()->won)->toBeNull();
 });
 
 it('retries deck linking for matches without a deck version when decks exist', function () {

@@ -1,6 +1,7 @@
 <?php
 
 use App\Actions\Pipeline\ArchiveGameLog;
+use App\Enums\MatchOutcome;
 use App\Models\GameLog;
 use App\Models\GameLogCursor;
 use App\Models\MtgoMatch;
@@ -18,8 +19,7 @@ function makeMatchForArchive(string $token): MtgoMatch
         'started_at' => now()->subHour(),
         'ended_at' => now(),
         'state' => \App\Enums\MatchState::Complete,
-        'games_won' => 2,
-        'games_lost' => 0,
+        'outcome' => MatchOutcome::Win,
     ]);
 }
 

@@ -1,6 +1,7 @@
 <?php
 
 use App\Actions\Matches\ExtractGameHandData;
+use App\Enums\MatchOutcome;
 use App\Models\Game;
 use App\Models\GameTimeline;
 use App\Models\MtgoMatch;
@@ -16,9 +17,7 @@ function createGameWithTimeline(array $overrides = [], array $pivotOverrides = [
         'mtgo_id' => '12345',
         'format' => 'modern',
         'match_type' => 'league',
-        'result' => 'win',
-        'games_won' => 2,
-        'games_lost' => 1,
+        'outcome' => MatchOutcome::Win,
         'started_at' => now()->subMinutes(30),
         'ended_at' => now(),
     ]);
