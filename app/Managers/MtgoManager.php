@@ -5,8 +5,10 @@ namespace App\Managers;
 use App\Actions\Logs\FindMtgoLogPath;
 use App\Actions\Logs\GetLogFilePaths;
 use App\Actions\Logs\IngestLog;
+use App\Actions\Logs\PruneProcessedLogEvents;
 use App\Actions\Logs\StoreGameLogFiles;
 use App\Actions\Matches\SyncLiveGameResults;
+use App\Actions\Pipeline\ReconcileMatchState;
 use App\Actions\RegisterDevice;
 use App\Actions\Settings\ValidatePath;
 use App\Jobs\DownloadArchetypes;
@@ -124,7 +126,7 @@ class MtgoManager
             $this->syncDecks(sync: false);
         }
 
-        $this->ingestGameLogs(sync: false);
+        $this->ingestGameLogs();
 
         // Register account from existing cursor data (upgrade path)
         if ($this->getUsername() && ! Account::exists()) {
@@ -210,7 +212,7 @@ class MtgoManager
         )->everyMinute()->name('submit_matches')->withoutOverlapping(60);
 
         $schedule->call(
-            fn () => \App\Actions\Pipeline\ReconcileMatchState::run()
+            fn () => ReconcileMatchState::run()
         )->everyThirtySeconds()->name('reconcile_match_state')->withoutOverlapping(30);
 
         $schedule->call(
@@ -222,7 +224,7 @@ class MtgoManager
         )->hourly();
 
         $schedule->call(
-            fn () => \App\Actions\Logs\PruneProcessedLogEvents::run()
+            fn () => PruneProcessedLogEvents::run()
         )->daily()->name('prune_log_events');
     }
 }

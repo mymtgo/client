@@ -6,6 +6,7 @@ use App\Listeners\Pipeline\StoreMatchMetadata;
 use App\Models\LogEvent;
 use App\Models\MtgoMatch;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Native\Desktop\Facades\Settings;
 
 uses(RefreshDatabase::class);
 
@@ -118,4 +119,90 @@ it('does nothing if log event has no match_id', function () {
 
     $match->refresh();
     expect($match->mtgo_id)->toBeNull();
+});
+
+it('backfills format and match_type from the Receiver key-value block', function () {
+    $match = MtgoMatch::factory()->create([
+        'token' => 'token-format-backfill',
+        'mtgo_id' => '88888',
+        'format' => 'Unknown',
+        'match_type' => 'Unknown',
+        'state' => MatchState::InProgress,
+    ]);
+
+    $rawText = "19:44:10 [INF] (Game Management|Processing Registered Handler) Message: {\"MatchToken\":\"token-format-backfill\",\"MatchID\":88888,\"MetaMessage\":[1,2,3]} Receiver: Event Token=token-format-backfill\r\nPlayFormatCd=CMODERN\r\nGameStructureCd= Modern\r\nJoinedToGame=True";
+
+    $logEvent = LogEvent::factory()->create([
+        'match_token' => 'token-format-backfill',
+        'match_id' => '88888',
+        'event_type' => 'game_management_json',
+        'raw_text' => $rawText,
+        'processed_at' => null,
+    ]);
+
+    $listener = new StoreMatchMetadata;
+    $listener->handle(new MatchMetadataReceived($logEvent));
+
+    $match->refresh();
+    expect($match->format)->toBe('CMODERN')
+        // Leading space after = is consumed by ExtractKeyValueBlock regex
+        ->and($match->match_type)->toBe('Modern');
+});
+
+it('assigns a phantom league when metadata is available and no league set', function () {
+    Settings::shouldReceive('get')
+        ->with('hide_phantom_leagues')
+        ->andReturn(false);
+
+    $match = MtgoMatch::factory()->create([
+        'token' => 'token-phantom-league',
+        'mtgo_id' => '66666',
+        'format' => 'CMODERN',
+        'match_type' => 'Modern',
+        'state' => MatchState::InProgress,
+        'league_id' => null,
+    ]);
+
+    $rawText = "19:44:10 [INF] (Game Management|Processing) Message: {\"MatchToken\":\"token-phantom-league\",\"MatchID\":66666} Receiver: Event Token=token-phantom-league\r\nPlayFormatCd=CMODERN\r\nGameStructureCd= Modern\r\nJoinedToGame=True";
+
+    $logEvent = LogEvent::factory()->create([
+        'match_token' => 'token-phantom-league',
+        'match_id' => '66666',
+        'event_type' => 'game_management_json',
+        'raw_text' => $rawText,
+        'processed_at' => null,
+    ]);
+
+    $listener = new StoreMatchMetadata;
+    $listener->handle(new MatchMetadataReceived($logEvent));
+
+    $match->refresh();
+    expect($match->league_id)->not->toBeNull();
+});
+
+it('does not overwrite existing format when not Unknown', function () {
+    $match = MtgoMatch::factory()->create([
+        'token' => 'token-keep-format',
+        'mtgo_id' => '77777',
+        'format' => 'CLEGACY',
+        'match_type' => 'Legacy',
+        'state' => MatchState::InProgress,
+    ]);
+
+    $rawText = "19:44:10 [INF] (Game Management|Processing) Message: {\"MatchToken\":\"token-keep-format\",\"MatchID\":77777} Receiver: Event Token=token-keep-format\r\nPlayFormatCd=CMODERN\r\nGameStructureCd=Modern";
+
+    $logEvent = LogEvent::factory()->create([
+        'match_token' => 'token-keep-format',
+        'match_id' => '77777',
+        'event_type' => 'game_management_json',
+        'raw_text' => $rawText,
+        'processed_at' => null,
+    ]);
+
+    $listener = new StoreMatchMetadata;
+    $listener->handle(new MatchMetadataReceived($logEvent));
+
+    $match->refresh();
+    expect($match->format)->toBe('CLEGACY')
+        ->and($match->match_type)->toBe('Legacy');
 });
