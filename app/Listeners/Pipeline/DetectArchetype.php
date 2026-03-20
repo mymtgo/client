@@ -4,8 +4,8 @@ namespace App\Listeners\Pipeline;
 
 use App\Actions\Util\ExtractJson;
 use App\Events\GameStateChanged;
-use App\Facades\Mtgo;
 use App\Jobs\EstimateArchetypeJob;
+use App\Models\Account;
 use Illuminate\Support\Facades\Cache;
 
 class DetectArchetype
@@ -19,7 +19,8 @@ class DetectArchetype
             return;
         }
 
-        $localPlayer = Mtgo::getUsername();
+        $localPlayer = $logEvent->username ?? Account::active()->value('username');
+
         if (! $localPlayer) {
             return;
         }

@@ -38,6 +38,11 @@ class NativeAppServiceProvider implements ProvidesPhpIni
         Mtgo::runInitialSetup();
         Mtgo::retryUnsubmittedMatches();
 
+        // Parse any existing log data — covers case where MTGO was opened
+        // before the tracker, or data exists from a previous session.
+        // IngestLog is cursor-based so this is safe to call on every boot.
+        Mtgo::ingestLogs();
+
         // Start file watcher for real-time log ingestion
         if (Mtgo::canRun()) {
             ChildProcess::node('resources/js/file-watcher.js', alias: 'file-watcher', persistent: true);

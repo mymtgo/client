@@ -4,7 +4,7 @@ namespace App\Actions\Matches;
 
 use App\Actions\Cards\CreateMissingCards;
 use App\Actions\Util\ExtractJson;
-use App\Facades\Mtgo;
+use App\Models\Account;
 use App\Models\Game;
 use App\Models\GameTimeline;
 use App\Models\LogEvent;
@@ -17,7 +17,9 @@ class CreateGames
 {
     public static function run(MtgoMatch $match, int $gameId, Collection $gameEvents, int $gameIndex, array $playerDeck)
     {
-        $username = Mtgo::getUsername();
+        $username = $match->games()->first()?->localPlayers()?->first()?->username
+            ?? LogEvent::where('match_token', $match->token)->whereNotNull('username')->value('username')
+            ?? Account::active()->value('username');
 
         $gameStateEvents = $gameEvents->filter(
             fn (LogEvent $event) => $event->event_type == 'game_state_update'

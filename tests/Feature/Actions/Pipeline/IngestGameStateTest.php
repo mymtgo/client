@@ -1,7 +1,7 @@
 <?php
 
 use App\Actions\Pipeline\IngestGameState;
-use App\Facades\Mtgo;
+use App\Models\Account;
 use App\Models\GameLogCursor;
 use App\Models\LogEvent;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -24,8 +24,6 @@ it('returns early for a non-existent file', function () {
 it('creates a GameLogCursor for a new file', function () {
     $path = gameLogFixture('instant_concede.dat');
 
-    Mtgo::shouldReceive('getUsername')->andReturn(null);
-
     IngestGameState::run($path);
 
     expect(GameLogCursor::where('file_path', $path)->exists())->toBeTrue();
@@ -36,8 +34,6 @@ it('extracts the match token from the filename', function () {
     $token = 'abc-token-123';
     $tmpPath = sys_get_temp_dir()."/Match_GameLog_{$token}.dat";
     copy(gameLogFixture('instant_concede.dat'), $tmpPath);
-
-    Mtgo::shouldReceive('getUsername')->andReturn(null);
 
     IngestGameState::run($tmpPath);
 
@@ -53,7 +49,7 @@ it('creates game_result log events when local player is known', function () {
 
     $path = gameLogFixture('clean_2_0_win.dat');
 
-    Mtgo::shouldReceive('getUsername')->andReturn('TestPlayer');
+    Account::registerAndActivate('TestPlayer');
 
     IngestGameState::run($path);
 
@@ -66,7 +62,7 @@ it('is idempotent — second call with same file produces no new events', functi
 
     $path = gameLogFixture('clean_2_0_win.dat');
 
-    Mtgo::shouldReceive('getUsername')->atLeast()->once()->andReturn('TestPlayer');
+    Account::registerAndActivate('TestPlayer');
 
     IngestGameState::run($path);
     $countAfterFirst = LogEvent::where('event_type', 'game_result')->count();
@@ -84,8 +80,7 @@ it('is idempotent — second call with same file produces no new events', functi
 it('skips game result creation when no local player is configured', function () {
     $path = gameLogFixture('instant_concede.dat');
 
-    Mtgo::shouldReceive('getUsername')->andReturn(null);
-
+    // No Account created — Account::active() returns null
     IngestGameState::run($path);
 
     expect(LogEvent::where('event_type', 'game_result')->count())->toBe(0);
