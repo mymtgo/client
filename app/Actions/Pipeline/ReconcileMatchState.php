@@ -24,17 +24,7 @@ class ReconcileMatchState
     {
         $staleThreshold = now()->subMinutes(2);
 
-        // Find the latest match that has started (to avoid voiding all old matches)
-        $latestMatch = MtgoMatch::whereIn('state', [MatchState::InProgress, MatchState::Complete])
-            ->latest('started_at')
-            ->first();
-
-        if (! $latestMatch) {
-            return;
-        }
-
         $staleMatches = MtgoMatch::whereIn('state', [MatchState::Started, MatchState::InProgress])
-            ->where('started_at', '<', $latestMatch->started_at)
             ->where('updated_at', '<', $staleThreshold)
             ->get();
 

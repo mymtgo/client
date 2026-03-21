@@ -2,6 +2,7 @@
 
 namespace App\Actions\Logs;
 
+use App\Actions\Pipeline\DispatchDomainEvents;
 use App\Models\Account;
 use App\Models\LogCursor;
 use App\Models\LogEvent;
@@ -27,6 +28,12 @@ class IngestLog
         if ($size === false) {
             return;
         }
+
+        Log::channel('pipeline')->debug('IngestLog::run called', [
+            'file' => basename($logPath),
+            'size' => $size,
+            'source' => debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 3)[1]['class'] ?? 'unknown',
+        ]);
 
         // compute head_hash (first 4KB)
         $headHash = null;
@@ -180,7 +187,7 @@ class IngestLog
                 ->where('byte_offset_end', '<=', $safeOffset)
                 ->get();
 
-            \App\Actions\Pipeline\DispatchDomainEvents::run($newEvents);
+            DispatchDomainEvents::run($newEvents);
         }
     }
 

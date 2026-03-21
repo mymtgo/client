@@ -155,7 +155,7 @@ it('skips deck linking when no decks exist', function () {
     expect($match->fresh()->deck_version_id)->toBeNull();
 });
 
-it('does not resolve stale matches when no newer match exists', function () {
+it('resolves stale matches even when no newer match exists', function () {
     $match = makeMatch([
         'state' => MatchState::Started,
         'started_at' => now()->subMinutes(10),
@@ -163,8 +163,9 @@ it('does not resolve stale matches when no newer match exists', function () {
 
     MtgoMatch::where('id', $match->id)->update(['updated_at' => now()->subMinutes(5)]);
 
-    // No newer InProgress/Complete match exists — resolveStaleMatches returns early
     ReconcileMatchState::run();
 
-    expect($match->fresh()->state)->toBe(MatchState::Started);
+    // Stale matches are resolved after 2 minutes regardless of newer matches
+    // (covers quit-during-sideboarding where no end signal arrives)
+    expect($match->fresh()->state)->toBe(MatchState::Voided);
 });

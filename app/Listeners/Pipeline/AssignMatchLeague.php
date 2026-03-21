@@ -20,6 +20,13 @@ class AssignMatchLeague
 
         $gameMeta = ExtractKeyValueBlock::run($event->logEvent->raw_text);
 
+        // match_state_changed join events are one-liners without metadata.
+        // Defer to StoreMatchMetadata (MatchMetadataReceived) which has the
+        // full key-value block including League Token and PlayFormatCd.
+        if (empty($gameMeta['PlayFormatCd'])) {
+            return;
+        }
+
         AssignLeague::run($match, $gameMeta);
         $match->refresh();
 

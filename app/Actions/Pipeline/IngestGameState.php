@@ -5,6 +5,7 @@ namespace App\Actions\Pipeline;
 use App\Actions\Matches\ExtractGameResults;
 use App\Actions\Matches\ParseGameLogBinary;
 use App\Models\Account;
+use App\Models\GameLog;
 use App\Models\GameLogCursor;
 use App\Models\LogEvent;
 use Illuminate\Support\Facades\DB;
@@ -36,6 +37,15 @@ class IngestGameState
 
         if ($matchToken && ! $cursor->match_token) {
             $cursor->update(['match_token' => $matchToken]);
+        }
+
+        // Ensure a GameLog record exists so GetGameLog can find this file
+        // (StoreGameLogFiles only runs at boot, missing post-boot matches)
+        if ($matchToken) {
+            GameLog::firstOrCreate([
+                'match_token' => $matchToken,
+                'file_path' => $datPath,
+            ]);
         }
 
         $startingOffset = $cursor->byte_offset;
