@@ -9,7 +9,7 @@ import { router } from '@inertiajs/vue3';
 import dayjs from 'dayjs';
 import { useLeagueScreenshot } from '@/composables/useLeagueScreenshot';
 import { Camera, Ellipsis, Trash2, Trophy } from 'lucide-vue-next';
-import { ref } from 'vue';
+import { nextTick, ref } from 'vue';
 import LeagueScreenshot from './LeagueScreenshot.vue';
 import ResultBadge from '../matches/ResultBadge.vue';
 import { Badge } from '../ui/badge';
@@ -54,13 +54,17 @@ function abandonLeague(league: LeagueRun) {
 }
 
 const screenshotRef = ref<InstanceType<typeof LeagueScreenshot> | null>(null);
+const showScreenshot = ref(false);
 const { capture, capturing } = useLeagueScreenshot();
 
-function copyScreenshot() {
+async function copyScreenshot() {
+    showScreenshot.value = true;
+    await nextTick();
     const el = screenshotRef.value?.$el as HTMLElement | undefined;
     if (el) {
-        capture(el);
+        await capture(el);
     }
+    showScreenshot.value = false;
 }
 </script>
 
@@ -173,7 +177,7 @@ function copyScreenshot() {
         </div>
 
     </Card>
-    <div style="position: fixed; top: -9999px; left: -9999px; pointer-events: none;">
+    <div v-if="showScreenshot" style="position: fixed; top: -9999px; left: -9999px; pointer-events: none;">
         <LeagueScreenshot ref="screenshotRef" :league="league" />
     </div>
 </template>
