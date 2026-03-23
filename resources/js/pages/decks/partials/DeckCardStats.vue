@@ -143,6 +143,16 @@ const visibleFilters = computed(() => FILTER_CONFIG.filter((f) => presentTypes.v
 
 const activeFilterCount = computed(() => visibleFilters.value.filter((f) => !typeFilters.value[f.key]).length);
 
+const allVisible = computed(() => visibleFilters.value.every((f) => typeFilters.value[f.key]));
+
+function toggleAll() {
+    const newVal = !allVisible.value;
+    for (const filter of visibleFilters.value) {
+        typeFilters.value[filter.key] = newVal;
+    }
+    saveFilters(typeFilters.value);
+}
+
 function normalizeType(raw: string | null): string {
     if (!raw) return 'Other';
     const canonical: FilterKey[] = ['Creature', 'Planeswalker', 'Instant', 'Sorcery', 'Enchantment', 'Artifact', 'Land'];
@@ -269,7 +279,15 @@ function winRateClass(pctVal: number | null): string {
                     </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" class="w-48">
-                    <DropdownMenuLabel class="text-xs">Filter by type</DropdownMenuLabel>
+                    <div class="flex items-center justify-between px-2 py-1.5">
+                        <span class="text-xs font-semibold">Filter by type</span>
+                        <button
+                            class="text-xs text-muted-foreground hover:text-foreground"
+                            @click="toggleAll"
+                        >
+                            {{ allVisible ? 'Hide all' : 'Show all' }}
+                        </button>
+                    </div>
                     <DropdownMenuSeparator />
                     <template v-for="filter in visibleFilters" :key="filter.key">
                         <DropdownMenuSeparator v-if="filter.key === 'Sideboard'" />
