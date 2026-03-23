@@ -168,3 +168,35 @@ it('only shows complete matches in complete scope', function () {
     expect(MtgoMatch::complete()->count())->toBe(2);
     expect(MtgoMatch::incomplete()->count())->toBe(3);
 });
+
+it('treats ended as the terminal state — does not advance further', function () {
+    $matchId = '10004';
+    $matchToken = 'token-ended-terminal';
+
+    $match = MtgoMatch::create([
+        'mtgo_id' => $matchId,
+        'token' => $matchToken,
+        'format' => 'Pmodern',
+        'match_type' => 'Constructed',
+        'started_at' => now()->subHour(),
+        'ended_at' => now(),
+        'state' => MatchState::Ended,
+        'games_won' => 0,
+        'games_lost' => 0,
+    ]);
+
+    // Create a join event so the gate check passes
+    createLogEvent([
+        'match_id' => $matchId,
+        'match_token' => $matchToken,
+        'event_type' => LogEventType::MATCH_STATE_CHANGED->value,
+        'context' => 'MatchJoinedEventUnderwayState',
+        'raw_text' => buildJoinRawText(),
+    ]);
+
+    $result = AdvanceMatchState::run($matchToken, $matchId);
+
+    expect($result->state)->toBe(MatchState::Ended);
+    expect($result->games_won)->toBe(0);
+    expect($result->games_lost)->toBe(0);
+});
