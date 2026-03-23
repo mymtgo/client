@@ -8,6 +8,7 @@ use App\Actions\Logs\IngestLog;
 use App\Actions\Logs\PruneProcessedLogEvents;
 use App\Actions\Matches\BuildMatches;
 use App\Actions\Matches\ResolveGameResults;
+use App\Actions\Matches\ResolvePendingResults;
 use App\Actions\RegisterDevice;
 use App\Actions\Settings\ValidatePath;
 use App\Jobs\DownloadArchetypes;
@@ -207,6 +208,13 @@ class MtgoManager
             }
             ResolveGameResults::run();
         })->everyTwoSeconds()->name('resolve_game_results')->withoutOverlapping(2);
+
+        $schedule->call(function () {
+            if (! $this->canRun()) {
+                return;
+            }
+            ResolvePendingResults::run();
+        })->everyThirtySeconds()->name('resolve_pending_results')->withoutOverlapping(30);
 
         // Periodic maintenance
         $schedule->call(fn () => $this->retryUnsubmittedMatches())
