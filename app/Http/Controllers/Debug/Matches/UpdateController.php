@@ -18,7 +18,7 @@ class UpdateController extends Controller
         $allowed = [
             'token', 'mtgo_id', 'league_id', 'deck_version_id',
             'format', 'match_type', 'state',
-            'games_won', 'games_lost', 'started_at', 'ended_at', 'submitted_at',
+            'started_at', 'ended_at', 'submitted_at',
         ];
 
         $field = collect($request->only($allowed))->keys()->first();
@@ -35,8 +35,6 @@ class UpdateController extends Controller
             'format' => 'nullable|string',
             'match_type' => 'nullable|string',
             'state' => ['nullable', Rule::enum(MatchState::class)],
-            'games_won' => 'integer|min:0',
-            'games_lost' => 'integer|min:0',
             'started_at' => 'nullable|date',
             'ended_at' => 'nullable|date',
             'submitted_at' => 'nullable|date',

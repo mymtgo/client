@@ -25,7 +25,7 @@ class IndexController extends Controller
             ->where('gp.is_local', false)
             ->where('m.state', 'complete')
             ->when($activeAccountId, fn ($q, $id) => $q->where('d.account_id', $id))
-            ->select('p.id as player_id', 'p.username', 'm.id as match_id', 'm.games_won', 'm.games_lost', 'm.format', 'm.started_at')
+            ->select('p.id as player_id', 'p.username', 'm.id as match_id', 'm.outcome', 'm.format', 'm.started_at')
             ->distinct()
             ->get();
 
@@ -41,11 +41,11 @@ class IndexController extends Controller
             ->groupBy('player_id')
             ->map(function ($rows, $playerId) use ($archetypesByPlayer) {
                 $matchesWon = $rows
-                    ->filter(fn ($r) => $r->games_won > $r->games_lost)
+                    ->filter(fn ($r) => $r->outcome === 'win')
                     ->pluck('match_id')->unique()->count();
 
                 $matchesLost = $rows
-                    ->filter(fn ($r) => $r->games_won < $r->games_lost)
+                    ->filter(fn ($r) => $r->outcome === 'loss')
                     ->pluck('match_id')->unique()->count();
 
                 $formats = $rows->pluck('format')->unique()
