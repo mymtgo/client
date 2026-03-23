@@ -6,7 +6,7 @@ import { ChartContainer } from '@/components/ui/chart';
 import { VisAxis, VisLine, VisXYContainer } from '@unovis/vue';
 
 type FormatChart = {
-    months: string[];
+    labels: string[];
     formats: string[];
     data: ({ x: number } & Record<string, number | null>)[];
 };
@@ -31,7 +31,7 @@ const chartConfig = computed(() =>
     ) as ChartConfig,
 );
 
-const tickFormat = (i: number) => props.formatChart.months[i] ?? '';
+const tickFormat = (i: number) => props.formatChart.labels[i] ?? '';
 const yTickFormat = (v: number) => `${v}%`;
 </script>
 
