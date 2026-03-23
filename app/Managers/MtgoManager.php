@@ -8,14 +8,11 @@ use App\Actions\Logs\IngestLog;
 use App\Actions\Logs\PruneProcessedLogEvents;
 use App\Actions\Matches\BuildMatches;
 use App\Actions\Matches\ResolveGameResults;
-use App\Actions\Matches\SyncLiveGameResults;
 use App\Actions\RegisterDevice;
 use App\Actions\Settings\ValidatePath;
 use App\Jobs\DownloadArchetypes;
 use App\Jobs\PollGameLogs;
 use App\Jobs\PopulateMissingCardData;
-use App\Jobs\ProcessLogEvents;
-use App\Jobs\StoreGameLogs;
 use App\Jobs\SubmitMatch;
 use App\Jobs\SyncDecks;
 use App\Models\Account;
@@ -129,8 +126,6 @@ class MtgoManager
             $this->syncDecks(sync: false);
         }
 
-        $this->ingestGameLogs(sync: false);
-
         // Register account from existing cursor data (upgrade path)
         if ($this->getUsername() && ! Account::exists()) {
             $account = Account::registerAndActivate($this->getUsername());
@@ -170,39 +165,6 @@ class MtgoManager
         IngestLog::run(
             FindMtgoLogPath::run()
         );
-    }
-
-    public function syncLiveGameResults(): void
-    {
-        if (! $this->canRun()) {
-            return;
-        }
-
-        $matches = MtgoMatch::incomplete()->get();
-
-        foreach ($matches as $match) {
-            SyncLiveGameResults::run($match);
-        }
-    }
-
-    public function ingestGameLogs(bool $sync = false): void
-    {
-        if (! $this->canRun()) {
-            return;
-        }
-
-        $sync ? StoreGameLogs::dispatchSync() : StoreGameLogs::dispatch();
-    }
-
-    public function processLogEvents(bool $force = false, bool $sync = false): void
-    {
-        if (! $this->canRun()) {
-            return;
-        }
-
-        if (Deck::count() || $force) {
-            $sync ? ProcessLogEvents::dispatchSync() : ProcessLogEvents::dispatch();
-        }
     }
 
     public function populateMissingCardData(bool $sync = false): void

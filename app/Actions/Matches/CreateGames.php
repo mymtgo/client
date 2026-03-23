@@ -6,6 +6,7 @@ use App\Actions\Cards\CreateMissingCards;
 use App\Actions\Util\ExtractJson;
 use App\Facades\Mtgo;
 use App\Models\Game;
+use App\Models\GameLog;
 use App\Models\GameTimeline;
 use App\Models\LogEvent;
 use App\Models\MtgoMatch;
@@ -22,7 +23,13 @@ class CreateGames
         $gameStateEvents = $gameEvents->filter(
             fn (LogEvent $event) => $event->event_type == 'game_state_update'
         );
-        $gameLog = GetGameLog::run($match->token);
+
+        // Read structured results directly from the stored GameLog
+        $gameLog = null;
+        $storedLog = GameLog::where('match_token', $match->token)->first();
+        if ($storedLog && ! empty($storedLog->decoded_entries) && $username) {
+            $gameLog = ExtractGameResults::run($storedLog->decoded_entries, $username);
+        }
 
         $firstStateEvent = $gameStateEvents->first();
         $lastStateEvent = $gameStateEvents->last();

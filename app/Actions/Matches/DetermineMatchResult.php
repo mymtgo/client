@@ -14,7 +14,7 @@ class DetermineMatchResult
      * Reports actual game counts — never inflates to the win threshold.
      * The `decided` flag indicates whether the match outcome is known.
      *
-     * @param  array<int, bool>  $logResults  Game results from GetGameLog (true = win, false = loss)
+     * @param  array<int, bool>  $logResults  Game results from ExtractGameResults (true = win, false = loss)
      * @param  Collection<int, LogEvent>  $stateChanges  Match state change events
      * @param  string  $gameStructure  e.g. 'Modern', 'BO5', etc.
      * @param  bool  $matchScoreExists  Whether a match score was found in the log

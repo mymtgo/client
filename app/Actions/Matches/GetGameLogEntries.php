@@ -32,13 +32,6 @@ class GetGameLogEntries
 
         $entries = $gameLog->decoded_entries ?? [];
 
-        // Lazy parse if not yet decoded
-        if (empty($entries)) {
-            GetGameLog::run($match->token);
-            $gameLog->refresh();
-            $entries = $gameLog->decoded_entries ?? [];
-        }
-
         if (empty($entries)) {
             return [];
         }
