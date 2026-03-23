@@ -183,38 +183,32 @@ class MtgoManager
 
     public function schedule(Schedule $schedule): void
     {
-        // Core pipeline — independent subsystems, each guarded by canRun()
-        $schedule->call(fn () => $this->ingestLogs())
-            ->everyTwoSeconds()
-            ->name('ingest_logs');
-
+        // ── Ingest pipeline (every 1s) ──────────────────────────────
+        // Main MTGO log → log events → match/game creation, deck
+        // linking, league assignment, game timeline.
         $schedule->call(function () {
+            $this->ingestLogs();
+
             if (! $this->canRun()) {
                 return;
             }
-            PollGameLogs::dispatch();
-        })->everyTwoSeconds()->name('poll_game_logs')->withoutOverlapping(2);
 
-        $schedule->call(function () {
-            if (! $this->canRun()) {
-                return;
-            }
             BuildMatches::run();
-        })->everyTwoSeconds()->name('build_matches')->withoutOverlapping(2);
+        })->everySecond()->name('ingest_pipeline')->withoutOverlapping(1);
 
+        // ── Resolve pipeline (every 2s) ─────────────────────────────
+        // Game log binary → game results → match completion.
+        // Authoritative source for outcomes — can complete matches
+        // directly from InProgress without waiting for main log end signals.
         $schedule->call(function () {
             if (! $this->canRun()) {
                 return;
             }
+
+            PollGameLogs::dispatch();
             ResolveGameResults::run();
-        })->everyTwoSeconds()->name('resolve_game_results')->withoutOverlapping(2);
-
-        $schedule->call(function () {
-            if (! $this->canRun()) {
-                return;
-            }
             ResolvePendingResults::run();
-        })->everyThirtySeconds()->name('resolve_pending_results')->withoutOverlapping(30);
+        })->everyTwoSeconds()->name('resolve_pipeline')->withoutOverlapping(2);
 
         // Periodic maintenance
         $schedule->call(fn () => $this->retryUnsubmittedMatches())

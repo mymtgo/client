@@ -157,7 +157,7 @@ it('transitions Ended match to PendingResult after grace period', function () {
     expect($match->state)->toBe(MatchState::PendingResult);
 });
 
-it('does not transition InProgress match to Complete even with full results', function () {
+it('completes InProgress match when game log has decisive results', function () {
     $match = createResolveMatch(['state' => MatchState::InProgress]);
     createResolveGame($match, ['started_at' => now()->subMinutes(45), 'won' => null]);
     createResolveGame($match, ['started_at' => now()->subMinutes(30), 'won' => null]);
@@ -175,12 +175,71 @@ it('does not transition InProgress match to Complete even with full results', fu
     ResolveGameResults::run();
 
     $match->refresh();
-    expect($match->state)->toBe(MatchState::InProgress);
-    // But games should still be updated
+    expect($match->state)->toBe(MatchState::Complete);
+    expect($match->outcome)->toBe(MatchOutcome::Win);
+    expect($match->ended_at)->not->toBeNull();
+
     $games = $match->games()->orderBy('started_at')->get();
     expect($games[0]->won)->toBeTrue();
     expect($games[1]->won)->toBeFalse();
     expect($games[2]->won)->toBeTrue();
+});
+
+it('completes InProgress match on 2-0 sweep from game log', function () {
+    $match = createResolveMatch(['state' => MatchState::InProgress]);
+    createResolveGame($match, ['started_at' => now()->subMinutes(30), 'won' => null]);
+    createResolveGame($match, ['started_at' => now()->subMinutes(15), 'won' => null]);
+
+    $entries = array_merge(
+        gameEntriesWin('2026-01-01T00:00'),
+        [['timestamp' => '2026-01-01T00:00:51Z', 'message' => '@PTestPlayer leads the match 1-0.']],
+        gameEntriesWin('2026-01-01T00:05'),
+        [['timestamp' => '2026-01-01T00:05:51Z', 'message' => '@PTestPlayer wins the match 2-0.']],
+    );
+
+    GameLog::create([
+        'match_token' => $match->token,
+        'file_path' => '/tmp/gamelog.dat',
+        'decoded_entries' => $entries,
+        'decoded_at' => now(),
+        'byte_offset' => 0,
+        'decoded_version' => 1,
+    ]);
+
+    ResolveGameResults::run();
+
+    $match->refresh();
+    expect($match->state)->toBe(MatchState::Complete);
+    expect($match->outcome)->toBe(MatchOutcome::Win);
+
+    $games = $match->games()->orderBy('started_at')->get();
+    expect($games[0]->won)->toBeTrue();
+    expect($games[1]->won)->toBeTrue();
+});
+
+it('does not complete InProgress match when game log has partial results', function () {
+    $match = createResolveMatch(['state' => MatchState::InProgress]);
+    createResolveGame($match, ['started_at' => now()->subMinutes(30), 'won' => null]);
+    createResolveGame($match, ['started_at' => now()->subMinutes(15), 'won' => null]);
+
+    // Only 1 game result, no match score — not decisive
+    GameLog::create([
+        'match_token' => $match->token,
+        'file_path' => '/tmp/gamelog.dat',
+        'decoded_entries' => gameEntriesWin(),
+        'decoded_at' => now(),
+        'byte_offset' => 0,
+        'decoded_version' => 1,
+    ]);
+
+    ResolveGameResults::run();
+
+    $match->refresh();
+    expect($match->state)->toBe(MatchState::InProgress);
+    // But game 1 result should still be updated
+    $games = $match->games()->orderBy('started_at')->get();
+    expect($games[0]->won)->toBeTrue();
+    expect($games[1]->won)->toBeNull();
 });
 
 it('skips matches without a GameLog', function () {
