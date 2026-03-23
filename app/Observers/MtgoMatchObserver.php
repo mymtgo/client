@@ -54,7 +54,7 @@ class MtgoMatchObserver
         AppNotification::dispatch(
             type: $won ? 'match_win' : 'match_loss',
             title: ($won ? 'Win' : 'Loss').' vs '.$opponentArchetype,
-            message: $match->games_won.'-'.$match->games_lost,
+            message: $match->gameRecord(),
             route: '/matches/'.$match->id,
         );
 

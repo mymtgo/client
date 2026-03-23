@@ -22,8 +22,6 @@ class ResolvePendingResults
             $outcome = MtgoMatch::determineOutcome($result['wins'], $result['losses']);
 
             $match->update([
-                'games_won' => $result['wins'],
-                'games_lost' => $result['losses'],
                 'outcome' => $outcome,
                 'state' => MatchState::Complete,
             ]);

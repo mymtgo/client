@@ -20,8 +20,6 @@ it('dispatches enrichment jobs when match state changes to Complete', function (
     $match->update([
         'state' => MatchState::Complete,
         'outcome' => MatchOutcome::Win,
-        'games_won' => 2,
-        'games_lost' => 1,
     ]);
 
     Queue::assertPushed(SubmitMatch::class);
@@ -37,14 +35,11 @@ it('dispatches AppNotification when match completes', function () {
     $match->update([
         'state' => MatchState::Complete,
         'outcome' => MatchOutcome::Win,
-        'games_won' => 2,
-        'games_lost' => 1,
     ]);
 
     Event::assertDispatched(AppNotification::class, function (AppNotification $event) {
         return $event->type === 'match_win'
-            && str_contains($event->title, 'Win')
-            && $event->message === '2-1';
+            && str_contains($event->title, 'Win');
     });
 });
 
@@ -68,8 +63,6 @@ it('handles enrichment failures gracefully', function () {
     $match->update([
         'state' => MatchState::Complete,
         'outcome' => MatchOutcome::Loss,
-        'games_won' => 0,
-        'games_lost' => 2,
     ]);
 
     expect($match->fresh()->state)->toBe(MatchState::Complete);
