@@ -22,8 +22,6 @@ class MtgoMatch extends Model
     protected $guarded = [];
 
     protected $casts = [
-        'games_won' => 'integer',
-        'games_lost' => 'integer',
         'started_at' => 'datetime',
         'ended_at' => 'datetime',
         'submitted_at' => 'datetime',
@@ -132,5 +130,48 @@ class MtgoMatch extends Model
     public function league(): BelongsTo
     {
         return $this->belongsTo(League::class);
+    }
+
+    public function scopeWon(Builder $query): Builder
+    {
+        return $query->where('outcome', MatchOutcome::Win);
+    }
+
+    public function scopeLost(Builder $query): Builder
+    {
+        return $query->where('outcome', MatchOutcome::Loss);
+    }
+
+    public function scopeWithGameCounts(Builder $query): Builder
+    {
+        return $query->withCount([
+            'games as games_won_count' => fn ($q) => $q->where('won', true),
+            'games as games_lost_count' => fn ($q) => $q->where('won', false),
+        ]);
+    }
+
+    public function isWin(): bool
+    {
+        return $this->outcome === MatchOutcome::Win;
+    }
+
+    public function isLoss(): bool
+    {
+        return $this->outcome === MatchOutcome::Loss;
+    }
+
+    public function gamesWon(): int
+    {
+        return $this->games_won_count ?? $this->games()->where('won', true)->count();
+    }
+
+    public function gamesLost(): int
+    {
+        return $this->games_lost_count ?? $this->games()->where('won', false)->count();
+    }
+
+    public function gameRecord(): string
+    {
+        return $this->gamesWon().'-'.$this->gamesLost();
     }
 }
