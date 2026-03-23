@@ -116,7 +116,19 @@ function setFilter(key: FilterKey, value: boolean) {
     saveFilters(typeFilters.value);
 }
 
-const activeFilterCount = computed(() => FILTER_CONFIG.filter((f) => !typeFilters.value[f.key]).length);
+const presentTypes = computed(() => {
+    const types = new Set<FilterKey>();
+    for (const stat of stats.value) {
+        if (stat.isSideboard) types.add('Sideboard');
+        const type = normalizeType(stat.type);
+        if (type !== 'Other') types.add(type as FilterKey);
+    }
+    return types;
+});
+
+const visibleFilters = computed(() => FILTER_CONFIG.filter((f) => presentTypes.value.has(f.key)));
+
+const activeFilterCount = computed(() => visibleFilters.value.filter((f) => !typeFilters.value[f.key]).length);
 
 function normalizeType(raw: string | null): string {
     if (!raw) return 'Other';
@@ -246,7 +258,7 @@ function winRateClass(pctVal: number | null): string {
                 <DropdownMenuContent align="end" class="w-48">
                     <DropdownMenuLabel class="text-xs">Filter by type</DropdownMenuLabel>
                     <DropdownMenuSeparator />
-                    <template v-for="filter in FILTER_CONFIG" :key="filter.key">
+                    <template v-for="filter in visibleFilters" :key="filter.key">
                         <DropdownMenuSeparator v-if="filter.key === 'Sideboard'" />
                         <DropdownMenuCheckboxItem
                             :modelValue="typeFilters[filter.key]"
