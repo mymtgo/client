@@ -3,9 +3,10 @@
 namespace App\Console\Commands;
 
 use App\Actions\Matches\DetermineMatchResult;
-use App\Actions\Matches\GetGameLog;
+use App\Actions\Matches\ExtractGameResults;
 use App\Enums\MatchState;
 use App\Facades\Mtgo;
+use App\Models\GameLog;
 use App\Models\LogEvent;
 use App\Models\MtgoMatch;
 use Illuminate\Console\Command;
@@ -67,7 +68,11 @@ class RepairCorruptMatches extends Command
 
             $localConceded = DetermineMatchResult::localPlayerConceded($stateChanges);
 
-            $gameLog = GetGameLog::run($match->token);
+            $storedLog = GameLog::where('match_token', $match->token)->first();
+            $gameLog = null;
+            if ($storedLog && ! empty($storedLog->decoded_entries)) {
+                $gameLog = ExtractGameResults::run($storedLog->decoded_entries, $localUsername);
+            }
 
             if ($gameLog === null) {
                 $rows[] = [$match->id, substr($match->token, 0, 8), "{$match->games_won}-{$match->games_lost}", '—', '—', '—', 'SKIP (no log)'];
