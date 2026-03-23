@@ -40,11 +40,9 @@ class ResolveGameResults
         // Progressive: update Game.won for each game
         static::syncGameResults($match, $extracted['results'] ?? []);
 
-        // Only determine final outcome for Ended matches
-        if ($match->state !== MatchState::Ended) {
-            return;
-        }
-
+        // Determine if the game log provides a decisive result.
+        // The game log binary is MTGO's authoritative record of results —
+        // it can drive match completion independently of main log state signals.
         $stateChanges = LogEvent::where('match_token', $match->token)
             ->where('event_type', 'match_state_changed')
             ->get();
@@ -60,21 +58,28 @@ class ResolveGameResults
         );
 
         if ($result['decided']) {
+            $previousState = $match->state;
             $outcome = MtgoMatch::determineOutcome($result['wins'], $result['losses']);
+
             $match->update([
                 'outcome' => $outcome,
                 'state' => MatchState::Complete,
+                'ended_at' => $match->state === MatchState::InProgress
+                    ? now()
+                    : $match->ended_at,
             ]);
-            Log::channel('pipeline')->info("Match {$match->mtgo_id}: Ended → Complete", [
+
+            Log::channel('pipeline')->info("Match {$match->mtgo_id}: {$previousState->value} → Complete", [
                 'result' => "{$result['wins']}-{$result['losses']}",
                 'outcome' => $outcome->value,
+                'source' => 'game_log',
             ]);
 
             return;
         }
 
-        // Grace period: 2 minutes past ended_at
-        if ($match->ended_at && $match->ended_at->lt(now()->subMinutes(2))) {
+        // Grace period: only for matches that reached Ended via main log signals
+        if ($match->state === MatchState::Ended && $match->ended_at?->lt(now()->subMinutes(2))) {
             $match->update(['state' => MatchState::PendingResult]);
             Log::channel('pipeline')->info("Match {$match->mtgo_id}: Ended → PendingResult");
         }
