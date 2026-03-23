@@ -315,6 +315,14 @@ function winRateClass(pctVal: number | null): string {
             </p>
         </div>
 
+        <div v-else-if="!filteredAndSortedStats.length" class="flex flex-col items-center gap-3 py-16 text-center">
+            <Filter class="size-10 text-muted-foreground/40" />
+            <p class="font-medium">All card types are hidden</p>
+            <p class="max-w-sm text-sm text-muted-foreground">
+                Enable some card types in the filter to view stats.
+            </p>
+        </div>
+
         <Card v-else class="gap-0 overflow-hidden p-0">
             <CardContent class="px-0">
                 <Table>
