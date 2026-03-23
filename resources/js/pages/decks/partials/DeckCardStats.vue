@@ -253,6 +253,9 @@ function winRateClass(pctVal: number | null): string {
                             @update:modelValue="(val: boolean) => setFilter(filter.key, val)"
                             @select.prevent
                         >
+                            <template #indicator-icon>
+                                <Check class="size-4 text-success" />
+                            </template>
                             <component :is="filter.icon" class="mr-2 size-3.5 text-muted-foreground" />
                             {{ filter.label }}
                         </DropdownMenuCheckboxItem>
