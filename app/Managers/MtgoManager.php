@@ -5,10 +5,14 @@ namespace App\Managers;
 use App\Actions\Logs\FindMtgoLogPath;
 use App\Actions\Logs\GetLogFilePaths;
 use App\Actions\Logs\IngestLog;
+use App\Actions\Logs\PruneProcessedLogEvents;
+use App\Actions\Matches\BuildMatches;
+use App\Actions\Matches\ResolveGameResults;
 use App\Actions\Matches\SyncLiveGameResults;
 use App\Actions\RegisterDevice;
 use App\Actions\Settings\ValidatePath;
 use App\Jobs\DownloadArchetypes;
+use App\Jobs\PollGameLogs;
 use App\Jobs\PopulateMissingCardData;
 use App\Jobs\ProcessLogEvents;
 use App\Jobs\StoreGameLogs;
@@ -216,33 +220,46 @@ class MtgoManager
 
     public function schedule(Schedule $schedule): void
     {
-        // Submit pending matches every minute — not gated by watcher state or path validity.
-        $schedule->call(
-            fn () => $this->retryUnsubmittedMatches()
-        )->everyMinute()->name('submit_matches')->withoutOverlapping(60);
+        // Core pipeline — independent subsystems, each guarded by canRun()
+        $schedule->call(fn () => $this->ingestLogs())
+            ->everyTwoSeconds()
+            ->name('ingest_logs');
 
-        $schedule->call(
-            fn () => $this->ingestGameLogs()
-        )->everyTenSeconds()->name('store_game_logs')->withoutOverlapping(10);
+        $schedule->call(function () {
+            if (! $this->canRun()) {
+                return;
+            }
+            PollGameLogs::dispatch();
+        })->everyTwoSeconds()->name('poll_game_logs')->withoutOverlapping(2);
 
-        $schedule->call(
-            fn () => $this->syncLiveGameResults()
-        )->everyFiveSeconds()->name('sync_live_results')->withoutOverlapping(5);
-        //
-        $schedule->call(
-            fn () => $this->ingestLogs()
-        )->everySecond()->name('ingest_logs');
+        $schedule->call(function () {
+            if (! $this->canRun()) {
+                return;
+            }
+            BuildMatches::run();
+        })->everyTwoSeconds()->name('build_matches')->withoutOverlapping(2);
 
-        $schedule->call(
-            fn () => $this->downloadArchetypes()
-        )->weekly();
+        $schedule->call(function () {
+            if (! $this->canRun()) {
+                return;
+            }
+            ResolveGameResults::run();
+        })->everyTwoSeconds()->name('resolve_game_results')->withoutOverlapping(2);
 
-        $schedule->call(
-            fn () => $this->populateMissingCardData()
-        )->hourly();
+        // Periodic maintenance
+        $schedule->call(fn () => $this->retryUnsubmittedMatches())
+            ->everyMinute()
+            ->name('submit_matches')
+            ->withoutOverlapping(60);
 
-        $schedule->call(
-            fn () => \App\Actions\Logs\PruneProcessedLogEvents::run()
-        )->daily()->name('prune_log_events');
+        $schedule->call(fn () => $this->downloadArchetypes())
+            ->weekly();
+
+        $schedule->call(fn () => $this->populateMissingCardData())
+            ->hourly();
+
+        $schedule->call(fn () => PruneProcessedLogEvents::run())
+            ->daily()
+            ->name('prune_log_events');
     }
 }

@@ -2,7 +2,6 @@
 
 namespace App\Actions\Logs;
 
-use App\Events\LogEventsIngested;
 use App\Models\Account;
 use App\Models\LogCursor;
 use App\Models\LogEvent;
@@ -171,9 +170,6 @@ class IngestLog
             $cursor->save();
         });
 
-        if ($hadNewEvents) {
-            LogEventsIngested::dispatch();
-        }
     }
 
     protected static function isNewEventLine(string $line): bool
