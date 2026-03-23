@@ -37,8 +37,8 @@ class GetActiveLeague
             ->reverse()
             ->values();
 
-        $wins = $matches->filter(fn ($m) => $m->games_won > $m->games_lost)->count();
-        $losses = $matches->filter(fn ($m) => $m->games_won <= $m->games_lost)->count();
+        $wins = $matches->filter(fn ($m) => $m->isWin())->count();
+        $losses = $matches->filter(fn ($m) => $m->isLoss())->count();
 
         $versionLabel = null;
         if ($league->deckVersion) {
@@ -57,7 +57,7 @@ class GetActiveLeague
             'deckName' => $league->deckVersion?->deck?->name ?? $matches->last()?->deck?->name,
             'versionLabel' => $versionLabel,
             'results' => $matches
-                ->map(fn ($m) => $m->games_won > $m->games_lost ? 'W' : 'L')
+                ->map(fn ($m) => $m->isWin() ? 'W' : 'L')
                 ->pad(5, null)
                 ->values()
                 ->toArray(),

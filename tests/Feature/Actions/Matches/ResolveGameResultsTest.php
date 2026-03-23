@@ -132,8 +132,6 @@ it('transitions Ended match to Complete when decided', function () {
     $match->refresh();
     expect($match->state)->toBe(MatchState::Complete);
     expect($match->outcome)->toBe(MatchOutcome::Win);
-    expect($match->games_won)->toBe(2);
-    expect($match->games_lost)->toBe(1);
 });
 
 it('transitions Ended match to PendingResult after grace period', function () {
@@ -217,6 +215,4 @@ it('is idempotent', function () {
 
     $match->refresh();
     expect($match->state)->toBe(MatchState::Complete);
-    expect($match->games_won)->toBe(2);
-    expect($match->games_lost)->toBe(1);
 });

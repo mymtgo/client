@@ -23,8 +23,6 @@ class MtgoMatchFactory extends Factory
             'match_type' => 'Constructed',
             'state' => MatchState::Complete,
             'outcome' => MatchOutcome::Win,
-            'games_won' => 2,
-            'games_lost' => 1,
             'started_at' => now(),
             'ended_at' => now()->addMinutes(30),
         ];
@@ -32,11 +30,11 @@ class MtgoMatchFactory extends Factory
 
     public function won(): static
     {
-        return $this->state(fn () => ['outcome' => MatchOutcome::Win, 'games_won' => 2, 'games_lost' => 1]);
+        return $this->state(fn () => ['outcome' => MatchOutcome::Win]);
     }
 
     public function lost(): static
     {
-        return $this->state(fn () => ['outcome' => MatchOutcome::Loss, 'games_won' => 1, 'games_lost' => 2]);
+        return $this->state(fn () => ['outcome' => MatchOutcome::Loss]);
     }
 }
