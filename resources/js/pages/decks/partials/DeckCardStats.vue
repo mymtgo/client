@@ -242,6 +242,7 @@ function winRateClass(pctVal: number | null): string {
                         <DropdownMenuCheckboxItem
                             :modelValue="typeFilters[filter.key]"
                             @update:modelValue="(val: boolean) => setFilter(filter.key, val)"
+                            @select.prevent
                         >
                             <component :is="filter.icon" class="mr-2 size-3.5 text-muted-foreground" />
                             {{ filter.label }}
