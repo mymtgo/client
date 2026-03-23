@@ -136,7 +136,7 @@ const streakIsLoss = computed(() => props.streak.current?.endsWith('L') ?? false
             <!-- Cell 5: Active League -->
             <div class="flex flex-col items-center gap-1 px-4 py-3">
                 <template v-if="activeLeague">
-                    <span v-if="activeLeague.deckName" class="max-w-full truncate text-xs font-medium" :title="activeLeague.deckName">
+                    <span v-if="activeLeague.deckName" class="max-w-full truncate text-sm font-semibold" :title="activeLeague.deckName">
                         {{ activeLeague.deckName }}
                     </span>
                     <span class="text-[10px] text-muted-foreground/60">{{ activeLeague.format }}</span>

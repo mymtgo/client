@@ -4,13 +4,14 @@ namespace App\Actions\Dashboard;
 
 use App\Models\Account;
 use App\Models\MtgoMatch;
+use Carbon\Carbon;
 
 class GetFormatChart
 {
     /**
-     * Build the 6-month format winrate chart data for the dashboard.
+     * Build the daily format winrate chart data for the dashboard.
      */
-    public static function run(): array
+    public static function run(Carbon $start, Carbon $end): array
     {
         $accountId = Account::active()->value('id');
 
@@ -18,31 +19,40 @@ class GetFormatChart
             ->when($accountId, fn ($q, $id) => $q
                 ->whereHas('deckVersion', fn ($q2) => $q2->whereHas('deck', fn ($q3) => $q3->where('account_id', $id)))
             )
-            ->selectRaw("strftime('%Y-%m', started_at) as month, format, SUM(CASE WHEN outcome = 'win' THEN 1 ELSE 0 END) as wins, COUNT(*) as total")
-            ->where('started_at', '>=', now()->subMonths(6)->startOfMonth())
-            ->groupBy('month', 'format')
+            ->selectRaw("strftime('%Y-%m-%d', started_at) as day, format, SUM(CASE WHEN outcome = 'win' THEN 1 ELSE 0 END) as wins, COUNT(*) as total")
+            ->whereBetween('started_at', [$start, $end])
+            ->groupBy('day', 'format')
             ->get()
             ->map(fn ($r) => [
-                'month' => $r->month,
+                'day' => $r->day,
                 'format' => MtgoMatch::displayFormat($r->format),
                 'winrate' => round($r->wins / $r->total * 100),
             ]);
 
-        $monthDates = collect(range(5, 0))->map(fn ($i) => now()->subMonths($i)->startOfMonth());
-        $months = $monthDates->map(fn ($m) => $m->format('M'))->values()->toArray();
-        $monthKeys = $monthDates->map(fn ($m) => $m->format('Y-m'))->values()->toArray();
+        // Build day labels for the full range
+        $dayDates = collect();
+        $current = $start->copy()->startOfDay();
+        $endDay = $end->copy()->startOfDay();
+
+        while ($current->lte($endDay)) {
+            $dayDates->push($current->copy());
+            $current->addDay();
+        }
+
+        $labels = $dayDates->map(fn ($d) => $d->format('M j'))->values()->toArray();
+        $dayKeys = $dayDates->map(fn ($d) => $d->format('Y-m-d'))->values()->toArray();
         $formats = $rows->pluck('format')->unique()->values()->toArray();
 
-        $data = collect($monthKeys)->map(function ($monthKey, $x) use ($rows, $formats) {
+        $data = collect($dayKeys)->map(function ($dayKey, $x) use ($rows, $formats) {
             $point = ['x' => $x];
             foreach ($formats as $format) {
-                $row = $rows->first(fn ($r) => $r['month'] === $monthKey && $r['format'] === $format);
+                $row = $rows->first(fn ($r) => $r['day'] === $dayKey && $r['format'] === $format);
                 $point[$format] = $row ? $row['winrate'] : null;
             }
 
             return $point;
         })->values()->toArray();
 
-        return compact('months', 'formats', 'data');
+        return ['labels' => $labels, 'formats' => $formats, 'data' => $data];
     }
 }

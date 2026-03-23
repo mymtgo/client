@@ -71,7 +71,7 @@ class IndexController extends Controller
             'deckStats' => $deckStats,
             'timeframe' => $timeframe,
             'activeLeague' => GetActiveLeague::run(),
-            'formatChart' => GetFormatChart::run(),
+            'formatChart' => GetFormatChart::run($start, $end),
             'streak' => GetStreak::run($accountId, $start, $end),
             'matchWinrateDelta' => GetWinrateDelta::run($accountId, $start, $end, $timeframe)['matchDelta'],
             'gameWinrateDelta' => GetWinrateDelta::run($accountId, $start, $end, $timeframe)['gameDelta'],
