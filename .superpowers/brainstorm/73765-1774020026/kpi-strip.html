@@ -1,0 +1,102 @@
+<h2>Section 1: KPI Strip</h2>
+<p class="subtitle">The compact top bar — your at-a-glance status. Does this feel right?</p>
+
+<div class="mockup">
+  <div class="mockup-header">KPI Strip — Top of Dashboard</div>
+  <div class="mockup-body" style="padding: 0;">
+    <!-- KPI Strip mockup -->
+    <div style="display: flex; align-items: stretch; background: linear-gradient(135deg, rgba(30,30,40,0.8), rgba(20,20,30,0.9)); border-radius: 8px; overflow: hidden;">
+
+      <!-- Streak -->
+      <div style="flex: 1; padding: 16px 20px; border-right: 1px solid rgba(255,255,255,0.06);">
+        <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #888; margin-bottom: 6px;">Current Streak</div>
+        <div style="display: flex; align-items: baseline; gap: 6px;">
+          <span style="font-size: 28px; font-weight: 700; color: #4ade80; font-variant-numeric: tabular-nums;">5W</span>
+          <span style="font-size: 12px; color: #666;">best: 8W</span>
+        </div>
+      </div>
+
+      <!-- Match Winrate -->
+      <div style="flex: 1; padding: 16px 20px; border-right: 1px solid rgba(255,255,255,0.06);">
+        <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #888; margin-bottom: 6px;">Match Win Rate</div>
+        <div style="display: flex; align-items: baseline; gap: 6px;">
+          <span style="font-size: 28px; font-weight: 700; color: #4ade80; font-variant-numeric: tabular-nums;">62%</span>
+          <span style="font-size: 12px; color: #4ade80;">▲ 4%</span>
+        </div>
+        <div style="font-size: 12px; color: #666; margin-top: 2px;">128W – 78L</div>
+      </div>
+
+      <!-- Game Winrate -->
+      <div style="flex: 1; padding: 16px 20px; border-right: 1px solid rgba(255,255,255,0.06);">
+        <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #888; margin-bottom: 6px;">Game Win Rate</div>
+        <div style="display: flex; align-items: baseline; gap: 6px;">
+          <span style="font-size: 28px; font-weight: 700; color: #e2e8f0; font-variant-numeric: tabular-nums;">58%</span>
+          <span style="font-size: 12px; color: #f87171;">▼ 2%</span>
+        </div>
+        <div style="font-size: 12px; color: #666; margin-top: 2px;">312W – 225G</div>
+      </div>
+
+      <!-- Play/Draw -->
+      <div style="flex: 1; padding: 16px 20px; border-right: 1px solid rgba(255,255,255,0.06);">
+        <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #888; margin-bottom: 6px;">Play / Draw</div>
+        <div style="display: flex; align-items: baseline; gap: 8px;">
+          <div>
+            <span style="font-size: 20px; font-weight: 700; color: #60a5fa; font-variant-numeric: tabular-nums;">64%</span>
+            <span style="font-size: 11px; color: #666;"> OTP</span>
+          </div>
+          <span style="color: #444;">/</span>
+          <div>
+            <span style="font-size: 20px; font-weight: 700; color: #a78bfa; font-variant-numeric: tabular-nums;">53%</span>
+            <span style="font-size: 11px; color: #666;"> OTD</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Active League -->
+      <div style="flex: 1.2; padding: 16px 20px;">
+        <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #888; margin-bottom: 6px;">Active League</div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 14px; font-weight: 600; color: #e2e8f0;">Modern League</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 6px; margin-top: 6px;">
+          <div style="width: 14px; height: 14px; border-radius: 3px; background: #4ade80;"></div>
+          <div style="width: 14px; height: 14px; border-radius: 3px; background: #4ade80;"></div>
+          <div style="width: 14px; height: 14px; border-radius: 3px; background: #f87171;"></div>
+          <div style="width: 14px; height: 14px; border-radius: 3px; background: #4ade80;"></div>
+          <div style="width: 14px; height: 14px; border-radius: 3px; background: rgba(255,255,255,0.08);"></div>
+          <span style="font-size: 13px; font-weight: 600; color: #e2e8f0; margin-left: 4px;">3-1</span>
+          <span style="font-size: 11px; color: #666;">(1 remaining)</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div style="margin-top: 24px;">
+  <h3>What's in the strip:</h3>
+  <ul style="color: #aaa; line-height: 2;">
+    <li><strong>Current Streak</strong> — with all-time best streak for context</li>
+    <li><strong>Match Win Rate</strong> — with trend arrow vs. previous period + W-L record</li>
+    <li><strong>Game Win Rate</strong> — same treatment</li>
+    <li><strong>Play/Draw Split</strong> — OTP vs OTD winrates (new!)</li>
+    <li><strong>Active League</strong> — condensed result pips + record (or "No active league" state)</li>
+  </ul>
+  <p style="color: #888; font-size: 13px; margin-top: 12px;">The trend arrows compare the selected timeframe to the previous equivalent period (e.g., this week vs last week).</p>
+</div>
+
+<div class="options" style="margin-top: 24px;">
+  <div class="option" data-choice="approve" onclick="toggleSelect(this)">
+    <div class="letter">✓</div>
+    <div class="content">
+      <h3>Looks good, next section</h3>
+    </div>
+  </div>
+  <div class="option" data-choice="tweak" onclick="toggleSelect(this)">
+    <div class="letter">~</div>
+    <div class="content">
+      <h3>Needs tweaking</h3>
+      <p>Tell me what to change in the terminal</p>
+    </div>
+  </div>
+</div>

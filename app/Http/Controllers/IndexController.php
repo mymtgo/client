@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Actions\Dashboard\GetDashboardLeagueDistribution;
 use App\Actions\Dashboard\GetDashboardMatchupSpread;
-use App\Actions\Dashboard\GetFormatChart;
 use App\Actions\Dashboard\GetLastSession;
 use App\Actions\Dashboard\GetPlayDrawSplit;
 use App\Actions\Dashboard\GetRollingForm;
@@ -71,7 +70,6 @@ class IndexController extends Controller
             'deckStats' => $deckStats,
             'timeframe' => $timeframe,
             'activeLeague' => GetActiveLeague::run(),
-            'formatChart' => GetFormatChart::run($start, $end),
             'streak' => GetStreak::run($accountId, $start, $end),
             'matchWinrateDelta' => GetWinrateDelta::run($accountId, $start, $end, $timeframe)['matchDelta'],
             'gameWinrateDelta' => GetWinrateDelta::run($accountId, $start, $end, $timeframe)['gameDelta'],
