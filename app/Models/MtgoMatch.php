@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\MatchOutcome;
 use App\Enums\MatchState;
 use App\Observers\MtgoMatchObserver;
 use Carbon\CarbonInterface;
@@ -27,6 +28,7 @@ class MtgoMatch extends Model
         'ended_at' => 'datetime',
         'submitted_at' => 'datetime',
         'state' => MatchState::class,
+        'outcome' => MatchOutcome::class,
     ];
 
     public function getTable()
@@ -85,6 +87,23 @@ class MtgoMatch extends Model
     public function scopeIncomplete(Builder $query): Builder
     {
         return $query->whereNotIn('state', [MatchState::Complete, MatchState::Voided]);
+    }
+
+    public static function determineOutcome(int $wins, int $losses): MatchOutcome
+    {
+        if ($wins > $losses) {
+            return MatchOutcome::Win;
+        }
+
+        if ($losses > $wins) {
+            return MatchOutcome::Loss;
+        }
+
+        if ($wins > 0 && $wins === $losses) {
+            return MatchOutcome::Draw;
+        }
+
+        return MatchOutcome::Unknown;
     }
 
     public static function displayFormat(string $format): string
