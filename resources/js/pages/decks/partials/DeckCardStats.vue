@@ -104,8 +104,8 @@ function saveFilters(filters: Record<FilterKey, boolean>) {
 
 const typeFilters = ref<Record<FilterKey, boolean>>(loadFilters());
 
-function toggleFilter(key: FilterKey) {
-    typeFilters.value[key] = !typeFilters.value[key];
+function setFilter(key: FilterKey, value: boolean) {
+    typeFilters.value[key] = value;
     saveFilters(typeFilters.value);
 }
 
@@ -224,15 +224,14 @@ function winRateClass(pctVal: number | null): string {
 
             <DropdownMenu>
                 <DropdownMenuTrigger as-child>
-                    <Button variant="outline" size="sm" class="h-8 gap-1.5 text-xs">
+                    <Button
+                        :variant="activeFilterCount > 0 ? 'default' : 'outline'"
+                        size="sm"
+                        class="h-8 gap-1.5 text-xs"
+                    >
                         <Filter class="size-3.5" />
-                        Card types
-                        <span
-                            v-if="activeFilterCount > 0"
-                            class="bg-primary text-primary-foreground flex size-4 items-center justify-center rounded-full text-[10px] font-medium"
-                        >
-                            {{ activeFilterCount }}
-                        </span>
+                        <span v-if="activeFilterCount > 0">{{ activeFilterCount }} hidden</span>
+                        <span v-else>Card types</span>
                     </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" class="w-48">
@@ -240,7 +239,10 @@ function winRateClass(pctVal: number | null): string {
                     <DropdownMenuSeparator />
                     <template v-for="filter in FILTER_CONFIG" :key="filter.key">
                         <DropdownMenuSeparator v-if="filter.key === 'Sideboard'" />
-                        <DropdownMenuCheckboxItem :checked="typeFilters[filter.key]" @update:checked="toggleFilter(filter.key)">
+                        <DropdownMenuCheckboxItem
+                            :checked="typeFilters[filter.key]"
+                            @update:checked="(val: boolean) => setFilter(filter.key, val)"
+                        >
                             <component :is="filter.icon" class="mr-2 size-3.5 text-muted-foreground" />
                             {{ filter.label }}
                         </DropdownMenuCheckboxItem>
