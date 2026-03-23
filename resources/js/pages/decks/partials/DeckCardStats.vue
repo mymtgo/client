@@ -240,8 +240,8 @@ function winRateClass(pctVal: number | null): string {
                     <template v-for="filter in FILTER_CONFIG" :key="filter.key">
                         <DropdownMenuSeparator v-if="filter.key === 'Sideboard'" />
                         <DropdownMenuCheckboxItem
-                            :checked="typeFilters[filter.key]"
-                            @update:checked="(val: boolean) => setFilter(filter.key, val)"
+                            :modelValue="typeFilters[filter.key]"
+                            @update:modelValue="(val: boolean) => setFilter(filter.key, val)"
                         >
                             <component :is="filter.icon" class="mr-2 size-3.5 text-muted-foreground" />
                             {{ filter.label }}
