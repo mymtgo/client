@@ -32,7 +32,7 @@ it('does nothing when no PendingResult matches exist', function () {
 
 it('finds result by mtgo_id from game history', function () {
     // Test ParseMatchHistory directly with real fixture data
-    $historyPath = storage_path('app/91F5DC46A0AFBF283E8FD4E9E184F175/mtgo_game_history');
+    $historyPath = base_path('tests/fixtures/mtgo_game_history');
 
     if (! file_exists($historyPath)) {
         $this->markTestSkipped('mtgo_game_history fixture not available');
@@ -47,7 +47,7 @@ it('finds result by mtgo_id from game history', function () {
 });
 
 it('returns null for unknown match id', function () {
-    $historyPath = storage_path('app/91F5DC46A0AFBF283E8FD4E9E184F175/mtgo_game_history');
+    $historyPath = base_path('tests/fixtures/mtgo_game_history');
 
     if (! file_exists($historyPath)) {
         $this->markTestSkipped('mtgo_game_history fixture not available');
