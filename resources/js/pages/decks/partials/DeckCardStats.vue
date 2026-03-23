@@ -90,12 +90,19 @@ const FILTER_CONFIG: { key: FilterKey; label: string; icon: Component }[] = [
 
 const STORAGE_KEY = 'cardStatsTypeFilters';
 
+const ALL_ENABLED = Object.fromEntries(FILTER_CONFIG.map((f) => [f.key, true])) as Record<FilterKey, boolean>;
+
 function loadFilters(): Record<FilterKey, boolean> {
     try {
         const stored = localStorage.getItem(STORAGE_KEY);
-        if (stored) return JSON.parse(stored);
+        if (stored) {
+            const parsed = JSON.parse(stored);
+            // Validate: must have all keys and at least one type enabled
+            const hasAllKeys = FILTER_CONFIG.every((f) => f.key in parsed);
+            if (hasAllKeys) return parsed;
+        }
     } catch {}
-    return Object.fromEntries(FILTER_CONFIG.map((f) => [f.key, true])) as Record<FilterKey, boolean>;
+    return { ...ALL_ENABLED };
 }
 
 function saveFilters(filters: Record<FilterKey, boolean>) {
@@ -123,10 +130,12 @@ function normalizeType(raw: string | null): string {
 function passesFilter(stat: CardStat): boolean {
     const type = normalizeType(stat.type);
 
-    // Sideboard filter
-    if (stat.isSideboard && !typeFilters.value.Sideboard) return false;
+    if (stat.isSideboard) {
+        // Sideboard cards are controlled by the Sideboard toggle only
+        return typeFilters.value.Sideboard;
+    }
 
-    // Type filter — 'Other' types always show (no dedicated filter)
+    // Mainboard: filter by type — 'Other' types always show (no dedicated filter)
     if (type !== 'Other' && !typeFilters.value[type as FilterKey]) return false;
 
     return true;
