@@ -5,19 +5,31 @@ namespace App\Actions\Matches;
 class ParseMatchHistory
 {
     /**
-     * Attempt to find match results from MTGO's match_history file.
+     * Attempt to find match results from MTGO's mtgo_game_history file.
+     *
+     * Looks up a match by its MTGO ID in the parsed history records.
      *
      * @return array{wins: int, losses: int}|null Returns null if not found or file unavailable
-     *
-     * @todo Implement when match_history file format is documented.
-     *       This is a placeholder — the file format needs investigation
-     *       with real MTGO data samples before implementation.
      */
-    public static function findResult(string $matchToken): ?array
+    public static function findResult(string $mtgoId, ?string $path = null): ?array
     {
-        // TODO: Implement match_history file parsing
-        // For now, gracefully return null — matches stay in PendingResult
-        // until manually resolved or this parser is implemented.
-        return null;
+        $history = ParseGameHistory::run($path);
+
+        if (empty($history)) {
+            return null;
+        }
+
+        $match = collect($history)->first(
+            fn (array $record) => (string) ($record['Id'] ?? '') === $mtgoId
+        );
+
+        if ($match === null) {
+            return null;
+        }
+
+        return [
+            'wins' => (int) ($match['GameWins'] ?? 0),
+            'losses' => (int) ($match['GameLosses'] ?? 0),
+        ];
     }
 }

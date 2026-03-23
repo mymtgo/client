@@ -13,7 +13,7 @@ class ResolvePendingResults
         $pending = MtgoMatch::where('state', MatchState::PendingResult)->get();
 
         foreach ($pending as $match) {
-            $result = ParseMatchHistory::findResult($match->token);
+            $result = ParseMatchHistory::findResult($match->mtgo_id);
 
             if ($result === null) {
                 continue;
