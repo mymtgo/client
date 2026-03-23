@@ -2,13 +2,69 @@
 
 namespace App\Observers;
 
+use App\Actions\DetermineMatchArchetypes;
+use App\Enums\LeagueState;
+use App\Enums\MatchOutcome;
+use App\Enums\MatchState;
+use App\Events\AppNotification;
+use App\Jobs\ComputeCardGameStats;
+use App\Jobs\SubmitMatch;
 use App\Models\Game;
 use App\Models\LogEvent;
 use App\Models\MtgoMatch;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class MtgoMatchObserver
 {
+    /**
+     * Trigger enrichment when a match transitions to Complete.
+     */
+    public function updated(MtgoMatch $match): void
+    {
+        if (! $match->isDirty('state') || $match->state !== MatchState::Complete) {
+            return;
+        }
+
+        // Each enrichment is independent — failure in one doesn't block others
+        try {
+            DetermineMatchArchetypes::run($match);
+        } catch (\Throwable $e) {
+            Log::warning("Enrichment failed: archetypes for match {$match->id}: {$e->getMessage()}");
+        }
+
+        try {
+            SubmitMatch::dispatch($match->id);
+        } catch (\Throwable $e) {
+            Log::warning("Enrichment failed: submit for match {$match->id}: {$e->getMessage()}");
+        }
+
+        try {
+            ComputeCardGameStats::dispatch($match->id);
+        } catch (\Throwable $e) {
+            Log::warning("Enrichment failed: card stats for match {$match->id}: {$e->getMessage()}");
+        }
+
+        // Notification
+        $won = $match->outcome === MatchOutcome::Win;
+        $opponentArchetype = $match->opponentArchetypes()
+            ->with('archetype')
+            ->first()?->archetype?->name ?? 'Unknown';
+
+        AppNotification::dispatch(
+            type: $won ? 'match_win' : 'match_loss',
+            title: ($won ? 'Win' : 'Loss').' vs '.$opponentArchetype,
+            message: $match->games_won.'-'.$match->games_lost,
+            route: '/matches/'.$match->id,
+        );
+
+        // League completion check
+        if (($league = $match->league) && $league->state === LeagueState::Active
+            && $league->matches()->where('state', MatchState::Complete)->count() >= 5) {
+            $league->update(['state' => LeagueState::Complete]);
+        }
+    }
+
     /**
      * Clean up all related records when a match is permanently deleted.
      */
