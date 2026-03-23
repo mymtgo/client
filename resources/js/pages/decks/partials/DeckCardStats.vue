@@ -1,11 +1,35 @@
 <script setup lang="ts">
+import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import {
+    DropdownMenu,
+    DropdownMenuCheckboxItem,
+    DropdownMenuContent,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Deferred, router } from '@inertiajs/vue3';
-import { BarChart3, ChevronDown, ChevronUp, ChevronsUpDown } from 'lucide-vue-next';
-import { computed, ref } from 'vue';
+import {
+    BarChart3,
+    Check,
+    ChevronDown,
+    ChevronUp,
+    ChevronsUpDown,
+    Filter,
+    Flame,
+    Gem,
+    HandFist,
+    MountainSnow,
+    Origami,
+    PanelRightOpen,
+    ScrollText,
+    Zap,
+} from 'lucide-vue-next';
+import { computed, ref, type Component } from 'vue';
 
 type CardStat = {
     name: string;
@@ -13,6 +37,7 @@ type CardStat = {
     colorIdentity: string | null;
     type: string | null;
     image: string | null;
+    isSideboard: boolean;
     totalGames: number;
     totalPossible: number;
     totalKept: number;
@@ -48,6 +73,67 @@ function filterByArchetype(value: string) {
     });
 }
 
+// ── Type filter ──────────────────────────────────────────────────────────────
+
+type FilterKey = 'Creature' | 'Instant' | 'Sorcery' | 'Land' | 'Artifact' | 'Enchantment' | 'Planeswalker' | 'Sideboard';
+
+const FILTER_CONFIG: { key: FilterKey; label: string; icon: Component }[] = [
+    { key: 'Creature', label: 'Creatures', icon: Origami },
+    { key: 'Instant', label: 'Instants', icon: Zap },
+    { key: 'Sorcery', label: 'Sorceries', icon: Flame },
+    { key: 'Enchantment', label: 'Enchantments', icon: ScrollText },
+    { key: 'Artifact', label: 'Artifacts', icon: Gem },
+    { key: 'Land', label: 'Lands', icon: MountainSnow },
+    { key: 'Planeswalker', label: 'Planeswalkers', icon: HandFist },
+    { key: 'Sideboard', label: 'Sideboard', icon: PanelRightOpen },
+];
+
+const STORAGE_KEY = 'cardStatsTypeFilters';
+
+function loadFilters(): Record<FilterKey, boolean> {
+    try {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (stored) return JSON.parse(stored);
+    } catch {}
+    return Object.fromEntries(FILTER_CONFIG.map((f) => [f.key, true])) as Record<FilterKey, boolean>;
+}
+
+function saveFilters(filters: Record<FilterKey, boolean>) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(filters));
+}
+
+const typeFilters = ref<Record<FilterKey, boolean>>(loadFilters());
+
+function toggleFilter(key: FilterKey) {
+    typeFilters.value[key] = !typeFilters.value[key];
+    saveFilters(typeFilters.value);
+}
+
+const activeFilterCount = computed(() => FILTER_CONFIG.filter((f) => !typeFilters.value[f.key]).length);
+
+function normalizeType(raw: string | null): string {
+    if (!raw) return 'Other';
+    const canonical: FilterKey[] = ['Creature', 'Planeswalker', 'Instant', 'Sorcery', 'Enchantment', 'Artifact', 'Land'];
+    for (const type of canonical) {
+        if (raw.includes(type)) return type;
+    }
+    return 'Other';
+}
+
+function passesFilter(stat: CardStat): boolean {
+    const type = normalizeType(stat.type);
+
+    // Sideboard filter
+    if (stat.isSideboard && !typeFilters.value.Sideboard) return false;
+
+    // Type filter — 'Other' types always show (no dedicated filter)
+    if (type !== 'Other' && !typeFilters.value[type as FilterKey]) return false;
+
+    return true;
+}
+
+// ── Sorting ──────────────────────────────────────────────────────────────────
+
 type SortKey = 'name' | 'keptPct' | 'keptWinPct' | 'seenPct' | 'seenWinPct' | 'sbOutPct' | 'games';
 const sortBy = ref<SortKey>('name');
 const sortDesc = ref(false);
@@ -67,19 +153,26 @@ function toggleSort(key: SortKey) {
 
 function sortValue(stat: CardStat, key: SortKey): number | string {
     switch (key) {
-        case 'name': return stat.name;
-        case 'keptPct': return pct(stat.totalKept, stat.totalPossible) ?? -1;
-        case 'keptWinPct': return pct(stat.keptWon, stat.keptWon + stat.keptLost) ?? -1;
-        case 'seenPct': return pct(stat.totalSeen, stat.totalPossible) ?? -1;
-        case 'seenWinPct': return pct(stat.seenWon, stat.seenWon + stat.seenLost) ?? -1;
-        case 'sbOutPct': return pct(stat.sidedOutGames, stat.postboardGames) ?? -1;
-        case 'games': return stat.totalGames;
+        case 'name':
+            return stat.name;
+        case 'keptPct':
+            return pct(stat.totalKept, stat.totalPossible) ?? -1;
+        case 'keptWinPct':
+            return pct(stat.keptWon, stat.keptWon + stat.keptLost) ?? -1;
+        case 'seenPct':
+            return pct(stat.totalSeen, stat.totalPossible) ?? -1;
+        case 'seenWinPct':
+            return pct(stat.seenWon, stat.seenWon + stat.seenLost) ?? -1;
+        case 'sbOutPct':
+            return pct(stat.sidedOutGames, stat.postboardGames) ?? -1;
+        case 'games':
+            return stat.totalGames;
     }
 }
 
-const sortedStats = computed(() => {
-    if (!stats.value.length) return [];
-    return [...stats.value].sort((a, b) => {
+const filteredAndSortedStats = computed(() => {
+    const filtered = stats.value.filter(passesFilter);
+    return [...filtered].sort((a, b) => {
         const aVal = sortValue(a, sortBy.value);
         const bVal = sortValue(b, sortBy.value);
         const cmp = aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
@@ -113,19 +206,47 @@ function winRateClass(pctVal: number | null): string {
             </Card>
         </template>
 
-        <div v-if="archetypes.length" class="mb-4 flex items-center gap-2">
-            <span class="text-xs text-muted-foreground">Opponent archetype:</span>
-            <Select :modelValue="selectedArchetype" @update:modelValue="filterByArchetype">
-                <SelectTrigger class="h-8 w-48 text-xs">
-                    <SelectValue placeholder="All archetypes" />
-                </SelectTrigger>
-                <SelectContent>
-                    <SelectItem value="__all__">All archetypes</SelectItem>
-                    <SelectItem v-for="arch in archetypes" :key="arch.id" :value="String(arch.id)">
-                        {{ arch.name }}
-                    </SelectItem>
-                </SelectContent>
-            </Select>
+        <div v-if="archetypes.length || stats.length" class="mb-4 flex items-center justify-between">
+            <div v-if="archetypes.length" class="flex items-center gap-2">
+                <span class="text-xs text-muted-foreground">Opponent archetype:</span>
+                <Select :modelValue="selectedArchetype" @update:modelValue="filterByArchetype">
+                    <SelectTrigger class="h-8 w-48 text-xs">
+                        <SelectValue placeholder="All archetypes" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="__all__">All archetypes</SelectItem>
+                        <SelectItem v-for="arch in archetypes" :key="arch.id" :value="String(arch.id)">
+                            {{ arch.name }}
+                        </SelectItem>
+                    </SelectContent>
+                </Select>
+            </div>
+
+            <DropdownMenu>
+                <DropdownMenuTrigger as-child>
+                    <Button variant="outline" size="sm" class="h-8 gap-1.5 text-xs">
+                        <Filter class="size-3.5" />
+                        Card types
+                        <span
+                            v-if="activeFilterCount > 0"
+                            class="bg-primary text-primary-foreground flex size-4 items-center justify-center rounded-full text-[10px] font-medium"
+                        >
+                            {{ activeFilterCount }}
+                        </span>
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" class="w-48">
+                    <DropdownMenuLabel class="text-xs">Filter by type</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <template v-for="filter in FILTER_CONFIG" :key="filter.key">
+                        <DropdownMenuSeparator v-if="filter.key === 'Sideboard'" />
+                        <DropdownMenuCheckboxItem :checked="typeFilters[filter.key]" @update:checked="toggleFilter(filter.key)">
+                            <component :is="filter.icon" class="mr-2 size-3.5 text-muted-foreground" />
+                            {{ filter.label }}
+                        </DropdownMenuCheckboxItem>
+                    </template>
+                </DropdownMenuContent>
+            </DropdownMenu>
         </div>
 
         <div v-if="!stats.length" class="flex flex-col items-center gap-3 py-16 text-center">
@@ -145,6 +266,7 @@ function winRateClass(pctVal: number | null): string {
                                 <span class="inline-flex items-center gap-1">Card <component :is="sortIcon('name')" class="size-3" /></span>
                             </TableHead>
                             <TableHead>Type</TableHead>
+                            <TableHead class="w-10 text-center">SB</TableHead>
                             <TableHead class="cursor-pointer select-none text-right" @click="toggleSort('keptPct')">
                                 <span class="inline-flex items-center justify-end gap-1">Kept % <component :is="sortIcon('keptPct')" class="size-3" /></span>
                             </TableHead>
@@ -166,9 +288,12 @@ function winRateClass(pctVal: number | null): string {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        <TableRow v-for="stat in sortedStats" :key="stat.oracleId">
+                        <TableRow v-for="stat in filteredAndSortedStats" :key="stat.oracleId">
                             <TableCell class="font-medium">{{ stat.name ?? 'Unknown' }}</TableCell>
                             <TableCell class="text-muted-foreground">{{ stat.type ?? '—' }}</TableCell>
+                            <TableCell class="text-center">
+                                <Check v-if="stat.isSideboard" class="mx-auto size-3.5 text-muted-foreground" />
+                            </TableCell>
                             <TableCell class="text-right tabular-nums">
                                 <span v-if="pct(stat.totalKept, stat.totalPossible) !== null">
                                     {{ pct(stat.totalKept, stat.totalPossible) }}%
