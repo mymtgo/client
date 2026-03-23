@@ -172,8 +172,8 @@ function copyScreenshot() {
                 </Table>
         </div>
 
-        <div style="position: fixed; top: 0; left: 0; opacity: 0; pointer-events: none; z-index: -1;">
-            <LeagueScreenshot ref="screenshotRef" :league="league" />
-        </div>
     </Card>
+    <div style="position: fixed; top: -9999px; left: -9999px; pointer-events: none;">
+        <LeagueScreenshot ref="screenshotRef" :league="league" />
+    </div>
 </template>
