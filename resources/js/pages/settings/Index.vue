@@ -32,7 +32,7 @@ const props = defineProps<{
     logPathStatus: { valid: boolean; fileCount: number; message: string };
     dataPathStatus: { valid: boolean; fileCount: number; message: string };
     hidePhantomLeagues: boolean;
-    pendingMatches: Array<{ id: number; format: string; games_won: number; games_lost: number; started_at: string }>;
+    pendingMatches: Array<{ id: number; format: string; outcome: string | null; started_at: string }>;
     accounts: Array<{ id: number; username: string; tracked: boolean; active: boolean }>;
     leagueWindowEnabled: boolean;
     opponentWindowEnabled: boolean;

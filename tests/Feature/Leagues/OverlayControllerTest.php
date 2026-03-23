@@ -33,8 +33,6 @@ it('renders overlay with active league data', function () {
         'match_type' => 'League',
         'state' => MatchState::Complete,
         'outcome' => 'win',
-        'games_won' => 2,
-        'games_lost' => 1,
         'started_at' => now(),
         'ended_at' => now(),
     ]);
@@ -47,8 +45,6 @@ it('renders overlay with active league data', function () {
         'match_type' => 'League',
         'state' => MatchState::Complete,
         'outcome' => 'loss',
-        'games_won' => 1,
-        'games_lost' => 2,
         'started_at' => now(),
         'ended_at' => now(),
     ]);
@@ -81,8 +77,6 @@ it('detects an active match in the league', function () {
         'format' => 'Modern',
         'match_type' => 'League',
         'state' => MatchState::InProgress,
-        'games_won' => 0,
-        'games_lost' => 0,
         'started_at' => now(),
         'ended_at' => now(),
     ]);
@@ -112,8 +106,6 @@ it('includes game results for the active match', function () {
         'format' => 'Modern',
         'match_type' => 'League',
         'state' => MatchState::InProgress,
-        'games_won' => 1,
-        'games_lost' => 0,
         'started_at' => now(),
         'ended_at' => now(),
     ]);
@@ -165,8 +157,7 @@ it('excludes completed leagues with 5 matches', function () {
             'format' => 'Modern',
             'match_type' => 'League',
             'state' => MatchState::Complete,
-            'games_won' => 2,
-            'games_lost' => 1,
+            'outcome' => 'win',
             'started_at' => now(),
             'ended_at' => now(),
         ]);

@@ -90,8 +90,7 @@ it('does not regress completed matches', function () {
         'started_at' => now()->subHour(),
         'ended_at' => now(),
         'state' => MatchState::Complete,
-        'games_won' => 2,
-        'games_lost' => 0,
+        'outcome' => 'win',
     ]);
 
     txnLogEvent([
@@ -105,8 +104,6 @@ it('does not regress completed matches', function () {
     $result = AdvanceMatchState::run($match->token, $match->mtgo_id);
 
     expect($result->state)->toBe(MatchState::Complete);
-    expect($result->games_won)->toBe(2);
-    expect($result->games_lost)->toBe(0);
 });
 
 it('handles concurrent match advancement without duplicates', function () {

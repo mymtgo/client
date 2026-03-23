@@ -35,12 +35,12 @@ class Deck extends Model
 
     public function lostMatches(): HasManyThrough
     {
-        return $this->matches()->whereRaw('games_lost > games_won');
+        return $this->matches()->where('outcome', 'loss');
     }
 
     public function wonMatches(): HasManyThrough
     {
-        return $this->matches()->whereRaw('games_lost < games_won');
+        return $this->matches()->where('outcome', 'win');
     }
 
     public function account(): BelongsTo
