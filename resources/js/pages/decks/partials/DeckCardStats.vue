@@ -29,7 +29,7 @@ import {
     ScrollText,
     Zap,
 } from 'lucide-vue-next';
-import { computed, ref, type Component } from 'vue';
+import { computed, ref, watch, type Component } from 'vue';
 
 type CardStat = {
     name: string;
@@ -124,6 +124,19 @@ const presentTypes = computed(() => {
         if (type !== 'Other') types.add(type as FilterKey);
     }
     return types;
+});
+
+// Re-enable any hidden types when the deck data changes so stale
+// filters from a previous deck can't silently hide cards.
+watch(presentTypes, (present) => {
+    let changed = false;
+    for (const filter of FILTER_CONFIG) {
+        if (!present.has(filter.key) && !typeFilters.value[filter.key]) {
+            typeFilters.value[filter.key] = true;
+            changed = true;
+        }
+    }
+    if (changed) saveFilters(typeFilters.value);
 });
 
 const visibleFilters = computed(() => FILTER_CONFIG.filter((f) => presentTypes.value.has(f.key)));
