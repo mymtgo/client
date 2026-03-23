@@ -1,70 +1,59 @@
 <script setup lang="ts">
-import { computed } from 'vue';
-import type { ChartConfig } from '@/components/ui/chart';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ChartContainer } from '@/components/ui/chart';
-import { VisAxis, VisLine, VisXYContainer } from '@unovis/vue';
+import { BarChart3 } from 'lucide-vue-next';
 
-type FormatChart = {
-    labels: string[];
-    formats: string[];
-    data: ({ x: number } & Record<string, number | null>)[];
+type FormatStat = {
+    format: string;
+    wins: number;
+    losses: number;
+    total: number;
+    winrate: number;
 };
 
-const props = defineProps<{
-    formatChart: FormatChart;
+defineProps<{
+    formatChart: FormatStat[];
 }>();
 
-const chartColors = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)', 'var(--chart-4)', 'var(--chart-5)'];
-
-const formats = computed(() =>
-    props.formatChart.formats.map((key, i) => ({
-        key,
-        color: chartColors[i % chartColors.length],
-        label: key,
-    })),
-);
-
-const chartConfig = computed(() =>
-    Object.fromEntries(
-        formats.value.map((f) => [f.key, { label: f.label, color: f.color }]),
-    ) as ChartConfig,
-);
-
-const tickFormat = (i: number) => props.formatChart.labels[i] ?? '';
-const yTickFormat = (v: number) => `${v}%`;
+function winrateClass(pct: number): string {
+    if (pct >= 55) return 'text-success';
+    if (pct < 45) return 'text-destructive';
+    return '';
+}
 </script>
 
 <template>
-    <Card>
+    <Card class="h-full">
         <CardHeader class="pb-2">
-            <div class="flex items-center justify-between">
-                <CardTitle class="text-sm font-medium text-muted-foreground uppercase tracking-wide">Format Performance</CardTitle>
-                <!-- Legend -->
-                <div class="flex items-center gap-4">
-                    <div v-for="f in formats" :key="f.key" class="flex items-center gap-1.5">
-                        <span class="size-2.5" :style="{ backgroundColor: f.color }" />
-                        <span class="text-xs text-muted-foreground">{{ f.label }}</span>
+            <CardTitle class="text-sm font-medium text-muted-foreground uppercase tracking-wide">Winrate by Format</CardTitle>
+        </CardHeader>
+        <CardContent>
+            <div v-if="!formatChart.length" class="flex flex-col items-center gap-2 py-8 text-center">
+                <BarChart3 class="size-8 text-muted-foreground/40" />
+                <p class="text-sm text-muted-foreground">No match data in this period</p>
+            </div>
+
+            <div v-else class="flex flex-col gap-3">
+                <div v-for="stat in formatChart" :key="stat.format" class="flex items-center gap-3">
+                    <span class="w-20 shrink-0 truncate text-sm font-medium">{{ stat.format }}</span>
+                    <div class="h-5 flex-1 overflow-hidden rounded bg-muted">
+                        <div
+                            class="flex h-full items-center rounded transition-all"
+                            :class="stat.winrate >= 50 ? 'bg-success/80' : 'bg-destructive/80'"
+                            :style="{ width: `${Math.max(stat.winrate, 4)}%` }"
+                        >
+                            <span v-if="stat.winrate >= 20" class="px-2 text-xs font-semibold text-white tabular-nums">
+                                {{ stat.winrate }}%
+                            </span>
+                        </div>
                     </div>
+                    <span v-if="stat.winrate < 20" class="text-xs font-semibold tabular-nums" :class="winrateClass(stat.winrate)">
+                        {{ stat.winrate }}%
+                    </span>
+                    <span class="w-16 shrink-0 text-right text-xs tabular-nums text-muted-foreground">
+                        {{ stat.wins }}W – {{ stat.losses }}L
+                    </span>
                 </div>
             </div>
-        </CardHeader>
-
-        <CardContent>
-            <ChartContainer :config="chartConfig" class="h-[220px] w-full">
-                <VisXYContainer :data="formatChart.data">
-                    <VisLine
-                        v-for="f in formats"
-                        :key="f.key"
-                        :x="(d: Record<string, number | null>) => d.x"
-                        :y="(d: Record<string, number | null>) => d[f.key]"
-                        :color="f.color"
-                        :line-width="2"
-                    />
-                    <VisAxis type="x" :tick-format="tickFormat" />
-                    <VisAxis type="y" :tick-format="yTickFormat" :domain-min="30" :domain-max="100" />
-                </VisXYContainer>
-            </ChartContainer>
         </CardContent>
     </Card>
 </template>
