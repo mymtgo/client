@@ -26,13 +26,14 @@ class FormatLeagueRuns
         $leagueIds = $leagues->pluck('id');
 
         $matchRows = self::getMatchRows($leagueIds, $accountId, $deckId);
+        $gameRecords = self::getGameRecords($matchRows->pluck('id'));
         $opponentByMatch = self::getOpponentsByMatch($matchRows->pluck('id'));
         $matchesByLeague = $matchRows->groupBy('league_id');
 
         return $leagues
             ->filter(fn (League $league) => isset($matchesByLeague[$league->id]) && $matchesByLeague[$league->id]->isNotEmpty())
             ->values()
-            ->map(fn (League $league) => self::formatRun($league, $matchesByLeague[$league->id] ?? collect(), $opponentByMatch))
+            ->map(fn (League $league) => self::formatRun($league, $matchesByLeague[$league->id] ?? collect(), $opponentByMatch, $gameRecords))
             ->values()
             ->all();
     }
@@ -46,9 +47,24 @@ class FormatLeagueRuns
             ->where('m.state', 'complete')
             ->when($accountId, fn ($q, $id) => $q->where('d.account_id', $id))
             ->when($deckId, fn ($q, $id) => $q->where('d.id', $id))
-            ->select('m.id', 'm.league_id', 'm.games_won', 'm.games_lost', 'm.started_at', 'd.id as deck_id', 'd.name as deck_name', 'd.color_identity as deck_color_identity')
+            ->select('m.id', 'm.league_id', 'm.outcome', 'm.started_at', 'd.id as deck_id', 'd.name as deck_name', 'd.color_identity as deck_color_identity')
             ->orderBy('m.started_at')
             ->get();
+    }
+
+    private static function getGameRecords(Collection $matchIds): Collection
+    {
+        if ($matchIds->isEmpty()) {
+            return collect();
+        }
+
+        return DB::table('games')
+            ->whereIn('match_id', $matchIds)
+            ->whereNotNull('won')
+            ->selectRaw('match_id, SUM(CASE WHEN won = 1 THEN 1 ELSE 0 END) as games_won, SUM(CASE WHEN won = 0 THEN 1 ELSE 0 END) as games_lost')
+            ->groupBy('match_id')
+            ->get()
+            ->keyBy('match_id');
     }
 
     private static function getOpponentsByMatch(Collection $matchIds): Collection
@@ -95,7 +111,7 @@ class FormatLeagueRuns
         return $opponentByMatch;
     }
 
-    private static function formatRun(League $league, Collection $matches, Collection $opponentByMatch): array
+    private static function formatRun(League $league, Collection $matches, Collection $opponentByMatch, Collection $gameRecords): array
     {
         // Prefer league's direct deck version; fall back to most common deck in matches
         if ($league->deck_version_id && $league->deckVersion?->deck) {
@@ -111,16 +127,19 @@ class FormatLeagueRuns
                 ->first();
         }
 
-        $matchData = $matches->map(function ($row) use ($opponentByMatch) {
+        $matchData = $matches->map(function ($row) use ($opponentByMatch, $gameRecords) {
             $opp = $opponentByMatch[$row->id] ?? null;
-            $won = $row->games_won > $row->games_lost;
+            $won = $row->outcome === 'win';
+            $record = $gameRecords->get($row->id);
+            $gamesWon = (int) ($record?->games_won ?? 0);
+            $gamesLost = (int) ($record?->games_lost ?? 0);
 
             return [
                 'id' => $row->id,
                 'result' => $won ? 'W' : 'L',
                 'opponentName' => $opp?->username,
                 'opponentArchetype' => $opp?->archetype_name,
-                'games' => "{$row->games_won}-{$row->games_lost}",
+                'games' => "{$gamesWon}-{$gamesLost}",
                 'startedAt' => $row->started_at,
             ];
         })->values()->all();

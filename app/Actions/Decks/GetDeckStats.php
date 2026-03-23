@@ -18,10 +18,10 @@ class GetDeckStats
         $matchesQuery = $deck->matches()->select('matches.*')->where('state', 'complete')
             ->whereBetween('started_at', [$from, $to]);
 
-        $wins = $matchesQuery->clone()->whereRaw('games_won > games_lost')->count();
-        $losses = $matchesQuery->clone()->whereRaw('games_won < games_lost')->count();
-        $gamesWon = (int) $matchesQuery->clone()->sum('games_won');
-        $gamesLost = (int) $matchesQuery->clone()->sum('games_lost');
+        $wins = $matchesQuery->clone()->won()->count();
+        $losses = $matchesQuery->clone()->lost()->count();
+        $gamesWon = (int) $matchesQuery->clone()->withCount(['games as games_won_sum' => fn ($q) => $q->where('won', true)])->get()->sum('games_won_sum');
+        $gamesLost = (int) $matchesQuery->clone()->withCount(['games as games_lost_sum' => fn ($q) => $q->where('won', false)])->get()->sum('games_lost_sum');
 
         $matchIds = $matchesQuery->clone()->select('matches.id')->pluck('matches.id');
         $matchGamesQuery = Game::whereHas('match', fn ($q) => $q->whereIn('match_id', $matchIds));
@@ -42,7 +42,7 @@ class GetDeckStats
         // Trophies = completed real leagues where all 5 matches were won
         $trophies = \App\Models\League::whereHas('matches', fn ($q) => $q->whereIn('matches.id', $allMatchIds))
             ->withCount([
-                'matches as won_count' => fn ($q) => $q->whereIn('matches.id', $allMatchIds)->whereRaw('games_won > games_lost'),
+                'matches as won_count' => fn ($q) => $q->whereIn('matches.id', $allMatchIds)->where('outcome', 'win'),
                 'matches as total_count' => fn ($q) => $q->whereIn('matches.id', $allMatchIds),
             ])
             ->get()

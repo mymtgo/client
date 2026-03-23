@@ -37,23 +37,23 @@ class GetArchetypeMatchupSpread
         a.name as archetype_name,
         a.color_identity as color_identity,
 
-        SUM(m.games_won) as games_won,
-        SUM(m.games_lost) as games_lost,
-        SUM(m.games_won + m.games_lost) as total_games,
+        SUM((SELECT COUNT(*) FROM games g WHERE g.match_id = m.id AND g.won = 1)) as games_won,
+        SUM((SELECT COUNT(*) FROM games g WHERE g.match_id = m.id AND g.won = 0)) as games_lost,
+        SUM((SELECT COUNT(*) FROM games g WHERE g.match_id = m.id AND g.won IS NOT NULL)) as total_games,
 
-        SUM(CASE WHEN m.games_won > m.games_lost THEN 1 ELSE 0 END) as match_wins,
-        SUM(CASE WHEN m.games_won < m.games_lost THEN 1 ELSE 0 END) as match_losses,
+        SUM(CASE WHEN m.outcome = \'win\' THEN 1 ELSE 0 END) as match_wins,
+        SUM(CASE WHEN m.outcome = \'loss\' THEN 1 ELSE 0 END) as match_losses,
         COUNT(*) as match_count,
 
         ROUND(
-            100.0 * SUM(CASE WHEN m.games_won > m.games_lost THEN 1 ELSE 0 END)
+            100.0 * SUM(CASE WHEN m.outcome = \'win\' THEN 1 ELSE 0 END)
             / NULLIF(COUNT(*), 0),
             0
         ) as match_winrate_pct,
 
         ROUND(
-            100.0 * SUM(m.games_won)
-            / NULLIF(SUM(m.games_won + m.games_lost), 0),
+            100.0 * SUM((SELECT COUNT(*) FROM games g WHERE g.match_id = m.id AND g.won = 1))
+            / NULLIF(SUM((SELECT COUNT(*) FROM games g WHERE g.match_id = m.id AND g.won IS NOT NULL)), 0),
             0
         ) as game_winrate_pct
     ')
