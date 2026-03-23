@@ -4,7 +4,6 @@ import { computed } from 'vue';
 import { Button } from '@/components/ui/button';
 import { LayoutDashboard } from 'lucide-vue-next';
 import DashboardKpiStrip from '@/pages/partials/DashboardKpiStrip.vue';
-import DashboardFormatChart from '@/pages/partials/DashboardFormatChart.vue';
 import DashboardDecks from '@/pages/partials/DashboardDecks.vue';
 import DashboardSessionRecap from '@/pages/partials/DashboardSessionRecap.vue';
 import DashboardMatchupSpread from '@/pages/partials/DashboardMatchupSpread.vue';
@@ -22,12 +21,6 @@ type ActiveLeague = {
     wins: number;
     losses: number;
     matchesRemaining: number;
-};
-
-type FormatChart = {
-    months: string[];
-    formats: string[];
-    data: ({ x: number } & Record<string, number | null>)[];
 };
 
 type Streak = {
@@ -88,7 +81,6 @@ const props = defineProps<{
     deckStats: App.Data.Front.DeckData[];
     timeframe: string;
     activeLeague: ActiveLeague | null;
-    formatChart: FormatChart;
     streak: Streak;
     matchWinrateDelta: number;
     gameWinrateDelta: number;
@@ -154,28 +146,15 @@ function setTimeframe(value: string) {
         </div>
 
         <template v-else>
-            <!-- Row 1: Format Chart + Session Recap -->
-            <div class="grid grid-cols-5 gap-4">
-                <div class="col-span-3">
-                    <DashboardFormatChart :format-chart="formatChart" />
-                </div>
-                <div class="col-span-2">
-                    <Deferred :data="['lastSession']">
-                        <template #fallback>
-                            <div class="h-full animate-pulse rounded-xl bg-muted" />
-                        </template>
-                        <DashboardSessionRecap :last-session="lastSession ?? null" />
-                    </Deferred>
-                </div>
-            </div>
-
-            <!-- Row 2: Matchup Spread + Rolling Form -->
-            <div class="grid grid-cols-2 gap-4">
-                <Deferred :data="['matchupSpread']">
+            <!-- Row 1: League Finishes + Rolling Form + Last Session -->
+            <div class="grid grid-cols-3 gap-4">
+                <Deferred :data="['leagueDistribution']">
                     <template #fallback>
                         <div class="h-48 animate-pulse rounded-xl bg-muted" />
                     </template>
-                    <DashboardMatchupSpread :matchup-spread="matchupSpread ?? []" />
+                    <DashboardLeagueResults
+                        :league-distribution="leagueDistribution ?? { buckets: {}, trophies: 0, total: 0 }"
+                    />
                 </Deferred>
                 <Deferred :data="['rollingForm']">
                     <template #fallback>
@@ -185,18 +164,22 @@ function setTimeframe(value: string) {
                         :rolling-form="rollingForm ?? { results: [], winrate: 0, allTimeWinrate: 0, delta: 0 }"
                     />
                 </Deferred>
-            </div>
-
-            <!-- Row 3: Deck Performance + League Results -->
-            <div class="grid grid-cols-2 gap-4">
-                <DashboardDecks :deck-stats="deckStats" />
-                <Deferred :data="['leagueDistribution']">
+                <Deferred :data="['lastSession']">
                     <template #fallback>
                         <div class="h-48 animate-pulse rounded-xl bg-muted" />
                     </template>
-                    <DashboardLeagueResults
-                        :league-distribution="leagueDistribution ?? { buckets: {}, trophies: 0, total: 0 }"
-                    />
+                    <DashboardSessionRecap :last-session="lastSession ?? null" />
+                </Deferred>
+            </div>
+
+            <!-- Row 2: Deck Performance + Matchup Spread -->
+            <div class="grid grid-cols-2 gap-4">
+                <DashboardDecks :deck-stats="deckStats" />
+                <Deferred :data="['matchupSpread']">
+                    <template #fallback>
+                        <div class="h-48 animate-pulse rounded-xl bg-muted" />
+                    </template>
+                    <DashboardMatchupSpread :matchup-spread="matchupSpread ?? []" />
                 </Deferred>
             </div>
         </template>
