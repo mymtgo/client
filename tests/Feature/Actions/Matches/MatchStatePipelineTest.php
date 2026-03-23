@@ -44,8 +44,7 @@ it('filters complete vs incomplete matches correctly via scopes', function () {
         'format' => 'Pmodern',
         'match_type' => 'Constructed',
         'state' => MatchState::Complete,
-        'games_won' => 2,
-        'games_lost' => 1,
+        'outcome' => 'win',
         'started_at' => now(),
         'ended_at' => now(),
     ]);

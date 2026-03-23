@@ -26,22 +26,29 @@ class IndexController extends Controller
         [$start, $end] = $this->getTimeRange($timeframe);
         $accountId = Account::active()->value('id');
 
-        // Overall stats (single query)
-        $stats = MtgoMatch::complete()
+        // Overall match stats using outcome column
+        $matchStats = MtgoMatch::complete()
             ->when($accountId, fn ($q, $id) => $q
                 ->whereHas('deckVersion', fn ($q2) => $q2->whereHas('deck', fn ($q3) => $q3->where('account_id', $id)))
             )
             ->whereBetween('started_at', [$start, $end])
-            ->selectRaw('SUM(CASE WHEN games_won > games_lost THEN 1 ELSE 0 END) as wins')
-            ->selectRaw('SUM(CASE WHEN games_won <= games_lost THEN 1 ELSE 0 END) as losses')
-            ->selectRaw('SUM(games_won) as games_won')
-            ->selectRaw('SUM(games_lost) as games_lost')
+            ->selectRaw("SUM(CASE WHEN outcome = 'win' THEN 1 ELSE 0 END) as wins")
+            ->selectRaw("SUM(CASE WHEN outcome = 'loss' THEN 1 ELSE 0 END) as losses")
             ->first();
 
-        $wins = (int) $stats->wins;
-        $losses = (int) $stats->losses;
-        $gamesWon = (int) $stats->games_won;
-        $gamesLost = (int) $stats->games_lost;
+        $wins = (int) $matchStats->wins;
+        $losses = (int) $matchStats->losses;
+
+        // Game-level stats from games table
+        $matchIds = MtgoMatch::complete()
+            ->when($accountId, fn ($q, $id) => $q
+                ->whereHas('deckVersion', fn ($q2) => $q2->whereHas('deck', fn ($q3) => $q3->where('account_id', $id)))
+            )
+            ->whereBetween('started_at', [$start, $end])
+            ->pluck('id');
+
+        $gamesWon = \App\Models\Game::whereIn('match_id', $matchIds)->where('won', true)->count();
+        $gamesLost = \App\Models\Game::whereIn('match_id', $matchIds)->where('won', false)->count();
 
         // Deck performance summary
         $deckStats = Deck::forActiveAccount()->withCount([
