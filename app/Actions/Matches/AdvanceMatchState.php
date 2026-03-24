@@ -75,7 +75,7 @@ class AdvanceMatchState
                     'format' => $gameMeta['PlayFormatCd'] ?? 'Unknown',
                     'match_type' => $gameMeta['GameStructureCd'] ?? 'Unknown',
                     'started_at' => $started,
-                    'ended_at' => $started, // placeholder until real end is known
+                    'ended_at' => null,
                     'state' => MatchState::Started,
                 ]);
 
@@ -172,7 +172,6 @@ class AdvanceMatchState
         if (! $match->league_id) {
             AssignLeague::run($match, $gameMeta);
         }
-
 
         $match->update(['state' => MatchState::InProgress]);
 

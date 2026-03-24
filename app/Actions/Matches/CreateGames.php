@@ -11,6 +11,7 @@ use App\Models\GameTimeline;
 use App\Models\LogEvent;
 use App\Models\MtgoMatch;
 use App\Models\Player;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 
@@ -47,17 +48,12 @@ class CreateGames
             'started_at' => $firstStateEvent
                 ? now()->parse($firstStateEvent->logged_at)->setTimeFromTimeString($firstStateEvent->timestamp)
                 : null,
-            'ended_at' => $lastStateEvent
-                ? now()->parse($lastStateEvent->logged_at)->setTimeFromTimeString($lastStateEvent->timestamp)
-                : null,
+            'ended_at' => null,
         ]);
 
         // Update fields that may have been unavailable at creation time
         $gameModel->update([
             'won' => $gameLog['results'][$gameIndex] ?? $gameModel->won,
-            'ended_at' => $lastStateEvent
-                ? now()->parse($lastStateEvent->logged_at)->setTimeFromTimeString($lastStateEvent->timestamp)
-                : $gameModel->ended_at,
         ]);
 
         // If we have no state events yet, the game record exists for later backfill
@@ -161,7 +157,7 @@ class CreateGames
         try {
             GameTimeline::where('game_id', $gameModel->id)->delete();
             GameTimeline::insert($events);
-        } catch (\Illuminate\Database\QueryException $e) {
+        } catch (QueryException $e) {
             Log::channel('pipeline')->info("CreateGames: timeline update skipped for game {$gameModel->id}: {$e->getMessage()}");
         }
     }
