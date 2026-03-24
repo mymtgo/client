@@ -242,6 +242,33 @@ it('does not complete InProgress match when game log has partial results', funct
     expect($games[1]->won)->toBeNull();
 });
 
+it('does not complete InProgress match on "leads the match" score line', function () {
+    $match = createResolveMatch(['state' => MatchState::InProgress]);
+    createResolveGame($match, ['started_at' => now()->subMinutes(30), 'won' => null]);
+    createResolveGame($match, ['started_at' => now()->subMinutes(15), 'won' => null]);
+
+    // Game 1 won with "leads the match 1-0" — not a terminal signal
+    $entries = array_merge(
+        gameEntriesWin('2026-01-01T00:00'),
+        [['timestamp' => '2026-01-01T00:00:51Z', 'message' => '@PTestPlayer leads the match 1-0.']],
+    );
+
+    GameLog::create([
+        'match_token' => $match->token,
+        'file_path' => '/tmp/gamelog.dat',
+        'decoded_entries' => $entries,
+        'decoded_at' => now(),
+        'byte_offset' => 0,
+        'decoded_version' => 1,
+    ]);
+
+    ResolveGameResults::run();
+
+    $match->refresh();
+    expect($match->state)->toBe(MatchState::InProgress);
+    expect($match->games()->orderBy('started_at')->first()->won)->toBeTrue();
+});
+
 it('skips matches without a GameLog', function () {
     createResolveMatch(['state' => MatchState::InProgress]);
 

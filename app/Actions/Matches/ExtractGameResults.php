@@ -78,6 +78,7 @@ class ExtractGameResults
             'games' => $gameResults,
             'players' => $players,
             'match_score' => $matchScore,
+            'match_decided' => self::hasMatchWinLine($entries),
             'results' => $results,
             'on_play' => $onPlay,
             'starting_hands' => $startingHands,
@@ -237,6 +238,21 @@ class ExtractGameResults
         }
 
         return null;
+    }
+
+    /**
+     * Check if a definitive "wins the match" line exists in the entries.
+     * "leads the match" is a mid-match score update, not a terminal signal.
+     */
+    private static function hasMatchWinLine(array $entries): bool
+    {
+        foreach ($entries as $entry) {
+            if (preg_match('/^@P\w+ wins the match \d+-\d+/', $entry['message'])) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

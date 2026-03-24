@@ -53,7 +53,7 @@ class ResolveGameResults
         $result = DetermineMatchResult::run(
             logResults: $extracted['results'] ?? [],
             stateChanges: $stateChanges,
-            matchScoreExists: ! empty($extracted['match_score']),
+            matchScoreExists: $extracted['match_decided'] ?? false,
             disconnectDetected: $disconnectDetected,
         );
 
