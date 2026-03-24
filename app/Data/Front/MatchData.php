@@ -35,7 +35,7 @@ class MatchData extends Data
             id: $match->id,
             format: MtgoMatch::displayFormat($match->format),
             matchType: $match->match_type,
-            leagueGame: $match->league_id !== null && ! ($match->league->phantom ?? true),
+            leagueGame: $match->league_id !== null && ! ($match->league?->phantom ?? true),
             gamesWon: $match->gamesWon(),
             gamesLost: $match->gamesLost(),
             result: $match->isWin() ? 'won' : 'lost',

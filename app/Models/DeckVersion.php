@@ -23,19 +23,31 @@ class DeckVersion extends Model
 
     public function getCardsAttribute(): array
     {
-        $decoded = base64_decode($this->signature);
+        if (! $this->signature) {
+            return [];
+        }
+
+        $decoded = base64_decode($this->signature, true);
+
+        if ($decoded === false) {
+            return [];
+        }
 
         return collect(
             explode('|', $decoded)
-        )->map(function (string $cardSig) {
+        )->filter()->map(function (string $cardSig) {
             $parts = explode(':', $cardSig);
+
+            if (count($parts) < 3) {
+                return null;
+            }
 
             return [
                 'oracle_id' => $parts[0],
                 'quantity' => $parts[1],
                 'sideboard' => $parts[2],
             ];
-        })->toArray();
+        })->filter()->values()->toArray();
     }
 
     /** @return BelongsTo<Deck, $this> */

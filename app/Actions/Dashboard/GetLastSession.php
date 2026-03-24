@@ -19,7 +19,7 @@ class GetLastSession
         }
 
         $matches = MtgoMatch::complete()
-            ->whereHas('deckVersion', fn ($q) => $q->whereHas('deck', fn ($q2) => $q2->where('account_id', $accountId)))
+            ->forAccount($accountId)
             ->with(['opponentArchetypes.archetype', 'games'])
             ->orderByDesc('started_at')
             ->limit(50)
@@ -67,7 +67,7 @@ class GetLastSession
             'matches' => $session->map(fn ($m) => [
                 'id' => $m->id,
                 'outcome' => $m->outcome->value,
-                'opponentArchetype' => $m->opponentArchetypes->first()?->archetype->name ?? 'Unknown',
+                'opponentArchetype' => $m->opponentArchetypes->first()?->archetype?->name ?? 'Unknown',
                 'gamesWon' => $m->games->where('won', true)->count(),
                 'gamesLost' => $m->games->where('won', false)->count(),
             ])->all(),

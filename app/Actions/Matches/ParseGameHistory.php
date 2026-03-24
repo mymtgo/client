@@ -160,8 +160,10 @@ class ParseGameHistory
             return $parser->doParse();
         } catch (\Throwable $e) {
             Log::warning('ParseGameHistory: failed to parse game history', [
+                'exception' => get_class($e),
                 'error' => $e->getMessage(),
                 'path' => $path ?? 'auto-discover',
+                'trace' => array_slice($e->getTrace(), 0, 3),
             ]);
 
             return [];
@@ -365,7 +367,7 @@ class ParseGameHistory
     /**
      * .NET DateTime: 64-bit value where bits 63-62 are DateTimeKind, bits 61-0 are ticks since 0001-01-01.
      */
-    private function readDateTime(): string
+    private function readDateTime(): ?string
     {
         $raw = $this->readInt64();
         $ticks = $raw & 0x3FFFFFFFFFFFFFFF;
@@ -373,7 +375,7 @@ class ParseGameHistory
         $unixSeconds = $unixTicks / 10000000;
 
         if ($unixSeconds < -62135596800 || $unixSeconds > 253402300800) {
-            return "invalid_datetime_{$ticks}";
+            return null;
         }
 
         try {
@@ -381,7 +383,7 @@ class ParseGameHistory
 
             return $dt->format('Y-m-d\TH:i:s\Z');
         } catch (\Exception) {
-            return "error_{$ticks}";
+            return null;
         }
     }
 

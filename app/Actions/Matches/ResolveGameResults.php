@@ -32,6 +32,8 @@ class ResolveGameResults
 
         $username = Mtgo::getUsername();
         if (! $username) {
+            Log::channel('pipeline')->warning("ResolveGameResults: skipping match {$match->mtgo_id} — username unavailable");
+
             return;
         }
 

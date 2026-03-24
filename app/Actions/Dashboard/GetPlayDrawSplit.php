@@ -2,6 +2,7 @@
 
 namespace App\Actions\Dashboard;
 
+use App\Actions\Util\Winrate;
 use App\Models\MtgoMatch;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -18,7 +19,7 @@ class GetPlayDrawSplit
         }
 
         $matchIds = MtgoMatch::complete()
-            ->whereHas('deckVersion', fn ($q) => $q->whereHas('deck', fn ($q2) => $q2->where('account_id', $accountId)))
+            ->forAccount($accountId)
             ->whereBetween('started_at', [$from, $to])
             ->pluck('matches.id');
 
@@ -38,12 +39,14 @@ class GetPlayDrawSplit
             ')
             ->first();
 
+        $otpWon = (int) $stats->otp_won;
         $otpTotal = (int) $stats->otp_total;
+        $otdWon = (int) $stats->otd_won;
         $otdTotal = (int) $stats->otd_total;
 
         return [
-            'otpWinrate' => $otpTotal > 0 ? (int) round(100 * (int) $stats->otp_won / $otpTotal) : 0,
-            'otdWinrate' => $otdTotal > 0 ? (int) round(100 * (int) $stats->otd_won / $otdTotal) : 0,
+            'otpWinrate' => Winrate::percentage($otpWon, $otpTotal - $otpWon),
+            'otdWinrate' => Winrate::percentage($otdWon, $otdTotal - $otdWon),
         ];
     }
 }

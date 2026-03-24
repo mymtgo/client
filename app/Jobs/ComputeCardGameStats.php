@@ -15,6 +15,8 @@ class ComputeCardGameStats implements ShouldQueue
 {
     use Queueable;
 
+    public int $tries = 2;
+
     public function __construct(
         public int $matchId,
     ) {}

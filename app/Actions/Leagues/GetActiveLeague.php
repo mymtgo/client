@@ -18,7 +18,7 @@ class GetActiveLeague
         $league = League::whereHas('matches', function ($q) use ($accountId) {
             $q->where('state', \App\Enums\MatchState::Complete);
             if ($accountId) {
-                $q->whereHas('deckVersion', fn ($q2) => $q2->whereHas('deck', fn ($q3) => $q3->where('account_id', $accountId)));
+                $q->forAccount($accountId);
             }
         })
             ->with(['deckVersion.deck'])

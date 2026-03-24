@@ -2,6 +2,7 @@
 
 namespace App\Actions\Dashboard;
 
+use App\Actions\Util\Winrate;
 use App\Models\Game;
 use App\Models\MtgoMatch;
 use Carbon\Carbon;
@@ -34,7 +35,7 @@ class GetWinrateDelta
     private static function matchWinrate(int $accountId, Carbon $from, Carbon $to): int
     {
         $query = MtgoMatch::complete()
-            ->whereHas('deckVersion', fn ($q) => $q->whereHas('deck', fn ($q2) => $q2->where('account_id', $accountId)))
+            ->forAccount($accountId)
             ->whereBetween('started_at', [$from, $to]);
 
         $stats = $query->selectRaw("
@@ -42,24 +43,20 @@ class GetWinrateDelta
             SUM(CASE WHEN outcome = 'loss' THEN 1 ELSE 0 END) as losses
         ")->first();
 
-        $wins = (int) $stats->wins;
-        $total = $wins + (int) $stats->losses;
-
-        return $total > 0 ? (int) round(100 * $wins / $total) : 0;
+        return Winrate::percentage((int) $stats->wins, (int) $stats->losses);
     }
 
     private static function gameWinrate(int $accountId, Carbon $from, Carbon $to): int
     {
         $matchIds = MtgoMatch::complete()
-            ->whereHas('deckVersion', fn ($q) => $q->whereHas('deck', fn ($q2) => $q2->where('account_id', $accountId)))
+            ->forAccount($accountId)
             ->whereBetween('started_at', [$from, $to])
             ->pluck('matches.id');
 
         $won = Game::whereIn('match_id', $matchIds)->where('won', true)->count();
         $lost = Game::whereIn('match_id', $matchIds)->where('won', false)->count();
-        $total = $won + $lost;
 
-        return $total > 0 ? (int) round(100 * $won / $total) : 0;
+        return Winrate::percentage($won, $lost);
     }
 
     /**

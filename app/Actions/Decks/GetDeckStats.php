@@ -2,6 +2,7 @@
 
 namespace App\Actions\Decks;
 
+use App\Actions\Util\Winrate;
 use App\Enums\MatchOutcome;
 use App\Models\Deck;
 use App\Models\Game;
@@ -55,14 +56,14 @@ class GetDeckStats
             'losses' => $losses,
             'gamesWon' => $gamesWon,
             'gamesLost' => $gamesLost,
-            'matchWinrate' => (int) round(100 * ($wins / ($totalMatches ?: 1))),
-            'gameWinrate' => (int) round(100 * ($gamesWon / (($gamesWon + $gamesLost) ?: 1))),
+            'matchWinrate' => Winrate::percentage($wins, $losses),
+            'gameWinrate' => Winrate::percentage($gamesWon, $gamesLost),
             'otpWon' => $otpWon,
             'otpLost' => $otpLost,
-            'otpRate' => (int) round(100 * ($otpWon / (($otpWon + $otpLost) ?: 1))),
+            'otpRate' => Winrate::percentage($otpWon, $otpLost),
             'otdWon' => $otdWon,
             'otdLost' => $otdLost,
-            'otdRate' => (int) round(100 * ($otdWon / (($otdWon + $otdLost) ?: 1))),
+            'otdRate' => Winrate::percentage($otdWon, $otdLost),
             'trophies' => $trophies,
             'allMatchIds' => $allMatchIds,
         ];

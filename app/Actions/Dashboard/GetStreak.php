@@ -17,11 +17,8 @@ class GetStreak
             return ['current' => null, 'bestWin' => 0, 'bestLoss' => 0];
         }
 
-        $accountScope = fn ($q) => $q
-            ->whereHas('deckVersion', fn ($q2) => $q2->whereHas('deck', fn ($q3) => $q3->where('account_id', $accountId)));
-
         $recentMatches = MtgoMatch::complete()
-            ->where(fn ($q) => $accountScope($q))
+            ->forAccount($accountId)
             ->whereBetween('started_at', [$from, $to])
             ->orderByDesc('started_at')
             ->pluck('outcome');
@@ -29,7 +26,7 @@ class GetStreak
         $current = self::computeCurrentStreak($recentMatches);
 
         $allMatches = MtgoMatch::complete()
-            ->where(fn ($q) => $accountScope($q))
+            ->forAccount($accountId)
             ->orderBy('started_at')
             ->pluck('outcome');
 

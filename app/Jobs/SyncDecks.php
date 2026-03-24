@@ -9,17 +9,12 @@ class SyncDecks implements ShouldQueue
 {
     use Queueable;
 
-    /**
-     * Create a new job instance.
-     */
-    public function __construct()
-    {
-        //
-    }
+    /** Filesystem/XML errors are usually transient — retry twice. */
+    public int $tries = 3;
 
-    /**
-     * Execute the job.
-     */
+    /** @var int[] */
+    public array $backoff = [5, 30];
+
     public function handle(): void
     {
         \App\Actions\Decks\SyncDecks::run();

@@ -93,7 +93,10 @@ class SyncDecks
                 // Backfill orphaned decks that were synced before the account existed
                 Deck::whereNull('account_id')->whereIn('id', $deckIds)->update(['account_id' => $accountId]);
             } else {
-                Deck::whereNotIn('id', $deckIds)->delete();
+                // No active account — only clean up unowned decks to avoid
+                // accidentally deleting decks belonging to a known account
+                // when Mtgo::getUsername() is temporarily unavailable.
+                Deck::whereNull('account_id')->whereNotIn('id', $deckIds)->delete();
             }
 
             // Re-link complete matches that lost their deck association

@@ -14,29 +14,8 @@ import LeagueScreenshot from './LeagueScreenshot.vue';
 import ResultBadge from '../matches/ResultBadge.vue';
 import { Badge } from '../ui/badge';
 import { Card } from '../ui/card';
+import type { LeagueRun } from '@/types/leagues';
 import PhantomBadge from './PhantomBadge.vue';
-
-type LeagueMatch = {
-    id: number;
-    result: 'W' | 'L';
-    opponentName: string | null;
-    opponentArchetype: string | null;
-    games: string;
-    startedAt: string;
-};
-
-type LeagueRun = {
-    id: number;
-    name: string;
-    format: string;
-    deck: { id: number; name: string } | null;
-    versionLabel: string | null;
-    startedAt: string;
-    results: ('W' | 'L' | null)[];
-    phantom: boolean;
-    state: 'active' | 'complete' | 'partial';
-    matches: LeagueMatch[];
-};
 
 defineProps<{
     league: LeagueRun;
