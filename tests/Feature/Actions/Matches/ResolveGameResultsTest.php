@@ -12,7 +12,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 uses(RefreshDatabase::class);
 
 beforeEach(function () {
-    Mtgo::shouldReceive('getUsername')->andReturn('TestPlayer');
+    Mtgo::shouldReceive('resolveUsername')->andReturn('TestPlayer');
 });
 
 function createResolveMatch(array $overrides = []): MtgoMatch
@@ -276,6 +276,49 @@ it('skips matches without a GameLog', function () {
     ResolveGameResults::run();
 
     expect(true)->toBeTrue();
+});
+
+it('resolves username from inactive account via game log players', function () {
+    // Don't mock Mtgo — use the real implementation so resolveUsername hits the DB
+    Mockery::close();
+    app()->forgetInstance('mtgo');
+
+    // Account exists but is NOT active
+    \App\Models\Account::create([
+        'username' => 'TestPlayer',
+        'active' => false,
+        'tracked' => true,
+    ]);
+
+    $match = createResolveMatch(['state' => MatchState::InProgress]);
+    createResolveGame($match, ['started_at' => now()->subMinutes(30), 'won' => null]);
+    createResolveGame($match, ['started_at' => now()->subMinutes(15), 'won' => null]);
+
+    $entries = array_merge(
+        gameEntriesWin('2026-01-01T00:00'),
+        [['timestamp' => '2026-01-01T00:00:51Z', 'message' => '@PTestPlayer leads the match 1-0.']],
+        gameEntriesWin('2026-01-01T00:05'),
+        [['timestamp' => '2026-01-01T00:05:51Z', 'message' => '@PTestPlayer wins the match 2-0.']],
+    );
+
+    GameLog::create([
+        'match_token' => $match->token,
+        'file_path' => '/tmp/gamelog.dat',
+        'decoded_entries' => $entries,
+        'decoded_at' => now(),
+        'byte_offset' => 0,
+        'decoded_version' => 1,
+    ]);
+
+    ResolveGameResults::run();
+
+    $match->refresh();
+    expect($match->state)->toBe(MatchState::Complete);
+    expect($match->outcome)->toBe(MatchOutcome::Win);
+
+    $games = $match->games()->orderBy('started_at')->get();
+    expect($games[0]->won)->toBeTrue();
+    expect($games[1]->won)->toBeTrue();
 });
 
 it('is idempotent', function () {

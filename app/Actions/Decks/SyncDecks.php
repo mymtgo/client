@@ -3,7 +3,6 @@
 namespace App\Actions\Decks;
 
 use App\Actions\Matches\DetermineMatchDeck;
-use App\Facades\Mtgo;
 use App\Models\Account;
 use App\Models\Deck;
 use App\Models\MtgoMatch;
@@ -64,7 +63,7 @@ class SyncDecks
                 'mtgo_id' => $attributes['NetDeckId'],
                 'name' => $attributes['Name'],
                 'format' => $attributes['FormatCode'],
-                'account_id' => Account::where('username', Mtgo::getUsername())->value('id'),
+                'account_id' => Account::active()->value('id'),
                 'updated_at' => $attributes['Timestamp'],
             ]);
 
@@ -86,7 +85,7 @@ class SyncDecks
 
         // Batch cleanup and re-linking in a single transaction.
         DB::transaction(function () use ($deckIds) {
-            $accountId = Account::where('username', Mtgo::getUsername())->value('id');
+            $accountId = Account::active()->value('id');
             if ($accountId) {
                 Deck::where('account_id', $accountId)->whereNotIn('id', $deckIds)->delete();
 
@@ -95,7 +94,7 @@ class SyncDecks
             } else {
                 // No active account — only clean up unowned decks to avoid
                 // accidentally deleting decks belonging to a known account
-                // when Mtgo::getUsername() is temporarily unavailable.
+                // when the active account is temporarily unavailable.
                 Deck::whereNull('account_id')->whereNotIn('id', $deckIds)->delete();
             }
 

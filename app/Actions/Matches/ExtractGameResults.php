@@ -130,7 +130,7 @@ class ExtractGameResults
      *
      * @return array<int, string>
      */
-    private static function detectPlayers(array $entries): array
+    public static function detectPlayers(array $entries): array
     {
         $players = [];
 

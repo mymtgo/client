@@ -86,6 +86,31 @@ class MtgoManager
         return $this->username ?? Account::active()->value('username');
     }
 
+    /**
+     * Resolve the local player's username with fallback chain.
+     *
+     * 1. In-memory username (set during active session)
+     * 2. Active account from database
+     * 3. Match candidate names against any known account (active or not)
+     *
+     * @param  array<int, string>  $candidates  Player names to match against known accounts
+     */
+    public function resolveUsername(array $candidates = []): ?string
+    {
+        // Fast path: in-memory or active account
+        $username = $this->getUsername();
+        if ($username) {
+            return $username;
+        }
+
+        // Fallback: match candidates against any known account
+        if (! empty($candidates)) {
+            return Account::whereIn('username', $candidates)->value('username');
+        }
+
+        return null;
+    }
+
     public function retryUnsubmittedMatches(): void
     {
         if (! Settings::get('share_stats')) {

@@ -18,8 +18,6 @@ class CreateGames
 {
     public static function run(MtgoMatch $match, int $gameId, Collection $gameEvents, int $gameIndex, array $playerDeck)
     {
-        $username = Mtgo::getUsername();
-
         $gameStateEvents = $gameEvents->filter(
             fn (LogEvent $event) => $event->event_type == 'game_state_update'
         );
@@ -27,6 +25,12 @@ class CreateGames
         // Read structured results directly from the stored GameLog
         $gameLog = null;
         $storedLog = GameLog::where('match_token', $match->token)->first();
+        $candidates = ($storedLog && ! empty($storedLog->decoded_entries))
+            ? ExtractGameResults::detectPlayers($storedLog->decoded_entries)
+            : [];
+
+        $username = Mtgo::resolveUsername($candidates);
+
         if ($storedLog && ! empty($storedLog->decoded_entries) && $username) {
             $gameLog = ExtractGameResults::run($storedLog->decoded_entries, $username);
         }

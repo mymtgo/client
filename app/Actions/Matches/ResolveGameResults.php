@@ -30,9 +30,11 @@ class ResolveGameResults
             return;
         }
 
-        $username = Mtgo::getUsername();
+        $players = ExtractGameResults::detectPlayers($gameLog->decoded_entries);
+        $username = Mtgo::resolveUsername($players);
+
         if (! $username) {
-            Log::channel('pipeline')->warning("ResolveGameResults: skipping match {$match->mtgo_id} — username unavailable");
+            Log::channel('pipeline')->warning("ResolveGameResults: skipping match {$match->mtgo_id} — username unavailable (candidates: ".implode(', ', $players).')');
 
             return;
         }
