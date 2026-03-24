@@ -82,9 +82,9 @@ class ShowController extends Controller
                 }
                 if ($result = $request->input('filter_result')) {
                     if ($result === 'win') {
-                        $query->won();
+                        $query->where('outcome', \App\Enums\MatchOutcome::Win);
                     } elseif ($result === 'loss') {
-                        $query->lost();
+                        $query->where('outcome', \App\Enums\MatchOutcome::Loss);
                     }
                 }
                 if ($type = $request->input('filter_type')) {

@@ -7,6 +7,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, Player> $players
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, Player> $localPlayers
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, Player> $opponents
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, GameTimeline> $timeline
+ */
 class Game extends Model
 {
     protected $fillable = ['match_id', 'mtgo_id', 'started_at', 'ended_at', 'won'];
@@ -17,6 +23,7 @@ class Game extends Model
         'ended_at' => 'datetime',
     ];
 
+    /** @return BelongsTo<MtgoMatch, $this> */
     public function match(): BelongsTo
     {
         return $this->belongsTo(MtgoMatch::class, 'match_id');
@@ -39,6 +46,7 @@ class Game extends Model
         return $this->players()->wherePivot('is_local', 0);
     }
 
+    /** @return HasMany<GameTimeline, $this> */
     public function timeline(): HasMany
     {
         return $this->hasMany(GameTimeline::class);

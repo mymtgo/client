@@ -16,7 +16,7 @@ class GetActiveLeague
         $accountId = Account::active()->value('id');
 
         $league = League::whereHas('matches', function ($q) use ($accountId) {
-            $q->complete();
+            $q->where('state', \App\Enums\MatchState::Complete);
             if ($accountId) {
                 $q->whereHas('deckVersion', fn ($q2) => $q2->whereHas('deck', fn ($q3) => $q3->where('account_id', $accountId)));
             }
@@ -54,7 +54,7 @@ class GetActiveLeague
             'phantom' => $league->phantom,
             'isActive' => $matches->count() < 5,
             'isTrophy' => $wins === 5,
-            'deckName' => $league->deckVersion?->deck?->name ?? $matches->last()?->deck?->name,
+            'deckName' => $league->deckVersion?->deck->name ?? $matches->last()?->getRelation('deck')?->getAttribute('name'),
             'versionLabel' => $versionLabel,
             'results' => $matches
                 ->map(fn ($m) => $m->isWin() ? 'W' : 'L')

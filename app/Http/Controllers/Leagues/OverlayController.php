@@ -43,12 +43,17 @@ class OverlayController extends Controller
             ])->values()->all()
             : [];
 
-        $deckName = $league->deckVersion?->deck?->name
-            ?? $league->matches()
+        /** @var \App\Models\Deck|null $deckModel */
+        $deckModel = $league->deckVersion?->deck;
+        if (! $deckModel) {
+            /** @var \App\Models\Deck|null $deckModel */
+            $deckModel = $league->matches()
                 ->whereNotNull('deck_version_id')
                 ->with('deck')
                 ->first()
-                ?->deck?->name;
+                ?->getRelation('deck');
+        }
+        $deckName = $deckModel?->name;
 
         return Inertia::render('leagues/Overlay', [
             'league' => [
@@ -60,7 +65,7 @@ class OverlayController extends Controller
                 'totalMatches' => $league->total_matches_count,
                 'phantom' => (bool) $league->phantom,
                 'deckName' => $deckName,
-                'hasActiveMatch' => $currentMatch !== null,
+                'hasActiveMatch' => ! is_null($currentMatch),
                 'games' => $games,
             ],
         ]);

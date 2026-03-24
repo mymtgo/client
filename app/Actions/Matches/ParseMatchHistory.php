@@ -28,8 +28,8 @@ class ParseMatchHistory
         }
 
         return [
-            'wins' => (int) ($match['GameWins'] ?? 0),
-            'losses' => (int) ($match['GameLosses'] ?? 0),
+            'wins' => (int) $match['GameWins'],
+            'losses' => (int) $match['GameLosses'],
         ];
     }
 }

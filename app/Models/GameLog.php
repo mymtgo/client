@@ -5,6 +5,9 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property array<int, array{timestamp: string, message: string}>|null $decoded_entries
+ */
 class GameLog extends Model
 {
     protected $guarded = [];

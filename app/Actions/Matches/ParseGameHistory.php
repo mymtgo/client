@@ -114,9 +114,6 @@ class ParseGameHistory
     /** @var array<int, array> Class definitions: classId => definition */
     private array $classDefs = [];
 
-    /** @var array<int, string> Libraries: libraryId => name */
-    private array $libraries = [];
-
     /**
      * Parse the MTGO game history file and return match records.
      *
@@ -520,7 +517,6 @@ class ParseGameHistory
             case self::RT_BINARY_LIBRARY:
                 $libraryId = $this->readInt32();
                 $libraryName = $this->readString();
-                $this->libraries[$libraryId] = $libraryName;
 
                 return $this->readValueRecord();
 
@@ -768,15 +764,13 @@ class ParseGameHistory
 
             $cleaned = $this->cleanMatch($match);
 
-            if ($cleaned !== null) {
-                $matches[] = $cleaned;
-            }
+            $matches[] = $cleaned;
         }
 
         return $matches;
     }
 
-    private function cleanMatch(array $match): ?array
+    private function cleanMatch(array $match): array
     {
         $opponents = $this->extractList($match['Opponents'] ?? null);
         $matchWinners = $this->extractList($match['MatchWinners'] ?? null);

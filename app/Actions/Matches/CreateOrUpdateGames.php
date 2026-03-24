@@ -16,7 +16,7 @@ class CreateOrUpdateGames
     public static function run(MtgoMatch $match, Collection $events): void
     {
         $games = $events->groupBy('game_id')->filter(
-            fn ($group, $key) => $key !== '' && $key !== null
+            fn ($group, $key) => $key !== ''
         );
 
         $gameIds = $games->keys();

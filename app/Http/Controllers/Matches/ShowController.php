@@ -31,7 +31,7 @@ class ShowController extends Controller
         }
 
         $deckVersion = DeckVersion::find($match->deck_version_id);
-        $registeredCards = $deckVersion?->cards ?? [];
+        $registeredCards = $deckVersion->cards ?? [];
 
         // Batch all mtgo_ids: deck_json entries + timeline CatalogIDs
         $deckMtgoIds = $match->games->flatMap(fn ($game) => $game->players->flatMap(

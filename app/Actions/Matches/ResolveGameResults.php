@@ -19,7 +19,7 @@ class ResolveGameResults
         ])->get();
 
         foreach ($matches as $match) {
-            static::resolveForMatch($match);
+            self::resolveForMatch($match);
         }
     }
 
@@ -38,7 +38,7 @@ class ResolveGameResults
         $extracted = ExtractGameResults::run($gameLog->decoded_entries, $username);
 
         // Progressive: update Game.won for each game
-        static::syncGameResults($match, $extracted['results'] ?? []);
+        self::syncGameResults($match, $extracted['results']);
 
         // Determine if the game log provides a decisive result.
         // The game log binary is MTGO's authoritative record of results —
@@ -47,13 +47,13 @@ class ResolveGameResults
             ->where('event_type', 'match_state_changed')
             ->get();
 
-        $disconnectDetected = collect($extracted['games'] ?? [])
+        $disconnectDetected = collect($extracted['games'])
             ->contains(fn ($g) => ($g['end_reason'] ?? '') === 'disconnect');
 
         $result = DetermineMatchResult::run(
-            logResults: $extracted['results'] ?? [],
+            logResults: $extracted['results'],
             stateChanges: $stateChanges,
-            matchScoreExists: $extracted['match_decided'] ?? false,
+            matchScoreExists: $extracted['match_decided'],
             disconnectDetected: $disconnectDetected,
         );
 

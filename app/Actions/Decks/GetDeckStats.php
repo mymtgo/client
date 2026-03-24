@@ -2,6 +2,7 @@
 
 namespace App\Actions\Decks;
 
+use App\Enums\MatchOutcome;
 use App\Models\Deck;
 use App\Models\Game;
 use Carbon\Carbon;
@@ -18,8 +19,8 @@ class GetDeckStats
         $matchesQuery = $deck->matches()->select('matches.*')->where('state', 'complete')
             ->whereBetween('started_at', [$from, $to]);
 
-        $wins = $matchesQuery->clone()->won()->count();
-        $losses = $matchesQuery->clone()->lost()->count();
+        $wins = $matchesQuery->clone()->where('outcome', MatchOutcome::Win)->count();
+        $losses = $matchesQuery->clone()->where('outcome', MatchOutcome::Loss)->count();
         $gamesWon = (int) $matchesQuery->clone()->withCount(['games as games_won_sum' => fn ($q) => $q->where('won', true)])->get()->sum('games_won_sum');
         $gamesLost = (int) $matchesQuery->clone()->withCount(['games as games_lost_sum' => fn ($q) => $q->where('won', false)])->get()->sum('games_lost_sum');
 
@@ -54,14 +55,14 @@ class GetDeckStats
             'losses' => $losses,
             'gamesWon' => $gamesWon,
             'gamesLost' => $gamesLost,
-            'matchWinrate' => round(100 * ($wins / ($totalMatches ?: 1))),
-            'gameWinrate' => round(100 * ($gamesWon / (($gamesWon + $gamesLost) ?: 1))),
+            'matchWinrate' => (int) round(100 * ($wins / ($totalMatches ?: 1))),
+            'gameWinrate' => (int) round(100 * ($gamesWon / (($gamesWon + $gamesLost) ?: 1))),
             'otpWon' => $otpWon,
             'otpLost' => $otpLost,
-            'otpRate' => round(100 * ($otpWon / (($otpWon + $otpLost) ?: 1))),
+            'otpRate' => (int) round(100 * ($otpWon / (($otpWon + $otpLost) ?: 1))),
             'otdWon' => $otdWon,
             'otdLost' => $otdLost,
-            'otdRate' => round(100 * ($otdWon / (($otdWon + $otdLost) ?: 1))),
+            'otdRate' => (int) round(100 * ($otdWon / (($otdWon + $otdLost) ?: 1))),
             'trophies' => $trophies,
             'allMatchIds' => $allMatchIds,
         ];

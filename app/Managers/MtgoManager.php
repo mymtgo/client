@@ -175,8 +175,8 @@ class MtgoManager
 
     public function pathsAreValid(): bool
     {
-        $logOk = ValidatePath::forLogs($this->getLogPath() ?? '');
-        $dataOk = ValidatePath::forData($this->getLogDataPath() ?? '');
+        $logOk = ValidatePath::forLogs($this->getLogPath());
+        $dataOk = ValidatePath::forData($this->getLogDataPath());
 
         return $logOk['valid'] && $dataOk['valid'];
     }

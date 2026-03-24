@@ -46,7 +46,7 @@ class Account extends Model
     /**
      * Find or create an account and activate it.
      */
-    public static function registerAndActivate(string $username): static
+    public static function registerAndActivate(string $username): self
     {
         $account = static::firstOrCreate(
             ['username' => $username],
