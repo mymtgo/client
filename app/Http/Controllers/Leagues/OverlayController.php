@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Leagues;
 use App\Enums\LeagueState;
 use App\Enums\MatchState;
 use App\Http\Controllers\Controller;
+use App\Models\Deck;
 use App\Models\League;
 use App\Models\MtgoMatch;
 use Illuminate\Http\Request;
@@ -19,10 +20,12 @@ class OverlayController extends Controller
             'matches as wins_count' => fn ($q) => $q->where('state', MatchState::Complete)->where('outcome', 'win'),
             'matches as losses_count' => fn ($q) => $q->where('state', MatchState::Complete)->where('outcome', 'loss'),
             'matches as total_matches_count' => fn ($q) => $q->where('state', '!=', MatchState::Voided),
+            'matches as has_active_match_count' => fn ($q) => $q->whereIn('state', [MatchState::Started, MatchState::InProgress]),
         ])
             ->with(['deckVersion.deck'])
             ->where('leagues.state', LeagueState::Active)
             ->has('matches')
+            ->orderByDesc('has_active_match_count')
             ->latest('started_at')
             ->first();
 
@@ -43,10 +46,10 @@ class OverlayController extends Controller
             ])->values()->all()
             : [];
 
-        /** @var \App\Models\Deck|null $deckModel */
+        /** @var Deck|null $deckModel */
         $deckModel = $league->deckVersion?->deck;
         if (! $deckModel) {
-            /** @var \App\Models\Deck|null $deckModel */
+            /** @var Deck|null $deckModel */
             $deckModel = $league->matches()
                 ->whereNotNull('deck_version_id')
                 ->with('deck')

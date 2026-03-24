@@ -41,8 +41,8 @@ class ResolveGameResults
 
         $extracted = ExtractGameResults::run($gameLog->decoded_entries, $username);
 
-        // Progressive: update Game.won for each game
-        self::syncGameResults($match, $extracted['results']);
+        // Progressive: update Game.won and ended_at for each game
+        self::syncGameResults($match, $extracted['results'], $extracted['games']);
 
         // Determine if the game log provides a decisive result.
         // The game log binary is MTGO's authoritative record of results —
@@ -89,15 +89,26 @@ class ResolveGameResults
         }
     }
 
-    private static function syncGameResults(MtgoMatch $match, array $results): void
+    private static function syncGameResults(MtgoMatch $match, array $results, array $gameData): void
     {
         $games = $match->games()->orderBy('started_at')->get();
         foreach ($games as $index => $game) {
             if (! isset($results[$index])) {
                 continue;
             }
+
+            $updates = [];
+
             if ($game->won === null || (bool) $game->won !== $results[$index]) {
-                $game->update(['won' => $results[$index]]);
+                $updates['won'] = $results[$index];
+            }
+
+            if ($game->ended_at === null && ! empty($gameData[$index]['ended_at'])) {
+                $updates['ended_at'] = $gameData[$index]['ended_at'];
+            }
+
+            if (! empty($updates)) {
+                $game->update($updates);
             }
         }
     }
