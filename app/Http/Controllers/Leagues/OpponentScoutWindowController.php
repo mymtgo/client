@@ -25,12 +25,13 @@ class OpponentScoutWindowController extends Controller
                 ->first();
 
             if ($opponentPlayer) {
+                /** @var \App\Models\Player $opponentPlayer */
                 $previousMatches = MtgoMatch::complete()
                     ->whereHas('games.opponents', fn ($q) => $q->where('players.id', $opponentPlayer->id))
                     ->where('matches.id', '!=', $currentMatch->id);
 
-                $wins = (clone $previousMatches)->won()->count();
-                $losses = (clone $previousMatches)->lost()->count();
+                $wins = (clone $previousMatches)->where('outcome', \App\Enums\MatchOutcome::Win)->count();
+                $losses = (clone $previousMatches)->where('outcome', \App\Enums\MatchOutcome::Loss)->count();
                 $totalPrevious = $wins + $losses;
 
                 $lastArchetype = $opponentPlayer->matchArchetypes()

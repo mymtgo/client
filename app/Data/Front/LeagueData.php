@@ -4,7 +4,7 @@ namespace App\Data\Front;
 
 use App\Models\League;
 use App\Models\MtgoMatch;
-use Illuminate\Support\Carbon;
+use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Spatie\LaravelData\Data;
 

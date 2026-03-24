@@ -286,10 +286,10 @@ class IngestLog
         }
 
         return [
-            $m['time'] ?? null,
-            $m['level'] ?? null,
-            $m['cat'] ?? null,
-            $m['ctx'] ?? null,
+            $m['time'],
+            $m['level'],
+            $m['cat'],
+            $m['ctx'],
         ];
     }
 }

@@ -83,7 +83,7 @@ class ExtractGameHandData
                 continue; // Pre-draw
             }
 
-            if (empty($currentHandInstances) && ! empty($handCardsNow)) {
+            if (empty($currentHandInstances)) {
                 $currentHandInstances = $handCardsNow;
 
                 continue;

@@ -19,7 +19,7 @@ class ExtractGameResults
      *
      * @param  array<int, array{timestamp: string, message: string}>  $entries
      * @param  string  $localPlayer  The local player's username (without @P prefix)
-     * @return array{games: array, players: array, match_score: ?array, results: array, on_play: array, starting_hands: array}
+     * @return array{games: array, players: array, match_score: ?array, results: array, on_play: array, starting_hands: array, match_decided: bool}
      */
     public static function run(array $entries, string $localPlayer): array
     {

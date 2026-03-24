@@ -22,7 +22,7 @@ class BuildMatchGameData
 
         $opponentCardsSeen = collect($opponentPlayer?->pivot->deck_json ?? [])
             ->map(fn ($item) => [
-                'name' => $cardsByMtgoId->get($item['mtgo_id'])?->name ?? "Unknown ({$item['mtgo_id']})",
+                'name' => $cardsByMtgoId->get($item['mtgo_id'])->name ?? "Unknown ({$item['mtgo_id']})",
                 'image' => $cardsByMtgoId->get($item['mtgo_id'])?->image,
             ])
             ->unique('name')
@@ -39,8 +39,8 @@ class BuildMatchGameData
         $localCardsPlayed = self::parseLocalCardsPlayed($game, $localInstanceId, $cardsByMtgoId);
 
         $duration = null;
-        if ($game->started_at && $game->ended_at) {
-            $totalSeconds = abs($game->started_at->diffInSeconds($game->ended_at));
+        if ($game->ended_at) {
+            $totalSeconds = (int) abs($game->started_at->diffInSeconds($game->ended_at));
             $mins = intdiv($totalSeconds, 60);
             $secs = $totalSeconds % 60;
             $duration = $mins > 0 ? "{$mins}m {$secs}s" : "{$secs}s";
@@ -126,7 +126,7 @@ class BuildMatchGameData
                 continue;
             }
 
-            if (empty($currentHandInstances) && ! empty($handCardsNow)) {
+            if (empty($currentHandInstances)) {
                 $currentHandInstances = $handCardsNow;
 
                 continue;
@@ -153,7 +153,7 @@ class BuildMatchGameData
         }
 
         $toCard = fn ($catalogId, bool $bottomed = false) => [
-            'name' => $cardsByMtgoId->get($catalogId)?->name ?? "Unknown ({$catalogId})",
+            'name' => $cardsByMtgoId->get($catalogId)->name ?? "Unknown ({$catalogId})",
             'image' => $cardsByMtgoId->get($catalogId)?->image,
             'bottomed' => $bottomed,
         ];
@@ -202,7 +202,7 @@ class BuildMatchGameData
         return collect(array_keys($seenCatalogIds))
             ->map(fn ($catalogId) => [
                 'id' => $catalogId,
-                'name' => $cardsByMtgoId->get($catalogId)?->name ?? "Unknown ({$catalogId})",
+                'name' => $cardsByMtgoId->get($catalogId)->name ?? "Unknown ({$catalogId})",
                 'image' => $cardsByMtgoId->get($catalogId)?->image,
             ])
             ->unique('id')
@@ -224,7 +224,7 @@ class BuildMatchGameData
         $landCount = collect($lastSnapshot->content['Cards'] ?? [])
             ->filter(fn ($card) => $card['Zone'] === 'Battlefield')
             ->filter(function ($card) use ($cardsByMtgoId) {
-                $type = $cardsByMtgoId->get((int) $card['CatalogID'])?->type ?? '';
+                $type = $cardsByMtgoId->get((int) $card['CatalogID'])->type ?? '';
 
                 return str_contains($type, 'Land');
             })
@@ -245,7 +245,7 @@ class BuildMatchGameData
         $gameMains = [];
         foreach ($gameDeckJson as $item) {
             if (! ($item['sideboard'] ?? false)) {
-                $oracleId = $cardsByMtgoId->get($item['mtgo_id'])?->oracle_id ?? "mtgo_{$item['mtgo_id']}";
+                $oracleId = $cardsByMtgoId->get($item['mtgo_id'])->oracle_id ?? "mtgo_{$item['mtgo_id']}";
                 $gameMains[$oracleId] = ($gameMains[$oracleId] ?? 0) + (int) ($item['quantity'] ?? 1);
             }
         }
@@ -265,7 +265,7 @@ class BuildMatchGameData
                 $card = $cardsByOracleId->get($oracleId)
                     ?? $cardsByMtgoId->first(fn ($c) => $c->oracle_id === $oracleId);
                 $changes[] = [
-                    'name' => $card?->name ?? 'Unknown',
+                    'name' => $card->name ?? 'Unknown',
                     'image' => $card?->image,
                     'quantity' => $gameQty - $registeredQty,
                     'type' => 'in',
@@ -279,7 +279,7 @@ class BuildMatchGameData
                 $card = $cardsByOracleId->get($oracleId)
                     ?? $cardsByMtgoId->first(fn ($c) => $c->oracle_id === $oracleId);
                 $changes[] = [
-                    'name' => $card?->name ?? 'Unknown',
+                    'name' => $card->name ?? 'Unknown',
                     'image' => $card?->image,
                     'quantity' => $registeredQty - $gameQty,
                     'type' => 'out',

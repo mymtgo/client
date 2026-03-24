@@ -20,7 +20,7 @@ class GetGameLogEntries
     {
         $match = $game->match;
 
-        if (! $match || ! $game->started_at || ! $game->ended_at) {
+        if ($game->started_at === null || $game->ended_at === null) {
             return [];
         }
 

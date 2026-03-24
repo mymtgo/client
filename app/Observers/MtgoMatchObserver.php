@@ -49,7 +49,7 @@ class MtgoMatchObserver
         $won = $match->outcome === MatchOutcome::Win;
         $opponentArchetype = $match->opponentArchetypes()
             ->with('archetype')
-            ->first()?->archetype?->name ?? 'Unknown';
+            ->first()?->archetype->name ?? 'Unknown';
 
         AppNotification::dispatch(
             type: $won ? 'match_win' : 'match_loss',

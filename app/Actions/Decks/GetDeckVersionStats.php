@@ -97,12 +97,12 @@ class GetDeckVersionStats
                 dateLabel: $dateLabel,
                 wins: (int) ($version->won_matches_count ?? 0),
                 losses: (int) ($version->lost_matches_count ?? 0),
-                gamesWon: (int) ($versionGameCounts->get($version->id)?->games_won ?? 0),
-                gamesLost: (int) ($versionGameCounts->get($version->id)?->games_lost ?? 0),
-                otpWon: (int) ($vOtp?->won ?? 0),
-                otpLost: (int) ($vOtp?->lost ?? 0),
-                otdWon: (int) ($vOtd?->won ?? 0),
-                otdLost: (int) ($vOtd?->lost ?? 0),
+                gamesWon: (int) ($versionGameCounts->get($version->id)->games_won ?? 0),
+                gamesLost: (int) ($versionGameCounts->get($version->id)->games_lost ?? 0),
+                otpWon: (int) ($vOtp->won ?? 0),
+                otpLost: (int) ($vOtp->lost ?? 0),
+                otdWon: (int) ($vOtd->won ?? 0),
+                otdLost: (int) ($vOtd->lost ?? 0),
             );
         }
 

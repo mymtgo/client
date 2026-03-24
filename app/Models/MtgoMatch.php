@@ -14,6 +14,16 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOneThrough;
 
+/**
+ * @property int|null $wins
+ * @property int|null $losses
+ * @property int|null $total
+ * @property int $games_won_count
+ * @property int $games_lost_count
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, Game> $games
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, MatchArchetype> $archetypes
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, MatchArchetype> $opponentArchetypes
+ */
 #[ObservedBy(MtgoMatchObserver::class)]
 class MtgoMatch extends Model
 {
@@ -34,6 +44,7 @@ class MtgoMatch extends Model
         return 'matches';
     }
 
+    /** @return HasMany<Game, $this> */
     public function games(): HasMany
     {
         return $this->hasMany(Game::class, 'match_id', 'id');
@@ -51,11 +62,13 @@ class MtgoMatch extends Model
         );
     }
 
+    /** @return HasMany<MatchArchetype, $this> */
     public function archetypes(): HasMany
     {
         return $this->hasMany(MatchArchetype::class);
     }
 
+    /** @return HasMany<MatchArchetype, $this> */
     public function opponentArchetypes(): HasMany
     {
         return $this->hasMany(MatchArchetype::class)
@@ -122,11 +135,13 @@ class MtgoMatch extends Model
         return $this->ended_at?->diffForHumans($this->started_at, CarbonInterface::DIFF_ABSOLUTE);
     }
 
+    /** @return BelongsTo<DeckVersion, $this> */
     public function deckVersion(): BelongsTo
     {
         return $this->belongsTo(DeckVersion::class, 'deck_version_id');
     }
 
+    /** @return BelongsTo<League, $this> */
     public function league(): BelongsTo
     {
         return $this->belongsTo(League::class);

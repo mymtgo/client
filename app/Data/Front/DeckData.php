@@ -41,7 +41,7 @@ class DeckData extends Data
             matchesCount: $deck->matches_count ?: 0,
             matchesWon: $deck->won_matches_count ?: 0,
             matchesLost: $deck->lost_matches_count ?: 0,
-            winrate: round($winrate * 100),
+            winrate: (int) round($winrate * 100),
             colorIdentity: $deck->color_identity,
             lastPlayedAt: $deck->matches_max_started_at ? Carbon::parse($deck->matches_max_started_at) : null,
             matches: Lazy::whenLoaded('matches', $deck, fn () => MatchData::collect($deck->matches)),

@@ -131,8 +131,8 @@ class FormatLeagueRuns
             $opp = $opponentByMatch[$row->id] ?? null;
             $won = $row->outcome === 'win';
             $record = $gameRecords->get($row->id);
-            $gamesWon = (int) ($record?->games_won ?? 0);
-            $gamesLost = (int) ($record?->games_lost ?? 0);
+            $gamesWon = (int) ($record->games_won ?? 0);
+            $gamesLost = (int) ($record->games_lost ?? 0);
 
             return [
                 'id' => $row->id,
@@ -167,7 +167,7 @@ class FormatLeagueRuns
             'name' => $league->name,
             'format' => MtgoMatch::displayFormat($league->format),
             'phantom' => (bool) $league->phantom,
-            'state' => $league->state?->value ?? 'active',
+            'state' => $league->state->value,
             'startedAt' => $league->started_at,
             'deck' => $deck,
             'versionLabel' => $versionLabel,

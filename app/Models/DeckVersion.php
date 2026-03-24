@@ -8,6 +8,9 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * @property string|null $name
+ */
 class DeckVersion extends Model
 {
     use HasFactory;
@@ -35,11 +38,13 @@ class DeckVersion extends Model
         })->toArray();
     }
 
+    /** @return BelongsTo<Deck, $this> */
     public function deck(): BelongsTo
     {
         return $this->belongsTo(Deck::class);
     }
 
+    /** @return HasMany<MtgoMatch, $this> */
     public function matches(): HasMany
     {
         return $this->hasMany(MtgoMatch::class, 'deck_version_id')->where('state', MatchState::Complete);
