@@ -22,7 +22,7 @@ class BuildMatchGameData
 
         $opponentCardsSeen = collect($opponentPlayer?->pivot->deck_json ?? [])
             ->map(fn ($item) => [
-                'name' => $cardsByMtgoId->get($item['mtgo_id'])->name ?? "Unknown ({$item['mtgo_id']})",
+                'name' => $cardsByMtgoId->get($item['mtgo_id'])?->name ?? "Unknown ({$item['mtgo_id']})",
                 'image' => $cardsByMtgoId->get($item['mtgo_id'])?->image,
             ])
             ->unique('name')
@@ -64,119 +64,33 @@ class BuildMatchGameData
     }
 
     /**
-     * Parse opening hand data from game timeline snapshots.
+     * Format parsed opening hand data for display.
      */
     private static function parseHandData(Game $game, int $localInstanceId, int $opponentInstanceId, Collection $cardsByMtgoId): array
     {
-        $snapshots = $game->timeline->sortBy('timestamp');
-
-        $mulliganedHands = [];
-        $currentHandInstances = [];
-        $handBeforeBottoming = [];
-        $bottomedInstanceIds = [];
-        $openingPhase = true;
-
-        $opponentStartLibrary = null;
-        $opponentFirstHandLibrary = null;
-
-        foreach ($snapshots as $snapshot) {
-            $content = $snapshot->content;
-            $players = collect($content['Players'] ?? []);
-            $cards = collect($content['Cards'] ?? []);
-
-            $opponentState = $players->first(fn ($p) => (int) $p['Id'] === $opponentInstanceId);
-            if ($opponentState) {
-                $oppHand = (int) $opponentState['HandCount'];
-                $oppLib = (int) $opponentState['LibraryCount'];
-                if ($opponentStartLibrary === null && $oppHand === 0) {
-                    $opponentStartLibrary = $oppLib;
-                } elseif ($opponentFirstHandLibrary === null && $oppHand > 0) {
-                    $opponentFirstHandLibrary = $oppLib;
-                }
-            }
-
-            if (! $openingPhase) {
-                if ($opponentFirstHandLibrary !== null) {
-                    break;
-                }
-
-                continue;
-            }
-
-            $localInPlay = $cards->first(fn ($c) => (int) $c['Owner'] === $localInstanceId &&
-                in_array($c['Zone'], ['Battlefield', 'Stack', 'Graveyard'])
-            );
-            if ($localInPlay) {
-                $openingPhase = false;
-
-                continue;
-            }
-
-            $localState = $players->first(fn ($p) => (int) $p['Id'] === $localInstanceId);
-            if (! $localState) {
-                continue;
-            }
-
-            $handCardsNow = $cards
-                ->filter(fn ($c) => $c['Zone'] === 'Hand' && (int) $c['Owner'] === $localInstanceId)
-                ->mapWithKeys(fn ($c) => [(int) $c['Id'] => (int) $c['CatalogID']])
-                ->toArray();
-
-            if (empty($handCardsNow) && empty($currentHandInstances)) {
-                continue;
-            }
-
-            if (empty($currentHandInstances)) {
-                $currentHandInstances = $handCardsNow;
-
-                continue;
-            }
-
-            if (! empty($handCardsNow)) {
-                $currentIds = array_keys($currentHandInstances);
-                $newIds = array_keys($handCardsNow);
-                $overlap = array_intersect($currentIds, $newIds);
-
-                if (empty($overlap) && count($newIds) >= 4) {
-                    $mulliganedHands[] = array_values($currentHandInstances);
-                    $currentHandInstances = $handCardsNow;
-                } elseif (count($newIds) < count($currentIds)) {
-                    $handBeforeBottoming = $currentHandInstances;
-                    foreach (array_diff($currentIds, $newIds) as $removedId) {
-                        $bottomedInstanceIds[] = $removedId;
-                    }
-                    $currentHandInstances = $handCardsNow;
-                } else {
-                    $currentHandInstances = $handCardsNow;
-                }
-            }
-        }
+        $parsed = ParseOpeningHand::run($game, $localInstanceId, $opponentInstanceId);
 
         $toCard = fn ($catalogId, bool $bottomed = false) => [
-            'name' => $cardsByMtgoId->get($catalogId)->name ?? "Unknown ({$catalogId})",
+            'name' => $cardsByMtgoId->get($catalogId)?->name ?? "Unknown ({$catalogId})",
             'image' => $cardsByMtgoId->get($catalogId)?->image,
             'bottomed' => $bottomed,
         ];
 
-        $displayHand = ! empty($bottomedInstanceIds) ? $handBeforeBottoming : $currentHandInstances;
+        // For display: show the full hand including bottomed cards (marked)
+        $displayHand = ! empty($parsed['bottomed_instance_ids']) ? $parsed['hand_before_bottoming'] : $parsed['kept_hand'];
         $keptHand = [];
         foreach ($displayHand as $instanceId => $catalogId) {
-            $keptHand[] = $toCard($catalogId, in_array($instanceId, $bottomedInstanceIds));
+            $keptHand[] = $toCard($catalogId, in_array($instanceId, $parsed['bottomed_instance_ids']));
         }
 
         $mulliganedHandsFormatted = array_map(
-            fn ($hand) => array_map(fn ($catalogId) => $toCard($catalogId), $hand),
-            $mulliganedHands
+            fn ($hand) => array_map(fn ($catalogId) => $toCard($catalogId), array_values($hand)),
+            $parsed['mulliganed_hands']
         );
 
-        $opponentMulligans = 0;
-        if ($opponentStartLibrary !== null && $opponentFirstHandLibrary !== null) {
-            $opponentMulligans = max(0, $opponentFirstHandLibrary - ($opponentStartLibrary - 7));
-        }
-
         return [
-            'localMulligans' => count($mulliganedHands),
-            'opponentMulligans' => $opponentMulligans,
+            'localMulligans' => count($parsed['mulliganed_hands']),
+            'opponentMulligans' => $parsed['opponent_mulligans'],
             'mulliganedHands' => $mulliganedHandsFormatted,
             'keptHand' => $keptHand,
         ];
@@ -202,7 +116,7 @@ class BuildMatchGameData
         return collect(array_keys($seenCatalogIds))
             ->map(fn ($catalogId) => [
                 'id' => $catalogId,
-                'name' => $cardsByMtgoId->get($catalogId)->name ?? "Unknown ({$catalogId})",
+                'name' => $cardsByMtgoId->get($catalogId)?->name ?? "Unknown ({$catalogId})",
                 'image' => $cardsByMtgoId->get($catalogId)?->image,
             ])
             ->unique('id')
@@ -224,7 +138,7 @@ class BuildMatchGameData
         $landCount = collect($lastSnapshot->content['Cards'] ?? [])
             ->filter(fn ($card) => $card['Zone'] === 'Battlefield')
             ->filter(function ($card) use ($cardsByMtgoId) {
-                $type = $cardsByMtgoId->get((int) $card['CatalogID'])->type ?? '';
+                $type = $cardsByMtgoId->get((int) $card['CatalogID'])?->type ?? '';
 
                 return str_contains($type, 'Land');
             })
@@ -245,7 +159,7 @@ class BuildMatchGameData
         $gameMains = [];
         foreach ($gameDeckJson as $item) {
             if (! ($item['sideboard'] ?? false)) {
-                $oracleId = $cardsByMtgoId->get($item['mtgo_id'])->oracle_id ?? "mtgo_{$item['mtgo_id']}";
+                $oracleId = $cardsByMtgoId->get($item['mtgo_id'])?->oracle_id ?? "mtgo_{$item['mtgo_id']}";
                 $gameMains[$oracleId] = ($gameMains[$oracleId] ?? 0) + (int) ($item['quantity'] ?? 1);
             }
         }

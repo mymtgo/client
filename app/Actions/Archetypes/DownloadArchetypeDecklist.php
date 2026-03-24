@@ -7,7 +7,6 @@ use App\Models\Archetype;
 use App\Models\Card;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Native\Desktop\Facades\Settings;
 
 class DownloadArchetypeDecklist
 {
@@ -63,9 +62,6 @@ class DownloadArchetypeDecklist
 
     private static function fetchFromApi(string $uuid): \Illuminate\Http\Client\Response
     {
-        return Http::withHeaders([
-            'X-Device-Id' => Settings::get('device_id'),
-            'X-Api-Key' => RegisterDevice::retrieveKey(),
-        ])->get(config('mymtgo_api.url').'/api/archetypes/'.$uuid.'/decklist');
+        return Http::mymtgoApi()->get('/api/archetypes/'.$uuid.'/decklist');
     }
 }

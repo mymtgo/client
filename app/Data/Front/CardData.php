@@ -22,7 +22,7 @@ class CardData extends Data
     {
         $type = $card->type;
 
-        if ($type == 'Basic Land') {
+        if ($type === 'Basic Land') {
             $type = 'Land';
         }
 

@@ -147,6 +147,11 @@ class MtgoMatch extends Model
         return $this->belongsTo(League::class);
     }
 
+    public function scopeForAccount(Builder $query, int $accountId): Builder
+    {
+        return $query->whereHas('deckVersion', fn ($q) => $q->whereHas('deck', fn ($q2) => $q2->where('account_id', $accountId)));
+    }
+
     public function scopeWon(Builder $query): Builder
     {
         return $query->where('outcome', MatchOutcome::Win);
@@ -175,11 +180,17 @@ class MtgoMatch extends Model
         return $this->outcome === MatchOutcome::Loss;
     }
 
+    /**
+     * Uses eager-loaded games_won_count (via scopeWithGameCounts) when available,
+     * falls back to a DB query otherwise. Use withGameCounts() in list contexts
+     * to avoid N+1 queries.
+     */
     public function gamesWon(): int
     {
         return $this->games_won_count ?? $this->games()->where('won', true)->count();
     }
 
+    /** @see gamesWon() for N+1 note */
     public function gamesLost(): int
     {
         return $this->games_lost_count ?? $this->games()->where('won', false)->count();

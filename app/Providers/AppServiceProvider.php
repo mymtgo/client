@@ -2,9 +2,11 @@
 
 namespace App\Providers;
 
+use App\Actions\RegisterDevice;
 use App\Managers\MtgoManager;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\ServiceProvider;
+use Native\Desktop\Facades\Settings;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -28,5 +30,10 @@ class AppServiceProvider extends ServiceProvider
                 'verify' => false,
             ]);
         }
+
+        Http::macro('mymtgoApi', fn () => Http::withHeaders([
+            'X-Device-Id' => Settings::get('device_id'),
+            'X-Api-Key' => RegisterDevice::retrieveKey(),
+        ])->baseUrl(config('mymtgo_api.url')));
     }
 }

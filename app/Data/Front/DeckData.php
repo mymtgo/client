@@ -30,7 +30,7 @@ class DeckData extends Data
     {
         $winrate = 0;
 
-        if ($deck->won_matches_count) {
+        if ($deck->matches_count > 0) {
             $winrate = $deck->won_matches_count / $deck->matches_count;
         }
 

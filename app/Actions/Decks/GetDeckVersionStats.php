@@ -2,6 +2,7 @@
 
 namespace App\Actions\Decks;
 
+use App\Actions\Util\Winrate;
 use App\Models\Deck;
 use App\Models\Game;
 use Carbon\Carbon;
@@ -123,14 +124,14 @@ class GetDeckVersionStats
             'matchesLost' => $losses,
             'gamesWon' => $gamesWon,
             'gamesLost' => $gamesLost,
-            'matchWinrate' => round(100 * ($wins / (($wins + $losses) ?: 1))),
-            'gameWinrate' => round(100 * ($gamesWon / (($gamesWon + $gamesLost) ?: 1))),
+            'matchWinrate' => Winrate::percentage($wins, $losses),
+            'gameWinrate' => Winrate::percentage($gamesWon, $gamesLost),
             'gamesOtpWon' => $otpWon,
             'gamesOtpLost' => $otpLost,
-            'otpRate' => round(100 * ($otpWon / (($otpWon + $otpLost) ?: 1))),
+            'otpRate' => Winrate::percentage($otpWon, $otpLost),
             'gamesOtdWon' => $otdWon,
             'gamesOtdLost' => $otdLost,
-            'otdRate' => round(100 * ($otdWon / (($otdWon + $otdLost) ?: 1))),
+            'otdRate' => Winrate::percentage($otdWon, $otdLost),
         ];
     }
 }

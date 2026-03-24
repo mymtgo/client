@@ -6,7 +6,6 @@ use App\Models\Archetype;
 use App\Models\ArchetypeMatchAttempt;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
-use Native\Desktop\Facades\Settings;
 
 class DetermineDeckArchetype
 {
@@ -17,10 +16,7 @@ class DetermineDeckArchetype
             'cards' => $cards->values(),
         ];
 
-        $response = Http::withHeaders([
-            'X-Device-Id' => Settings::get('device_id'),
-            'X-Api-Key' => RegisterDevice::retrieveKey(),
-        ])->post(config('mymtgo_api.url').'/api/archetypes/estimate', $payload);
+        $response = Http::mymtgoApi()->post('/api/archetypes/estimate', $payload);
 
         $archetypes = $response->json();
 

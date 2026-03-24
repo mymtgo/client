@@ -10,6 +10,7 @@ use App\Actions\Dashboard\GetRollingForm;
 use App\Actions\Dashboard\GetStreak;
 use App\Actions\Dashboard\GetWinrateDelta;
 use App\Actions\Leagues\GetActiveLeague;
+use App\Actions\Util\Winrate;
 use App\Data\Front\DeckData;
 use App\Models\Account;
 use App\Models\Deck;
@@ -27,9 +28,7 @@ class IndexController extends Controller
 
         // Overall match stats using outcome column
         $matchStats = MtgoMatch::complete()
-            ->when($accountId, fn ($q, $id) => $q
-                ->whereHas('deckVersion', fn ($q2) => $q2->whereHas('deck', fn ($q3) => $q3->where('account_id', $id)))
-            )
+            ->when($accountId, fn ($q, $id) => $q->forAccount($id))
             ->whereBetween('started_at', [$start, $end])
             ->selectRaw("SUM(CASE WHEN outcome = 'win' THEN 1 ELSE 0 END) as wins")
             ->selectRaw("SUM(CASE WHEN outcome = 'loss' THEN 1 ELSE 0 END) as losses")
@@ -40,9 +39,7 @@ class IndexController extends Controller
 
         // Game-level stats from games table
         $matchIds = MtgoMatch::complete()
-            ->when($accountId, fn ($q, $id) => $q
-                ->whereHas('deckVersion', fn ($q2) => $q2->whereHas('deck', fn ($q3) => $q3->where('account_id', $id)))
-            )
+            ->when($accountId, fn ($q, $id) => $q->forAccount($id))
             ->whereBetween('started_at', [$start, $end])
             ->pluck('id');
 
@@ -65,8 +62,8 @@ class IndexController extends Controller
             'matchesLost' => $losses,
             'gamesWon' => $gamesWon,
             'gamesLost' => $gamesLost,
-            'matchWinrate' => round(100 * ($wins / (($wins + $losses) ?: 1))),
-            'gameWinrate' => round(100 * ($gamesWon / (($gamesWon + $gamesLost) ?: 1))),
+            'matchWinrate' => Winrate::percentage($wins, $losses),
+            'gameWinrate' => Winrate::percentage($gamesWon, $gamesLost),
             'deckStats' => $deckStats,
             'timeframe' => $timeframe,
             'activeLeague' => GetActiveLeague::run(),

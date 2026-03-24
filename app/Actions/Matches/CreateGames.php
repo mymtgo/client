@@ -64,6 +64,13 @@ class CreateGames
         }
 
         $parsedState = ExtractJson::run($firstStateEvent->raw_text)->first();
+
+        if (! $parsedState) {
+            Log::channel('pipeline')->warning("CreateGames: could not parse state event for game {$gameId} in match {$match->mtgo_id}");
+
+            return;
+        }
+
         $players = $parsedState['Players'] ?? [];
 
         if (empty($players)) {
@@ -95,7 +102,7 @@ class CreateGames
             if (! $isYou) {
                 $lastParsedState = ExtractJson::run($lastStateEvent->raw_text)->first();
 
-                $deck = collect($lastParsedState['Cards'] ?? [])
+                $deck = collect($lastParsedState ? ($lastParsedState['Cards'] ?? []) : [])
                     ->filter(fn ($card) => $card['Owner'] == $player['Id'])
                     ->groupBy('CatalogID')
                     ->map(function ($cards) {
@@ -126,6 +133,10 @@ class CreateGames
 
         foreach ($gameStateEvents as $event) {
             $content = ExtractJson::run($event->raw_text)->first();
+
+            if (! $content) {
+                continue;
+            }
 
             foreach ($content['Cards'] ?? [] as $card) {
                 $timelineCatalogIds[] = $card['CatalogID'];

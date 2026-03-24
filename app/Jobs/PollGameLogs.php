@@ -19,6 +19,9 @@ class PollGameLogs implements ShouldBeUnique, ShouldQueue
 
     public int $uniqueFor = 2;
 
+    /** Don't retry — next scheduled dispatch (2s) will pick up where this left off. */
+    public int $tries = 1;
+
     public function __construct() {}
 
     public function handle(): void
