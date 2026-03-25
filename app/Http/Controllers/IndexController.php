@@ -103,7 +103,7 @@ class IndexController extends Controller
                     ->when($accountId, fn ($q, $id) => $q->forAccount($id))
                     ->when($format, fn ($q, $f) => $q->where('format', $f))
                     ->whereBetween('started_at', [$start, $end])
-                    ->with(['games.players', 'opponentArchetypes.archetype', 'opponentArchetypes.player', 'league'])
+                    ->with(['games.players', 'opponentArchetypes.archetype', 'opponentArchetypes.player', 'league', 'deck'])
                     ->orderByDesc('started_at')
                     ->limit(10)
                     ->get()
