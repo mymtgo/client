@@ -9,7 +9,7 @@ class GetDashboardLeagueDistribution
     /**
      * @return array{buckets: array<string, int>, trophies: int, total: int}
      */
-    public static function run(?int $accountId): array
+    public static function run(?int $accountId, ?string $format = null): array
     {
         $buckets = collect(['5-0' => 0, '4-1' => 0, '3-2' => 0, '2-3' => 0, '1-4' => 0, '0-5' => 0]);
 
@@ -26,6 +26,7 @@ class GetDashboardLeagueDistribution
             ->where('l.phantom', false)
             ->where('l.state', 'complete')
             ->where('m.state', 'complete')
+            ->when($format, fn ($q, $f) => $q->where('m.format', $f))
             ->groupBy('l.id')
             ->selectRaw("
                 l.id,

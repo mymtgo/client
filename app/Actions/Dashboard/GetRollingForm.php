@@ -11,7 +11,7 @@ class GetRollingForm
     /**
      * @return array{results: string[], winrate: int, allTimeWinrate: int, delta: int}
      */
-    public static function run(?int $accountId): array
+    public static function run(?int $accountId, ?string $format = null): array
     {
         $empty = ['results' => [], 'winrate' => 0, 'allTimeWinrate' => 0, 'delta' => 0];
 
@@ -21,6 +21,7 @@ class GetRollingForm
 
         $recent = MtgoMatch::complete()
             ->forAccount($accountId)
+            ->when($format, fn ($q, $f) => $q->where('format', $f))
             ->orderByDesc('started_at')
             ->limit(20)
             ->pluck('outcome');
@@ -41,6 +42,7 @@ class GetRollingForm
 
         $allTime = MtgoMatch::complete()
             ->forAccount($accountId)
+            ->when($format, fn ($q, $f) => $q->where('format', $f))
             ->selectRaw("
                 SUM(CASE WHEN outcome = 'win' THEN 1 ELSE 0 END) as wins,
                 SUM(CASE WHEN outcome = 'loss' THEN 1 ELSE 0 END) as losses

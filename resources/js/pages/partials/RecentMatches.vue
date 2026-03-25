@@ -12,8 +12,6 @@ import { router, useForm } from '@inertiajs/vue3';
 import DeleteController from '@/actions/App/Http/Controllers/Matches/DeleteController';
 import ShowController from '@/actions/App/Http/Controllers/Matches/ShowController';
 import DeckShowController from '@/actions/App/Http/Controllers/Decks/ShowController';
-import dayjs from 'dayjs';
-
 defineProps<{
     matches: App.Data.Front.MatchData[];
 }>();
@@ -100,7 +98,7 @@ const deleteMatch = (id: string | number) => {
                                         {{ match.matchTime }}
                                     </TableCell>
                                     <TableCell>
-                                        {{ dayjs(match.startedAt).format('DD/MM/YYYY hh:mma') }}
+                                        {{ match.startedAtFormatted }}
                                     </TableCell>
                                     <TableCell>
                                         <Button size="sm" variant="outline" @click="router.visit(ShowController({ id: match.id }).url)">View</Button>

@@ -19,12 +19,15 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Separator } from '@/components/ui/separator';
 import { Spinner } from '@/components/ui/spinner';
 import { Switch } from '@/components/ui/switch';
+import { ChevronsUpDown, Check } from 'lucide-vue-next';
 import { router, usePage } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
+import { cn } from '@/lib/utils';
 
 const props = defineProps<{
     logPath: string;
@@ -134,18 +137,11 @@ function updateTimezone(val: string) {
     withProcessing('timezone', 'patch', UpdateTimezoneController.url(), { timezone: val });
 }
 
-const timezoneRegions = computed(() => {
-    const zones = Intl.supportedValuesOf('timeZone');
-    const grouped: Record<string, string[]> = {};
+const allTimezones = computed(() =>
+    Intl.supportedValuesOf('timeZone').map((tz) => ({ value: tz, label: tz.replace(/_/g, ' ') })),
+);
 
-    for (const tz of zones) {
-        const [region] = tz.split('/');
-        if (!grouped[region]) grouped[region] = [];
-        grouped[region].push(tz);
-    }
-
-    return grouped;
-});
+const timezoneOpen = ref(false);
 
 const sampleLeague: LeagueData = {
     id: 0,
@@ -212,19 +208,39 @@ const sampleOpponent: OpponentData = {
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <Select :modelValue="props.timezone" @update:modelValue="updateTimezone" :disabled="processing === 'timezone'">
-                        <SelectTrigger class="w-full">
-                            <SelectValue :placeholder="props.timezone" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectGroup v-for="(zones, region) in timezoneRegions" :key="region">
-                                <SelectLabel>{{ region }}</SelectLabel>
-                                <SelectItem v-for="tz in zones" :key="tz" :value="tz">
-                                    {{ tz.replace(/_/g, ' ') }}
-                                </SelectItem>
-                            </SelectGroup>
-                        </SelectContent>
-                    </Select>
+                    <Popover v-model:open="timezoneOpen">
+                        <PopoverTrigger as-child>
+                            <Button
+                                variant="outline"
+                                role="combobox"
+                                :aria-expanded="timezoneOpen"
+                                class="w-full justify-between"
+                                :disabled="processing === 'timezone'"
+                            >
+                                {{ props.timezone.replace(/_/g, ' ') }}
+                                <ChevronsUpDown class="ml-2 size-4 shrink-0 opacity-50" />
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent class="w-[--reka-popover-trigger-width] p-0">
+                            <Command>
+                                <CommandInput placeholder="Search timezone..." />
+                                <CommandList>
+                                    <CommandEmpty>No timezone found.</CommandEmpty>
+                                    <CommandGroup>
+                                        <CommandItem
+                                            v-for="tz in allTimezones"
+                                            :key="tz.value"
+                                            :value="tz.label"
+                                            @select="() => { updateTimezone(tz.value); timezoneOpen = false; }"
+                                        >
+                                            <Check :class="cn('mr-2 size-4', props.timezone === tz.value ? 'opacity-100' : 'opacity-0')" />
+                                            {{ tz.label }}
+                                        </CommandItem>
+                                    </CommandGroup>
+                                </CommandList>
+                            </Command>
+                        </PopoverContent>
+                    </Popover>
                 </CardContent>
             </Card>
 

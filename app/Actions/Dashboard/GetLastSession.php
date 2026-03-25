@@ -12,7 +12,7 @@ class GetLastSession
     /**
      * @return array{startedAt: string, endedAt: string, matches: array, record: string, duration: string}|null
      */
-    public static function run(?int $accountId): ?array
+    public static function run(?int $accountId, ?string $format = null): ?array
     {
         if (! $accountId) {
             return null;
@@ -20,6 +20,7 @@ class GetLastSession
 
         $matches = MtgoMatch::complete()
             ->forAccount($accountId)
+            ->when($format, fn ($q, $f) => $q->where('format', $f))
             ->with(['opponentArchetypes.archetype', 'games'])
             ->orderByDesc('started_at')
             ->limit(50)
@@ -62,7 +63,7 @@ class GetLastSession
         $duration = $hours > 0 ? "{$hours}h {$minutes}m" : "{$minutes}m";
 
         return [
-            'startedAt' => $startedAt->toIso8601String(),
+            'startedAt' => $startedAt->format('M j, Y'),
             'endedAt' => $endedAt->toIso8601String(),
             'matches' => $session->map(fn ($m) => [
                 'id' => $m->id,

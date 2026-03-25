@@ -1,7 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import dayjs from 'dayjs';
 
 type SessionMatch = {
     id: number;
@@ -19,14 +17,9 @@ type LastSession = {
     duration: string;
 };
 
-const props = defineProps<{
+defineProps<{
     lastSession: LastSession | null;
 }>();
-
-const sessionDate = computed(() => {
-    if (!props.lastSession) return null;
-    return dayjs(props.lastSession.startedAt).format('MMM D, YYYY');
-});
 </script>
 
 <template>
@@ -37,7 +30,7 @@ const sessionDate = computed(() => {
         <CardContent class="flex flex-1 flex-col gap-3">
             <template v-if="lastSession">
                 <div class="flex items-center justify-between text-xs text-muted-foreground">
-                    <span>{{ sessionDate }}</span>
+                    <span>{{ lastSession.startedAt }}</span>
                     <span class="tabular-nums">{{ lastSession.matches.length }} matches</span>
                 </div>
 

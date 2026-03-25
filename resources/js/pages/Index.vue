@@ -2,6 +2,7 @@
 import { Deferred, router } from '@inertiajs/vue3';
 import { computed } from 'vue';
 import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { LayoutDashboard } from 'lucide-vue-next';
 import DashboardKpiStrip from '@/pages/partials/DashboardKpiStrip.vue';
 import DashboardDecks from '@/pages/partials/DashboardDecks.vue';
@@ -9,6 +10,7 @@ import DashboardSessionRecap from '@/pages/partials/DashboardSessionRecap.vue';
 import DashboardMatchupSpread from '@/pages/partials/DashboardMatchupSpread.vue';
 import DashboardRollingForm from '@/pages/partials/DashboardRollingForm.vue';
 import DashboardLeagueResults from '@/pages/partials/DashboardLeagueResults.vue';
+import DashboardRecentMatches from '@/pages/partials/DashboardRecentMatches.vue';
 
 type ActiveLeague = {
     name: string;
@@ -80,6 +82,8 @@ const props = defineProps<{
     gameWinrate: number;
     deckStats: App.Data.Front.DeckData[];
     timeframe: string;
+    format: string | null;
+    formats: { value: string; label: string }[];
     activeLeague: ActiveLeague | null;
     streak: Streak;
     matchWinrateDelta: number;
@@ -90,6 +94,7 @@ const props = defineProps<{
     matchupSpread?: MatchupEntry[];
     rollingForm?: RollingForm;
     leagueDistribution?: LeagueDistribution;
+    recentMatches?: App.Data.Front.MatchData[];
 }>();
 
 const timeframes = [
@@ -102,8 +107,23 @@ const timeframes = [
 
 const hasData = computed(() => props.matchesWon + props.matchesLost > 0);
 
+function navigate(params: Record<string, string | null>) {
+    const query: Record<string, string> = { timeframe: props.timeframe };
+    if (props.format) query.format = props.format;
+    Object.assign(query, params);
+    // Remove null values
+    Object.keys(query).forEach((k) => {
+        if (query[k] === null || query[k] === undefined) delete query[k];
+    });
+    router.get('/', query, { preserveScroll: true });
+}
+
 function setTimeframe(value: string) {
-    router.get('/', { timeframe: value }, { preserveScroll: true });
+    navigate({ timeframe: value });
+}
+
+function setFormat(value: string) {
+    navigate({ format: value === 'all' ? null : value });
 }
 </script>
 
@@ -124,18 +144,32 @@ function setTimeframe(value: string) {
             :games-lost="gamesLost"
         />
 
-        <!-- Timeframe selector -->
-        <div class="flex items-center gap-1 self-start rounded-md border p-1">
-            <Button
-                v-for="tf in timeframes"
-                :key="tf.value"
-                size="sm"
-                :variant="timeframe === tf.value ? 'default' : 'ghost'"
-                class="h-7 px-3 text-xs"
-                @click="setTimeframe(tf.value)"
-            >
-                {{ tf.label }}
-            </Button>
+        <!-- Timeframe + Format selector -->
+        <div class="flex items-center gap-3">
+            <div class="flex items-center gap-1 rounded-md border p-1">
+                <Button
+                    v-for="tf in timeframes"
+                    :key="tf.value"
+                    size="sm"
+                    :variant="timeframe === tf.value ? 'default' : 'ghost'"
+                    class="h-7 px-3 text-xs"
+                    @click="setTimeframe(tf.value)"
+                >
+                    {{ tf.label }}
+                </Button>
+            </div>
+
+            <Select :modelValue="format ?? 'all'" @update:modelValue="setFormat" v-if="formats.length > 1">
+                <SelectTrigger class="h-9 w-40">
+                    <SelectValue placeholder="All formats" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="all">All formats</SelectItem>
+                    <SelectItem v-for="f in formats" :key="f.value" :value="f.value">
+                        {{ f.label }}
+                    </SelectItem>
+                </SelectContent>
+            </Select>
         </div>
 
         <!-- Empty state -->
@@ -182,6 +216,14 @@ function setTimeframe(value: string) {
                     <DashboardMatchupSpread :matchup-spread="matchupSpread ?? []" />
                 </Deferred>
             </div>
+
+            <!-- Row 3: Recent Matches -->
+            <Deferred :data="['recentMatches']">
+                <template #fallback>
+                    <div class="h-48 animate-pulse rounded-xl bg-muted" />
+                </template>
+                <DashboardRecentMatches :matches="recentMatches ?? []" />
+            </Deferred>
         </template>
     </div>
 </template>
