@@ -76,9 +76,15 @@ class ProcessMatchEvents
                     return;
                 }
 
-                // Check game log for results inline
+                // Check game log for results inline — non-fatal, next tick retries
                 if (in_array($match->state, [MatchState::InProgress, MatchState::Ended])) {
-                    ResolveGameResults::run($match);
+                    try {
+                        ResolveGameResults::run($match);
+                    } catch (\Throwable $e) {
+                        Log::channel('pipeline')->warning("Match {$match->mtgo_id}: game log resolution failed, will retry", [
+                            'error' => $e->getMessage(),
+                        ]);
+                    }
                 }
 
                 // Mark all events for this match token as processed
