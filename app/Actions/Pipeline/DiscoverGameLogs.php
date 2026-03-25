@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Actions\Matches;
+namespace App\Actions\Pipeline;
 
 use App\Enums\MatchState;
 use App\Models\GameLog;

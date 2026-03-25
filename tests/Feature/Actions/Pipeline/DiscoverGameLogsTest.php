@@ -1,6 +1,6 @@
 <?php
 
-use App\Actions\Matches\DiscoverGameLogs;
+use App\Actions\Pipeline\DiscoverGameLogs;
 use App\Enums\MatchState;
 use App\Models\GameLog;
 use App\Models\MtgoMatch;
