@@ -32,8 +32,6 @@ class AdvanceMatchState
             ->get()
             ->values();
 
-        $idsToMarkAsProcessed = [...$events->pluck('id')->toArray(), ...$stateChanges->pluck('id')->toArray()];
-
         // ── Gate: require a join event ──────────────────────────────
         // Prefer the $events version (game_management_json) because it
         // contains the key-value metadata block (PlayFormatCd, etc).
@@ -54,8 +52,6 @@ class AdvanceMatchState
 
             return null;
         }
-
-        LogEvent::whereIn('id', $idsToMarkAsProcessed)->update(['processed_at' => now()]);
 
         // Wrap all state-advancement writes in a single transaction so
         // the SQLite write-lock is held once instead of 10–15 times.
@@ -87,7 +83,7 @@ class AdvanceMatchState
             }
 
             // ── No regression ───────────────────────────────────────────
-            if ($match->state === MatchState::Complete || $match->state === MatchState::Voided) {
+            if ($match->state === MatchState::Complete || $match->failed_at !== null) {
                 return $match;
             }
 
