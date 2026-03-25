@@ -22,15 +22,36 @@ class ProcessMatchEvents
     {
         $processedTokens = [];
 
-        $tokensWithWork = LogEvent::whereNotNull('match_id')
+        // Discover token → match_id pairs from unprocessed events.
+        // Different event types carry different fields:
+        //   match_state_changed  → match_token only
+        //   game_state_update    → match_id only
+        //   game_management_json → both
+        // Use game_management_json (which has both) to build the mapping,
+        // then resolve orphans from sibling events.
+        $tokenToMatchId = LogEvent::whereNotNull('match_id')
             ->whereNotNull('match_token')
             ->whereNull('processed_at')
-            ->where('event_type', '!=', 'league_joined')
-            ->where('event_type', '!=', 'league_join_request')
+            ->whereNotIn('event_type', ['league_joined', 'league_join_request'])
             ->distinct()
             ->pluck('match_id', 'match_token');
 
-        foreach ($tokensWithWork as $matchToken => $matchId) {
+        // State change events only have match_token — resolve match_id from siblings
+        LogEvent::whereNotNull('match_token')
+            ->whereNull('match_id')
+            ->whereNull('processed_at')
+            ->whereNotIn('match_token', $tokenToMatchId->keys())
+            ->distinct()
+            ->pluck('match_token')
+            ->each(function (string $token) use ($tokenToMatchId) {
+                $matchId = LogEvent::where('match_token', $token)->whereNotNull('match_id')->value('match_id');
+
+                if ($matchId) {
+                    $tokenToMatchId[$token] = $matchId;
+                }
+            });
+
+        foreach ($tokenToMatchId as $matchToken => $matchId) {
             static::processMatch($matchToken, $matchId);
             $processedTokens[] = $matchToken;
         }
@@ -105,6 +126,13 @@ class ProcessMatchEvents
 
     private static function handleMatchFailure(MtgoMatch $match, \Throwable $e): void
     {
+        // SQLite lock errors are transient — don't count them as failures
+        if (str_contains($e->getMessage(), 'database is locked')) {
+            Log::channel('pipeline')->info("Match {$match->mtgo_id}: skipped due to database lock, will retry");
+
+            return;
+        }
+
         $attempts = $match->attempts + 1;
         $updates = ['attempts' => $attempts];
 
