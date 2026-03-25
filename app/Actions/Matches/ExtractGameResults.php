@@ -277,6 +277,11 @@ class ExtractGameResults
                     $lastScore = [$scorerLosses, $scorerWins];
                 }
             }
+
+            // "Match Tied X-Y" — no @P prefix, both players have equal score
+            if (preg_match('/^Match Tied (\d+)-(\d+)/', $entry['message'], $m)) {
+                $lastScore = [(int) $m[1], (int) $m[2]];
+            }
         }
 
         return $lastScore;
