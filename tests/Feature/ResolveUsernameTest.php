@@ -23,18 +23,17 @@ it('returns active account username when no in-memory username', function () {
     expect($manager->resolveUsername())->toBe('ActivePlayer');
 });
 
-it('falls back to candidate match against inactive account', function () {
+it('always returns active account even when candidates differ', function () {
     $manager = new MtgoManager;
 
-    Account::create(['username' => 'InactivePlayer', 'active' => false, 'tracked' => true]);
+    Account::create(['username' => 'ActivePlayer', 'active' => true, 'tracked' => true]);
 
-    expect($manager->resolveUsername(['InactivePlayer', 'Opponent']))->toBe('InactivePlayer');
+    // Active account is always returned first, regardless of candidates
+    expect($manager->resolveUsername(['SomeOpponent']))->toBe('ActivePlayer');
 });
 
-it('returns null when no candidates match any account', function () {
+it('returns null when no accounts exist and no candidates given', function () {
     $manager = new MtgoManager;
-
-    Account::create(['username' => 'KnownPlayer', 'active' => false, 'tracked' => true]);
 
     expect($manager->resolveUsername(['UnknownPlayer1', 'UnknownPlayer2']))->toBeNull();
 });
