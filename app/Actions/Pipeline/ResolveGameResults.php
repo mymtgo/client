@@ -30,7 +30,13 @@ class ResolveGameResults
         }
 
         // Parse fresh every tick
-        $decoded = ParseGameLogBinary::run($gameLog->file_path);
+        $raw = file_get_contents($gameLog->file_path);
+
+        if ($raw === false || $raw === '') {
+            return;
+        }
+
+        $decoded = ParseGameLogBinary::run($raw);
 
         if (empty($decoded)) {
             return;
