@@ -207,8 +207,9 @@ class MtgoManager
         // ── Unified pipeline (every 2s) ──────────────────────────────
         // Single command owns the entire lifecycle: log ingest →
         // match creation → game log parsing → result resolution.
-        $schedule->command('mtgo:process-matches')
+        $schedule->call(fn () => \App\Actions\Pipeline\RunPipeline::run())
             ->everyTwoSeconds()
+            ->name('process_matches')
             ->withoutOverlapping(expiresAt: 60);
 
         // Periodic maintenance (unchanged)
