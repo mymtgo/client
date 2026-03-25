@@ -1,13 +1,22 @@
 <?php
 
-use App\Actions\Matches\BuildMatches;
 use App\Enums\MatchState;
+use App\Managers\MtgoManager;
 use App\Models\LogCursor;
 use App\Models\LogEvent;
 use App\Models\MtgoMatch;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Artisan;
 
 uses(RefreshDatabase::class);
+
+beforeEach(function () {
+    $mock = Mockery::mock(MtgoManager::class)->makePartial();
+    $mock->shouldReceive('pathsAreValid')->andReturn(true);
+    $mock->shouldReceive('ingestLogs')->andReturnNull();
+    $mock->shouldReceive('getLogDataPath')->andReturn(sys_get_temp_dir());
+    app()->instance('mtgo', $mock);
+});
 
 it('does not create matches for foreign match tokens without join events', function () {
     LogCursor::create([
@@ -32,7 +41,7 @@ it('does not create matches for foreign match tokens without join events', funct
         'match_token' => 'foreign-token',
     ]);
 
-    BuildMatches::run();
+    Artisan::call('mtgo:process-matches');
 
     expect(MtgoMatch::count())->toBe(0);
 });

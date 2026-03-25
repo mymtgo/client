@@ -2,15 +2,15 @@
 
 namespace App\Http\Controllers\Debug\Matches;
 
-use App\Actions\Matches\BuildMatches;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\Artisan;
 
 class ProcessController extends Controller
 {
     public function __invoke(): RedirectResponse
     {
-        BuildMatches::run();
+        Artisan::call('mtgo:process-matches');
 
         return back();
     }
