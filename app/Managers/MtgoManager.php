@@ -6,6 +6,7 @@ use App\Actions\Logs\FindMtgoLogPath;
 use App\Actions\Logs\GetLogFilePaths;
 use App\Actions\Logs\IngestLog;
 use App\Actions\Logs\PruneProcessedLogEvents;
+use App\Actions\Pipeline\RunPipeline;
 use App\Actions\RegisterDevice;
 use App\Actions\Settings\ValidatePath;
 use App\Jobs\DownloadArchetypes;
@@ -207,10 +208,9 @@ class MtgoManager
         // ── Unified pipeline (every 2s) ──────────────────────────────
         // Single command owns the entire lifecycle: log ingest →
         // match creation → game log parsing → result resolution.
-        $schedule->call(fn () => \App\Actions\Pipeline\RunPipeline::run())
+        $schedule->call(fn () => RunPipeline::run())
             ->everyTwoSeconds()
-            ->name('process_matches')
-            ->withoutOverlapping(expiresAt: 60);
+            ->name('process_matches');
 
         // Periodic maintenance (unchanged)
         $schedule->call(fn () => $this->retryUnsubmittedMatches())

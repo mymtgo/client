@@ -38,18 +38,23 @@ class ResolveGameResults
 
         $decoded = ParseGameLogBinary::run($raw);
 
-        if (empty($decoded)) {
+        if (empty($decoded) || empty($decoded['entries'])) {
             return;
         }
 
-        $players = ExtractGameResults::detectPlayers($decoded);
+        $entries = $decoded['entries'];
+
+        // Persist decoded entries so CreateGames and GetGameLogEntries can use them
+        $gameLog->update(['decoded_entries' => $entries]);
+
+        $players = ExtractGameResults::detectPlayers($entries);
         $username = Mtgo::resolveUsername($players);
 
         if (! $username) {
             return;
         }
 
-        $extracted = ExtractGameResults::run($decoded, $username);
+        $extracted = ExtractGameResults::run($entries, $username);
 
         // Sync game results progressively
         static::syncGameResults($match, $extracted['results'], $extracted['games']);
