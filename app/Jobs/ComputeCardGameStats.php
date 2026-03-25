@@ -15,6 +15,8 @@ class ComputeCardGameStats implements ShouldQueue
 {
     use Queueable;
 
+    public int $tries = 2;
+
     public function __construct(
         public int $matchId,
     ) {}
@@ -91,7 +93,7 @@ class ComputeCardGameStats implements ShouldQueue
         // Get kept hand CatalogIDs
         try {
             $handData = ExtractGameHandData::run($game);
-            $keptCatalogIds = $handData['kept_hand'] ?? [];
+            $keptCatalogIds = $handData['kept_hand'];
         } catch (\Throwable $e) {
             Log::channel('pipeline')->warning("ComputeCardGameStats: failed to extract hand data for game {$game->id}: {$e->getMessage()}");
             $keptCatalogIds = [];

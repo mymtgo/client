@@ -122,8 +122,7 @@ it('does not regress state', function () {
         'started_at' => now()->subHour(),
         'ended_at' => now(),
         'state' => MatchState::Complete,
-        'games_won' => 2,
-        'games_lost' => 1,
+        'outcome' => 'win',
     ]);
 
     // Create a join event so the gate check passes
@@ -138,8 +137,6 @@ it('does not regress state', function () {
     $result = AdvanceMatchState::run($match->token, $match->mtgo_id);
 
     expect($result->state)->toBe(MatchState::Complete);
-    expect($result->games_won)->toBe(2);
-    expect($result->games_lost)->toBe(1);
 });
 
 it('only shows complete matches in complete scope', function () {
@@ -160,11 +157,37 @@ it('only shows complete matches in complete scope', function () {
             'started_at' => now()->subHour(),
             'ended_at' => now(),
             'state' => $state,
-            'games_won' => 0,
-            'games_lost' => 0,
         ]);
     }
 
     expect(MtgoMatch::complete()->count())->toBe(2);
     expect(MtgoMatch::incomplete()->count())->toBe(3);
+});
+
+it('treats ended as the terminal state — does not advance further', function () {
+    $matchId = '10004';
+    $matchToken = 'token-ended-terminal';
+
+    $match = MtgoMatch::create([
+        'mtgo_id' => $matchId,
+        'token' => $matchToken,
+        'format' => 'Pmodern',
+        'match_type' => 'Constructed',
+        'started_at' => now()->subHour(),
+        'ended_at' => now(),
+        'state' => MatchState::Ended,
+    ]);
+
+    // Create a join event so the gate check passes
+    createLogEvent([
+        'match_id' => $matchId,
+        'match_token' => $matchToken,
+        'event_type' => LogEventType::MATCH_STATE_CHANGED->value,
+        'context' => 'MatchJoinedEventUnderwayState',
+        'raw_text' => buildJoinRawText(),
+    ]);
+
+    $result = AdvanceMatchState::run($matchToken, $matchId);
+
+    expect($result->state)->toBe(MatchState::Ended);
 });

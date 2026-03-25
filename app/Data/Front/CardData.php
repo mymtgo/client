@@ -22,12 +22,12 @@ class CardData extends Data
     {
         $type = $card->type;
 
-        if ($type == 'Basic Land') {
+        if ($type === 'Basic Land') {
             $type = 'Land';
         }
 
         return new self(
-            mtgoId: $card->mtgo_id,
+            mtgoId: (int) $card->mtgo_id,
             name: $card->name,
             type: $type,
             identity: $card->color_identity,

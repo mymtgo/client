@@ -6,10 +6,12 @@ use App\Actions\Cards\CreateMissingCards;
 use App\Actions\Util\ExtractJson;
 use App\Facades\Mtgo;
 use App\Models\Game;
+use App\Models\GameLog;
 use App\Models\GameTimeline;
 use App\Models\LogEvent;
 use App\Models\MtgoMatch;
 use App\Models\Player;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 
@@ -17,12 +19,22 @@ class CreateGames
 {
     public static function run(MtgoMatch $match, int $gameId, Collection $gameEvents, int $gameIndex, array $playerDeck)
     {
-        $username = Mtgo::getUsername();
-
         $gameStateEvents = $gameEvents->filter(
             fn (LogEvent $event) => $event->event_type == 'game_state_update'
         );
-        $gameLog = GetGameLog::run($match->token);
+
+        // Read structured results directly from the stored GameLog
+        $gameLog = null;
+        $storedLog = GameLog::where('match_token', $match->token)->first();
+        $candidates = ($storedLog && ! empty($storedLog->decoded_entries))
+            ? ExtractGameResults::detectPlayers($storedLog->decoded_entries)
+            : [];
+
+        $username = Mtgo::resolveUsername($candidates);
+
+        if ($storedLog && ! empty($storedLog->decoded_entries) && $username) {
+            $gameLog = ExtractGameResults::run($storedLog->decoded_entries, $username);
+        }
 
         $firstStateEvent = $gameStateEvents->first();
         $lastStateEvent = $gameStateEvents->last();
@@ -36,17 +48,12 @@ class CreateGames
             'started_at' => $firstStateEvent
                 ? now()->parse($firstStateEvent->logged_at)->setTimeFromTimeString($firstStateEvent->timestamp)
                 : null,
-            'ended_at' => $lastStateEvent
-                ? now()->parse($lastStateEvent->logged_at)->setTimeFromTimeString($lastStateEvent->timestamp)
-                : null,
+            'ended_at' => null,
         ]);
 
         // Update fields that may have been unavailable at creation time
         $gameModel->update([
             'won' => $gameLog['results'][$gameIndex] ?? $gameModel->won,
-            'ended_at' => $lastStateEvent
-                ? now()->parse($lastStateEvent->logged_at)->setTimeFromTimeString($lastStateEvent->timestamp)
-                : $gameModel->ended_at,
         ]);
 
         // If we have no state events yet, the game record exists for later backfill
@@ -57,6 +64,13 @@ class CreateGames
         }
 
         $parsedState = ExtractJson::run($firstStateEvent->raw_text)->first();
+
+        if (! $parsedState) {
+            Log::channel('pipeline')->warning("CreateGames: could not parse state event for game {$gameId} in match {$match->mtgo_id}");
+
+            return;
+        }
+
         $players = $parsedState['Players'] ?? [];
 
         if (empty($players)) {
@@ -88,7 +102,7 @@ class CreateGames
             if (! $isYou) {
                 $lastParsedState = ExtractJson::run($lastStateEvent->raw_text)->first();
 
-                $deck = collect($lastParsedState['Cards'] ?? [])
+                $deck = collect($lastParsedState ? ($lastParsedState['Cards'] ?? []) : [])
                     ->filter(fn ($card) => $card['Owner'] == $player['Id'])
                     ->groupBy('CatalogID')
                     ->map(function ($cards) {
@@ -120,6 +134,10 @@ class CreateGames
         foreach ($gameStateEvents as $event) {
             $content = ExtractJson::run($event->raw_text)->first();
 
+            if (! $content) {
+                continue;
+            }
+
             foreach ($content['Cards'] ?? [] as $card) {
                 $timelineCatalogIds[] = $card['CatalogID'];
             }
@@ -139,7 +157,7 @@ class CreateGames
         try {
             GameTimeline::where('game_id', $gameModel->id)->delete();
             GameTimeline::insert($events);
-        } catch (\Illuminate\Database\QueryException $e) {
+        } catch (QueryException $e) {
             Log::channel('pipeline')->info("CreateGames: timeline update skipped for game {$gameModel->id}: {$e->getMessage()}");
         }
     }

@@ -10,6 +10,7 @@ use App\Models\MtgoMatch;
 use Inertia\Inertia;
 use Inertia\Response;
 use Native\Desktop\Facades\Settings;
+use Native\Desktop\Facades\System;
 
 class IndexController extends Controller
 {
@@ -27,11 +28,13 @@ class IndexController extends Controller
             'shareStats' => Settings::get('share_stats') === null ? false : (bool) Settings::get('share_stats'),
             'pendingMatches' => MtgoMatch::submittable()
                 ->latest('started_at')
-                ->get(['id', 'format', 'games_won', 'games_lost', 'started_at']),
+                ->get(['id', 'format', 'outcome', 'started_at']),
             'hidePhantomLeagues' => (bool) Settings::get('hide_phantom_leagues'),
             'accounts' => Account::orderBy('username')->get(['id', 'username', 'tracked', 'active']),
             'debugMode' => (bool) Settings::get('debug_mode'),
             'appVersion' => config('nativephp.version'),
+            'timezone' => Settings::get('timezone') ?: System::timezone() ?: 'UTC',
+            'detectedTimezone' => System::timezone() ?: 'UTC',
             'leagueWindowEnabled' => (bool) Settings::get('league_window'),
             'opponentWindowEnabled' => (bool) Settings::get('opponent_window'),
             'deckWindowEnabled' => (bool) Settings::get('deck_window'),

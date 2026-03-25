@@ -19,7 +19,7 @@ class ExtractGameResults
      *
      * @param  array<int, array{timestamp: string, message: string}>  $entries
      * @param  string  $localPlayer  The local player's username (without @P prefix)
-     * @return array{games: array, players: array, match_score: ?array, results: array, on_play: array, starting_hands: array}
+     * @return array{games: array, players: array, match_score: ?array, results: array, on_play: array, starting_hands: array, match_decided: bool}
      */
     public static function run(array $entries, string $localPlayer): array
     {
@@ -78,6 +78,7 @@ class ExtractGameResults
             'games' => $gameResults,
             'players' => $players,
             'match_score' => $matchScore,
+            'match_decided' => self::hasMatchWinLine($entries),
             'results' => $results,
             'on_play' => $onPlay,
             'starting_hands' => $startingHands,
@@ -129,7 +130,7 @@ class ExtractGameResults
      *
      * @return array<int, string>
      */
-    private static function detectPlayers(array $entries): array
+    public static function detectPlayers(array $entries): array
     {
         $players = [];
 
@@ -240,6 +241,21 @@ class ExtractGameResults
     }
 
     /**
+     * Check if a definitive "wins the match" line exists in the entries.
+     * "leads the match" is a mid-match score update, not a terminal signal.
+     */
+    private static function hasMatchWinLine(array $entries): bool
+    {
+        foreach ($entries as $entry) {
+            if (preg_match('/^@P\w+ wins the match \d+-\d+/', $entry['message'])) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * Extract match score from "leads the match X-Y" or "wins the match X-Y" lines.
      * Returns score as [localWins, opponentWins] or null if not found.
      *
@@ -260,6 +276,11 @@ class ExtractGameResults
                 } else {
                     $lastScore = [$scorerLosses, $scorerWins];
                 }
+            }
+
+            // "Match Tied X-Y" — no @P prefix, both players have equal score
+            if (preg_match('/^Match Tied (\d+)-(\d+)/', $entry['message'], $m)) {
+                $lastScore = [(int) $m[1], (int) $m[2]];
             }
         }
 

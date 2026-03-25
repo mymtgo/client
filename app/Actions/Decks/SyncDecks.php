@@ -3,7 +3,6 @@
 namespace App\Actions\Decks;
 
 use App\Actions\Matches\DetermineMatchDeck;
-use App\Facades\Mtgo;
 use App\Models\Account;
 use App\Models\Deck;
 use App\Models\MtgoMatch;
@@ -60,11 +59,13 @@ class SyncDecks
 
             $signature = GenerateDeckSignature::run($cards);
 
+            $accountId = Account::active()->value('id');
+
             $deck->fill([
                 'mtgo_id' => $attributes['NetDeckId'],
                 'name' => $attributes['Name'],
                 'format' => $attributes['FormatCode'],
-                'account_id' => Account::where('username', Mtgo::getUsername())->value('id'),
+                'account_id' => $deck->account_id ?? $accountId,
                 'updated_at' => $attributes['Timestamp'],
             ]);
 
@@ -86,14 +87,17 @@ class SyncDecks
 
         // Batch cleanup and re-linking in a single transaction.
         DB::transaction(function () use ($deckIds) {
-            $accountId = Account::where('username', Mtgo::getUsername())->value('id');
+            $accountId = Account::active()->value('id');
             if ($accountId) {
                 Deck::where('account_id', $accountId)->whereNotIn('id', $deckIds)->delete();
 
                 // Backfill orphaned decks that were synced before the account existed
                 Deck::whereNull('account_id')->whereIn('id', $deckIds)->update(['account_id' => $accountId]);
             } else {
-                Deck::whereNotIn('id', $deckIds)->delete();
+                // No active account — only clean up unowned decks to avoid
+                // accidentally deleting decks belonging to a known account
+                // when the active account is temporarily unavailable.
+                Deck::whereNull('account_id')->whereNotIn('id', $deckIds)->delete();
             }
 
             // Re-link complete matches that lost their deck association

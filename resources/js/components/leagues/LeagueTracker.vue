@@ -26,14 +26,15 @@ const props = withDefaults(
     },
 );
 
-function gameDotClass(game: { won: boolean | null; ended: boolean } | undefined, index: number) {
+function gameDotClass(game: { won: boolean | null; ended: boolean } | undefined) {
     if (!game) return 'border-2 border-white/20 bg-transparent';
     if (game.won === true) return 'bg-green-500';
     if (game.won === false) return 'bg-red-500';
 
-    const isCurrentGame = index === (props.league?.games.length ?? 0) - 1;
-    if (isCurrentGame) return 'animate-pulse border-2 border-white/70 bg-transparent';
+    // Game exists but no result yet — pulse if actively in progress
+    if (!game.ended) return 'animate-pulse border-2 border-white/70 bg-transparent';
 
+    // Ended but result not yet resolved
     return 'border-2 border-white/40 bg-transparent';
 }
 </script>
@@ -65,7 +66,7 @@ function gameDotClass(game: { won: boolean | null; ended: boolean } | undefined,
                         v-for="i in 3"
                         :key="i"
                         class="inline-block size-3 rounded-full"
-                        :class="gameDotClass(league.games[i - 1], i - 1)"
+                        :class="gameDotClass(league.games[i - 1])"
                     />
                 </span>
             </div>

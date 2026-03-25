@@ -6,30 +6,10 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenu
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import { ChevronDown, Ghost, Trophy } from 'lucide-vue-next';
+import type { LeagueRun } from '@/types/leagues';
 import { computed, ref } from 'vue';
 
 dayjs.extend(relativeTime);
-
-type LeagueMatch = {
-    id: number;
-    result: 'W' | 'L';
-    opponentName: string | null;
-    opponentArchetype: string | null;
-    games: string;
-    startedAt: string;
-};
-
-type LeagueRun = {
-    id: number;
-    name: string;
-    format: string;
-    deck: { id: number; name: string } | null;
-    startedAt: string;
-    results: ('W' | 'L' | null)[];
-    phantom: boolean;
-    state: 'active' | 'complete' | 'partial';
-    matches: LeagueMatch[];
-};
 
 const props = defineProps<{
     leagues: LeagueRun[];

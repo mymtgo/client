@@ -16,9 +16,9 @@ class GetActiveLeague
         $accountId = Account::active()->value('id');
 
         $league = League::whereHas('matches', function ($q) use ($accountId) {
-            $q->complete();
+            $q->where('state', \App\Enums\MatchState::Complete);
             if ($accountId) {
-                $q->whereHas('deckVersion', fn ($q2) => $q2->whereHas('deck', fn ($q3) => $q3->where('account_id', $accountId)));
+                $q->forAccount($accountId);
             }
         })
             ->with(['deckVersion.deck'])
@@ -37,8 +37,8 @@ class GetActiveLeague
             ->reverse()
             ->values();
 
-        $wins = $matches->filter(fn ($m) => $m->games_won > $m->games_lost)->count();
-        $losses = $matches->filter(fn ($m) => $m->games_won <= $m->games_lost)->count();
+        $wins = $matches->filter(fn ($m) => $m->isWin())->count();
+        $losses = $matches->filter(fn ($m) => $m->isLoss())->count();
 
         $versionLabel = null;
         if ($league->deckVersion) {
@@ -54,10 +54,10 @@ class GetActiveLeague
             'phantom' => $league->phantom,
             'isActive' => $matches->count() < 5,
             'isTrophy' => $wins === 5,
-            'deckName' => $league->deckVersion?->deck?->name ?? $matches->last()?->deck?->name,
+            'deckName' => $league->deckVersion?->deck->name ?? $matches->last()?->getRelation('deck')?->getAttribute('name'),
             'versionLabel' => $versionLabel,
             'results' => $matches
-                ->map(fn ($m) => $m->games_won > $m->games_lost ? 'W' : 'L')
+                ->map(fn ($m) => $m->isWin() ? 'W' : 'L')
                 ->pad(5, null)
                 ->values()
                 ->toArray(),

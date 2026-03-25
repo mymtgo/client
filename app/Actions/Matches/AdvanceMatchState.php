@@ -2,16 +2,11 @@
 
 namespace App\Actions\Matches;
 
-use App\Actions\DetermineMatchArchetypes;
 use App\Actions\Util\ExtractKeyValueBlock;
-use App\Enums\LeagueState;
 use App\Enums\LogEventType;
 use App\Enums\MatchState;
-use App\Events\AppNotification;
 use App\Events\DeckLinkedToMatch;
 use App\Events\LeagueMatchStarted;
-use App\Jobs\ComputeCardGameStats;
-use App\Jobs\SubmitMatch;
 use App\Jobs\SyncDecks;
 use App\Models\LogEvent;
 use App\Models\MtgoMatch;
@@ -76,7 +71,7 @@ class AdvanceMatchState
                     'format' => $gameMeta['PlayFormatCd'] ?? 'Unknown',
                     'match_type' => $gameMeta['GameStructureCd'] ?? 'Unknown',
                     'started_at' => $started,
-                    'ended_at' => $started, // placeholder until real end is known
+                    'ended_at' => null,
                     'state' => MatchState::Started,
                 ]);
 
@@ -88,7 +83,7 @@ class AdvanceMatchState
             }
 
             // ── No regression ───────────────────────────────────────────
-            if ($match->state === MatchState::Complete || $match->state === MatchState::Voided) {
+            if ($match->state === MatchState::Complete || $match->failed_at !== null) {
                 return $match;
             }
 
@@ -120,11 +115,6 @@ class AdvanceMatchState
                 if (! $advanced) {
                     return $match;
                 }
-            }
-
-            // ── Ended → Complete ────────────────────────────────────────
-            if ($match->state === MatchState::Ended) {
-                self::tryAdvanceToComplete($match, $events, $stateChanges, $gameMeta);
             }
 
             return $match->refresh();
@@ -214,9 +204,8 @@ class AdvanceMatchState
         $concededAndQuit = DetermineMatchResult::localPlayerConceded($stateChanges);
 
         if (! $matchEnded && ! $concededAndQuit) {
-            Log::channel('pipeline')->info("Match {$match->mtgo_id}: InProgress → Ended waiting", [
+            Log::channel('pipeline')->debug("Match {$match->mtgo_id}: InProgress → Ended waiting", [
                 'state_changes' => $stateChanges->count(),
-                'contexts' => $stateChanges->pluck('context')->toArray(),
             ]);
 
             return false;
@@ -236,78 +225,5 @@ class AdvanceMatchState
         ]);
 
         return true;
-    }
-
-    /**
-     * Ended → Complete: parse results, determine win/loss, resolve archetypes,
-     * send notification, dispatch SubmitMatch, mark log events processed.
-     */
-    private static function tryAdvanceToComplete(
-        MtgoMatch $match,
-        Collection $events,
-        Collection $stateChanges,
-        array $gameMeta,
-    ): void {
-        $gameLog = GetGameLog::run($match->token);
-
-        // Trust game log results as source of truth for win/loss.
-        // Cap to maximum possible games for the match type to guard
-        // against the parser producing phantom results on disconnect.
-        $maxGames = str_contains($gameMeta['GameStructureCd'] ?? '', 'BO5') ? 5 : 3;
-        $logResults = array_slice($gameLog['results'] ?? [], 0, $maxGames);
-
-        $result = DetermineMatchResult::run($logResults, $stateChanges, $gameMeta['GameStructureCd'] ?? '');
-
-        $match->update([
-            'games_won' => $result['wins'],
-            'games_lost' => $result['losses'],
-            'state' => MatchState::Complete,
-        ]);
-
-        Log::channel('pipeline')->info("Match {$match->mtgo_id}: Ended → Complete", [
-            'result' => "{$result['wins']}-{$result['losses']}",
-            'game_log_results' => count($logResults),
-        ]);
-
-        if (
-            ($league = $match->league)
-            && $league->state === LeagueState::Active
-            && $league->matches()->where('state', MatchState::Complete)->count() >= 5
-        ) {
-            $league->update(['state' => LeagueState::Complete]);
-        }
-
-        SyncGameResults::run($match, $gameLog['results'] ?? []);
-
-        // Post-completion steps: each is independent and should not
-        // prevent the others from running if one fails.
-        try {
-            DetermineMatchArchetypes::run($match);
-        } catch (\Throwable $e) {
-            Log::warning("Failed to determine archetypes for match {$match->id}: {$e->getMessage()}");
-        }
-
-        SubmitMatch::dispatch($match->id);
-        ComputeCardGameStats::dispatch($match->id);
-
-        $won = $match->games_won > $match->games_lost;
-        $opponentArchetype = $match->opponentArchetypes()->with('archetype')->first()?->archetype?->name ?? 'Unknown';
-
-        AppNotification::dispatch(
-            type: $won ? 'match_win' : 'match_loss',
-            title: ($won ? 'Win' : 'Loss').' vs '.$opponentArchetype,
-            message: $match->games_won.'-'.$match->games_lost,
-            route: '/matches/'.$match->id,
-        );
-
-        // Mark all related log events as processed
-        LogEvent::where(function ($query) use ($match) {
-            $query->where('match_id', $match->mtgo_id)
-                ->orWhere('match_token', $match->token)
-                ->orWhereIn('game_id', $match->games->pluck('mtgo_id'));
-        })->update([
-            'processed_at' => now(),
-        ]);
-
     }
 }

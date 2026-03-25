@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\MatchOutcome;
 use App\Enums\MatchState;
 use App\Observers\MtgoMatchObserver;
 use Carbon\CarbonInterface;
@@ -13,6 +14,16 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOneThrough;
 
+/**
+ * @property int|null $wins
+ * @property int|null $losses
+ * @property int|null $total
+ * @property int $games_won_count
+ * @property int $games_lost_count
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, Game> $games
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, MatchArchetype> $archetypes
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, MatchArchetype> $opponentArchetypes
+ */
 #[ObservedBy(MtgoMatchObserver::class)]
 class MtgoMatch extends Model
 {
@@ -21,12 +32,13 @@ class MtgoMatch extends Model
     protected $guarded = [];
 
     protected $casts = [
-        'games_won' => 'integer',
-        'games_lost' => 'integer',
         'started_at' => 'datetime',
         'ended_at' => 'datetime',
         'submitted_at' => 'datetime',
+        'failed_at' => 'datetime',
+        'attempts' => 'integer',
         'state' => MatchState::class,
+        'outcome' => MatchOutcome::class,
     ];
 
     public function getTable()
@@ -34,6 +46,7 @@ class MtgoMatch extends Model
         return 'matches';
     }
 
+    /** @return HasMany<Game, $this> */
     public function games(): HasMany
     {
         return $this->hasMany(Game::class, 'match_id', 'id');
@@ -51,11 +64,13 @@ class MtgoMatch extends Model
         );
     }
 
+    /** @return HasMany<MatchArchetype, $this> */
     public function archetypes(): HasMany
     {
         return $this->hasMany(MatchArchetype::class);
     }
 
+    /** @return HasMany<MatchArchetype, $this> */
     public function opponentArchetypes(): HasMany
     {
         return $this->hasMany(MatchArchetype::class)
@@ -84,7 +99,24 @@ class MtgoMatch extends Model
 
     public function scopeIncomplete(Builder $query): Builder
     {
-        return $query->whereNotIn('state', [MatchState::Complete, MatchState::Voided]);
+        return $query->where('state', '!=', MatchState::Complete);
+    }
+
+    public static function determineOutcome(int $wins, int $losses): MatchOutcome
+    {
+        if ($wins > $losses) {
+            return MatchOutcome::Win;
+        }
+
+        if ($losses > $wins) {
+            return MatchOutcome::Loss;
+        }
+
+        if ($wins > 0 && $wins === $losses) {
+            return MatchOutcome::Draw;
+        }
+
+        return MatchOutcome::Unknown;
     }
 
     public static function displayFormat(string $format): string
@@ -102,16 +134,72 @@ class MtgoMatch extends Model
 
     public function getMatchTimeAttribute()
     {
-        return $this->ended_at->diffForHumans($this->started_at, CarbonInterface::DIFF_ABSOLUTE);
+        return $this->ended_at?->diffForHumans($this->started_at, CarbonInterface::DIFF_ABSOLUTE);
     }
 
+    /** @return BelongsTo<DeckVersion, $this> */
     public function deckVersion(): BelongsTo
     {
         return $this->belongsTo(DeckVersion::class, 'deck_version_id');
     }
 
+    /** @return BelongsTo<League, $this> */
     public function league(): BelongsTo
     {
         return $this->belongsTo(League::class);
+    }
+
+    public function scopeForAccount(Builder $query, int $accountId): Builder
+    {
+        return $query->whereHas('deckVersion', fn ($q) => $q->whereHas('deck', fn ($q2) => $q2->where('account_id', $accountId)));
+    }
+
+    public function scopeWon(Builder $query): Builder
+    {
+        return $query->where('outcome', MatchOutcome::Win);
+    }
+
+    public function scopeLost(Builder $query): Builder
+    {
+        return $query->where('outcome', MatchOutcome::Loss);
+    }
+
+    public function scopeWithGameCounts(Builder $query): Builder
+    {
+        return $query->withCount([
+            'games as games_won_count' => fn ($q) => $q->where('won', true),
+            'games as games_lost_count' => fn ($q) => $q->where('won', false),
+        ]);
+    }
+
+    public function isWin(): bool
+    {
+        return $this->outcome === MatchOutcome::Win;
+    }
+
+    public function isLoss(): bool
+    {
+        return $this->outcome === MatchOutcome::Loss;
+    }
+
+    /**
+     * Uses eager-loaded games_won_count (via scopeWithGameCounts) when available,
+     * falls back to a DB query otherwise. Use withGameCounts() in list contexts
+     * to avoid N+1 queries.
+     */
+    public function gamesWon(): int
+    {
+        return $this->games_won_count ?? $this->games()->where('won', true)->count();
+    }
+
+    /** @see gamesWon() for N+1 note */
+    public function gamesLost(): int
+    {
+        return $this->games_lost_count ?? $this->games()->where('won', false)->count();
+    }
+
+    public function gameRecord(): string
+    {
+        return $this->gamesWon().'-'.$this->gamesLost();
     }
 }

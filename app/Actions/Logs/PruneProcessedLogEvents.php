@@ -12,16 +12,13 @@ class PruneProcessedLogEvents
     /**
      * Delete processed log events for completed matches.
      *
-     * Once a match is Complete or Voided, its log events have been fully
-     * projected into match/game/league records and the .dat file has
-     * decoded_entries stored. The raw log events are no longer needed.
+     * Once a match is Complete, its log events have been fully projected
+     * into match/game/league records and the .dat file has decoded_entries
+     * stored. The raw log events are no longer needed.
      */
     public static function run(): void
     {
-        $completedTokens = MtgoMatch::whereIn('state', [
-            MatchState::Complete,
-            MatchState::Voided,
-        ])->pluck('token');
+        $completedTokens = MtgoMatch::where('state', MatchState::Complete)->pluck('token');
 
         if ($completedTokens->isEmpty()) {
             return;

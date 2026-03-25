@@ -26,7 +26,7 @@ class ComputeDeckIdentity
         $colorCounts = [];
 
         foreach ($version->cards as $ref) {
-            $card = $cards->first(fn ($c) => $c->oracle_id == $ref['oracle_id'] || $c->mtgo_id == $ref['oracle_id']);
+            $card = $cards->first(fn ($c) => $c->oracle_id === $ref['oracle_id'] || (string) $c->mtgo_id === $ref['oracle_id']);
 
             if (! $card || ! $card->type || in_array($card->type, self::IGNORED_TYPES)) {
                 continue;
