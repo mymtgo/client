@@ -12,7 +12,7 @@ class GetPlayDrawSplit
     /**
      * @return array{otpWinrate: int, otdWinrate: int}
      */
-    public static function run(?int $accountId, Carbon $from, Carbon $to): array
+    public static function run(?int $accountId, Carbon $from, Carbon $to, ?string $format = null): array
     {
         if (! $accountId) {
             return ['otpWinrate' => 0, 'otdWinrate' => 0];
@@ -20,6 +20,7 @@ class GetPlayDrawSplit
 
         $matchIds = MtgoMatch::complete()
             ->forAccount($accountId)
+            ->when($format, fn ($q, $f) => $q->where('format', $f))
             ->whereBetween('started_at', [$from, $to])
             ->pluck('matches.id');
 

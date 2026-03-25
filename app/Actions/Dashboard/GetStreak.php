@@ -11,7 +11,7 @@ class GetStreak
     /**
      * @return array{current: string|null, bestWin: int, bestLoss: int}
      */
-    public static function run(?int $accountId, Carbon $from, Carbon $to): array
+    public static function run(?int $accountId, Carbon $from, Carbon $to, ?string $format = null): array
     {
         if (! $accountId) {
             return ['current' => null, 'bestWin' => 0, 'bestLoss' => 0];
@@ -19,6 +19,7 @@ class GetStreak
 
         $recentMatches = MtgoMatch::complete()
             ->forAccount($accountId)
+            ->when($format, fn ($q, $f) => $q->where('format', $f))
             ->whereBetween('started_at', [$from, $to])
             ->orderByDesc('started_at')
             ->pluck('outcome');
@@ -27,6 +28,7 @@ class GetStreak
 
         $allMatches = MtgoMatch::complete()
             ->forAccount($accountId)
+            ->when($format, fn ($q, $f) => $q->where('format', $f))
             ->orderBy('started_at')
             ->pluck('outcome');
 

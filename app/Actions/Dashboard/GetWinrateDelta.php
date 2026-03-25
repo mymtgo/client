@@ -12,7 +12,7 @@ class GetWinrateDelta
     /**
      * @return array{matchDelta: int, gameDelta: int}
      */
-    public static function run(?int $accountId, Carbon $currentStart, Carbon $currentEnd, string $timeframe): array
+    public static function run(?int $accountId, Carbon $currentStart, Carbon $currentEnd, string $timeframe, ?string $format = null): array
     {
         if (! $accountId) {
             return ['matchDelta' => 0, 'gameDelta' => 0];
@@ -20,11 +20,11 @@ class GetWinrateDelta
 
         [$previousStart, $previousEnd] = self::getPreviousTimeRange($timeframe, $currentStart);
 
-        $currentMatchWinrate = self::matchWinrate($accountId, $currentStart, $currentEnd);
-        $previousMatchWinrate = self::matchWinrate($accountId, $previousStart, $previousEnd);
+        $currentMatchWinrate = self::matchWinrate($accountId, $currentStart, $currentEnd, $format);
+        $previousMatchWinrate = self::matchWinrate($accountId, $previousStart, $previousEnd, $format);
 
-        $currentGameWinrate = self::gameWinrate($accountId, $currentStart, $currentEnd);
-        $previousGameWinrate = self::gameWinrate($accountId, $previousStart, $previousEnd);
+        $currentGameWinrate = self::gameWinrate($accountId, $currentStart, $currentEnd, $format);
+        $previousGameWinrate = self::gameWinrate($accountId, $previousStart, $previousEnd, $format);
 
         return [
             'matchDelta' => $currentMatchWinrate - $previousMatchWinrate,
@@ -32,10 +32,11 @@ class GetWinrateDelta
         ];
     }
 
-    private static function matchWinrate(int $accountId, Carbon $from, Carbon $to): int
+    private static function matchWinrate(int $accountId, Carbon $from, Carbon $to, ?string $format = null): int
     {
         $query = MtgoMatch::complete()
             ->forAccount($accountId)
+            ->when($format, fn ($q, $f) => $q->where('format', $f))
             ->whereBetween('started_at', [$from, $to]);
 
         $stats = $query->selectRaw("
@@ -46,10 +47,11 @@ class GetWinrateDelta
         return Winrate::percentage((int) $stats->wins, (int) $stats->losses);
     }
 
-    private static function gameWinrate(int $accountId, Carbon $from, Carbon $to): int
+    private static function gameWinrate(int $accountId, Carbon $from, Carbon $to, ?string $format = null): int
     {
         $matchIds = MtgoMatch::complete()
             ->forAccount($accountId)
+            ->when($format, fn ($q, $f) => $q->where('format', $f))
             ->whereBetween('started_at', [$from, $to])
             ->pluck('matches.id');
 

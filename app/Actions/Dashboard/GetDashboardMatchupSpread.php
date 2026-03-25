@@ -12,7 +12,7 @@ class GetDashboardMatchupSpread
      *
      * @return array<int, array{name: string, winrate: int, wins: int, losses: int, matches: int}>
      */
-    public static function run(?int $accountId, Carbon $from, Carbon $to): array
+    public static function run(?int $accountId, Carbon $from, Carbon $to, ?string $format = null): array
     {
         if (! $accountId) {
             return [];
@@ -25,6 +25,7 @@ class GetDashboardMatchupSpread
             ->join('archetypes as a', 'a.id', '=', 'ma.archetype_id')
             ->where('d.account_id', $accountId)
             ->where('m.state', 'complete')
+            ->when($format, fn ($q, $f) => $q->where('m.format', $f))
             ->whereBetween('m.started_at', [$from, $to])
             ->whereExists(function ($q) {
                 $q->selectRaw('1')
