@@ -1,7 +1,10 @@
 <?php
 
-namespace App\Actions\Matches;
+namespace App\Actions\Pipeline;
 
+use App\Actions\Matches\DetermineMatchResult;
+use App\Actions\Matches\ExtractGameResults;
+use App\Actions\Matches\ParseGameLogBinary;
 use App\Enums\MatchState;
 use App\Facades\Mtgo;
 use App\Models\GameLog;
@@ -11,42 +14,41 @@ use Illuminate\Support\Facades\Log;
 
 class ResolveGameResults
 {
-    public static function run(): void
-    {
-        $matches = MtgoMatch::whereIn('state', [
-            MatchState::InProgress,
-            MatchState::Ended,
-        ])->get();
-
-        foreach ($matches as $match) {
-            self::resolveForMatch($match);
-        }
-    }
-
-    private static function resolveForMatch(MtgoMatch $match): void
+    /**
+     * Parse game log for a match and resolve results if decisive.
+     */
+    public static function run(MtgoMatch $match): void
     {
         $gameLog = GameLog::where('match_token', $match->token)->first();
-        if (! $gameLog || empty($gameLog->decoded_entries)) {
+
+        if (! $gameLog) {
+            $gameLog = DiscoverGameLogs::discoverForToken($match->token);
+        }
+
+        if (! $gameLog || ! $gameLog->file_path || ! file_exists($gameLog->file_path)) {
             return;
         }
 
-        $players = ExtractGameResults::detectPlayers($gameLog->decoded_entries);
+        // Parse fresh every tick
+        $decoded = ParseGameLogBinary::run($gameLog->file_path);
+
+        if (empty($decoded)) {
+            return;
+        }
+
+        $players = ExtractGameResults::detectPlayers($decoded);
         $username = Mtgo::resolveUsername($players);
 
         if (! $username) {
-            Log::channel('pipeline')->warning("ResolveGameResults: skipping match {$match->mtgo_id} — username unavailable (candidates: ".implode(', ', $players).')');
-
             return;
         }
 
-        $extracted = ExtractGameResults::run($gameLog->decoded_entries, $username);
+        $extracted = ExtractGameResults::run($decoded, $username);
 
-        // Progressive: update Game.won and ended_at for each game
-        self::syncGameResults($match, $extracted['results'], $extracted['games']);
+        // Sync game results progressively
+        static::syncGameResults($match, $extracted['results'], $extracted['games']);
 
-        // Determine if the game log provides a decisive result.
-        // The game log binary is MTGO's authoritative record of results —
-        // it can drive match completion independently of main log state signals.
+        // Check if decisive
         $stateChanges = LogEvent::where('match_token', $match->token)
             ->where('event_type', 'match_state_changed')
             ->get();
@@ -78,20 +80,19 @@ class ResolveGameResults
                 'outcome' => $outcome->value,
                 'source' => 'game_log',
             ]);
-
-            return;
-        }
-
-        // Grace period: only for matches that reached Ended via main log signals
-        if ($match->state === MatchState::Ended && $match->ended_at?->lt(now()->subMinutes(2))) {
-            $match->update(['state' => MatchState::PendingResult]);
-            Log::channel('pipeline')->info("Match {$match->mtgo_id}: Ended → PendingResult");
         }
     }
 
+    /**
+     * Sync individual game win/loss results and ended_at timestamps.
+     *
+     * @param  array<int, bool>  $results
+     * @param  array<int, array<string, mixed>>  $gameData
+     */
     private static function syncGameResults(MtgoMatch $match, array $results, array $gameData): void
     {
         $games = $match->games()->orderBy('started_at')->get();
+
         foreach ($games as $index => $game) {
             if (! isset($results[$index])) {
                 continue;

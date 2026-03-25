@@ -6,13 +6,9 @@ use App\Actions\Logs\FindMtgoLogPath;
 use App\Actions\Logs\GetLogFilePaths;
 use App\Actions\Logs\IngestLog;
 use App\Actions\Logs\PruneProcessedLogEvents;
-use App\Actions\Matches\BuildMatches;
-use App\Actions\Matches\ResolveGameResults;
-use App\Actions\Matches\ResolvePendingResults;
 use App\Actions\RegisterDevice;
 use App\Actions\Settings\ValidatePath;
 use App\Jobs\DownloadArchetypes;
-use App\Jobs\PollGameLogs;
 use App\Jobs\PopulateMissingCardData;
 use App\Jobs\SubmitMatch;
 use App\Jobs\SyncDecks;
@@ -208,34 +204,14 @@ class MtgoManager
 
     public function schedule(Schedule $schedule): void
     {
-        // ── Ingest pipeline (every 1s) ──────────────────────────────
-        // Main MTGO log → log events → match/game creation, deck
-        // linking, league assignment, game timeline.
-        $schedule->call(function () {
-            $this->ingestLogs();
+        // ── Unified pipeline (every 2s) ──────────────────────────────
+        // Single command owns the entire lifecycle: log ingest →
+        // match creation → game log parsing → result resolution.
+        $schedule->command('mtgo:process-matches')
+            ->everyTwoSeconds()
+            ->withoutOverlapping(expiresAt: 60);
 
-            if (! $this->canRun()) {
-                return;
-            }
-
-            BuildMatches::run();
-        })->everySecond()->name('ingest_pipeline')->withoutOverlapping(1);
-
-        // ── Resolve pipeline (every 2s) ─────────────────────────────
-        // Game log binary → game results → match completion.
-        // Authoritative source for outcomes — can complete matches
-        // directly from InProgress without waiting for main log end signals.
-        $schedule->call(function () {
-            if (! $this->canRun()) {
-                return;
-            }
-
-            PollGameLogs::dispatch();
-            ResolveGameResults::run();
-            ResolvePendingResults::run();
-        })->everyTwoSeconds()->name('resolve_pipeline')->withoutOverlapping(2);
-
-        // Periodic maintenance
+        // Periodic maintenance (unchanged)
         $schedule->call(fn () => $this->retryUnsubmittedMatches())
             ->everyMinute()
             ->name('submit_matches')

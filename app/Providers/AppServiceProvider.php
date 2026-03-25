@@ -4,6 +4,8 @@ namespace App\Providers;
 
 use App\Actions\RegisterDevice;
 use App\Managers\MtgoManager;
+use App\Models\LogCursor;
+use App\Observers\LogCursorObserver;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\ServiceProvider;
 use Native\Desktop\Facades\Settings;
@@ -25,6 +27,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        LogCursor::observe(LogCursorObserver::class);
+
         if (! config('mymtgo_api.verify_ssl')) {
             Http::globalOptions([
                 'verify' => false,

@@ -28,7 +28,9 @@ class MtgoMatchObserver
 
         // Each enrichment is independent — failure in one doesn't block others
         try {
-            DetermineMatchArchetypes::run($match);
+            dispatch(function () use ($match) {
+                DetermineMatchArchetypes::run($match);
+            })->afterResponse();
         } catch (\Throwable $e) {
             Log::warning("Enrichment failed: archetypes for match {$match->id}: {$e->getMessage()}");
         }

@@ -37,4 +37,38 @@ class MtgoMatchFactory extends Factory
     {
         return $this->state(fn () => ['outcome' => MatchOutcome::Loss]);
     }
+
+    public function started(): static
+    {
+        return $this->state(fn () => [
+            'state' => MatchState::Started,
+            'outcome' => null,
+            'ended_at' => null,
+        ]);
+    }
+
+    public function inProgress(): static
+    {
+        return $this->state(fn () => [
+            'state' => MatchState::InProgress,
+            'outcome' => null,
+            'ended_at' => null,
+        ]);
+    }
+
+    public function ended(): static
+    {
+        return $this->state(fn () => [
+            'state' => MatchState::Ended,
+            'outcome' => null,
+        ]);
+    }
+
+    public function failed(): static
+    {
+        return $this->state(fn () => [
+            'failed_at' => now(),
+            'attempts' => 5,
+        ]);
+    }
 }

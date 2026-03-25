@@ -35,6 +35,8 @@ class MtgoMatch extends Model
         'started_at' => 'datetime',
         'ended_at' => 'datetime',
         'submitted_at' => 'datetime',
+        'failed_at' => 'datetime',
+        'attempts' => 'integer',
         'state' => MatchState::class,
         'outcome' => MatchOutcome::class,
     ];
@@ -97,7 +99,7 @@ class MtgoMatch extends Model
 
     public function scopeIncomplete(Builder $query): Builder
     {
-        return $query->whereNotIn('state', [MatchState::Complete, MatchState::Voided]);
+        return $query->where('state', '!=', MatchState::Complete);
     }
 
     public static function determineOutcome(int $wins, int $losses): MatchOutcome
