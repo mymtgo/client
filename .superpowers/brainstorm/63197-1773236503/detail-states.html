@@ -1,0 +1,153 @@
+<h2>Archetype Detail Panel — States</h2>
+<p class="subtitle">Three states the right panel can be in when an archetype is selected</p>
+
+<div class="cards" style="flex-direction:column;">
+  <!-- State 1: Not downloaded -->
+  <div class="card" data-choice="not-downloaded">
+    <div class="card-image">
+      <div style="height:280px;font-size:12px;font-family:monospace;background:#1a1a2e;border-radius:6px;overflow:hidden;display:flex;flex-direction:column;">
+        <div style="padding:12px 16px;border-bottom:1px solid #333;">
+          <div style="display:flex;justify-content:space-between;align-items:start;">
+            <div>
+              <div style="color:#e2e8f0;font-size:14px;font-weight:bold;">Mono Red Aggro</div>
+              <div style="color:#888;font-size:10px;margin-top:2px;">Modern &middot; <span style="color:#ef4444;">&#9679;</span></div>
+            </div>
+          </div>
+          <div style="margin-top:10px;display:flex;flex-direction:column;gap:3px;">
+            <div style="color:#a78bfa;font-size:11px;">62% winrate playing this archetype <span style="color:#666;">(18W - 11L)</span></div>
+            <div style="color:#fb923c;font-size:11px;">45% winrate against this archetype <span style="color:#666;">(9W - 11L)</span></div>
+          </div>
+        </div>
+        <div style="flex:1;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;">
+          <div style="color:#888;font-size:11px;">Decklist not yet downloaded</div>
+          <div style="background:#7c3aed;color:white;padding:6px 16px;border-radius:6px;font-size:11px;cursor:pointer;">Download Decklist</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>State 1: Not Downloaded</h3>
+      <p>Header shows name, format, mana, and personal winrate stats. Body shows empty state with download button.</p>
+    </div>
+  </div>
+
+  <!-- State 2: Downloading -->
+  <div class="card" data-choice="downloading">
+    <div class="card-image">
+      <div style="height:280px;font-size:12px;font-family:monospace;background:#1a1a2e;border-radius:6px;overflow:hidden;display:flex;flex-direction:column;">
+        <div style="padding:12px 16px;border-bottom:1px solid #333;">
+          <div style="display:flex;justify-content:space-between;align-items:start;">
+            <div>
+              <div style="color:#e2e8f0;font-size:14px;font-weight:bold;">Mono Red Aggro</div>
+              <div style="color:#888;font-size:10px;margin-top:2px;">Modern &middot; <span style="color:#ef4444;">&#9679;</span></div>
+            </div>
+          </div>
+          <div style="margin-top:10px;display:flex;flex-direction:column;gap:3px;">
+            <div style="color:#a78bfa;font-size:11px;">62% winrate playing this archetype <span style="color:#666;">(18W - 11L)</span></div>
+            <div style="color:#fb923c;font-size:11px;">45% winrate against this archetype <span style="color:#666;">(9W - 11L)</span></div>
+          </div>
+        </div>
+        <div style="flex:1;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;">
+          <div style="width:20px;height:20px;border:2px solid #7c3aed;border-top-color:transparent;border-radius:50%;animation:spin 1s linear infinite;"></div>
+          <div style="color:#888;font-size:11px;">Downloading decklist...</div>
+          <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>State 2: Downloading</h3>
+      <p>Spinner replaces the button while the API request is in progress.</p>
+    </div>
+  </div>
+
+  <!-- State 3: Downloaded (with stale notice) -->
+  <div class="card" data-choice="downloaded">
+    <div class="card-image">
+      <div style="height:360px;font-size:12px;font-family:monospace;background:#1a1a2e;border-radius:6px;overflow:hidden;display:flex;flex-direction:column;">
+        <div style="padding:12px 16px;border-bottom:1px solid #333;">
+          <div style="display:flex;justify-content:space-between;align-items:start;">
+            <div>
+              <div style="color:#e2e8f0;font-size:14px;font-weight:bold;">Mono Red Aggro</div>
+              <div style="color:#888;font-size:10px;margin-top:2px;">Modern &middot; <span style="color:#ef4444;">&#9679;</span></div>
+            </div>
+          </div>
+          <div style="margin-top:10px;display:flex;flex-direction:column;gap:3px;">
+            <div style="color:#a78bfa;font-size:11px;">62% winrate playing this archetype <span style="color:#666;">(18W - 11L)</span></div>
+            <div style="color:#fb923c;font-size:11px;">45% winrate against this archetype <span style="color:#666;">(9W - 11L)</span></div>
+          </div>
+        </div>
+        <!-- Stale notice -->
+        <div style="margin:10px 16px 0;padding:8px 12px;background:#2a2a1a;border:1px solid #4a4a2a;border-radius:6px;display:flex;justify-content:space-between;align-items:center;">
+          <div style="color:#eab308;font-size:10px;">This decklist is over a week old. Consider re-downloading in case of changes.</div>
+          <div style="background:#4a4a2a;color:#eab308;padding:3px 10px;border-radius:4px;font-size:9px;white-space:nowrap;margin-left:8px;cursor:pointer;">Re-download</div>
+        </div>
+        <!-- Decklist -->
+        <div style="flex:1;padding:14px 16px;display:flex;gap:20px;overflow:auto;">
+          <div style="flex:1;">
+            <div style="color:#888;font-size:9px;text-transform:uppercase;margin-bottom:4px;">Creatures (24)</div>
+            <div style="display:flex;flex-direction:column;gap:2px;">
+              <div style="color:#c0c0c0;font-size:11px;">4 Goblin Guide</div>
+              <div style="color:#c0c0c0;font-size:11px;">4 Monastery Swiftspear</div>
+              <div style="color:#c0c0c0;font-size:11px;">4 Eidolon of the Great Revel</div>
+              <div style="color:#c0c0c0;font-size:11px;">4 Ragavan, Nimble Pilferer</div>
+              <div style="color:#c0c0c0;font-size:11px;">4 Dragon's Rage Channeler</div>
+            </div>
+            <div style="color:#888;font-size:9px;text-transform:uppercase;margin-bottom:4px;margin-top:10px;">Instants (12)</div>
+            <div style="display:flex;flex-direction:column;gap:2px;">
+              <div style="color:#c0c0c0;font-size:11px;">4 Lightning Bolt</div>
+              <div style="color:#c0c0c0;font-size:11px;">4 Searing Blaze</div>
+              <div style="color:#c0c0c0;font-size:11px;">4 Skullcrack</div>
+            </div>
+          </div>
+          <div style="flex:1;">
+            <div style="color:#888;font-size:9px;text-transform:uppercase;margin-bottom:4px;">Sorceries (8)</div>
+            <div style="display:flex;flex-direction:column;gap:2px;">
+              <div style="color:#c0c0c0;font-size:11px;">4 Lava Spike</div>
+              <div style="color:#c0c0c0;font-size:11px;">4 Rift Bolt</div>
+            </div>
+            <div style="color:#888;font-size:9px;text-transform:uppercase;margin-bottom:4px;margin-top:10px;">Lands (16)</div>
+            <div style="display:flex;flex-direction:column;gap:2px;">
+              <div style="color:#c0c0c0;font-size:11px;">10 Mountain</div>
+              <div style="color:#c0c0c0;font-size:11px;">4 Inspiring Vantage</div>
+              <div style="color:#c0c0c0;font-size:11px;">2 Fiery Islet</div>
+            </div>
+            <div style="color:#888;font-size:9px;text-transform:uppercase;margin-bottom:4px;margin-top:10px;">Sideboard (15)</div>
+            <div style="display:flex;flex-direction:column;gap:2px;">
+              <div style="color:#c0c0c0;font-size:11px;">3 Smash to Smithereens</div>
+              <div style="color:#c0c0c0;font-size:11px;">2 Roiling Vortex</div>
+              <div style="color:#c0c0c0;font-size:11px;">2 Searing Blood</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>State 3: Downloaded (with stale notice)</h3>
+      <p>Two-column decklist grouped by type. When over a week old, a yellow notice bar appears between the header and decklist with a re-download button. The notice disappears when fresh.</p>
+    </div>
+  </div>
+
+  <!-- State 4: No match data -->
+  <div class="card" data-choice="no-data">
+    <div class="card-image">
+      <div style="height:200px;font-size:12px;font-family:monospace;background:#1a1a2e;border-radius:6px;overflow:hidden;display:flex;flex-direction:column;">
+        <div style="padding:12px 16px;border-bottom:1px solid #333;">
+          <div>
+            <div style="color:#e2e8f0;font-size:14px;font-weight:bold;">Jeskai Control</div>
+            <div style="color:#888;font-size:10px;margin-top:2px;">Legacy &middot; <span style="color:#eab308;">W</span><span style="color:#60a5fa;">U</span><span style="color:#ef4444;">R</span></div>
+          </div>
+          <div style="margin-top:10px;">
+            <div style="color:#666;font-size:11px;font-style:italic;">You haven't played this deck yet</div>
+          </div>
+        </div>
+        <div style="flex:1;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;">
+          <div style="color:#888;font-size:11px;">Decklist not yet downloaded</div>
+          <div style="background:#7c3aed;color:white;padding:6px 16px;border-radius:6px;font-size:11px;cursor:pointer;">Download Decklist</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>State 4: No Match Data</h3>
+      <p>When the user has no matches playing as or against this archetype, a simple italic message replaces the winrate lines.</p>
+    </div>
+  </div>
+</div>

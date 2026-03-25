@@ -1,0 +1,214 @@
+<h2>Challenge Detail View — Layout</h2>
+<p class="subtitle">3-column layout: Details | Standings | Timeline</p>
+
+<div class="mockup">
+  <div class="mockup-header">Challenge Detail — Vintage Challenge (Round 3 of 5)</div>
+  <div class="mockup-body" style="padding: 0;">
+    <div style="display: grid; grid-template-columns: 220px 1fr 260px; min-height: 420px; font-size: 13px;">
+
+      <!-- LEFT: Challenge Details -->
+      <div style="border-right: 1px solid #333; padding: 16px; background: #1a1a2e;">
+        <div style="margin-bottom: 16px;">
+          <div style="color: #888; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">Format</div>
+          <div style="color: #e0e0e0; font-size: 15px; font-weight: 600; margin-top: 2px;">Vintage</div>
+        </div>
+        <div style="margin-bottom: 16px;">
+          <div style="color: #888; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">Status</div>
+          <div style="margin-top: 4px;">
+            <span style="background: #22c55e33; color: #4ade80; padding: 2px 8px; border-radius: 4px; font-size: 12px;">Round 3 In Progress</span>
+          </div>
+        </div>
+        <div style="margin-bottom: 16px;">
+          <div style="color: #888; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">Started</div>
+          <div style="color: #e0e0e0; margin-top: 2px;">6:42 PM</div>
+          <div style="color: #666; font-size: 11px;">47 min ago</div>
+        </div>
+        <div style="margin-bottom: 16px;">
+          <div style="color: #888; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">Participants</div>
+          <div style="color: #e0e0e0; font-size: 20px; font-weight: 700; margin-top: 2px;">32</div>
+          <div style="color: #666; font-size: 11px;">6 eliminated</div>
+        </div>
+        <div style="margin-bottom: 16px;">
+          <div style="color: #888; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">Your Status</div>
+          <div style="margin-top: 4px;">
+            <span style="background: #3b82f633; color: #60a5fa; padding: 2px 8px; border-radius: 4px; font-size: 12px;">2-1 (6 pts)</span>
+          </div>
+          <div style="color: #666; font-size: 11px; margin-top: 4px;">Rank #8</div>
+        </div>
+      </div>
+
+      <!-- MIDDLE: Standings Table -->
+      <div style="padding: 0; overflow-y: auto;">
+        <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+          <thead>
+            <tr style="background: #1a1a2e; position: sticky; top: 0;">
+              <th style="padding: 10px 8px; text-align: left; color: #888; font-weight: 500; border-bottom: 1px solid #333;">#</th>
+              <th style="padding: 10px 8px; text-align: left; color: #888; font-weight: 500; border-bottom: 1px solid #333;">Player</th>
+              <th style="padding: 10px 8px; text-align: center; color: #888; font-weight: 500; border-bottom: 1px solid #333;">Pts</th>
+              <th style="padding: 10px 8px; text-align: center; color: #888; font-weight: 500; border-bottom: 1px solid #333;">R1</th>
+              <th style="padding: 10px 8px; text-align: center; color: #888; font-weight: 500; border-bottom: 1px solid #333;">R2</th>
+              <th style="padding: 10px 8px; text-align: center; color: #888; font-weight: 500; border-bottom: 1px solid #333;">R3</th>
+              <th style="padding: 10px 8px; text-align: center; color: #888; font-weight: 500; border-bottom: 1px solid #333;">OMW%</th>
+              <th style="padding: 10px 8px; text-align: center; color: #888; font-weight: 500; border-bottom: 1px solid #333;">GW%</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="background: #16213e44;">
+              <td style="padding: 8px; color: #fbbf24; font-weight: 600;">1</td>
+              <td style="padding: 8px; color: #e0e0e0;">xJCloud</td>
+              <td style="padding: 8px; text-align: center; color: #e0e0e0; font-weight: 600;">9</td>
+              <td style="padding: 8px; text-align: center; color: #4ade80;">2-0</td>
+              <td style="padding: 8px; text-align: center; color: #4ade80;">2-1</td>
+              <td style="padding: 8px; text-align: center; color: #4ade80;">2-0</td>
+              <td style="padding: 8px; text-align: center; color: #888;">55.6%</td>
+              <td style="padding: 8px; text-align: center; color: #888;">85.7%</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px; color: #fbbf24; font-weight: 600;">2</td>
+              <td style="padding: 8px; color: #e0e0e0;">DarthViper</td>
+              <td style="padding: 8px; text-align: center; color: #e0e0e0; font-weight: 600;">9</td>
+              <td style="padding: 8px; text-align: center; color: #4ade80;">2-0</td>
+              <td style="padding: 8px; text-align: center; color: #4ade80;">2-0</td>
+              <td style="padding: 8px; text-align: center; color: #4ade80;">2-1</td>
+              <td style="padding: 8px; text-align: center; color: #888;">55.6%</td>
+              <td style="padding: 8px; text-align: center; color: #888;">85.7%</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px; color: #e0e0e0;">3</td>
+              <td style="padding: 8px; color: #e0e0e0;">MtgVintage99</td>
+              <td style="padding: 8px; text-align: center; color: #e0e0e0; font-weight: 600;">9</td>
+              <td style="padding: 8px; text-align: center; color: #4ade80;">2-1</td>
+              <td style="padding: 8px; text-align: center; color: #4ade80;">2-0</td>
+              <td style="padding: 8px; text-align: center; color: #4ade80;">2-0</td>
+              <td style="padding: 8px; text-align: center; color: #888;">55.6%</td>
+              <td style="padding: 8px; text-align: center; color: #888;">85.7%</td>
+            </tr>
+            <tr style="background: #3b82f611; border-left: 2px solid #3b82f6;">
+              <td style="padding: 8px; color: #e0e0e0;">8</td>
+              <td style="padding: 8px; color: #60a5fa; font-weight: 600;">You ★</td>
+              <td style="padding: 8px; text-align: center; color: #e0e0e0; font-weight: 600;">6</td>
+              <td style="padding: 8px; text-align: center; color: #4ade80;">2-0</td>
+              <td style="padding: 8px; text-align: center; color: #f87171;">1-2</td>
+              <td style="padding: 8px; text-align: center; color: #4ade80;">2-1</td>
+              <td style="padding: 8px; text-align: center; color: #888;">66.7%</td>
+              <td style="padding: 8px; text-align: center; color: #888;">62.5%</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px; color: #e0e0e0;">9</td>
+              <td style="padding: 8px; color: #e0e0e0;">LotusEater</td>
+              <td style="padding: 8px; text-align: center; color: #e0e0e0; font-weight: 600;">6</td>
+              <td style="padding: 8px; text-align: center; color: #4ade80;">2-1</td>
+              <td style="padding: 8px; text-align: center; color: #f87171;">0-2</td>
+              <td style="padding: 8px; text-align: center; color: #4ade80;">2-0</td>
+              <td style="padding: 8px; text-align: center; color: #888;">55.6%</td>
+              <td style="padding: 8px; text-align: center; color: #888;">57.1%</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px; color: #e0e0e0;">10</td>
+              <td style="padding: 8px; color: #e0e0e0;">TolarianScholar</td>
+              <td style="padding: 8px; text-align: center; color: #e0e0e0; font-weight: 600;">6</td>
+              <td style="padding: 8px; text-align: center; color: #f87171;">1-2</td>
+              <td style="padding: 8px; text-align: center; color: #4ade80;">2-1</td>
+              <td style="padding: 8px; text-align: center; color: #4ade80;">2-0</td>
+              <td style="padding: 8px; text-align: center; color: #888;">44.4%</td>
+              <td style="padding: 8px; text-align: center; color: #888;">62.5%</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px; color: #666;">11</td>
+              <td style="padding: 8px; color: #666; text-decoration: line-through;">BrainstormBob</td>
+              <td style="padding: 8px; text-align: center; color: #666;">3</td>
+              <td style="padding: 8px; text-align: center; color: #f87171;">1-2</td>
+              <td style="padding: 8px; text-align: center; color: #f87171;">0-2</td>
+              <td style="padding: 8px; text-align: center; color: #666;">—</td>
+              <td style="padding: 8px; text-align: center; color: #666;">—</td>
+              <td style="padding: 8px; text-align: center; color: #666;">—</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- RIGHT: Timeline -->
+      <div style="border-left: 1px solid #333; padding: 16px; overflow-y: auto; background: #1a1a2e;">
+        <div style="color: #888; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px;">Timeline</div>
+
+        <!-- Round 3 -->
+        <div style="margin-bottom: 4px;">
+          <div style="color: #60a5fa; font-size: 11px; font-weight: 600; margin-bottom: 8px;">Round 3</div>
+        </div>
+        <div style="display: flex; gap: 8px; margin-bottom: 10px; align-items: start;">
+          <div style="width: 8px; height: 8px; border-radius: 50%; background: #4ade80; margin-top: 4px; flex-shrink: 0;"></div>
+          <div>
+            <div style="color: #e0e0e0; font-size: 12px;">You won 2-1</div>
+            <div style="color: #666; font-size: 10px;">7:18 PM</div>
+          </div>
+        </div>
+        <div style="display: flex; gap: 8px; margin-bottom: 10px; align-items: start;">
+          <div style="width: 8px; height: 8px; border-radius: 50%; background: #f87171; margin-top: 4px; flex-shrink: 0;"></div>
+          <div>
+            <div style="color: #e0e0e0; font-size: 12px;"><span style="color: #888;">BrainstormBob</span> eliminated</div>
+            <div style="color: #666; font-size: 10px;">Match Loss — 7:12 PM</div>
+          </div>
+        </div>
+        <div style="display: flex; gap: 8px; margin-bottom: 10px; align-items: start;">
+          <div style="width: 8px; height: 8px; border-radius: 50%; background: #fbbf24; margin-top: 4px; flex-shrink: 0;"></div>
+          <div>
+            <div style="color: #e0e0e0; font-size: 12px;">Standings updated</div>
+            <div style="color: #666; font-size: 10px;">7:20 PM</div>
+          </div>
+        </div>
+
+        <div style="border-top: 1px solid #333; margin: 12px 0;"></div>
+
+        <!-- Round 2 -->
+        <div style="margin-bottom: 4px;">
+          <div style="color: #60a5fa; font-size: 11px; font-weight: 600; margin-bottom: 8px;">Round 2</div>
+        </div>
+        <div style="display: flex; gap: 8px; margin-bottom: 10px; align-items: start;">
+          <div style="width: 8px; height: 8px; border-radius: 50%; background: #f87171; margin-top: 4px; flex-shrink: 0;"></div>
+          <div>
+            <div style="color: #e0e0e0; font-size: 12px;">You lost 1-2</div>
+            <div style="color: #666; font-size: 10px;">6:58 PM</div>
+          </div>
+        </div>
+        <div style="display: flex; gap: 8px; margin-bottom: 10px; align-items: start;">
+          <div style="width: 8px; height: 8px; border-radius: 50%; background: #a855f7; margin-top: 4px; flex-shrink: 0;"></div>
+          <div>
+            <div style="color: #e0e0e0; font-size: 12px;"><span style="color: #888;">LotusEater</span> dropped</div>
+            <div style="color: #666; font-size: 10px;">6:55 PM</div>
+          </div>
+        </div>
+        <div style="display: flex; gap: 8px; margin-bottom: 10px; align-items: start;">
+          <div style="width: 8px; height: 8px; border-radius: 50%; background: #fbbf24; margin-top: 4px; flex-shrink: 0;"></div>
+          <div>
+            <div style="color: #e0e0e0; font-size: 12px;">Standings updated</div>
+            <div style="color: #666; font-size: 10px;">7:01 PM</div>
+          </div>
+        </div>
+
+        <div style="border-top: 1px solid #333; margin: 12px 0;"></div>
+
+        <!-- Round 1 -->
+        <div style="margin-bottom: 4px;">
+          <div style="color: #60a5fa; font-size: 11px; font-weight: 600; margin-bottom: 8px;">Round 1</div>
+        </div>
+        <div style="display: flex; gap: 8px; margin-bottom: 10px; align-items: start;">
+          <div style="width: 8px; height: 8px; border-radius: 50%; background: #4ade80; margin-top: 4px; flex-shrink: 0;"></div>
+          <div>
+            <div style="color: #e0e0e0; font-size: 12px;">You won 2-0</div>
+            <div style="color: #666; font-size: 10px;">6:38 PM</div>
+          </div>
+        </div>
+        <div style="display: flex; gap: 8px; margin-bottom: 10px; align-items: start;">
+          <div style="width: 8px; height: 8px; border-radius: 50%; background: #22d3ee; margin-top: 4px; flex-shrink: 0;"></div>
+          <div>
+            <div style="color: #e0e0e0; font-size: 12px;">Tournament fired</div>
+            <div style="color: #666; font-size: 10px;">32 players — 6:20 PM</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<p class="subtitle" style="margin-top: 16px;">Note: "You" row highlighted in blue when participating. Eliminated players shown greyed/struck-through. Timeline shows your results prominently when participating, otherwise just eliminations and standings updates.</p>

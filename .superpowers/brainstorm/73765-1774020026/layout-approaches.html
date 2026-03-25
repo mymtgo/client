@@ -1,0 +1,76 @@
+<h2>Dashboard Layout Approaches</h2>
+<p class="subtitle">Three ways to organize the redesigned dashboard. Click your preference.</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Hero + Grid — "Momentum Dashboard"</h3>
+      <p>A bold top section with your current form front and center — streak indicator, rolling winrate gauge, and active league. Below that, a 2-column grid of widget cards: format chart, matchup spread, play/draw split, session recap. Dense but scannable.</p>
+      <div style="margin-top: 12px; padding: 16px; background: rgba(255,255,255,0.03); border-radius: 8px; font-family: monospace; font-size: 12px; line-height: 1.8; color: #888;">
+        ┌─────────────────────────────────────────┐<br>
+        │ 🔥 5W streak │ 62% last 20 │ League 3-1 │<br>
+        │&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[ timeframe selector ]&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;│<br>
+        ├────────────────────┬────────────────────┤<br>
+        │ Match/Game KPIs    │ Play/Draw Split    │<br>
+        ├────────────────────┼────────────────────┤<br>
+        │ Format Chart       │ Matchup Spread     │<br>
+        ├────────────────────┼────────────────────┤<br>
+        │ Session Recap      │ Best/Worst Decks   │<br>
+        └────────────────────┴────────────────────┘
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Stacked Narrative — "Story of Your Session"</h3>
+      <p>Full-width sections that tell a story top to bottom: "Here's your momentum" → "Here's what you played" → "Here's what you faced" → "Here's where to improve". Each section is a focused card. Reads like a report. Simpler layout, more breathing room.</p>
+      <div style="margin-top: 12px; padding: 16px; background: rgba(255,255,255,0.03); border-radius: 8px; font-family: monospace; font-size: 12px; line-height: 1.8; color: #888;">
+        ┌─────────────────────────────────────────┐<br>
+        │ MOMENTUM: streak, rolling %, trend line  │<br>
+        ├─────────────────────────────────────────┤<br>
+        │ SESSION: last session matches + result   │<br>
+        ├─────────────────────────────────────────┤<br>
+        │ META: top archetypes faced + your W/L    │<br>
+        ├─────────────────────────────────────────┤<br>
+        │ PERFORMANCE: format chart, play/draw     │<br>
+        ├─────────────────────────────────────────┤<br>
+        │ DECKS: best/worst + league status        │<br>
+        └─────────────────────────────────────────┘
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Hybrid — "Command Center"</h3>
+      <p>Compact KPI strip at top (streak, winrates, league). Then a mixed grid: wider cards for charts/tables, narrower cards for stats. Maximizes information density without being overwhelming. The grid adapts — important widgets are larger.</p>
+      <div style="margin-top: 12px; padding: 16px; background: rgba(255,255,255,0.03); border-radius: 8px; font-family: monospace; font-size: 12px; line-height: 1.8; color: #888;">
+        ┌──────────┬──────────┬──────────┬─────────┐<br>
+        │ 🔥 5W    │ 62% M.WR │ 58% G.WR │ Lg: 3-1 │<br>
+        ├──────────┴──────────┴──────────┴─────────┤<br>
+        │ Format Trend Chart (wide)&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;│<br>
+        ├───────────────────────┬───────────────────┤<br>
+        │ Session Recap         │ Matchup Spread    │<br>
+        │ (last 5 matches)      │ (top 5 archetypes)│<br>
+        ├───────────────────────┼───────────────────┤<br>
+        │ Play/Draw Split       │ Best/Worst Deck   │<br>
+        └───────────────────────┴───────────────────┘
+      </div>
+    </div>
+  </div>
+</div>
+
+<div style="margin-top: 24px; padding: 16px; background: rgba(255,255,255,0.03); border-radius: 8px;">
+  <h3 style="margin-top: 0;">What's the same across all three:</h3>
+  <ul style="color: #aaa; line-height: 1.8;">
+    <li>Timeframe selector stays</li>
+    <li>Active league widget stays</li>
+    <li>Recent matches table removed (lives on /matches page)</li>
+    <li>New widgets: streak indicator, rolling form, session recap, matchup spread, play/draw split</li>
+    <li>Existing widgets improved: KPIs, format chart, best/worst deck</li>
+  </ul>
+</div>
