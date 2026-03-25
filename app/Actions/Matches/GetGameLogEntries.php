@@ -20,7 +20,7 @@ class GetGameLogEntries
     {
         $match = $game->match;
 
-        if (! $match || ! $game->started_at || ! $game->ended_at) {
+        if ($game->started_at === null || $game->ended_at === null) {
             return [];
         }
 
@@ -31,13 +31,6 @@ class GetGameLogEntries
         }
 
         $entries = $gameLog->decoded_entries ?? [];
-
-        // Lazy parse if not yet decoded
-        if (empty($entries)) {
-            GetGameLog::run($match->token);
-            $gameLog->refresh();
-            $entries = $gameLog->decoded_entries ?? [];
-        }
 
         if (empty($entries)) {
             return [];

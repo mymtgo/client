@@ -15,13 +15,11 @@ class PopulateMissingCardData implements ShouldQueue
 {
     use Queueable;
 
-    /**
-     * Create a new job instance.
-     */
-    public function __construct()
-    {
-        //
-    }
+    /** API calls for card enrichment — retry with backoff. */
+    public int $tries = 3;
+
+    /** @var int[] */
+    public array $backoff = [10, 60];
 
     /**
      * Execute the job.

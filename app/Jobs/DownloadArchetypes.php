@@ -2,34 +2,28 @@
 
 namespace App\Jobs;
 
-use App\Actions\RegisterDevice;
 use App\Models\Archetype;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Http;
-use Native\Desktop\Facades\Settings;
 
 class DownloadArchetypes implements ShouldQueue
 {
     use Queueable;
 
-    /**
-     * Create a new job instance.
-     */
-    public function __construct()
-    {
-        //
-    }
+    /** Retry up to 3 times before moving to failed_jobs. */
+    public int $tries = 3;
 
-    /**
-     * Execute the job.
-     */
+    /** @var int[] Seconds between retries */
+    public array $backoff = [10, 60, 300];
+
     public function handle(): void
     {
-        $response = Http::withHeaders([
-            'X-Device-Id' => Settings::get('device_id'),
-            'X-Api-Key' => RegisterDevice::retrieveKey(),
-        ])->get(config('mymtgo_api.url').'/api/archetypes');
+        $response = Http::mymtgoApi()->get('/api/archetypes');
+
+        if (! $response->successful()) {
+            throw new \RuntimeException("DownloadArchetypes: API returned {$response->status()}");
+        }
 
         foreach ($response->json() as $archetype) {
             Archetype::updateOrCreate(

@@ -33,7 +33,7 @@ class GetLeagueResultDistribution
             ->whereIn('m.league_id', $leagues)
             ->where('dv.deck_id', $deck->id)
             ->where('m.state', 'complete')
-            ->selectRaw('m.league_id, SUM(CASE WHEN m.games_won > m.games_lost THEN 1 ELSE 0 END) as wins, SUM(CASE WHEN m.games_won < m.games_lost THEN 1 ELSE 0 END) as losses')
+            ->selectRaw("m.league_id, SUM(CASE WHEN m.outcome = 'win' THEN 1 ELSE 0 END) as wins, SUM(CASE WHEN m.outcome = 'loss' THEN 1 ELSE 0 END) as losses")
             ->groupBy('m.league_id')
             ->get();
 

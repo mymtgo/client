@@ -9,7 +9,6 @@ import MatchGame from '@/pages/matches/partials/MatchGame.vue';
 import DeckShowController from '@/actions/App/Http/Controllers/Decks/ShowController';
 import UpdateNotesController from '@/actions/App/Http/Controllers/Matches/UpdateNotesController';
 import { PencilIcon, NotepadText } from 'lucide-vue-next';
-import dayjs from 'dayjs';
 import { useForm } from '@inertiajs/vue3';
 
 type GameDetail = {
@@ -108,7 +107,7 @@ const opponentArchetype = computed(() => {
                 <p class="text-sm text-muted-foreground">
                     <template v-if="deck">{{ deck.name }} · </template>
                     {{ match.format }}
-                    · {{ dayjs(match.startedAt).format('MMM D, YYYY [at] h:mma') }}
+                    · {{ match.startedAtFormatted }}
                     · {{ match.matchTime }}
                     <template v-if="match.leagueName"> · {{ match.leagueName }}</template>
                 </p>

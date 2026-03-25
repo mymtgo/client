@@ -11,6 +11,11 @@ class GetCardGameStats
 {
     public static function run(DeckVersion $deckVersion, ?int $opponentArchetypeId = null): Collection
     {
+        $sideboardOracles = collect($deckVersion->cards)
+            ->filter(fn ($card) => $card['sideboard'] === 'true' || $card['sideboard'] === true)
+            ->pluck('oracle_id')
+            ->flip();
+
         $query = DB::table('card_game_stats as cgs')
             ->join(DB::raw('(SELECT oracle_id, name, color_identity, type, image FROM cards WHERE oracle_id IS NOT NULL GROUP BY oracle_id) as c'), 'c.oracle_id', '=', 'cgs.oracle_id')
             ->where('cgs.deck_version_id', $deckVersion->id);
@@ -57,6 +62,7 @@ class GetCardGameStats
                 'colorIdentity' => $row->color_identity,
                 'type' => $row->type,
                 'image' => $row->image,
+                'isSideboard' => $sideboardOracles->has($row->oracle_id),
                 'totalGames' => (int) $row->total_games,
                 'totalPossible' => (int) $row->total_possible,
                 'totalKept' => (int) $row->total_kept,

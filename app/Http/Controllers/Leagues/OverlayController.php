@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Leagues;
 use App\Enums\LeagueState;
 use App\Enums\MatchState;
 use App\Http\Controllers\Controller;
+use App\Models\Deck;
 use App\Models\League;
 use App\Models\MtgoMatch;
 use Illuminate\Http\Request;
@@ -16,13 +17,15 @@ class OverlayController extends Controller
     public function __invoke(Request $request): Response
     {
         $league = League::withCount([
-            'matches as wins_count' => fn ($q) => $q->where('state', MatchState::Complete)->whereColumn('games_won', '>', 'games_lost'),
-            'matches as losses_count' => fn ($q) => $q->where('state', MatchState::Complete)->whereColumn('games_lost', '>', 'games_won'),
-            'matches as total_matches_count' => fn ($q) => $q->where('state', '!=', MatchState::Voided),
+            'matches as wins_count' => fn ($q) => $q->where('state', MatchState::Complete)->where('outcome', 'win'),
+            'matches as losses_count' => fn ($q) => $q->where('state', MatchState::Complete)->where('outcome', 'loss'),
+            'matches as total_matches_count',
+            'matches as has_active_match_count' => fn ($q) => $q->whereIn('state', [MatchState::Started, MatchState::InProgress]),
         ])
             ->with(['deckVersion.deck'])
             ->where('leagues.state', LeagueState::Active)
             ->has('matches')
+            ->orderByDesc('has_active_match_count')
             ->latest('started_at')
             ->first();
 
@@ -43,12 +46,17 @@ class OverlayController extends Controller
             ])->values()->all()
             : [];
 
-        $deckName = $league->deckVersion?->deck?->name
-            ?? $league->matches()
+        /** @var Deck|null $deckModel */
+        $deckModel = $league->deckVersion?->deck;
+        if (! $deckModel) {
+            /** @var Deck|null $deckModel */
+            $deckModel = $league->matches()
                 ->whereNotNull('deck_version_id')
                 ->with('deck')
                 ->first()
-                ?->deck?->name;
+                ?->getRelation('deck');
+        }
+        $deckName = $deckModel?->name;
 
         return Inertia::render('leagues/Overlay', [
             'league' => [
@@ -60,7 +68,7 @@ class OverlayController extends Controller
                 'totalMatches' => $league->total_matches_count,
                 'phantom' => (bool) $league->phantom,
                 'deckName' => $deckName,
-                'hasActiveMatch' => $currentMatch !== null,
+                'hasActiveMatch' => ! is_null($currentMatch),
                 'games' => $games,
             ],
         ]);

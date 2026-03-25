@@ -9,34 +9,13 @@ import { router } from '@inertiajs/vue3';
 import dayjs from 'dayjs';
 import { useLeagueScreenshot } from '@/composables/useLeagueScreenshot';
 import { Camera, Ellipsis, Trash2, Trophy } from 'lucide-vue-next';
-import { ref } from 'vue';
+import { nextTick, ref } from 'vue';
 import LeagueScreenshot from './LeagueScreenshot.vue';
 import ResultBadge from '../matches/ResultBadge.vue';
 import { Badge } from '../ui/badge';
 import { Card } from '../ui/card';
+import type { LeagueRun } from '@/types/leagues';
 import PhantomBadge from './PhantomBadge.vue';
-
-type LeagueMatch = {
-    id: number;
-    result: 'W' | 'L';
-    opponentName: string | null;
-    opponentArchetype: string | null;
-    games: string;
-    startedAt: string;
-};
-
-type LeagueRun = {
-    id: number;
-    name: string;
-    format: string;
-    deck: { id: number; name: string } | null;
-    versionLabel: string | null;
-    startedAt: string;
-    results: ('W' | 'L' | null)[];
-    phantom: boolean;
-    state: 'active' | 'complete' | 'partial';
-    matches: LeagueMatch[];
-};
 
 defineProps<{
     league: LeagueRun;
@@ -54,13 +33,17 @@ function abandonLeague(league: LeagueRun) {
 }
 
 const screenshotRef = ref<InstanceType<typeof LeagueScreenshot> | null>(null);
+const showScreenshot = ref(false);
 const { capture, capturing } = useLeagueScreenshot();
 
-function copyScreenshot() {
+async function copyScreenshot() {
+    showScreenshot.value = true;
+    await nextTick();
     const el = screenshotRef.value?.$el as HTMLElement | undefined;
     if (el) {
-        capture(el);
+        await capture(el);
     }
+    showScreenshot.value = false;
 }
 </script>
 
@@ -172,8 +155,8 @@ function copyScreenshot() {
                 </Table>
         </div>
 
-        <div style="position: fixed; top: 0; left: 0; opacity: 0; pointer-events: none; z-index: -1;">
-            <LeagueScreenshot ref="screenshotRef" :league="league" />
-        </div>
     </Card>
+    <div v-if="showScreenshot" style="position: fixed; top: -9999px; left: -9999px; pointer-events: none;">
+        <LeagueScreenshot ref="screenshotRef" :league="league" />
+    </div>
 </template>

@@ -9,6 +9,7 @@ use App\Facades\Mtgo;
 use Native\Desktop\Contracts\ProvidesPhpIni;
 use Native\Desktop\Facades\Menu;
 use Native\Desktop\Facades\Settings;
+use Native\Desktop\Facades\System;
 use Native\Desktop\Facades\Window;
 
 class NativeAppServiceProvider implements ProvidesPhpIni
@@ -19,6 +20,8 @@ class NativeAppServiceProvider implements ProvidesPhpIni
      */
     public function boot(): void
     {
+        $this->configureTimezone();
+
         if (app()->isProduction()) {
             Menu::create();
         }
@@ -45,6 +48,16 @@ class NativeAppServiceProvider implements ProvidesPhpIni
 
         if (Settings::get('deck_window')) {
             OpenMostRecentDeckPopout::run();
+        }
+    }
+
+    private function configureTimezone(): void
+    {
+        $timezone = Settings::get('timezone') ?: System::timezone();
+
+        if ($timezone) {
+            date_default_timezone_set($timezone);
+            config(['app.timezone' => $timezone]);
         }
     }
 

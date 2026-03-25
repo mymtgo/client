@@ -7,7 +7,6 @@ import ResultBadge from '@/components/matches/ResultBadge.vue';
 import MatchNotesDialog from '@/components/matches/MatchNotesDialog.vue';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import dayjs from 'dayjs';
 import { useForm, router } from '@inertiajs/vue3';
 import DeleteController from '@/actions/App/Http/Controllers/Matches/DeleteController';
 import UpdateArchetypeController from '@/actions/App/Http/Controllers/Matches/UpdateArchetypeController';
@@ -105,7 +104,7 @@ const clearArchetype = (matchId: number) => {
                                 {{ match.matchTime }}
                             </TableCell>
                             <TableCell>
-                                {{ dayjs(match.startedAt).format('DD/MM/YYYY hh:mma') }}
+                                {{ match.startedAtFormatted }}
                             </TableCell>
                             <TableCell>
                                 <TooltipProvider v-if="match.notes">

@@ -12,17 +12,28 @@ use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
+/**
+ * @property int $won_matches_count
+ * @property int $lost_matches_count
+ * @property int $matches_count
+ * @property string|null $matches_max_started_at
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, DeckVersion> $versions
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, MtgoMatch> $matches
+ * @property-read \Illuminate\Database\Eloquent\Collection|null $cards
+ */
 class Deck extends Model
 {
     use HasFactory, SoftDeletes;
 
     protected $guarded = [];
 
+    /** @return HasMany<DeckVersion, $this> */
     public function versions(): HasMany
     {
         return $this->hasMany(DeckVersion::class);
     }
 
+    /** @return HasOne<DeckVersion, $this> */
     public function latestVersion(): HasOne
     {
         return $this->hasOne(DeckVersion::class, 'deck_id')->latestOfMany('modified_at');
@@ -35,14 +46,15 @@ class Deck extends Model
 
     public function lostMatches(): HasManyThrough
     {
-        return $this->matches()->whereRaw('games_lost > games_won');
+        return $this->matches()->where('outcome', 'loss');
     }
 
     public function wonMatches(): HasManyThrough
     {
-        return $this->matches()->whereRaw('games_lost < games_won');
+        return $this->matches()->where('outcome', 'win');
     }
 
+    /** @return BelongsTo<Account, $this> */
     public function account(): BelongsTo
     {
         return $this->belongsTo(Account::class);

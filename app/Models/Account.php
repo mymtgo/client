@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\DB;
 
 class Account extends Model
 {
@@ -39,14 +40,16 @@ class Account extends Model
      */
     public function activate(): void
     {
-        static::where('active', true)->update(['active' => false]);
-        $this->update(['active' => true]);
+        DB::transaction(function () {
+            static::where('active', true)->update(['active' => false]);
+            $this->update(['active' => true]);
+        });
     }
 
     /**
      * Find or create an account and activate it.
      */
-    public static function registerAndActivate(string $username): static
+    public static function registerAndActivate(string $username): self
     {
         $account = static::firstOrCreate(
             ['username' => $username],

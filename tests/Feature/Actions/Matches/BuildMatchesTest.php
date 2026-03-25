@@ -1,11 +1,20 @@
 <?php
 
-use App\Actions\Matches\BuildMatches;
+use App\Managers\MtgoManager;
 use App\Models\LogEvent;
 use App\Models\MtgoMatch;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Artisan;
 
 uses(RefreshDatabase::class);
+
+beforeEach(function () {
+    $mock = Mockery::mock(MtgoManager::class)->makePartial();
+    $mock->shouldReceive('pathsAreValid')->andReturn(true);
+    $mock->shouldReceive('ingestLogs')->andReturnNull();
+    $mock->shouldReceive('getLogDataPath')->andReturn(sys_get_temp_dir());
+    app()->instance('mtgo', $mock);
+});
 
 it('excludes league_joined events from match discovery', function () {
     LogEvent::create([
@@ -24,7 +33,7 @@ it('excludes league_joined events from match discovery', function () {
         'logged_at' => now(),
     ]);
 
-    BuildMatches::run();
+    Artisan::call('mtgo:process-matches');
 
     expect(MtgoMatch::count())->toBe(0);
 });
@@ -47,7 +56,7 @@ it('marks stale events as processed when no join event exists after 2 minutes', 
         'logged_at' => now()->subMinutes(3),
     ]);
 
-    BuildMatches::run();
+    Artisan::call('mtgo:process-matches');
 
     $event->refresh();
     expect($event->processed_at)->not->toBeNull();
@@ -71,7 +80,7 @@ it('does not mark fresh events as processed when no join event exists', function
         'logged_at' => now(),
     ]);
 
-    BuildMatches::run();
+    Artisan::call('mtgo:process-matches');
 
     $event->refresh();
     expect($event->processed_at)->toBeNull();

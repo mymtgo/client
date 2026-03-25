@@ -5,13 +5,12 @@ namespace App\Managers;
 use App\Actions\Logs\FindMtgoLogPath;
 use App\Actions\Logs\GetLogFilePaths;
 use App\Actions\Logs\IngestLog;
-use App\Actions\Matches\SyncLiveGameResults;
+use App\Actions\Logs\PruneProcessedLogEvents;
+use App\Actions\Pipeline\RunPipeline;
 use App\Actions\RegisterDevice;
 use App\Actions\Settings\ValidatePath;
 use App\Jobs\DownloadArchetypes;
 use App\Jobs\PopulateMissingCardData;
-use App\Jobs\ProcessLogEvents;
-use App\Jobs\StoreGameLogs;
 use App\Jobs\SubmitMatch;
 use App\Jobs\SyncDecks;
 use App\Models\Account;
@@ -84,6 +83,31 @@ class MtgoManager
         return $this->username ?? Account::active()->value('username');
     }
 
+    /**
+     * Resolve the local player's username with fallback chain.
+     *
+     * 1. In-memory username (set during active session)
+     * 2. Active account from database
+     * 3. Match candidate names against any known account (active or not)
+     *
+     * @param  array<int, string>  $candidates  Player names to match against known accounts
+     */
+    public function resolveUsername(array $candidates = []): ?string
+    {
+        // Fast path: in-memory or active account
+        $username = $this->getUsername();
+        if ($username) {
+            return $username;
+        }
+
+        // Fallback: match candidates against any known account
+        if (! empty($candidates)) {
+            return Account::whereIn('username', $candidates)->value('username');
+        }
+
+        return null;
+    }
+
     public function retryUnsubmittedMatches(): void
     {
         if (! Settings::get('share_stats')) {
@@ -124,8 +148,6 @@ class MtgoManager
         if (! Deck::count()) {
             $this->syncDecks(sync: false);
         }
-
-        $this->ingestGameLogs(sync: false);
 
         // Register account from existing cursor data (upgrade path)
         if ($this->getUsername() && ! Account::exists()) {
@@ -168,39 +190,6 @@ class MtgoManager
         );
     }
 
-    public function syncLiveGameResults(): void
-    {
-        if (! $this->canRun()) {
-            return;
-        }
-
-        $matches = MtgoMatch::incomplete()->get();
-
-        foreach ($matches as $match) {
-            SyncLiveGameResults::run($match);
-        }
-    }
-
-    public function ingestGameLogs(bool $sync = false): void
-    {
-        if (! $this->canRun()) {
-            return;
-        }
-
-        $sync ? StoreGameLogs::dispatchSync() : StoreGameLogs::dispatch();
-    }
-
-    public function processLogEvents(bool $force = false, bool $sync = false): void
-    {
-        if (! $this->canRun()) {
-            return;
-        }
-
-        if (Deck::count() || $force) {
-            $sync ? ProcessLogEvents::dispatchSync() : ProcessLogEvents::dispatch();
-        }
-    }
-
     public function populateMissingCardData(bool $sync = false): void
     {
         $sync ? PopulateMissingCardData::dispatchSync() : PopulateMissingCardData::dispatch();
@@ -208,41 +197,35 @@ class MtgoManager
 
     public function pathsAreValid(): bool
     {
-        $logOk = ValidatePath::forLogs($this->getLogPath() ?? '');
-        $dataOk = ValidatePath::forData($this->getLogDataPath() ?? '');
+        $logOk = ValidatePath::forLogs($this->getLogPath());
+        $dataOk = ValidatePath::forData($this->getLogDataPath());
 
         return $logOk['valid'] && $dataOk['valid'];
     }
 
     public function schedule(Schedule $schedule): void
     {
-        // Submit pending matches every minute — not gated by watcher state or path validity.
-        $schedule->call(
-            fn () => $this->retryUnsubmittedMatches()
-        )->everyMinute()->name('submit_matches')->withoutOverlapping(60);
+        // ── Unified pipeline (every 2s) ──────────────────────────────
+        // Single command owns the entire lifecycle: log ingest →
+        // match creation → game log parsing → result resolution.
+        $schedule->call(fn () => RunPipeline::run())
+            ->everyTwoSeconds()
+            ->name('process_matches');
 
-        $schedule->call(
-            fn () => $this->ingestGameLogs()
-        )->everyTenSeconds()->name('store_game_logs')->withoutOverlapping(10);
+        // Periodic maintenance (unchanged)
+        $schedule->call(fn () => $this->retryUnsubmittedMatches())
+            ->everyMinute()
+            ->name('submit_matches')
+            ->withoutOverlapping(60);
 
-        $schedule->call(
-            fn () => $this->syncLiveGameResults()
-        )->everyFiveSeconds()->name('sync_live_results')->withoutOverlapping(5);
-        //
-        $schedule->call(
-            fn () => $this->ingestLogs()
-        )->everySecond()->name('ingest_logs');
+        $schedule->call(fn () => $this->downloadArchetypes())
+            ->weekly();
 
-        $schedule->call(
-            fn () => $this->downloadArchetypes()
-        )->weekly();
+        $schedule->call(fn () => $this->populateMissingCardData())
+            ->hourly();
 
-        $schedule->call(
-            fn () => $this->populateMissingCardData()
-        )->hourly();
-
-        $schedule->call(
-            fn () => \App\Actions\Logs\PruneProcessedLogEvents::run()
-        )->daily()->name('prune_log_events');
+        $schedule->call(fn () => PruneProcessedLogEvents::run())
+            ->daily()
+            ->name('prune_log_events');
     }
 }
