@@ -59,11 +59,13 @@ class SyncDecks
 
             $signature = GenerateDeckSignature::run($cards);
 
+            $accountId = Account::active()->value('id');
+
             $deck->fill([
                 'mtgo_id' => $attributes['NetDeckId'],
                 'name' => $attributes['Name'],
                 'format' => $attributes['FormatCode'],
-                'account_id' => Account::active()->value('id'),
+                'account_id' => $deck->account_id ?? $accountId,
                 'updated_at' => $attributes['Timestamp'],
             ]);
 

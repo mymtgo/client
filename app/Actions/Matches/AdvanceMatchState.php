@@ -204,9 +204,8 @@ class AdvanceMatchState
         $concededAndQuit = DetermineMatchResult::localPlayerConceded($stateChanges);
 
         if (! $matchEnded && ! $concededAndQuit) {
-            Log::channel('pipeline')->info("Match {$match->mtgo_id}: InProgress → Ended waiting", [
+            Log::channel('pipeline')->debug("Match {$match->mtgo_id}: InProgress → Ended waiting", [
                 'state_changes' => $stateChanges->count(),
-                'contexts' => $stateChanges->pluck('context')->toArray(),
             ]);
 
             return false;

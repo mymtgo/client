@@ -34,8 +34,9 @@ class DetermineMatchResult
         $winThreshold = ($wins >= 3 || $losses >= 3) ? 3 : 2;
         $thresholdMet = $wins >= $winThreshold || $losses >= $winThreshold;
         $conceded = static::localPlayerConceded($stateChanges);
+        $matchCompleted = static::matchCompletedByServer($stateChanges);
 
-        $decided = $thresholdMet || $conceded || $matchScoreExists || $disconnectDetected;
+        $decided = $thresholdMet || $conceded || $matchCompleted || $matchScoreExists || $disconnectDetected;
 
         return [
             'wins' => $wins,
@@ -55,6 +56,20 @@ class DetermineMatchResult
     {
         return $stateChanges->contains(
             fn (LogEvent $event) => preg_match('/ConcedeReqState to .+NotJoined/', $event->context ?? '')
+        );
+    }
+
+    /**
+     * Detect whether the server marked the match as completed.
+     *
+     * MatchCompletedState / MatchClosedState appear when the match ends
+     * server-side — e.g. opponent forfeits during sideboarding.
+     */
+    public static function matchCompletedByServer(Collection $stateChanges): bool
+    {
+        return $stateChanges->contains(
+            fn (LogEvent $event) => str_contains($event->context ?? '', 'MatchCompletedState')
+                || str_contains($event->context ?? '', 'MatchClosedState')
         );
     }
 }
