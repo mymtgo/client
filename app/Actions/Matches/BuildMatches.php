@@ -55,8 +55,6 @@ class BuildMatches
             }
         }
 
-        // Resolve stale matches — incomplete matches with no recent events
-        ResolveStaleMatches::run();
     }
 
     private static function handleMissingUsername(string $matchToken): void
