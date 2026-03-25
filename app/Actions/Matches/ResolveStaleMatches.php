@@ -49,15 +49,9 @@ class ResolveStaleMatches
                     route: '/matches/'.$match->id,
                 );
             } else {
-                $match->update(['state' => MatchState::Voided]);
+                $match->delete();
 
-                Log::channel('pipeline')->warning("ResolveStaleMatches: match {$match->mtgo_id} voided (stale casual)");
-
-                AppNotification::dispatch(
-                    type: 'match_voided',
-                    title: 'Unable to determine match results',
-                    message: '',
-                );
+                Log::channel('pipeline')->warning("ResolveStaleMatches: match {$match->mtgo_id} deleted (stale casual)");
             }
         }
     }

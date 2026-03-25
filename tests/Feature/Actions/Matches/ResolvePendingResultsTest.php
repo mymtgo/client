@@ -9,12 +9,8 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 uses(RefreshDatabase::class);
 
 it('leaves PendingResult matches unchanged when parser returns null', function () {
-    $match = MtgoMatch::factory()->create(['state' => MatchState::PendingResult]);
-
-    ResolvePendingResults::run();
-
-    expect($match->fresh()->state)->toBe(MatchState::PendingResult);
-});
+    // TODO: PendingResult state removed — to be deleted in Task 7
+})->skip('PendingResult state removed');
 
 it('skips matches not in PendingResult state', function () {
     $match = MtgoMatch::factory()->create(['state' => MatchState::Ended]);

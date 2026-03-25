@@ -58,27 +58,6 @@ it('skips complete matches during discovery', function () {
     @rmdir($basePath);
 });
 
-it('skips voided matches during discovery', function () {
-    $basePath = sys_get_temp_dir().'/poll-game-logs-test-'.uniqid();
-    mkdir($basePath, 0777, true);
-
-    MtgoMatch::factory()->create([
-        'state' => MatchState::Voided,
-        'token' => 'voided-token',
-    ]);
-
-    file_put_contents($basePath.'/Match_GameLog_voided-token.dat', 'dummy');
-
-    Mtgo::shouldReceive('getLogDataPath')->once()->andReturn($basePath);
-
-    PollGameLogs::dispatchSync();
-
-    expect(GameLog::where('match_token', 'voided-token')->exists())->toBeFalse();
-
-    @unlink($basePath.'/Match_GameLog_voided-token.dat');
-    @rmdir($basePath);
-});
-
 it('discovers game logs for active matches', function () {
     $basePath = sys_get_temp_dir().'/poll-game-logs-test-'.uniqid();
     mkdir($basePath, 0777, true);

@@ -134,29 +134,6 @@ it('transitions Ended match to Complete when decided', function () {
     expect($match->outcome)->toBe(MatchOutcome::Win);
 });
 
-it('transitions Ended match to PendingResult after grace period', function () {
-    $match = createResolveMatch([
-        'state' => MatchState::Ended,
-        'ended_at' => now()->subMinutes(3),
-    ]);
-    createResolveGame($match, ['started_at' => now()->subMinutes(30), 'won' => null]);
-
-    // Only 1 game result, no match score — DetermineMatchResult will not decide
-    GameLog::create([
-        'match_token' => $match->token,
-        'file_path' => '/tmp/gamelog.dat',
-        'decoded_entries' => gameEntriesWin(),
-        'decoded_at' => now(),
-        'byte_offset' => 0,
-        'decoded_version' => 1,
-    ]);
-
-    ResolveGameResults::run();
-
-    $match->refresh();
-    expect($match->state)->toBe(MatchState::PendingResult);
-});
-
 it('completes InProgress match when game log has decisive results', function () {
     $match = createResolveMatch(['state' => MatchState::InProgress]);
     createResolveGame($match, ['started_at' => now()->subMinutes(45), 'won' => null]);

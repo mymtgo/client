@@ -8,7 +8,6 @@ use App\Actions\Logs\IngestLog;
 use App\Actions\Logs\PruneProcessedLogEvents;
 use App\Actions\Matches\BuildMatches;
 use App\Actions\Matches\ResolveGameResults;
-use App\Actions\Matches\ResolvePendingResults;
 use App\Actions\RegisterDevice;
 use App\Actions\Settings\ValidatePath;
 use App\Jobs\DownloadArchetypes;
@@ -232,7 +231,6 @@ class MtgoManager
 
             PollGameLogs::dispatch();
             ResolveGameResults::run();
-            ResolvePendingResults::run();
         })->everyTwoSeconds()->name('resolve_pipeline')->withoutOverlapping(2);
 
         // Periodic maintenance

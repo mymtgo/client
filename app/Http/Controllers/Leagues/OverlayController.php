@@ -19,7 +19,7 @@ class OverlayController extends Controller
         $league = League::withCount([
             'matches as wins_count' => fn ($q) => $q->where('state', MatchState::Complete)->where('outcome', 'win'),
             'matches as losses_count' => fn ($q) => $q->where('state', MatchState::Complete)->where('outcome', 'loss'),
-            'matches as total_matches_count' => fn ($q) => $q->where('state', '!=', MatchState::Voided),
+            'matches as total_matches_count',
             'matches as has_active_match_count' => fn ($q) => $q->whereIn('state', [MatchState::Started, MatchState::InProgress]),
         ])
             ->with(['deckVersion.deck'])

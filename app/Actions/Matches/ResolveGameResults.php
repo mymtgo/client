@@ -82,11 +82,6 @@ class ResolveGameResults
             return;
         }
 
-        // Grace period: only for matches that reached Ended via main log signals
-        if ($match->state === MatchState::Ended && $match->ended_at?->lt(now()->subMinutes(2))) {
-            $match->update(['state' => MatchState::PendingResult]);
-            Log::channel('pipeline')->info("Match {$match->mtgo_id}: Ended → PendingResult");
-        }
     }
 
     private static function syncGameResults(MtgoMatch $match, array $results, array $gameData): void

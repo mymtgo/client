@@ -2,34 +2,11 @@
 
 namespace App\Actions\Matches;
 
-use App\Enums\MatchState;
-use App\Models\MtgoMatch;
-use Illuminate\Support\Facades\Log;
-
+/** @deprecated Will be deleted in Task 7 */
 class ResolvePendingResults
 {
     public static function run(): void
     {
-        $pending = MtgoMatch::where('state', MatchState::PendingResult)->get();
-
-        foreach ($pending as $match) {
-            $result = ParseMatchHistory::findResult($match->mtgo_id);
-
-            if ($result === null) {
-                continue;
-            }
-
-            $outcome = MtgoMatch::determineOutcome($result['wins'], $result['losses']);
-
-            $match->update([
-                'outcome' => $outcome,
-                'state' => MatchState::Complete,
-            ]);
-
-            Log::channel('pipeline')->info("Match {$match->mtgo_id}: PendingResult → Complete (from match_history)", [
-                'result' => "{$result['wins']}-{$result['losses']}",
-                'outcome' => $outcome->value,
-            ]);
-        }
+        // No-op: PendingResult state removed. This class will be deleted in Task 7.
     }
 }
