@@ -8,6 +8,7 @@ import UpdateLogPathController from '@/actions/App/Http/Controllers/Settings/Upd
 import UpdateOverlaySettingsController from '@/actions/App/Http/Controllers/Settings/UpdateOverlaySettingsController';
 import UpdateShareStatsController from '@/actions/App/Http/Controllers/Settings/UpdateShareStatsController';
 import UpdateDebugModeController from '@/actions/App/Http/Controllers/Settings/UpdateDebugModeController';
+import UpdateTimezoneController from '@/actions/App/Http/Controllers/Settings/UpdateTimezoneController';
 import UpdateWatcherController from '@/actions/App/Http/Controllers/Settings/UpdateWatcherController';
 import type { LeagueData } from '@/components/leagues/LeagueTracker.vue';
 import LeagueTracker from '@/components/leagues/LeagueTracker.vue';
@@ -18,6 +19,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Spinner } from '@/components/ui/spinner';
 import { Switch } from '@/components/ui/switch';
@@ -34,6 +36,8 @@ const props = defineProps<{
     hidePhantomLeagues: boolean;
     pendingMatches: Array<{ id: number; format: string; outcome: string | null; started_at: string }>;
     accounts: Array<{ id: number; username: string; tracked: boolean; active: boolean }>;
+    timezone: string;
+    detectedTimezone: string;
     leagueWindowEnabled: boolean;
     opponentWindowEnabled: boolean;
     deckWindowEnabled: boolean;
@@ -126,6 +130,23 @@ function toggleDebugMode(val: boolean) {
     withProcessing('debugMode', 'patch', UpdateDebugModeController.url(), { enabled: val });
 }
 
+function updateTimezone(val: string) {
+    withProcessing('timezone', 'patch', UpdateTimezoneController.url(), { timezone: val });
+}
+
+const timezoneRegions = computed(() => {
+    const zones = Intl.supportedValuesOf('timeZone');
+    const grouped: Record<string, string[]> = {};
+
+    for (const tz of zones) {
+        const [region] = tz.split('/');
+        if (!grouped[region]) grouped[region] = [];
+        grouped[region].push(tz);
+    }
+
+    return grouped;
+});
+
 const sampleLeague: LeagueData = {
     id: 0,
     name: 'Friendly League',
@@ -179,6 +200,31 @@ const sampleOpponent: OpponentData = {
                             :disabled="processing === `account-${account.username}`"
                         />
                     </div>
+                </CardContent>
+            </Card>
+
+            <!-- Timezone -->
+            <Card>
+                <CardHeader>
+                    <CardTitle>Timezone</CardTitle>
+                    <CardDescription>
+                        Set your timezone so match timestamps are accurate. Detected: {{ detectedTimezone }}.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Select :modelValue="props.timezone" @update:modelValue="updateTimezone" :disabled="processing === 'timezone'">
+                        <SelectTrigger class="w-full">
+                            <SelectValue :placeholder="props.timezone" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectGroup v-for="(zones, region) in timezoneRegions" :key="region">
+                                <SelectLabel>{{ region }}</SelectLabel>
+                                <SelectItem v-for="tz in zones" :key="tz" :value="tz">
+                                    {{ tz.replace(/_/g, ' ') }}
+                                </SelectItem>
+                            </SelectGroup>
+                        </SelectContent>
+                    </Select>
                 </CardContent>
             </Card>
 

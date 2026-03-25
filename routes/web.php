@@ -107,6 +107,7 @@ Route::group([], function (Router $router) {
         $group->patch('account-tracking', UpdateAccountTrackingController::class)->name('settings.account-tracking');
         $group->post('overlay', UpdateOverlaySettingsController::class)->name('settings.overlay');
         $group->patch('debug-mode', UpdateDebugModeController::class)->name('settings.debug-mode');
+        $group->patch('timezone', \App\Http\Controllers\Settings\UpdateTimezoneController::class)->name('settings.timezone');
     });
 
     $router->get('updates/install', InstallController::class)->name('updates.install');
