@@ -64,17 +64,28 @@ const stats = computed(() => props.cardStats?.stats ?? []);
 const archetypes = computed(() => props.cardStats?.archetypes ?? []);
 
 const selectedArchetype = ref<string>('__all__');
+const selectedPlayDraw = ref<string>('__all__');
 const searchQuery = ref('');
 
-function filterByArchetype(value: string) {
-    selectedArchetype.value = value;
-    const archetypeId = value === '__all__' ? undefined : value;
+function reloadStats() {
+    const archetypeId = selectedArchetype.value === '__all__' ? undefined : selectedArchetype.value;
+    const playDraw = selectedPlayDraw.value === '__all__' ? undefined : selectedPlayDraw.value;
     router.reload({
         only: ['cardStats'],
-        data: { card_stats_archetype: archetypeId },
+        data: { card_stats_archetype: archetypeId, card_stats_play_draw: playDraw },
         preserveScroll: true,
         preserveState: true,
     });
+}
+
+function filterByArchetype(value: string) {
+    selectedArchetype.value = value;
+    reloadStats();
+}
+
+function filterByPlayDraw(value: string) {
+    selectedPlayDraw.value = value;
+    reloadStats();
 }
 
 // ── Type filter ──────────────────────────────────────────────────────────────
@@ -278,6 +289,17 @@ function winRateClass(pctVal: number | null): string {
             </div>
 
             <div class="flex items-center justify-end gap-2">
+                <Select :modelValue="selectedPlayDraw" @update:modelValue="filterByPlayDraw">
+                    <SelectTrigger class="h-8 w-36 text-xs">
+                        <SelectValue placeholder="Play / Draw" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="__all__">Play & Draw</SelectItem>
+                        <SelectItem value="play">On the Play</SelectItem>
+                        <SelectItem value="draw">On the Draw</SelectItem>
+                    </SelectContent>
+                </Select>
+
                 <Select v-if="archetypes.length" :modelValue="selectedArchetype" @update:modelValue="filterByArchetype">
                     <SelectTrigger class="h-8 w-48 text-xs">
                         <SelectValue placeholder="All opponent archetypes" />

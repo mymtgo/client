@@ -30,8 +30,12 @@ class CardStatsController extends Controller
                     ? (int) $request->input('card_stats_archetype')
                     : null;
 
+                $onPlay = $request->filled('card_stats_play_draw')
+                    ? $request->input('card_stats_play_draw') === 'play'
+                    : null;
+
                 return [
-                    'stats' => GetCardGameStats::run($deckVersion, $opponentArchetypeId),
+                    'stats' => GetCardGameStats::run($deckVersion, $opponentArchetypeId, $onPlay),
                     'archetypes' => GetCardGameStats::availableArchetypes($deckVersion),
                 ];
             },

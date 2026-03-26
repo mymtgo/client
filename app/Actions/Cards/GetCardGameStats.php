@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\DB;
 
 class GetCardGameStats
 {
-    public static function run(DeckVersion $deckVersion, ?int $opponentArchetypeId = null): Collection
+    public static function run(DeckVersion $deckVersion, ?int $opponentArchetypeId = null, ?bool $onPlay = null): Collection
     {
         $sideboardOracles = collect($deckVersion->cards)
             ->filter(fn ($card) => $card['sideboard'] === 'true' || $card['sideboard'] === true)
@@ -33,6 +33,21 @@ class GetCardGameStats
                         ->whereRaw('gp.player_id = ma.player_id')
                         ->where('gp.is_local', false);
                 });
+        }
+
+        if ($onPlay !== null) {
+            // Join games if not already joined by archetype filter
+            if (! $opponentArchetypeId) {
+                $query->join('games as g', 'g.id', '=', 'cgs.game_id');
+            }
+
+            $query->whereExists(function ($sub) use ($onPlay) {
+                $sub->select(DB::raw(1))
+                    ->from('game_player as local_gp')
+                    ->whereRaw('local_gp.game_id = g.id')
+                    ->where('local_gp.is_local', true)
+                    ->where('local_gp.on_play', $onPlay);
+            });
         }
 
         return $query->groupBy('cgs.oracle_id')
