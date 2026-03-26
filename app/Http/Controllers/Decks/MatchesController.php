@@ -59,10 +59,21 @@ class MatchesController extends Controller
                 ->paginate(50)
         );
 
+        // Map internal format code to archetype format
+        $formatMap = [
+            'CMODERN' => 'modern',
+            'CPAUPER' => 'pauper',
+            'CLEGACY' => 'legacy',
+            'CVINTAGE' => 'vintage',
+            'CPREMODERN' => 'premodern',
+        ];
+        $archetypeFormat = $formatMap[$deck->format] ?? strtolower($deck->format);
+
         $archetypes = Archetype::query()
-            ->whereHas('matchArchetypes', fn ($q) => $q->whereIn('mtgo_match_id', $allMatchIds))
+            ->where('format', $archetypeFormat)
             ->withCount(['matchArchetypes' => fn ($q) => $q->whereIn('mtgo_match_id', $allMatchIds)])
             ->orderByDesc('match_archetypes_count')
+            ->orderBy('name')
             ->get()
             ->map(fn (Archetype $a) => [
                 ...ArchetypeData::from($a)->toArray(),
