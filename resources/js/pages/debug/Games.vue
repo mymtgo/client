@@ -65,8 +65,8 @@ const columns = [
     { key: 'won', label: 'Won', type: 'switch' as const },
     { key: 'match_id', label: 'Match', type: 'select' as const, optionsKey: 'matchOptions' as const },
     { key: 'mtgo_id', label: 'MTGO ID', type: 'text' as const },
-    { key: 'started_at', label: 'Started', type: 'text' as const },
-    { key: 'ended_at', label: 'Ended', type: 'text' as const },
+    { key: 'started_at', label: 'Started', type: 'datetime' as const },
+    { key: 'ended_at', label: 'Ended', type: 'datetime' as const },
 ];
 
 const optionsMap: Record<string, SelectOption[]> = {
