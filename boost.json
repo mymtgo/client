@@ -4,7 +4,9 @@
     ],
     "guidelines": true,
     "mcp": true,
-    "nightwatch_mcp": false,
+    "packages": [
+        "inertiajs/inertia-laravel"
+    ],
     "sail": false,
     "skills": [
         "laravel-best-practices",
