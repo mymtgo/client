@@ -41,8 +41,27 @@ class Account extends Model
     public function activate(): void
     {
         DB::transaction(function () {
-            static::where('active', true)->update(['active' => false]);
+            static::where('id', '!=', $this->id)->update(['active' => false]);
             $this->update(['active' => true]);
+        });
+    }
+
+    /**
+     * Ensure there is always one active account.
+     * Called via model boot — prevents deactivating the last account.
+     */
+    protected static function booted(): void
+    {
+        static::updating(function (Account $account) {
+            if ($account->isDirty('active') && ! $account->active && static::count() === 1) {
+                $account->active = true;
+            }
+        });
+
+        static::saved(function () {
+            if (! static::where('active', true)->exists()) {
+                static::first()?->update(['active' => true]);
+            }
         });
     }
 
