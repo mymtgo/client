@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import AbandonController from '@/actions/App/Http/Controllers/Leagues/AbandonController';
-import DeckShowController from '@/actions/App/Http/Controllers/Decks/ShowController';
+import DeckShowController from '@/actions/App/Http/Controllers/Decks/DashboardController';
 import MatchShowController from '@/actions/App/Http/Controllers/Matches/ShowController';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';

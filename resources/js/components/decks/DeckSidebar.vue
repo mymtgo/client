@@ -3,6 +3,13 @@ import { Link, router } from '@inertiajs/vue3';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import ManaSymbols from '@/components/ManaSymbols.vue';
+import DashboardController from '@/actions/App/Http/Controllers/Decks/DashboardController';
+import CardStatsController from '@/actions/App/Http/Controllers/Decks/CardStatsController';
+import MatchesController from '@/actions/App/Http/Controllers/Decks/MatchesController';
+import LeaguesController from '@/actions/App/Http/Controllers/Decks/LeaguesController';
+import MatchupsController from '@/actions/App/Http/Controllers/Decks/MatchupsController';
+import DecklistController from '@/actions/App/Http/Controllers/Decks/DecklistController';
+import OpenPopoutController from '@/actions/App/Http/Controllers/Decks/OpenPopoutController';
 import type { VersionStats } from '@/types/decks';
 import { ExternalLink, LayoutDashboard, BarChart3, Swords, Trophy as TrophyIcon, ScrollText, List } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
@@ -30,12 +37,12 @@ watch(selectedVersionKey, (newVal) => {
 });
 
 const navItems = computed(() => [
-    { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, href: `/decks/${props.deck.id}` },
-    { key: 'card-stats', label: 'Card Stats', icon: BarChart3, href: `/decks/${props.deck.id}/card-stats` },
-    { key: 'matches', label: 'Matches', icon: Swords, href: `/decks/${props.deck.id}/matches` },
-    { key: 'leagues', label: 'Leagues', icon: TrophyIcon, href: `/decks/${props.deck.id}/leagues` },
-    { key: 'matchups', label: 'Matchups', icon: ScrollText, href: `/decks/${props.deck.id}/matchups` },
-    { key: 'decklist', label: 'Decklist', icon: List, href: `/decks/${props.deck.id}/decklist` },
+    { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, href: DashboardController.url({ deck: props.deck.id }) },
+    { key: 'card-stats', label: 'Card Stats', icon: BarChart3, href: CardStatsController.url({ deck: props.deck.id }) },
+    { key: 'matches', label: 'Matches', icon: Swords, href: MatchesController.url({ deck: props.deck.id }) },
+    { key: 'leagues', label: 'Leagues', icon: TrophyIcon, href: LeaguesController.url({ deck: props.deck.id }) },
+    { key: 'matchups', label: 'Matchups', icon: ScrollText, href: MatchupsController.url({ deck: props.deck.id }) },
+    { key: 'decklist', label: 'Decklist', icon: List, href: DecklistController.url({ deck: props.deck.id }) },
 ]);
 </script>
 
@@ -90,7 +97,7 @@ const navItems = computed(() => [
         <!-- Actions -->
         <div class="flex flex-col gap-1.5 border-t border-border px-4 py-3">
             <button
-                @click="router.post(`/decks/${deck.id}/popout`)"
+                @click="router.post(OpenPopoutController.url({ deck: deck.id }))"
                 class="flex items-center gap-2 rounded-md px-2 py-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
             >
                 <ExternalLink class="size-3.5" />
