@@ -6,7 +6,7 @@ import ResultBadge from '@/components/matches/ResultBadge.vue';
 import ManaSymbols from '@/components/ManaSymbols.vue';
 import SetArchetypeDialog from '@/components/matches/SetArchetypeDialog.vue';
 import MatchGame from '@/pages/matches/partials/MatchGame.vue';
-import DeckShowController from '@/actions/App/Http/Controllers/Decks/ShowController';
+import DeckShowController from '@/actions/App/Http/Controllers/Decks/DashboardController';
 import UpdateNotesController from '@/actions/App/Http/Controllers/Matches/UpdateNotesController';
 import { PencilIcon, NotepadText } from 'lucide-vue-next';
 import { useForm } from '@inertiajs/vue3';

@@ -5,7 +5,7 @@ import ResultBadge from '@/components/matches/ResultBadge.vue';
 import ManaSymbols from '@/components/ManaSymbols.vue';
 import { router } from '@inertiajs/vue3';
 import ShowController from '@/actions/App/Http/Controllers/Matches/ShowController';
-import DeckShowController from '@/actions/App/Http/Controllers/Decks/ShowController';
+import DeckShowController from '@/actions/App/Http/Controllers/Decks/DashboardController';
 
 defineProps<{
     matches: App.Data.Front.MatchData[];
