@@ -80,6 +80,7 @@ function reprocessMatch(id: number) {
 
 const columns = [
     { key: 'id', label: 'ID', type: 'readonly' as const },
+    { key: 'opponent_name', label: 'Opponent', type: 'readonly' as const },
     { key: 'token', label: 'Token', type: 'text' as const },
     { key: 'mtgo_id', label: 'MTGO ID', type: 'text' as const },
     { key: 'league_id', label: 'League', type: 'select' as const, optionsKey: 'leagueOptions' as const, nullable: true },

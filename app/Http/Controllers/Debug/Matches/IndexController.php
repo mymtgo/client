@@ -16,7 +16,13 @@ class IndexController extends Controller
     {
         $matches = MtgoMatch::query()
             ->orderByDesc('id')
-            ->paginate(50);
+            ->paginate(50)
+            ->through(function (MtgoMatch $match) {
+                $opponent = $match->games()->first()?->opponents()->first();
+                $match->setAttribute('opponent_name', $opponent?->username);
+
+                return $match;
+            });
 
         return Inertia::render('debug/Matches', [
             'matches' => $matches,

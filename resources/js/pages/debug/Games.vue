@@ -2,12 +2,14 @@
 import DebugNav from '@/components/debug/DebugNav.vue';
 import EditableCell from '@/components/debug/EditableCell.vue';
 import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useSpinGuard } from '@/composables/useSpinGuard';
 import { useToast } from '@/composables/useToast';
 import { router, usePoll } from '@inertiajs/vue3';
 import { RefreshCw } from 'lucide-vue-next';
-import { reactive } from 'vue';
+import { reactive, ref } from 'vue';
 
 const { add: toast } = useToast();
 
@@ -23,7 +25,21 @@ const props = defineProps<{
         last_page: number;
     };
     matchOptions: SelectOption[];
+    filters: { match_id: string };
 }>();
+
+const matchFilter = ref(props.filters.match_id);
+
+function applyFilters() {
+    router.get('/debug/games', {
+        match_id: matchFilter.value || undefined,
+    }, { preserveScroll: true });
+}
+
+function clearFilters() {
+    matchFilter.value = '';
+    router.get('/debug/games', {}, { preserveScroll: true });
+}
 
 const flashState = reactive<Record<string, 'success' | 'error' | null>>({});
 
@@ -69,11 +85,29 @@ function refresh() {
     <div class="flex flex-1 flex-col overflow-hidden">
         <DebugNav />
         <div class="flex-1 overflow-auto p-4">
-            <div class="mb-4 flex items-center justify-end gap-2">
-                <Button size="sm" variant="outline" class="h-8" @click="refresh">
-                    <RefreshCw class="mr-1.5 h-3.5 w-3.5" :class="{ 'animate-spin': refreshing }" />
-                    Refresh
-                </Button>
+            <div class="mb-4 flex flex-wrap items-end gap-4">
+                <div class="flex flex-col gap-1">
+                    <Label class="text-xs">Match</Label>
+                    <Select :modelValue="matchFilter || undefined" @update:modelValue="(val: string) => (matchFilter = val === '__all__' ? '' : val)">
+                        <SelectTrigger class="h-8 w-64 text-xs">
+                            <SelectValue placeholder="All matches" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="__all__">All matches</SelectItem>
+                            <SelectItem v-for="opt in matchOptions" :key="opt.value" :value="opt.value">
+                                {{ opt.label }}
+                            </SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+                <Button size="sm" class="h-8" @click="applyFilters">Filter</Button>
+                <Button size="sm" variant="outline" class="h-8" @click="clearFilters">Clear</Button>
+                <div class="ml-auto">
+                    <Button size="sm" variant="outline" class="h-8" @click="refresh">
+                        <RefreshCw class="mr-1.5 h-3.5 w-3.5" :class="{ 'animate-spin': refreshing }" />
+                        Refresh
+                    </Button>
+                </div>
             </div>
             <div class="overflow-x-auto rounded-lg border border-border">
                 <Table>
