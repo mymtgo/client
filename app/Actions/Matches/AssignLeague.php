@@ -107,12 +107,18 @@ class AssignLeague
         if ($deckId) {
             $existing = League::where('format', $gameMeta['PlayFormatCd'])
                 ->where('phantom', true)
+                ->where('state', LeagueState::Active)
                 ->where('deck_change_detected', false)
                 ->has('matches', '<', 5)
-                ->whereHas('matches', fn ($q) => $q
-                    ->join('deck_versions as dv', 'dv.id', '=', 'matches.deck_version_id')
-                    ->where('dv.deck_id', $deckId)
-                )
+                ->where(function ($q) use ($deckId) {
+                    // Match by league's own deck version (covers leagues with 0 matches yet)
+                    $q->whereHas('deckVersion', fn ($dv) => $dv->where('deck_id', $deckId))
+                        // Or by matches' deck versions
+                        ->orWhereHas('matches', fn ($m) => $m
+                            ->join('deck_versions as dv', 'dv.id', '=', 'matches.deck_version_id')
+                            ->where('dv.deck_id', $deckId)
+                        );
+                })
                 ->latest('started_at')
                 ->first();
 

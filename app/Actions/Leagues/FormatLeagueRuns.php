@@ -146,8 +146,8 @@ class FormatLeagueRuns
 
         $results = array_map(fn ($m) => $m['result'], $matchData);
 
-        // Pad real leagues to 5 slots
-        if (! $league->phantom) {
+        // Pad active leagues to 5 slots
+        if ($league->state->value === 'active' && count($results) < 5) {
             while (count($results) < 5) {
                 $results[] = null;
             }
