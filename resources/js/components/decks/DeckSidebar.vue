@@ -84,10 +84,10 @@ const navItems = computed(() => [
                 :key="item.key"
                 :href="item.href"
                 preserve-state
-                class="flex items-center gap-3 rounded-r-md px-4 py-3 text-sm font-medium transition-colors"
+                class="flex items-center gap-3 rounded-md px-4 py-3 text-sm font-medium transition-colors"
                 :class="currentPage === item.key
-                    ? 'border-l-3 border-primary bg-primary/10 text-foreground'
-                    : 'border-l-3 border-transparent text-muted-foreground hover:bg-muted/50 hover:text-foreground'"
+                    ? 'bg-muted border border-border text-foreground'
+                    : 'border border-transparent text-muted-foreground hover:bg-muted/50 hover:text-foreground'"
             >
                 <component :is="item.icon" class="size-4 shrink-0" />
                 {{ item.label }}
