@@ -44,7 +44,10 @@ class UpdateController extends Controller
 
         $request->validate([$field => $rules[$field]]);
 
-        $match->update([$field => $request->input($field)]);
+        $value = $request->input($field);
+        $value = $value === '' ? null : $value;
+
+        $match->update([$field => $value]);
 
         return back();
     }
