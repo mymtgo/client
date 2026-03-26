@@ -4,10 +4,12 @@ namespace Tests\Feature\Decks;
 
 use App\Actions\Decks\GetDeckFiles;
 use App\Actions\Decks\SyncDecks;
+use App\Facades\Mtgo;
 use App\Models\Card;
 use App\Models\Deck;
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
@@ -29,9 +31,9 @@ class SyncDecksTest extends TestCase
         (new Filesystem)->cleanDirectory(storage_path('framework/testing/disks/user_home'));
         mkdir($path, 0777, true);
 
-        \App\Facades\Mtgo::shouldReceive('getLogPath')->andReturn($path)->byDefault();
-        \App\Facades\Mtgo::shouldReceive('getLogDataPath')->andReturn($path.'/Data')->byDefault();
-        \App\Facades\Mtgo::shouldReceive('getUsername')->andReturn(null)->byDefault();
+        Mtgo::shouldReceive('getLogPath')->andReturn($path)->byDefault();
+        Mtgo::shouldReceive('getLogDataPath')->andReturn($path.'/Data')->byDefault();
+        Mtgo::shouldReceive('getUsername')->andReturn(null)->byDefault();
 
         Http::fake();
     }
@@ -81,7 +83,7 @@ class SyncDecksTest extends TestCase
         file_put_contents($activeDataPath.'/user_settings', '');
 
         // Ensure Cache doesn't interfere
-        \Illuminate\Support\Facades\Cache::forget('mtgo.active_log_path');
+        Cache::forget('mtgo.active_log_path');
 
         // Create the deck XML in the active Data path (common MTGO structure)
         $xmlContent = <<<XML
@@ -130,7 +132,7 @@ XML;
         file_put_contents($stalePath.'/grouping '.$deckId.'.xml', $xmlContent);
 
         // Ensure Cache doesn't interfere
-        \Illuminate\Support\Facades\Cache::forget('mtgo.active_log_path');
+        Cache::forget('mtgo.active_log_path');
 
         SyncDecks::run();
 

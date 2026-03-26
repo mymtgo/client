@@ -65,7 +65,7 @@ return new class extends Migration
 
                     $fixed++;
                 }
-            } catch (\Throwable $e) {
+            } catch (Throwable $e) {
                 Log::warning("Skipping match {$match->id}: {$e->getMessage()}");
             }
         }

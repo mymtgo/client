@@ -5,6 +5,7 @@ use App\Models\Account;
 use App\Models\Archetype;
 use App\Models\Deck;
 use App\Models\DeckVersion;
+use App\Models\Game;
 use App\Models\MatchArchetype;
 use App\Models\MtgoMatch;
 use App\Models\Player;
@@ -36,7 +37,7 @@ it('returns top 5 opponent archetypes by match count', function () {
     ]);
 
     // MUST create game + game_player with is_local=0 for whereExists
-    $game = \App\Models\Game::create([
+    $game = Game::create([
         'match_id' => $match->id,
         'mtgo_id' => fake()->unique()->randomNumber(8),
         'started_at' => $match->started_at,
@@ -68,7 +69,7 @@ it('limits to top 5 results', function () {
             'deck_version_id' => $version->id,
             'started_at' => now()->subDay(),
         ]);
-        $game = \App\Models\Game::create([
+        $game = Game::create([
             'match_id' => $match->id,
             'mtgo_id' => fake()->unique()->randomNumber(8),
             'started_at' => $match->started_at,

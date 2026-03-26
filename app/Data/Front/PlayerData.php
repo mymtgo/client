@@ -2,6 +2,7 @@
 
 namespace App\Data\Front;
 
+use App\Models\Player;
 use Spatie\LaravelData\Data;
 
 /** @typescript  */
@@ -16,7 +17,7 @@ class PlayerData extends Data
         public array $deck,
     ) {}
 
-    public static function fromModel(\App\Models\Player $player): self
+    public static function fromModel(Player $player): self
     {
         return new self(
             id: $player->id,

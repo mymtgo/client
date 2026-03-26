@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -9,10 +10,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
- * @property-read \Illuminate\Database\Eloquent\Collection<int, Player> $players
- * @property-read \Illuminate\Database\Eloquent\Collection<int, Player> $localPlayers
- * @property-read \Illuminate\Database\Eloquent\Collection<int, Player> $opponents
- * @property-read \Illuminate\Database\Eloquent\Collection<int, GameTimeline> $timeline
+ * @property-read Collection<int, Player> $players
+ * @property-read Collection<int, Player> $localPlayers
+ * @property-read Collection<int, Player> $opponents
+ * @property-read Collection<int, GameTimeline> $timeline
  */
 class Game extends Model
 {
