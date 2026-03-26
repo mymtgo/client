@@ -6,14 +6,16 @@ use App\Actions\Util\Winrate;
 use App\Enums\MatchOutcome;
 use App\Models\Deck;
 use App\Models\Game;
+use App\Models\League;
 use Carbon\Carbon;
+use Illuminate\Support\Collection;
 
 class GetDeckStats
 {
     /**
      * Compute match, game, and OTP/OTD stats for a deck within a date range.
      *
-     * @return array{wins: int, losses: int, gamesWon: int, gamesLost: int, matchWinrate: int, gameWinrate: int, otpWon: int, otpLost: int, otpRate: int, otdWon: int, otdLost: int, otdRate: int, trophies: int, allMatchIds: \Illuminate\Support\Collection}
+     * @return array{wins: int, losses: int, gamesWon: int, gamesLost: int, matchWinrate: int, gameWinrate: int, otpWon: int, otpLost: int, otpRate: int, otdWon: int, otdLost: int, otdRate: int, trophies: int, allMatchIds: Collection}
      */
     public static function run(Deck $deck, Carbon $from, Carbon $to): array
     {
@@ -42,7 +44,7 @@ class GetDeckStats
         $allMatchIds = $deck->matches()->select('matches.id')->where('state', 'complete')->pluck('matches.id');
 
         // Trophies = completed real leagues where all 5 matches were won
-        $trophies = \App\Models\League::whereHas('matches', fn ($q) => $q->whereIn('matches.id', $allMatchIds))
+        $trophies = League::whereHas('matches', fn ($q) => $q->whereIn('matches.id', $allMatchIds))
             ->withCount([
                 'matches as won_count' => fn ($q) => $q->whereIn('matches.id', $allMatchIds)->where('outcome', 'win'),
                 'matches as total_count' => fn ($q) => $q->whereIn('matches.id', $allMatchIds),

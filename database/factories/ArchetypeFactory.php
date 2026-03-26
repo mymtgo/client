@@ -2,11 +2,12 @@
 
 namespace Database\Factories;
 
+use App\Models\Archetype;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Archetype>
+ * @extends Factory<Archetype>
  */
 class ArchetypeFactory extends Factory
 {

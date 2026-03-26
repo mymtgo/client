@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers\Leagues;
 
+use App\Enums\MatchOutcome;
 use App\Enums\MatchState;
 use App\Http\Controllers\Controller;
 use App\Models\MtgoMatch;
+use App\Models\Player;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -25,13 +27,13 @@ class OpponentScoutWindowController extends Controller
                 ->first();
 
             if ($opponentPlayer) {
-                /** @var \App\Models\Player $opponentPlayer */
+                /** @var Player $opponentPlayer */
                 $previousMatches = MtgoMatch::complete()
                     ->whereHas('games.opponents', fn ($q) => $q->where('players.id', $opponentPlayer->id))
                     ->where('matches.id', '!=', $currentMatch->id);
 
-                $wins = (clone $previousMatches)->where('outcome', \App\Enums\MatchOutcome::Win)->count();
-                $losses = (clone $previousMatches)->where('outcome', \App\Enums\MatchOutcome::Loss)->count();
+                $wins = (clone $previousMatches)->where('outcome', MatchOutcome::Win)->count();
+                $losses = (clone $previousMatches)->where('outcome', MatchOutcome::Loss)->count();
                 $totalPrevious = $wins + $losses;
 
                 $lastArchetype = $opponentPlayer->matchArchetypes()

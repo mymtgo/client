@@ -21,6 +21,7 @@ import {
     ChevronsUpDown,
     Filter,
     Flame,
+    Image,
     Gem,
     HandFist,
     MountainSnow,
@@ -29,6 +30,8 @@ import {
     ScrollText,
     Zap,
 } from 'lucide-vue-next';
+import { Input } from '@/components/ui/input';
+import { Search } from 'lucide-vue-next';
 import { computed, ref, watch, type Component } from 'vue';
 
 type CardStat = {
@@ -61,16 +64,28 @@ const stats = computed(() => props.cardStats?.stats ?? []);
 const archetypes = computed(() => props.cardStats?.archetypes ?? []);
 
 const selectedArchetype = ref<string>('__all__');
+const selectedPlayDraw = ref<string>('__all__');
+const searchQuery = ref('');
 
-function filterByArchetype(value: string) {
-    selectedArchetype.value = value;
-    const archetypeId = value === '__all__' ? undefined : value;
+function reloadStats() {
+    const archetypeId = selectedArchetype.value === '__all__' ? undefined : selectedArchetype.value;
+    const playDraw = selectedPlayDraw.value === '__all__' ? undefined : selectedPlayDraw.value;
     router.reload({
         only: ['cardStats'],
-        data: { card_stats_archetype: archetypeId },
+        data: { card_stats_archetype: archetypeId, card_stats_play_draw: playDraw },
         preserveScroll: true,
         preserveState: true,
     });
+}
+
+function filterByArchetype(value: string) {
+    selectedArchetype.value = value;
+    reloadStats();
+}
+
+function filterByPlayDraw(value: string) {
+    selectedPlayDraw.value = value;
+    reloadStats();
 }
 
 // ── Type filter ──────────────────────────────────────────────────────────────
@@ -215,7 +230,8 @@ function sortValue(stat: CardStat, key: SortKey): number | string {
 }
 
 const filteredAndSortedStats = computed(() => {
-    const filtered = stats.value.filter(passesFilter);
+    const q = searchQuery.value.toLowerCase();
+    const filtered = stats.value.filter((s) => passesFilter(s) && (!q || s.name.toLowerCase().includes(q)));
     return [...filtered].sort((a, b) => {
         const aVal = sortValue(a, sortBy.value);
         const bVal = sortValue(b, sortBy.value);
@@ -223,6 +239,22 @@ const filteredAndSortedStats = computed(() => {
         return sortDesc.value ? -cmp : cmp;
     });
 });
+
+// ── Card image hover ────────────────────────────────────────────────────────
+const hoveredImage = ref<string | null>(null);
+const mouseX = ref(0);
+const mouseY = ref(0);
+
+function onRowEnter(stat: CardStat) {
+    if (stat.image) hoveredImage.value = stat.image;
+}
+function onRowMove(e: MouseEvent) {
+    mouseX.value = e.clientX;
+    mouseY.value = e.clientY;
+}
+function onRowLeave() {
+    hoveredImage.value = null;
+}
 
 function sortIcon(key: SortKey) {
     if (sortBy.value !== key) return ChevronsUpDown;
@@ -250,28 +282,41 @@ function winRateClass(pctVal: number | null): string {
             </Card>
         </template>
 
-        <div v-if="archetypes.length || stats.length" class="mb-4 flex items-center justify-between">
-            <div v-if="archetypes.length" class="flex items-center gap-2">
-                <span class="text-xs text-muted-foreground">Opponent archetype:</span>
-                <Select :modelValue="selectedArchetype" @update:modelValue="filterByArchetype">
-                    <SelectTrigger class="h-8 w-48 text-xs">
-                        <SelectValue placeholder="All archetypes" />
+        <div v-if="archetypes.length || stats.length" class="mb-4 grid grid-cols-3 items-center gap-4">
+            <div class="col-span-2 relative">
+                <Search class="pointer-events-none absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+                <Input v-model="searchQuery" placeholder="Search cards..." class="h-8 py-0 pl-7 text-xs" />
+            </div>
+
+            <div class="flex items-center justify-end gap-2">
+                <Select :modelValue="selectedPlayDraw" @update:modelValue="filterByPlayDraw">
+                    <SelectTrigger class="h-8 w-36 text-xs">
+                        <SelectValue placeholder="Play / Draw" />
                     </SelectTrigger>
                     <SelectContent>
-                        <SelectItem value="__all__">All archetypes</SelectItem>
+                        <SelectItem value="__all__">Play & Draw</SelectItem>
+                        <SelectItem value="play">On the Play</SelectItem>
+                        <SelectItem value="draw">On the Draw</SelectItem>
+                    </SelectContent>
+                </Select>
+
+                <Select v-if="archetypes.length" :modelValue="selectedArchetype" @update:modelValue="filterByArchetype">
+                    <SelectTrigger class="h-8 w-48 text-xs">
+                        <SelectValue placeholder="All opponent archetypes" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="__all__">All opponent archetypes</SelectItem>
                         <SelectItem v-for="arch in archetypes" :key="arch.id" :value="String(arch.id)">
                             {{ arch.name }}
                         </SelectItem>
                     </SelectContent>
                 </Select>
-            </div>
 
             <DropdownMenu>
                 <DropdownMenuTrigger as-child>
                     <Button
                         :variant="activeFilterCount > 0 ? 'default' : 'outline'"
-                        size="sm"
-                        class="h-8 gap-1.5 text-xs"
+                        class="h-[34px] gap-1.5 rounded-md border px-3 text-xs"
                     >
                         <Filter class="size-3.5" />
                         <span v-if="activeFilterCount > 0">{{ activeFilterCount }} hidden</span>
@@ -305,6 +350,7 @@ function winRateClass(pctVal: number | null): string {
                     </template>
                 </DropdownMenuContent>
             </DropdownMenu>
+            </div>
         </div>
 
         <div v-if="!stats.length" class="flex flex-col items-center gap-3 py-16 text-center">
@@ -355,7 +401,18 @@ function winRateClass(pctVal: number | null): string {
                     </TableHeader>
                     <TableBody>
                         <TableRow v-for="stat in filteredAndSortedStats" :key="stat.oracleId">
-                            <TableCell class="font-medium">{{ stat.name ?? 'Unknown' }}</TableCell>
+                            <TableCell class="font-medium">
+                                <span class="flex items-center gap-1.5">
+                                    <Image
+                                        v-if="stat.image"
+                                        class="size-3.5 shrink-0 cursor-pointer text-zinc-600 hover:text-zinc-400"
+                                        @mouseenter="onRowEnter(stat)"
+                                        @mousemove="onRowMove"
+                                        @mouseleave="onRowLeave"
+                                    />
+                                    {{ stat.name ?? 'Unknown' }}
+                                </span>
+                            </TableCell>
                             <TableCell class="text-muted-foreground">{{ stat.type ?? '—' }}</TableCell>
                             <TableCell class="text-center">
                                 <Check v-if="stat.isSideboard" class="mx-auto size-3.5 text-muted-foreground" />
@@ -407,4 +464,13 @@ function winRateClass(pctVal: number | null): string {
             </CardContent>
         </Card>
     </Deferred>
+
+    <Teleport to="body">
+        <img
+            v-if="hoveredImage"
+            :src="hoveredImage"
+            class="pointer-events-none fixed z-50 w-56 rounded-lg shadow-xl"
+            :style="{ top: `${mouseY - 160}px`, left: `${mouseX + 16}px` }"
+        />
+    </Teleport>
 </template>

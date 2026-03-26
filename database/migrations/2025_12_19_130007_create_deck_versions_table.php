@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Deck;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -13,7 +14,7 @@ return new class extends Migration
     {
         Schema::create('deck_versions', function (Blueprint $table) {
             $table->id();
-            $table->foreignIdFor(\App\Models\Deck::class)->constrained();
+            $table->foreignIdFor(Deck::class)->constrained();
             $table->longText('signature')->index();
             $table->dateTime('modified_at')->index();
             $table->timestamps();

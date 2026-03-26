@@ -445,22 +445,6 @@ const sampleOpponent: OpponentData = {
                             :disabled="processing === 'debugMode'"
                         />
                     </div>
-                    <template v-if="props.debugMode">
-                        <Separator class="my-4" />
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <Label>Simulate update</Label>
-                                <p class="text-sm text-muted-foreground">Triggers a fake update banner for testing.</p>
-                            </div>
-                            <Button
-                                size="sm"
-                                variant="outline"
-                                @click="router.post(SimulateUpdateController.url(), {}, { preserveScroll: true })"
-                            >
-                                Simulate
-                            </Button>
-                        </div>
-                    </template>
                 </CardContent>
             </Card>
 

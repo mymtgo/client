@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\MatchState;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -17,9 +18,9 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property int $lost_matches_count
  * @property int $matches_count
  * @property string|null $matches_max_started_at
- * @property-read \Illuminate\Database\Eloquent\Collection<int, DeckVersion> $versions
- * @property-read \Illuminate\Database\Eloquent\Collection<int, MtgoMatch> $matches
- * @property-read \Illuminate\Database\Eloquent\Collection|null $cards
+ * @property-read Collection<int, DeckVersion> $versions
+ * @property-read Collection<int, MtgoMatch> $matches
+ * @property-read Collection|null $cards
  */
 class Deck extends Model
 {

@@ -2,6 +2,7 @@
 
 namespace App\Actions\Leagues;
 
+use App\Enums\MatchState;
 use App\Models\Account;
 use App\Models\League;
 use App\Models\MtgoMatch;
@@ -16,7 +17,7 @@ class GetActiveLeague
         $accountId = Account::active()->value('id');
 
         $league = League::whereHas('matches', function ($q) use ($accountId) {
-            $q->where('state', \App\Enums\MatchState::Complete);
+            $q->where('state', MatchState::Complete);
             if ($accountId) {
                 $q->forAccount($accountId);
             }

@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\LogEvent;
 use Illuminate\Database\Migrations\Migration;
 
 return new class extends Migration
@@ -9,7 +10,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        \App\Models\LogEvent::whereNull('processed_at')->where('created_at', '<', now()->addMinute())->update([
+        LogEvent::whereNull('processed_at')->where('created_at', '<', now()->addMinute())->update([
             'processed_at' => now(),
         ]);
     }

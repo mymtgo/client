@@ -80,6 +80,7 @@ function reprocessMatch(id: number) {
 
 const columns = [
     { key: 'id', label: 'ID', type: 'readonly' as const },
+    { key: 'opponent_name', label: 'Opponent', type: 'readonly' as const },
     { key: 'token', label: 'Token', type: 'text' as const },
     { key: 'mtgo_id', label: 'MTGO ID', type: 'text' as const },
     { key: 'league_id', label: 'League', type: 'select' as const, optionsKey: 'leagueOptions' as const, nullable: true },
@@ -88,9 +89,9 @@ const columns = [
     { key: 'match_type', label: 'Type', type: 'text' as const },
     { key: 'state', label: 'State', type: 'select' as const, optionsKey: 'stateOptions' as const },
     { key: 'outcome', label: 'Outcome', type: 'text' as const },
-    { key: 'started_at', label: 'Started', type: 'text' as const },
-    { key: 'ended_at', label: 'Ended', type: 'text' as const },
-    { key: 'submitted_at', label: 'Submitted', type: 'text' as const },
+    { key: 'started_at', label: 'Started', type: 'datetime' as const },
+    { key: 'ended_at', label: 'Ended', type: 'datetime' as const },
+    { key: 'submitted_at', label: 'Submitted', type: 'datetime' as const },
 ];
 
 const optionsMap: Record<string, SelectOption[]> = {

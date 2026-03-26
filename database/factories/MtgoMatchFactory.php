@@ -8,7 +8,7 @@ use App\Models\MtgoMatch;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\MtgoMatch>
+ * @extends Factory<MtgoMatch>
  */
 class MtgoMatchFactory extends Factory
 {

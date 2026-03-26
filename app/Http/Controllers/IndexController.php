@@ -15,7 +15,9 @@ use App\Data\Front\DeckData;
 use App\Data\Front\MatchData;
 use App\Models\Account;
 use App\Models\Deck;
+use App\Models\Game;
 use App\Models\MtgoMatch;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -60,8 +62,8 @@ class IndexController extends Controller
             ->whereBetween('started_at', [$start, $end])
             ->pluck('id');
 
-        $gamesWon = \App\Models\Game::whereIn('match_id', $matchIds)->where('won', true)->count();
-        $gamesLost = \App\Models\Game::whereIn('match_id', $matchIds)->where('won', false)->count();
+        $gamesWon = Game::whereIn('match_id', $matchIds)->where('won', true)->count();
+        $gamesLost = Game::whereIn('match_id', $matchIds)->where('won', false)->count();
 
         // Deck performance summary
         $deckStats = Deck::forActiveAccount()->withCount([
@@ -112,7 +114,7 @@ class IndexController extends Controller
     }
 
     /**
-     * @return array{0: \Carbon\Carbon, 1: \Carbon\Carbon}
+     * @return array{0: Carbon, 1: Carbon}
      */
     private function getTimeRange(string $timeframe): array
     {

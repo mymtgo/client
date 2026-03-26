@@ -1,5 +1,10 @@
 <?php
 
+use Illuminate\Support\Facades\Http;
+use Native\Desktop\Facades\Settings;
+use Native\Desktop\Facades\Window;
+use Tests\TestCase;
+
 /*
 |--------------------------------------------------------------------------
 | Test Case
@@ -11,27 +16,27 @@
 |
 */
 
-pest()->extend(Tests\TestCase::class)
+pest()->extend(TestCase::class)
  // ->use(Illuminate\Foundation\Testing\RefreshDatabase::class)
     ->beforeEach(function () {
         $this->withoutVite();
 
         // NativePHP facades make HTTP calls to localhost:4000 (the Electron
         // backend) which doesn't exist in CI or during testing.
-        \Illuminate\Support\Facades\Http::fake();
-        \Native\Desktop\Facades\Window::fake()
+        Http::fake();
+        Window::fake()
             ->alwaysReturnWindows([
-                new \Native\Desktop\Windows\Window('main'),
+                new Native\Desktop\Windows\Window('main'),
             ]);
 
         // Settings doesn't support ::fake() so we swap with an in-memory store.
-        \Native\Desktop\Facades\Settings::swap(new class
+        Settings::swap(new class
         {
             protected array $store = [];
 
             public function get(string $key, $default = null): mixed
             {
-                return $this->store[$key] ?? ($default instanceof \Closure ? $default() : $default);
+                return $this->store[$key] ?? ($default instanceof Closure ? $default() : $default);
             }
 
             public function set(string $key, $value): void

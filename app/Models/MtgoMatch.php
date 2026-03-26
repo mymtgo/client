@@ -8,11 +8,13 @@ use App\Observers\MtgoMatchObserver;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOneThrough;
+use Illuminate\Support\Str;
 
 /**
  * @property int|null $wins
@@ -20,9 +22,9 @@ use Illuminate\Database\Eloquent\Relations\HasOneThrough;
  * @property int|null $total
  * @property int $games_won_count
  * @property int $games_lost_count
- * @property-read \Illuminate\Database\Eloquent\Collection<int, Game> $games
- * @property-read \Illuminate\Database\Eloquent\Collection<int, MatchArchetype> $archetypes
- * @property-read \Illuminate\Database\Eloquent\Collection<int, MatchArchetype> $opponentArchetypes
+ * @property-read Collection<int, Game> $games
+ * @property-read Collection<int, MatchArchetype> $archetypes
+ * @property-read Collection<int, MatchArchetype> $opponentArchetypes
  */
 #[ObservedBy(MtgoMatchObserver::class)]
 class MtgoMatch extends Model
@@ -124,7 +126,7 @@ class MtgoMatch extends Model
         // MTGO format codes are prefixed with 'C' (e.g. CModern, CStandard)
         $raw = preg_match('/^C[A-Z]/', $format) ? substr($format, 1) : $format;
 
-        return \Illuminate\Support\Str::title(strtolower($raw));
+        return Str::title(strtolower($raw));
     }
 
     public function isCompleted(): bool

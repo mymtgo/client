@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\League;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -12,7 +13,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('matches', function (Blueprint $table) {
-            $table->foreignIdFor(\App\Models\League::class, 'league_id')->after('mtgo_id')->nullable()->constrained();
+            $table->foreignIdFor(League::class, 'league_id')->after('mtgo_id')->nullable()->constrained();
         });
     }
 

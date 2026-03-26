@@ -5,25 +5,7 @@ import { Deferred } from '@inertiajs/vue3';
 import ManaSymbols from '@/components/ManaSymbols.vue';
 import MatchHistoryChart from '@/pages/decks/partials/MatchHistoryChart.vue';
 import { computed } from 'vue';
-
-type VersionStats = {
-    id: number | null;
-    label: string;
-    isCurrent: boolean;
-    dateLabel: string | null;
-    matchesWon: number;
-    matchesLost: number;
-    gamesWon: number;
-    gamesLost: number;
-    matchWinrate: number;
-    gameWinrate: number;
-    gamesOtpWon: number;
-    gamesOtpLost: number;
-    otpRate: number;
-    gamesOtdWon: number;
-    gamesOtdLost: number;
-    otdRate: number;
-};
+import type { VersionStats } from '@/types/decks';
 
 const props = defineProps<{
     activeVersion: VersionStats;

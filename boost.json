@@ -3,13 +3,13 @@
         "claude_code"
     ],
     "guidelines": true,
-    "herd_mcp": true,
     "mcp": true,
     "packages": [
         "inertiajs/inertia-laravel"
     ],
     "sail": false,
     "skills": [
+        "laravel-best-practices",
         "wayfinder-development",
         "pest-testing",
         "inertia-vue-development",

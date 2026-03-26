@@ -2,14 +2,22 @@
 
 use App\Http\Controllers\Archetypes\DownloadDecklistController;
 use App\Http\Controllers\Archetypes\ExportDekController;
+use App\Http\Controllers\Debug\Cards\PopulateController;
 use App\Http\Controllers\Debug\Decks\SyncController;
 use App\Http\Controllers\Debug\LogEvents\IngestController;
 use App\Http\Controllers\Debug\Matches\DestroyController;
 use App\Http\Controllers\Debug\Matches\ProcessController;
 use App\Http\Controllers\Debug\Matches\RestoreController;
 use App\Http\Controllers\Debug\Matches\UpdateController;
+use App\Http\Controllers\Decks\CardStatsController;
+use App\Http\Controllers\Decks\DashboardController;
+use App\Http\Controllers\Decks\DecklistController;
+use App\Http\Controllers\Decks\LeaguesController;
+use App\Http\Controllers\Decks\MatchesController;
+use App\Http\Controllers\Decks\MatchupsController;
 use App\Http\Controllers\Decks\OpenPopoutController;
 use App\Http\Controllers\Decks\PopoutController;
+use App\Http\Controllers\Games\OpenReplayController;
 use App\Http\Controllers\IndexController;
 use App\Http\Controllers\Leagues\AbandonController;
 use App\Http\Controllers\Leagues\OpponentScoutWindowController;
@@ -32,6 +40,7 @@ use App\Http\Controllers\Settings\UpdateHidePhantomController;
 use App\Http\Controllers\Settings\UpdateLogPathController;
 use App\Http\Controllers\Settings\UpdateOverlaySettingsController;
 use App\Http\Controllers\Settings\UpdateShareStatsController;
+use App\Http\Controllers\Settings\UpdateTimezoneController;
 use App\Http\Controllers\Settings\UpdateWatcherController;
 use App\Http\Controllers\Updates\InstallController;
 use Illuminate\Routing\Router;
@@ -53,6 +62,7 @@ Route::group([], function (Router $router) {
         'prefix' => 'games',
     ], function (Router $group) {
         $group->get('{id}', App\Http\Controllers\Games\ShowController::class)->name('games.show');
+        $group->post('{id}/replay', OpenReplayController::class)->name('games.open-replay');
     });
 
     $router->group([
@@ -74,7 +84,12 @@ Route::group([], function (Router $router) {
         'prefix' => 'decks',
     ], function (Router $group) {
         $group->get('/', App\Http\Controllers\Decks\IndexController::class)->name('decks.index');
-        $group->get('{deck:id}', App\Http\Controllers\Decks\ShowController::class)->name('decks.show');
+        $group->get('{deck:id}', DashboardController::class)->name('decks.show');
+        $group->get('{deck:id}/card-stats', CardStatsController::class)->name('decks.card-stats');
+        $group->get('{deck:id}/matches', MatchesController::class)->name('decks.matches');
+        $group->get('{deck:id}/leagues', LeaguesController::class)->name('decks.leagues');
+        $group->get('{deck:id}/matchups', MatchupsController::class)->name('decks.matchups');
+        $group->get('{deck:id}/decklist', DecklistController::class)->name('decks.decklist');
         $group->get('{deck:id}/popout', PopoutController::class)->name('decks.popout');
         $group->post('{deck:id}/popout', OpenPopoutController::class)->name('decks.open-popout');
     });
@@ -107,7 +122,7 @@ Route::group([], function (Router $router) {
         $group->patch('account-tracking', UpdateAccountTrackingController::class)->name('settings.account-tracking');
         $group->post('overlay', UpdateOverlaySettingsController::class)->name('settings.overlay');
         $group->patch('debug-mode', UpdateDebugModeController::class)->name('settings.debug-mode');
-        $group->patch('timezone', \App\Http\Controllers\Settings\UpdateTimezoneController::class)->name('settings.timezone');
+        $group->patch('timezone', UpdateTimezoneController::class)->name('settings.timezone');
     });
 
     $router->get('updates/install', InstallController::class)->name('updates.install');
@@ -145,7 +160,7 @@ Route::group([], function (Router $router) {
 
         // Cards
         $group->get('cards', App\Http\Controllers\Debug\Cards\IndexController::class)->name('debug.cards.index');
-        $group->post('cards/populate', App\Http\Controllers\Debug\Cards\PopulateController::class)->name('debug.cards.populate');
+        $group->post('cards/populate', PopulateController::class)->name('debug.cards.populate');
 
         // Log Cursors
         $group->get('log-cursors', App\Http\Controllers\Debug\LogCursors\IndexController::class)->name('debug.log-cursors.index');

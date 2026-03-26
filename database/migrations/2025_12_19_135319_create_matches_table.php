@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\DeckVersion;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -15,7 +16,7 @@ return new class extends Migration
             $table->id();
             $table->string('token')->index();
             $table->string('mtgo_id')->index();
-            $table->foreignIdFor(\App\Models\DeckVersion::class)->nullable()->constrained();
+            $table->foreignIdFor(DeckVersion::class)->nullable()->constrained();
             $table->string('format')->index();
             $table->string('match_type')->index();
             $table->string('result')->nullable()->index();

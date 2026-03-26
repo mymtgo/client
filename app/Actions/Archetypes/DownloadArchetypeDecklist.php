@@ -5,6 +5,7 @@ namespace App\Actions\Archetypes;
 use App\Actions\RegisterDevice;
 use App\Models\Archetype;
 use App\Models\Card;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -60,7 +61,7 @@ class DownloadArchetypeDecklist
         $archetype->update(['decklist_downloaded_at' => now()]);
     }
 
-    private static function fetchFromApi(string $uuid): \Illuminate\Http\Client\Response
+    private static function fetchFromApi(string $uuid): Response
     {
         return Http::mymtgoApi()->get('/api/archetypes/'.$uuid.'/decklist');
     }

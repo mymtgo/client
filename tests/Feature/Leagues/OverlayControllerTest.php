@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\MatchState;
+use App\Models\Game;
 use App\Models\League;
 use App\Models\MtgoMatch;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -110,7 +111,7 @@ it('includes game results for the active match', function () {
         'ended_at' => now(),
     ]);
 
-    \App\Models\Game::create([
+    Game::create([
         'match_id' => $match->id,
         'mtgo_id' => '500001',
         'started_at' => now()->subMinutes(10),
@@ -118,7 +119,7 @@ it('includes game results for the active match', function () {
         'won' => true,
     ]);
 
-    \App\Models\Game::create([
+    Game::create([
         'match_id' => $match->id,
         'mtgo_id' => '500002',
         'started_at' => now()->subMinutes(4),

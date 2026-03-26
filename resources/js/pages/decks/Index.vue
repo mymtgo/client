@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import ShowController from '@/actions/App/Http/Controllers/Decks/ShowController';
+import ShowController from '@/actions/App/Http/Controllers/Decks/DashboardController';
 import IndexController from '@/actions/App/Http/Controllers/Decks/IndexController';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';

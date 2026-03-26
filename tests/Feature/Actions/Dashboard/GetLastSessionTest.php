@@ -4,6 +4,7 @@ use App\Actions\Dashboard\GetLastSession;
 use App\Models\Account;
 use App\Models\Deck;
 use App\Models\DeckVersion;
+use App\Models\Game;
 use App\Models\MtgoMatch;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -40,10 +41,10 @@ it('groups matches within 2 hours as one session', function () {
         'ended_at' => now()->subHour()->subMinutes(10),
     ]);
 
-    \App\Models\Game::create(['match_id' => $m1->id, 'mtgo_id' => 1, 'started_at' => $m1->started_at, 'won' => true]);
-    \App\Models\Game::create(['match_id' => $m1->id, 'mtgo_id' => 2, 'started_at' => $m1->started_at, 'won' => true]);
-    \App\Models\Game::create(['match_id' => $m3->id, 'mtgo_id' => 3, 'started_at' => $m3->started_at, 'won' => false]);
-    \App\Models\Game::create(['match_id' => $m3->id, 'mtgo_id' => 4, 'started_at' => $m3->started_at, 'won' => false]);
+    Game::create(['match_id' => $m1->id, 'mtgo_id' => 1, 'started_at' => $m1->started_at, 'won' => true]);
+    Game::create(['match_id' => $m1->id, 'mtgo_id' => 2, 'started_at' => $m1->started_at, 'won' => true]);
+    Game::create(['match_id' => $m3->id, 'mtgo_id' => 3, 'started_at' => $m3->started_at, 'won' => false]);
+    Game::create(['match_id' => $m3->id, 'mtgo_id' => 4, 'started_at' => $m3->started_at, 'won' => false]);
 
     $result = GetLastSession::run($account->id);
     expect($result)->not->toBeNull();

@@ -8,6 +8,7 @@ use App\Models\MtgoMatch;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Inertia\Middleware;
+use Native\Desktop\Facades\Settings;
 
 class HandleInertiaRequests extends Middleware
 {
@@ -26,11 +27,11 @@ class HandleInertiaRequests extends Middleware
         return [
             ...parent::share($request),
             'status' => fn () => [
-                'watcherRunning' => (bool) \Native\Desktop\Facades\Settings::get('watcher_active', true),
+                'watcherRunning' => (bool) Settings::get('watcher_active', true),
                 'lastIngestAt' => LogCursor::max('updated_at'),
                 'pendingMatchCount' => MtgoMatch::submittable()->count(),
             ],
-            'debugMode' => fn () => (bool) \Native\Desktop\Facades\Settings::get('debug_mode'),
+            'debugMode' => fn () => (bool) Settings::get('debug_mode'),
             'activeAccount' => fn () => Account::active()->first()?->username,
             'accounts' => fn () => Account::tracked()->orderBy('username')->get(['id', 'username', 'active']),
             'availableUpdate' => fn () => Cache::get('available_update'),

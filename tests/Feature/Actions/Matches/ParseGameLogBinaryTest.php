@@ -1,6 +1,7 @@
 <?php
 
 use App\Actions\Matches\ParseGameLogBinary;
+use Carbon\Carbon;
 
 function fixturePath(string $name): string
 {
@@ -50,7 +51,7 @@ it('produces valid timestamps', function () {
     $result = ParseGameLogBinary::run($raw);
 
     $first = $result['entries'][0];
-    $ts = \Carbon\Carbon::parse($first['timestamp']);
+    $ts = Carbon::parse($first['timestamp']);
     expect($ts->year)->toBeGreaterThanOrEqual(2025);
     expect($ts->year)->toBeLessThanOrEqual(2027);
 });
