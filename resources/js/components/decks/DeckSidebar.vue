@@ -52,7 +52,7 @@ const navItems = computed(() => [
         <div class="flex flex-col gap-1.5 border-b border-border px-4 py-4">
             <div class="flex items-center gap-2">
                 <h2 class="truncate text-base font-semibold leading-tight">{{ deck.name }}</h2>
-                <ManaSymbols v-if="deck.identity" :symbols="deck.identity" class="shrink-0" />
+                <ManaSymbols v-if="deck.colorIdentity" :symbols="deck.colorIdentity" class="shrink-0" />
             </div>
             <div class="flex items-center gap-2">
                 <Badge variant="outline" class="text-xs">{{ deck.format }}</Badge>

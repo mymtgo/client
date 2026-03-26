@@ -2,6 +2,7 @@
 import AppLayout from '@/AppLayout.vue';
 import DeckViewLayout from '@/Layouts/DeckViewLayout.vue';
 import DeckList from '@/pages/decks/partials/DeckList.vue';
+import ManaSymbols from '@/components/ManaSymbols.vue';
 import type { VersionStats, VersionDecklist } from '@/types/decks';
 import { computed, ref } from 'vue';
 
@@ -24,6 +25,38 @@ const activeDecklist = computed((): VersionDecklist => {
     return props.versionDecklists?.[selectedVersionKey.value] ?? { maindeck: props.maindeck, sideboard: props.sideboard };
 });
 
+type ColorStat = { color: string; label: string; count: number; total: number; percentage: number };
+
+const colorDistribution = computed((): ColorStat[] => {
+    const dl = activeDecklist.value;
+    const nonLandCards = Object.entries(dl.maindeck)
+        .filter(([type]) => !type.includes('Land'))
+        .flatMap(([, cards]) => cards);
+
+    const total = nonLandCards.reduce((sum, c) => sum + c.quantity, 0);
+    if (total === 0) return [];
+
+    const colors = [
+        { color: 'W', label: 'White' },
+        { color: 'U', label: 'Blue' },
+        { color: 'B', label: 'Black' },
+        { color: 'R', label: 'Red' },
+        { color: 'G', label: 'Green' },
+        { color: 'C', label: 'Colorless' },
+    ];
+
+    return colors.map(({ color, label }) => {
+        const count = nonLandCards
+            .filter((c) => {
+                if (color === 'C') return !c.identity || c.identity === '' || c.identity === 'C';
+                return c.identity?.split(',').includes(color);
+            })
+            .reduce((sum, c) => sum + c.quantity, 0);
+
+        return { color, label, count, total, percentage: Math.round((count / total) * 100) };
+    });
+});
+
 const decklistOrgUrl = computed(() => {
     const dl = activeDecklist.value;
     const mainCards = Object.values(dl.maindeck).flat().map((c) => `${c.quantity} ${c.name}`).join('\n');
@@ -44,6 +77,27 @@ const decklistOrgUrl = computed(() => {
                 Deck Registration
             </a>
         </div>
-        <DeckList :maindeck="activeDecklist.maindeck" :sideboard="activeDecklist.sideboard" />
+        <div class="grid grid-cols-4 gap-4">
+            <div class="col-span-3">
+                <DeckList :maindeck="activeDecklist.maindeck" :sideboard="activeDecklist.sideboard" />
+            </div>
+            <div class="col-span-1 flex flex-col gap-2">
+                <h3 class="text-sm font-medium text-muted-foreground">Color Distribution <span class="text-xs font-normal">(maindeck, nonland)</span></h3>
+                <div class="grid grid-cols-2 gap-2">
+                <div
+                    v-for="stat in colorDistribution"
+                    :key="stat.color"
+                    class="flex items-center gap-3 rounded-md border border-border bg-muted/30 px-3 py-2.5"
+                    :class="stat.count === 0 ? 'opacity-40' : ''"
+                >
+                    <ManaSymbols :symbols="stat.color" class="shrink-0" />
+                    <div class="flex flex-1 flex-col">
+                        <span class="text-sm font-semibold tabular-nums">{{ stat.percentage }}%</span>
+                        <span class="text-xs text-muted-foreground">{{ stat.count }} of {{ stat.total }} cards</span>
+                    </div>
+                </div>
+                </div>
+            </div>
+        </div>
     </div>
 </template>
