@@ -1,15 +1,18 @@
 <script setup lang="ts">
 import { computed, ref, nextTick } from 'vue';
-import BackLink from '@/components/BackLink.vue';
+import AppLayout from '@/AppLayout.vue';
+import DeckViewLayout from '@/Layouts/DeckViewLayout.vue';
 import { Button } from '@/components/ui/button';
 import ResultBadge from '@/components/matches/ResultBadge.vue';
 import ManaSymbols from '@/components/ManaSymbols.vue';
 import SetArchetypeDialog from '@/components/matches/SetArchetypeDialog.vue';
 import MatchGame from '@/pages/matches/partials/MatchGame.vue';
-import DeckShowController from '@/actions/App/Http/Controllers/Decks/DashboardController';
 import UpdateNotesController from '@/actions/App/Http/Controllers/Matches/UpdateNotesController';
 import { PencilIcon, NotepadText } from 'lucide-vue-next';
 import { useForm } from '@inertiajs/vue3';
+import type { VersionStats } from '@/types/decks';
+
+defineOptions({ layout: [AppLayout, DeckViewLayout] });
 
 type GameDetail = {
     id: number;
@@ -26,6 +29,11 @@ type GameDetail = {
 };
 
 const props = defineProps<{
+    deck: App.Data.Front.DeckData;
+    versions: VersionStats[];
+    currentVersionId: number | null;
+    trophies: number;
+    currentPage: string;
     match: App.Data.Front.MatchData;
     games: GameDetail[];
     gameLogs: Record<number, Array<{ timestamp: string; message: string }>>;
@@ -54,7 +62,6 @@ function saveNotes() {
 }
 
 const isWin = computed(() => props.match.gamesWon > props.match.gamesLost);
-const deck = computed(() => props.match.deck as App.Data.Front.DeckData | null);
 const opponentArchetype = computed(() => {
     const archetypes = props.match.opponentArchetypes as App.Data.Front.MatchArchetypeData[] | null;
     return archetypes?.[0] ?? null;
@@ -65,13 +72,6 @@ const opponentArchetype = computed(() => {
     <SetArchetypeDialog ref="archetypeDialog" :archetypes="archetypes" />
 
     <div class="flex flex-col gap-4 p-3 lg:p-4">
-            <!-- Back link -->
-            <BackLink
-                v-if="deck"
-                :href="DeckShowController({ deck: deck.id }).url"
-                :label="deck.name"
-            />
-
             <!-- Match header -->
             <div class="flex flex-col gap-1">
                 <!-- Result + opponent -->
@@ -105,7 +105,6 @@ const opponentArchetype = computed(() => {
 
                 <!-- Metadata line -->
                 <p class="text-sm text-muted-foreground">
-                    <template v-if="deck">{{ deck.name }} · </template>
                     {{ match.format }}
                     · {{ match.startedAtFormatted }}
                     · {{ match.matchTime }}

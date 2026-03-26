@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import { Link } from '@inertiajs/vue3';
+import { router } from '@inertiajs/vue3';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import ResultBadge from '@/components/matches/ResultBadge.vue';
@@ -8,7 +8,7 @@ import GameLogPanel from '@/components/matches/GameLogPanel.vue';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { SwordsIcon, ChevronRight, Play, ScrollText } from 'lucide-vue-next';
-import GameShowController from '@/actions/App/Http/Controllers/Games/ShowController';
+import OpenReplayController from '@/actions/App/Http/Controllers/Games/OpenReplayController';
 
 const props = defineProps<{
     game: {
@@ -68,11 +68,9 @@ const sideboardOpen = ref(false);
                         </div>
                     </DialogContent>
                 </Dialog>
-                <Button variant="ghost" size="sm" as-child class="h-6 px-2 text-xs">
-                    <Link :href="GameShowController(game.id).url" class="inline-flex items-center gap-1">
-                        <Play :size="11" />
-                        Replay
-                    </Link>
+                <Button variant="ghost" size="sm" class="h-6 px-2 text-xs" @click="router.post(OpenReplayController.url({ id: game.id }))">
+                    <Play :size="11" />
+                    Replay
                 </Button>
             </div>
         </CardHeader>

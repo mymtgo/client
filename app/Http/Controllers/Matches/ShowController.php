@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Matches;
 
+use App\Actions\Decks\GetDeckViewSharedProps;
 use App\Actions\Matches\BuildMatchGameData;
 use App\Actions\Matches\GetGameLogEntries;
 use App\Data\Front\ArchetypeData;
@@ -9,6 +10,7 @@ use App\Data\Front\MatchData;
 use App\Http\Controllers\Controller;
 use App\Models\Archetype;
 use App\Models\Card;
+use App\Models\Deck;
 use App\Models\DeckVersion;
 use App\Models\MtgoMatch;
 use Inertia\Inertia;
@@ -61,7 +63,13 @@ class ShowController extends Controller
             $game->id => GetGameLogEntries::run($game),
         ]);
 
+        // Get deck sidebar props if match has a deck
+        $deck = $deckVersion?->deck;
+        $shared = $deck ? GetDeckViewSharedProps::run($deck) : [];
+
         return Inertia::render('matches/Show', [
+            ...$shared,
+            'currentPage' => 'matches',
             'match' => MatchData::from($match),
             'games' => $games,
             'gameLogs' => $gameLogs,

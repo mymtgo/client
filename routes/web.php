@@ -17,6 +17,7 @@ use App\Http\Controllers\Decks\MatchesController;
 use App\Http\Controllers\Decks\MatchupsController;
 use App\Http\Controllers\Decks\OpenPopoutController;
 use App\Http\Controllers\Decks\PopoutController;
+use App\Http\Controllers\Games\OpenReplayController;
 use App\Http\Controllers\IndexController;
 use App\Http\Controllers\Leagues\AbandonController;
 use App\Http\Controllers\Leagues\OpponentScoutWindowController;
@@ -61,6 +62,7 @@ Route::group([], function (Router $router) {
         'prefix' => 'games',
     ], function (Router $group) {
         $group->get('{id}', App\Http\Controllers\Games\ShowController::class)->name('games.show');
+        $group->post('{id}/replay', OpenReplayController::class)->name('games.open-replay');
     });
 
     $router->group([
