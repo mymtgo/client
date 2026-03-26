@@ -142,7 +142,8 @@ const streakIsLoss = computed(() => props.streak.current?.endsWith('L') ?? false
                     <span class="text-[10px] text-muted-foreground/60">{{ activeLeague.format }}</span>
                     <div class="flex items-center gap-1.5">
                         <template v-for="(result, i) in activeLeague.results" :key="i">
-                            <ResultBadge :won="result === 'W'" />
+                            <div v-if="result === null" class="h-2 w-2 rounded-full border border-muted-foreground/40" />
+                            <ResultBadge v-else :won="result === 'W'" />
                         </template>
                         <Trophy v-if="activeLeague.isTrophy" class="size-3.5 text-yellow-400" />
                     </div>
