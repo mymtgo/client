@@ -51,6 +51,8 @@ interface ImportableMatch {
         opponent_hand_size: number;
         started_at: string;
         ended_at: string;
+        local_cards: Array<{ mtgo_id: number; name: string }>;
+        opponent_cards: Array<{ mtgo_id: number; name: string }>;
     }> | null;
     local_player: string | null;
     local_cards: Array<{ mtgo_id: number; name: string }> | null;
