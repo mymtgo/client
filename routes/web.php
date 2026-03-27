@@ -18,6 +18,9 @@ use App\Http\Controllers\Decks\MatchupsController;
 use App\Http\Controllers\Decks\OpenPopoutController;
 use App\Http\Controllers\Decks\PopoutController;
 use App\Http\Controllers\Games\OpenReplayController;
+use App\Http\Controllers\Import\IndexController as ImportIndexController;
+use App\Http\Controllers\Import\ScanController;
+use App\Http\Controllers\Import\StoreController;
 use App\Http\Controllers\IndexController;
 use App\Http\Controllers\Leagues\AbandonController;
 use App\Http\Controllers\Leagues\OpponentScoutWindowController;
@@ -123,6 +126,14 @@ Route::group([], function (Router $router) {
         $group->post('overlay', UpdateOverlaySettingsController::class)->name('settings.overlay');
         $group->patch('debug-mode', UpdateDebugModeController::class)->name('settings.debug-mode');
         $group->patch('timezone', UpdateTimezoneController::class)->name('settings.timezone');
+    });
+
+    $router->group([
+        'prefix' => 'import',
+    ], function (Router $group) {
+        $group->get('/', ImportIndexController::class)->name('import.index');
+        $group->post('scan', ScanController::class)->name('import.scan');
+        $group->post('/', StoreController::class)->name('import.store');
     });
 
     $router->get('updates/install', InstallController::class)->name('updates.install');
