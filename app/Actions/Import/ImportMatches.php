@@ -2,6 +2,7 @@
 
 namespace App\Actions\Import;
 
+use App\Actions\DetermineMatchArchetypes;
 use App\Actions\Matches\ParseGameLogBinary;
 use App\Enums\MatchOutcome;
 use App\Enums\MatchState;
@@ -10,6 +11,7 @@ use App\Models\Game;
 use App\Models\GameLog;
 use App\Models\MtgoMatch;
 use App\Models\Player;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class ImportMatches
@@ -68,6 +70,17 @@ class ImportMatches
 
             if (! empty($data['games']) && $data['local_player']) {
                 self::createGames($match, $data);
+
+                // Detect archetypes using opponent deck_json populated from game log cards
+                try {
+                    $match->load('games.players');
+                    DetermineMatchArchetypes::run($match);
+                } catch (\Throwable $e) {
+                    // Archetype detection is non-critical — don't fail the import
+                    Log::channel('pipeline')->warning(
+                        "Import archetype detection failed for match {$match->id}: {$e->getMessage()}"
+                    );
+                }
             }
 
             $imported++;
@@ -84,10 +97,28 @@ class ImportMatches
         $localPlayer = Player::firstOrCreate(['username' => $data['local_player']]);
         $opponent = Player::firstOrCreate(['username' => $data['opponent']]);
 
-        $seenMtgoIds = collect($data['local_cards'] ?? [])->pluck('mtgo_id')->toArray();
+        // Fall back to match-level cards if per-game cards not available
+        $matchSeenMtgoIds = collect($data['local_cards'] ?? [])->pluck('mtgo_id')->toArray();
 
         foreach ($data['games'] as $index => $gameData) {
             $gameId = $data['game_ids'][$index] ?? null;
+
+            // Per-game seen cards (fall back to match-level aggregate)
+            $gameLocalCards = $gameData['local_cards'] ?? null;
+            $seenMtgoIds = $gameLocalCards !== null
+                ? collect($gameLocalCards)->pluck('mtgo_id')->toArray()
+                : $matchSeenMtgoIds;
+
+            // Build opponent deck_json from per-game opponent cards
+            $opponentDeckJson = null;
+            $gameOpponentCards = $gameData['opponent_cards'] ?? null;
+            if ($gameOpponentCards !== null && ! empty($gameOpponentCards)) {
+                $opponentDeckJson = collect($gameOpponentCards)->map(fn ($card) => [
+                    'mtgo_id' => $card['mtgo_id'],
+                    'quantity' => 1,
+                    'sideboard' => false,
+                ])->values()->toArray();
+            }
 
             $game = Game::create([
                 'match_id' => $match->id,
@@ -110,7 +141,7 @@ class ImportMatches
                 'on_play' => ! ($gameData['on_play'] ?? false),
                 'starting_hand_size' => $gameData['opponent_hand_size'] ?? 7,
                 'instance_id' => 0,
-                'deck_json' => null,
+                'deck_json' => $opponentDeckJson,
             ]);
 
             if ($match->deck_version_id && $game->won !== null) {
