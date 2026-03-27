@@ -4,7 +4,6 @@ import StoreController from '@/actions/App/Http/Controllers/Import/StoreControll
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Spinner } from '@/components/ui/spinner';
 import { AlertTriangle, Check, FileUp, Minus } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
@@ -76,6 +75,18 @@ const errorMessage = ref<string | null>(null);
 const accepted = ref(false);
 const importResult = ref<{ imported: number; skipped: number } | null>(null);
 
+const formatFilter = ref('all');
+
+const availableFormats = computed(() => {
+    const formats = [...new Set(matches.value.map((m) => m.format))].sort();
+    return formats;
+});
+
+const filteredMatches = computed(() => {
+    if (formatFilter.value === 'all') return matches.value;
+    return matches.value.filter((m) => m.format === formatFilter.value);
+});
+
 const summary = computed(() => {
     const total = matches.value.length;
     const withGameLog = matches.value.filter((m) => m.has_game_log).length;
@@ -145,6 +156,14 @@ function selectWithDeck() {
 
 function deselectAll() {
     selectedIds.value = new Set();
+}
+
+const bulkDeckId = ref<number | null>(null);
+
+function assignDeckToSelected() {
+    for (const id of selectedIds.value) {
+        deckChoices.value[id] = bulkDeckId.value;
+    }
 }
 
 async function importSelected() {
@@ -218,8 +237,8 @@ function confidenceColor(confidence: number | null): string {
                         game timelines, and turn estimates will not be available. Card game statistics will be
                         approximate — cards are counted as "seen" based on game log mentions, not zone tracking.
                     </p>
-                    <label class="flex items-center gap-2">
-                        <Checkbox v-model:checked="accepted" />
+                    <label class="flex cursor-pointer items-center gap-2">
+                        <input type="checkbox" v-model="accepted" class="size-4 rounded border-input accent-primary" />
                         <span>I understand and accept these limitations</span>
                     </label>
                 </div>
@@ -256,17 +275,47 @@ function confidenceColor(confidence: number | null): string {
 
         <!-- Results -->
         <template v-if="scanned && matches.length > 0">
-            <!-- Summary -->
-            <div class="flex items-center justify-between">
-                <p class="text-sm text-muted-foreground">
-                    Found <strong>{{ summary.total }}</strong> matches.
-                    <strong>{{ summary.withGameLog }}</strong> have game logs.
-                    <strong>{{ summary.withDeck }}</strong> have suggested deck matches.
-                </p>
-                <div class="flex items-center gap-2">
-                    <Button variant="outline" size="sm" @click="selectAll">Select all</Button>
-                    <Button variant="outline" size="sm" @click="selectWithDeck">Select with deck</Button>
-                    <Button variant="outline" size="sm" @click="deselectAll">Deselect all</Button>
+            <!-- Summary + filters -->
+            <div class="flex flex-col gap-3">
+                <div class="flex items-center justify-between">
+                    <p class="text-sm text-muted-foreground">
+                        Found <strong>{{ summary.total }}</strong> matches.
+                        <strong>{{ summary.withGameLog }}</strong> have game logs.
+                        <strong>{{ summary.withDeck }}</strong> have suggested deck matches.
+                    </p>
+                    <div class="flex items-center gap-2">
+                        <select
+                            v-model="formatFilter"
+                            class="h-8 rounded-md border border-input bg-background px-2 text-xs"
+                        >
+                            <option value="all">All formats</option>
+                            <option v-for="fmt in availableFormats" :key="fmt" :value="fmt">{{ fmt }}</option>
+                        </select>
+                        <Button variant="outline" size="sm" @click="selectAll">Select all</Button>
+                        <Button variant="outline" size="sm" @click="selectWithDeck">Select with deck</Button>
+                        <Button variant="outline" size="sm" @click="deselectAll">Deselect all</Button>
+                    </div>
+                </div>
+                <div v-if="selectedCount > 0" class="flex items-center gap-2">
+                    <span class="text-xs text-muted-foreground">Assign deck to selected:</span>
+                    <select
+                        class="h-8 rounded-md border border-input bg-background px-2 text-xs"
+                        :value="bulkDeckId ?? ''"
+                        @change="bulkDeckId = ($event.target as HTMLSelectElement).value ? Number(($event.target as HTMLSelectElement).value) : null"
+                    >
+                        <option value="">No deck</option>
+                        <optgroup v-if="activeDeckVersions.length" label="Active Decks">
+                            <option v-for="dv in activeDeckVersions" :key="dv.id" :value="dv.id">
+                                {{ dv.deck_name }} ({{ dv.modified_at }})
+                            </option>
+                        </optgroup>
+                        <optgroup v-if="deletedDeckVersions.length" label="Deleted Decks">
+                            <option v-for="dv in deletedDeckVersions" :key="dv.id" :value="dv.id">
+                                {{ dv.deck_name }} (deleted) ({{ dv.modified_at }})
+                            </option>
+                        </optgroup>
+                    </select>
+                    <Button variant="outline" size="sm" @click="assignDeckToSelected">Apply</Button>
                 </div>
             </div>
 
@@ -286,15 +335,17 @@ function confidenceColor(confidence: number | null): string {
                     </thead>
                     <tbody>
                         <tr
-                            v-for="match in matches"
+                            v-for="match in filteredMatches"
                             :key="match.history_id"
                             class="border-b transition-colors hover:bg-muted/30"
                             :class="{ 'bg-muted/10': selectedIds.has(match.history_id) }"
                         >
                             <td class="p-3">
-                                <Checkbox
+                                <input
+                                    type="checkbox"
                                     :checked="selectedIds.has(match.history_id)"
-                                    @update:checked="toggleSelect(match.history_id)"
+                                    @change="toggleSelect(match.history_id)"
+                                    class="size-4 rounded border-input accent-primary"
                                 />
                             </td>
                             <td class="p-3 whitespace-nowrap">{{ formatDate(match.started_at) }}</td>
