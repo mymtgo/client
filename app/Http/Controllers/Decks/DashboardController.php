@@ -18,7 +18,7 @@ class DashboardController extends Controller
 {
     public function __invoke(Request $request, Deck $deck)
     {
-        $timeframe = $request->input('timeframe', 'week');
+        $timeframe = $request->input('timeframe', 'alltime');
         [$from, $to] = $this->getTimeRange($timeframe);
 
         $shared = GetDeckViewSharedProps::run($deck, $from, $to);

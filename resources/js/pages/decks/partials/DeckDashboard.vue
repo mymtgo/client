@@ -28,7 +28,7 @@ const timeframes = [
 
 function setTimeframe(value: string) {
     const query: Record<string, string> = {};
-    if (value !== 'week') query.timeframe = value;
+    if (value !== 'alltime') query.timeframe = value;
     router.get(DashboardController.url({ deck: props.deckId }), query, { preserveScroll: true });
 }
 
