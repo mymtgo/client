@@ -46,7 +46,7 @@ Both buttons use the same style: `inline-flex items-center gap-1.5 rounded-md bo
 
 ## Step 1 — Initiate (Backend Processing)
 
-Triggered by the user navigating to the Import Wizard page and clicking a "Scan Match History" button. Runs as a queued job or synchronous action depending on UX preference.
+Triggered by the user navigating to the Import Wizard page and clicking a "Scan Match History" button. Runs synchronously — the action uses the standard MTGO file paths in production (via `Mtgo::getLogDataPath()`) and will work against the `storage/app/` directory during development/testing.
 
 ### Process
 
