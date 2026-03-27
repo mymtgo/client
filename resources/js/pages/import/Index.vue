@@ -145,12 +145,12 @@ function toggleSelect(historyId: number) {
 }
 
 function selectAll() {
-    selectedIds.value = new Set(matches.value.map((m) => m.history_id));
+    selectedIds.value = new Set(filteredMatches.value.map((m) => m.history_id));
 }
 
 function selectWithDeck() {
     selectedIds.value = new Set(
-        matches.value.filter((m) => deckChoices.value[m.history_id] !== null).map((m) => m.history_id),
+        filteredMatches.value.filter((m) => deckChoices.value[m.history_id] !== null).map((m) => m.history_id),
     );
 }
 
