@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Deferred } from '@inertiajs/vue3';
+import { Deferred, router } from '@inertiajs/vue3';
 import ManaSymbols from '@/components/ManaSymbols.vue';
 import MatchHistoryChart from '@/pages/decks/partials/MatchHistoryChart.vue';
+import DashboardController from '@/actions/App/Http/Controllers/Decks/DashboardController';
 import { computed } from 'vue';
 import type { VersionStats } from '@/types/decks';
 
@@ -12,7 +14,23 @@ const props = defineProps<{
     chartData: { date: string; wins: number; losses: number; winrate: string | null }[];
     matchupSpread?: any[];
     leagueResults?: Record<string, number>;
+    deckId: number;
+    timeframe: string;
 }>();
+
+const timeframes = [
+    { value: 'week', label: '7 days' },
+    { value: 'biweekly', label: '2 weeks' },
+    { value: 'monthly', label: '30 days' },
+    { value: 'year', label: 'This year' },
+    { value: 'alltime', label: 'All time' },
+];
+
+function setTimeframe(value: string) {
+    const query: Record<string, string> = {};
+    if (value !== 'week') query.timeframe = value;
+    router.get(DashboardController.url({ deck: props.deckId }), query, { preserveScroll: true });
+}
 
 const MIN_MATCHES_THRESHOLD = 3;
 
@@ -42,7 +60,18 @@ const leagueResultsBuckets = ['5-0', '4-1', '3-2', '2-3', '1-4', '0-5'];
 
 <template>
     <div class="space-y-4">
-        <p class="text-xs text-muted-foreground">Stats from the last 2 months</p>
+        <div class="flex items-center gap-1 rounded-md border p-1 self-start">
+            <Button
+                v-for="tf in timeframes"
+                :key="tf.value"
+                size="sm"
+                :variant="timeframe === tf.value ? 'default' : 'ghost'"
+                class="h-7 px-3 text-xs"
+                @click="setTimeframe(tf.value)"
+            >
+                {{ tf.label }}
+            </Button>
+        </div>
 
         <!-- KPI Cards -->
         <div class="grid grid-cols-5 gap-4">

@@ -11,22 +11,24 @@ use App\Models\Deck;
 use App\Models\MtgoMatch;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
+use Illuminate\Http\Request;
 use Inertia\Inertia;
 
 class DashboardController extends Controller
 {
-    public function __invoke(Deck $deck)
+    public function __invoke(Request $request, Deck $deck)
     {
-        $shared = GetDeckViewSharedProps::run($deck);
+        $timeframe = $request->input('timeframe', 'week');
+        [$from, $to] = $this->getTimeRange($timeframe);
 
-        $from = now()->subMonths(2)->startOfDay();
-        $to = now()->endOfDay();
+        $shared = GetDeckViewSharedProps::run($deck, $from, $to);
 
         $stats = GetDeckStats::run($deck, $from, $to);
 
         return Inertia::render('decks/Dashboard', [
             ...$shared,
             'currentPage' => 'dashboard',
+            'timeframe' => $timeframe,
 
             // KPI stats — eager
             'matchesWon' => $stats['wins'],
@@ -57,6 +59,24 @@ class DashboardController extends Controller
         ]);
     }
 
+    /**
+     * @return array{0: Carbon, 1: Carbon}
+     */
+    private function getTimeRange(string $timeframe): array
+    {
+        $end = now()->endOfDay();
+
+        $start = match ($timeframe) {
+            'biweekly' => now()->subWeeks(2)->startOfDay(),
+            'monthly' => now()->subDays(30)->startOfDay(),
+            'year' => now()->startOfYear()->startOfDay(),
+            'alltime' => now()->startOfCentury()->startOfDay(),
+            default => now()->subDays(7)->startOfDay(),
+        };
+
+        return [$start, $end];
+    }
+
     private function buildDeckChartData(Deck $deck, Carbon $from, Carbon $to): array
     {
         $versionIds = $deck->versions()->pluck('id');
@@ -75,7 +95,11 @@ class DashboardController extends Controller
             return [];
         }
 
-        $carbonPeriod = CarbonPeriod::between($from->copy()->startOfDay(), $to->copy()->startOfDay())->days();
+        // Narrow chart range to actual data bounds to avoid generating thousands of empty days
+        $firstDate = Carbon::parse($results->keys()->first())->startOfDay();
+        $lastDate = Carbon::parse($results->keys()->last())->startOfDay();
+
+        $carbonPeriod = CarbonPeriod::between($firstDate, $lastDate)->days();
 
         return collect($carbonPeriod)->map(function (Carbon $point) use ($results) {
             $key = $point->format('Y-m-d');
