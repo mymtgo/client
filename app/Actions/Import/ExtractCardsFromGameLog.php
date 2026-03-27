@@ -81,7 +81,9 @@ class ExtractCardsFromGameLog
 
                 foreach ($matches as $m) {
                     $name = $m[1];
-                    $mtgoId = (int) $m[2];
+                    // Game log IDs are doubled CatalogIDs (front face = catId*2,
+                    // back face = catId*2+1). Right-shift to get the real CatalogID.
+                    $mtgoId = (int) $m[2] >> 1;
 
                     if (isset($seen[$player][$mtgoId])) {
                         continue;
