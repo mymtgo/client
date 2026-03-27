@@ -15,7 +15,7 @@ class SyncDecks
         $deckFiles = GetDeckFiles::run();
 
         $deckIds = [];
-
+        
         foreach ($deckFiles as $deckFile) {
             $xml = simplexml_load_file($deckFile);
 

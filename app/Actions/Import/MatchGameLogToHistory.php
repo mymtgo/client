@@ -4,6 +4,7 @@ namespace App\Actions\Import;
 
 use App\Actions\Matches\ExtractGameResults;
 use App\Actions\Matches\ParseGameLogBinary;
+use App\Models\GameLog;
 use Carbon\Carbon;
 
 class MatchGameLogToHistory
@@ -12,12 +13,11 @@ class MatchGameLogToHistory
      * Match history records to game log files by StartTime ± 5 minutes and opponent.
      *
      * @param  array<int, array>  $historyRecords  Parsed game history records
-     * @param  string  $dataPath  MTGO data directory path
      * @return array<int, array{history_id: int, game_log_token: ?string, game_log_entries: ?array}>
      */
-    public static function run(array $historyRecords, string $dataPath): array
+    public static function run(array $historyRecords): array
     {
-        $logIndex = self::buildLogIndex($dataPath);
+        $logIndex = self::buildLogIndex();
         $results = [];
 
         foreach ($historyRecords as $record) {
@@ -48,37 +48,41 @@ class MatchGameLogToHistory
     }
 
     /**
-     * Build an index of all game log files with their players and timestamps.
+     * Build an index from game_logs DB records, parsing files that lack decoded entries.
      *
      * @return array<int, array{token: string, first_timestamp: string, players: string[], entries: array}>
      */
-    private static function buildLogIndex(string $dataPath): array
+    private static function buildLogIndex(): array
     {
-        $pattern = $dataPath.'/Match_GameLog_*.dat';
-        $files = glob($pattern);
-
-        if (! $files) {
-            return [];
-        }
+        $gameLogs = GameLog::whereDoesntHave('match')->get();
 
         $index = [];
 
-        foreach ($files as $file) {
-            $raw = file_get_contents($file);
-            $parsed = ParseGameLogBinary::run($raw);
+        foreach ($gameLogs as $gameLog) {
+            $entries = $gameLog->decoded_entries;
 
-            if (! $parsed || empty($parsed['entries'])) {
-                continue;
+            if (! $entries) {
+                if (! $gameLog->file_path || ! file_exists($gameLog->file_path)) {
+                    continue;
+                }
+
+                $raw = file_get_contents($gameLog->file_path);
+                $parsed = ParseGameLogBinary::run($raw);
+
+                if (! $parsed || empty($parsed['entries'])) {
+                    continue;
+                }
+
+                $entries = $parsed['entries'];
             }
 
-            $token = str_replace('Match_GameLog_', '', pathinfo($file, PATHINFO_FILENAME));
-            $players = ExtractGameResults::detectPlayers($parsed['entries']);
+            $players = ExtractGameResults::detectPlayers($entries);
 
             $index[] = [
-                'token' => $token,
-                'first_timestamp' => $parsed['entries'][0]['timestamp'],
+                'token' => $gameLog->match_token,
+                'first_timestamp' => $entries[0]['timestamp'],
                 'players' => $players,
-                'entries' => $parsed['entries'],
+                'entries' => $entries,
             ];
         }
 

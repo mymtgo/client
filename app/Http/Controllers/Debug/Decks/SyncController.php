@@ -10,7 +10,7 @@ class SyncController extends Controller
 {
     public function __invoke(): RedirectResponse
     {
-        Mtgo::syncDecks();
+        Mtgo::syncDecks(sync: true);
 
         return back();
     }

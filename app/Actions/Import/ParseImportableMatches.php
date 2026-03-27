@@ -41,7 +41,7 @@ class ParseImportableMatches
         }
 
         // Match history records to game log files
-        $logMatches = MatchGameLogToHistory::run($newRecords, $dataPath);
+        $logMatches = MatchGameLogToHistory::run($newRecords);
         $logMatchesByHistoryId = collect($logMatches)->keyBy('history_id');
 
         // Extract cards from all matched game logs and collect unique mtgo_ids

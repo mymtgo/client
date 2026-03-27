@@ -1,24 +1,29 @@
 <?php
 
 use App\Actions\Import\MatchGameLogToHistory;
+use App\Models\GameLog;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 
-it('matches history records to game log files by time and opponent', function () {
-    // Set up a temp directory with game log fixtures named as Match_GameLog_*.dat
-    $tmpDir = sys_get_temp_dir().'/mtgo_test_'.uniqid();
-    mkdir($tmpDir);
+uses(RefreshDatabase::class);
 
-    $fixtures = [
-        'token-aaa' => 'clean_2_0_win.dat',    // anticloser vs Bordas99, 2025-12-17T13:42:33
-        'token-bbb' => 'clean_2_1_win.dat',     // anticloser vs NorinTheScary, 2026-01-13T15:35:42
-        'token-ccc' => 'instant_concede.dat',    // anticloser vs SilverrHaze, 2025-10-27T16:50:26
-    ];
+beforeEach(function () {
+    $fixtureDir = base_path('tests/fixtures/gamelogs');
+    $this->fixturesAvailable = file_exists("{$fixtureDir}/clean_2_0_win.dat")
+        && file_exists("{$fixtureDir}/clean_2_1_win.dat")
+        && file_exists("{$fixtureDir}/instant_concede.dat");
+});
 
-    foreach ($fixtures as $token => $fixture) {
-        copy(
-            base_path("tests/fixtures/gamelogs/{$fixture}"),
-            "{$tmpDir}/Match_GameLog_{$token}.dat"
-        );
+it('matches history records to game log DB records by time and opponent', function () {
+    if (! $this->fixturesAvailable) {
+        $this->markTestSkipped('MTGO game log fixtures not available.');
     }
+
+    $fixtureDir = base_path('tests/fixtures/gamelogs');
+
+    // Create GameLog DB records pointing to fixture files (no associated match)
+    GameLog::create(['match_token' => 'token-aaa', 'file_path' => "{$fixtureDir}/clean_2_0_win.dat"]);
+    GameLog::create(['match_token' => 'token-bbb', 'file_path' => "{$fixtureDir}/clean_2_1_win.dat"]);
+    GameLog::create(['match_token' => 'token-ccc', 'file_path' => "{$fixtureDir}/instant_concede.dat"]);
 
     // Build history records that should match by time (±5 min) and opponent
     $historyRecords = [
@@ -44,7 +49,7 @@ it('matches history records to game log files by time and opponent', function ()
         ],
     ];
 
-    $result = MatchGameLogToHistory::run($historyRecords, $tmpDir);
+    $result = MatchGameLogToHistory::run($historyRecords);
 
     expect($result)->toHaveCount(4);
 
@@ -63,24 +68,15 @@ it('matches history records to game log files by time and opponent', function ()
     expect($result[3]['history_id'])->toBe(1004);
     expect($result[3]['game_log_token'])->toBeNull();
     expect($result[3]['game_log_entries'])->toBeNull();
-
-    // Cleanup
-    array_map('unlink', glob("{$tmpDir}/*"));
-    rmdir($tmpDir);
 });
 
 it('returns unmatched results when no game logs exist', function () {
-    $tmpDir = sys_get_temp_dir().'/mtgo_test_empty_'.uniqid();
-    mkdir($tmpDir);
-
     $records = [
         ['Id' => 2001, 'StartTime' => '2025-01-01T12:00:00Z', 'Opponents' => ['Someone']],
     ];
 
-    $result = MatchGameLogToHistory::run($records, $tmpDir);
+    $result = MatchGameLogToHistory::run($records);
 
     expect($result)->toHaveCount(1);
     expect($result[0]['game_log_token'])->toBeNull();
-
-    rmdir($tmpDir);
 });
