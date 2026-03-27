@@ -2,16 +2,15 @@
 
 namespace App\Actions\Import;
 
-use App\Actions\DetermineMatchArchetypes;
 use App\Actions\Matches\ParseGameLogBinary;
 use App\Enums\MatchOutcome;
 use App\Enums\MatchState;
 use App\Facades\Mtgo;
+use App\Jobs\DetermineMatchArchetypesJob;
 use App\Models\Game;
 use App\Models\GameLog;
 use App\Models\MtgoMatch;
 use App\Models\Player;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class ImportMatches
@@ -71,16 +70,8 @@ class ImportMatches
             if (! empty($data['games']) && $data['local_player']) {
                 self::createGames($match, $data);
 
-                // Detect archetypes using opponent deck_json populated from game log cards
-                try {
-                    $match->load('games.players');
-                    DetermineMatchArchetypes::run($match);
-                } catch (\Throwable $e) {
-                    // Archetype detection is non-critical — don't fail the import
-                    Log::channel('pipeline')->warning(
-                        "Import archetype detection failed for match {$match->id}: {$e->getMessage()}"
-                    );
-                }
+                // Dispatch archetype detection to the queue — external API calls are too slow for inline
+                DetermineMatchArchetypesJob::dispatch($match->id);
             }
 
             $imported++;
