@@ -108,15 +108,23 @@ class ParseImportableMatches
                     $localPlayer
                 );
 
-                $games = collect($gameResults['games'])->map(fn ($g) => [
-                    'game_index' => $g['game_index'],
-                    'won' => $g['winner'] === $localPlayer,
-                    'on_play' => $g['on_play'] === $localPlayer,
-                    'starting_hand_size' => $g['starting_hands'][$localPlayer] ?? 7,
-                    'opponent_hand_size' => $g['starting_hands'][$opponent] ?? 7,
-                    'started_at' => $g['started_at'],
-                    'ended_at' => $g['ended_at'],
-                ])->toArray();
+                $cardsByGame = $cardData['cards_by_game'] ?? [];
+
+                $games = collect($gameResults['games'])->map(function ($g) use ($localPlayer, $opponent, $cardsByGame) {
+                    $gameCards = $cardsByGame[$g['game_index']] ?? [];
+
+                    return [
+                        'game_index' => $g['game_index'],
+                        'won' => $g['winner'] === $localPlayer,
+                        'on_play' => $g['on_play'] === $localPlayer,
+                        'starting_hand_size' => $g['starting_hands'][$localPlayer] ?? 7,
+                        'opponent_hand_size' => $g['starting_hands'][$opponent] ?? 7,
+                        'started_at' => $g['started_at'],
+                        'ended_at' => $g['ended_at'],
+                        'local_cards' => $gameCards[$localPlayer] ?? [],
+                        'opponent_cards' => $gameCards[$opponent] ?? [],
+                    ];
+                })->toArray();
             }
 
             // Attempt deck matching
