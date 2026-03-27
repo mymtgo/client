@@ -45,7 +45,7 @@ class ComputeImportedCardGameStats
         // Build mainboard quantities by oracle_id
         $mainboardQuantities = [];
         foreach ($deckCards as $card) {
-            if (($card['sideboard'] ?? 'false') === 'false') {
+            if (strtolower((string) ($card['sideboard'] ?? 'false')) !== 'true') {
                 $oracleId = $card['oracle_id'];
                 $mainboardQuantities[$oracleId] = ($mainboardQuantities[$oracleId] ?? 0) + (int) $card['quantity'];
             }

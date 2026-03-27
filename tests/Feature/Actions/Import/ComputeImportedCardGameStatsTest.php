@@ -54,6 +54,40 @@ it('creates card game stats for an imported game with deck version', function ()
     expect($statB->seen)->toBe(0); // was NOT seen in game log
 });
 
+it('handles capitalized sideboard values from SyncDecks XML', function () {
+    $cardA = Card::factory()->create(['mtgo_id' => '100', 'oracle_id' => 'oracle-a', 'name' => 'Card A']);
+    $cardB = Card::factory()->create(['mtgo_id' => '200', 'oracle_id' => 'oracle-b', 'name' => 'Card B']);
+
+    $deck = Deck::factory()->create();
+    // SyncDecks stores capitalized "True"/"False" from XML IsSideboard attribute
+    $signature = base64_encode('oracle-a:4:False|oracle-b:2:False|oracle-a:1:True');
+    $version = DeckVersion::factory()->create([
+        'deck_id' => $deck->id,
+        'signature' => $signature,
+    ]);
+
+    $match = MtgoMatch::factory()->create([
+        'deck_version_id' => $version->id,
+        'imported' => true,
+    ]);
+
+    $game = Game::factory()->create([
+        'match_id' => $match->id,
+        'won' => true,
+    ]);
+
+    ComputeImportedCardGameStats::run($game, $version->id, [100], isPostboard: false);
+
+    $stats = CardGameStat::where('game_id', $game->id)->get();
+
+    // Must create stats even with capitalized sideboard values
+    expect($stats)->toHaveCount(2);
+
+    $statA = $stats->firstWhere('oracle_id', 'oracle-a');
+    expect($statA->quantity)->toBe(4);
+    expect($statA->seen)->toBe(1);
+});
+
 it('skips stats when game result is null', function () {
     $match = MtgoMatch::factory()->create(['imported' => true]);
     $game = Game::factory()->create([
