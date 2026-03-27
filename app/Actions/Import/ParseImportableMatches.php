@@ -167,7 +167,7 @@ class ParseImportableMatches
     /**
      * Populate card data from the API in chunks of 200 to avoid request size limits.
      */
-    private static function populateCardsInChunks(): void
+    public static function populateCardsInChunks(): void
     {
         $unpopulated = Card::whereNull('name')->pluck('mtgo_id');
 

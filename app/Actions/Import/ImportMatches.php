@@ -7,6 +7,7 @@ use App\Enums\MatchOutcome;
 use App\Enums\MatchState;
 use App\Facades\Mtgo;
 use App\Jobs\DetermineMatchArchetypesJob;
+use App\Models\Card;
 use App\Models\Game;
 use App\Models\GameLog;
 use App\Models\MtgoMatch;
@@ -27,6 +28,10 @@ class ImportMatches
         $dataPath ??= config('mymtgo.import_data_path') ?: Mtgo::getLogDataPath();
         $imported = 0;
         $skipped = 0;
+
+        // Ensure all card stubs have oracle_ids before we compute stats.
+        // The scan creates stubs but API population can fail silently.
+        self::ensureCardsPopulated($matches);
 
         foreach ($matches as $data) {
             if (MtgoMatch::where('mtgo_id', (string) $data['history_id'])->exists()) {
@@ -88,17 +93,26 @@ class ImportMatches
         $localPlayer = Player::firstOrCreate(['username' => $data['local_player']]);
         $opponent = Player::firstOrCreate(['username' => $data['opponent']]);
 
-        // Fall back to match-level cards if per-game cards not available
-        $matchSeenMtgoIds = collect($data['local_cards'] ?? [])->pluck('mtgo_id')->toArray();
+        // Collect ALL card mtgo_ids (local + opponent) for seen tracking.
+        // ComputeImportedCardGameStats filters against deck oracle_ids, so opponent
+        // cards that aren't in the deck are excluded naturally. Using all cards avoids
+        // the player attribution problem in game log messages where @P{player} can
+        // reference cards owned by either player.
+        $allMatchCards = collect($data['local_cards'] ?? [])
+            ->merge($data['opponent_cards'] ?? [])
+            ->pluck('mtgo_id')
+            ->unique()
+            ->toArray();
 
         foreach ($data['games'] as $index => $gameData) {
             $gameId = $data['game_ids'][$index] ?? null;
 
-            // Per-game seen cards (fall back to match-level aggregate)
-            $gameLocalCards = $gameData['local_cards'] ?? null;
-            $seenMtgoIds = $gameLocalCards !== null
-                ? collect($gameLocalCards)->pluck('mtgo_id')->toArray()
-                : $matchSeenMtgoIds;
+            // Per-game: combine local + opponent cards for this game
+            $gameLocalCards = $gameData['local_cards'] ?? [];
+            $gameOpponentCards = $gameData['opponent_cards'] ?? [];
+            $seenMtgoIds = ! empty($gameLocalCards) || ! empty($gameOpponentCards)
+                ? collect($gameLocalCards)->merge($gameOpponentCards)->pluck('mtgo_id')->unique()->toArray()
+                : $allMatchCards;
 
             // Build opponent deck_json from per-game opponent cards
             $opponentDeckJson = null;
@@ -142,6 +156,95 @@ class ImportMatches
                     $seenMtgoIds,
                     isPostboard: $index > 0
                 );
+            }
+        }
+    }
+
+    /**
+     * Ensure all card mtgo_ids referenced by these matches have oracle_ids.
+     *
+     * 1. Creates stubs for unknown mtgo_ids
+     * 2. Tries the API to populate them
+     * 3. Falls back to name-based oracle_id resolution for any the API doesn't know
+     */
+    private static function ensureCardsPopulated(array $matches): void
+    {
+        // Collect mtgo_id => name from all card references
+        $cardNames = [];
+
+        foreach ($matches as $data) {
+            foreach ($data['local_cards'] ?? [] as $card) {
+                $cardNames[$card['mtgo_id']] = $card['name'];
+            }
+            foreach ($data['opponent_cards'] ?? [] as $card) {
+                $cardNames[$card['mtgo_id']] = $card['name'];
+            }
+            foreach ($data['games'] ?? [] as $game) {
+                foreach ($game['local_cards'] ?? [] as $card) {
+                    $cardNames[$card['mtgo_id']] = $card['name'];
+                }
+                foreach ($game['opponent_cards'] ?? [] as $card) {
+                    $cardNames[$card['mtgo_id']] = $card['name'];
+                }
+            }
+        }
+
+        if (empty($cardNames)) {
+            return;
+        }
+
+        $mtgoIds = array_keys($cardNames);
+
+        // Create stubs for any cards not yet in the DB
+        $existing = Card::whereIn('mtgo_id', $mtgoIds)->pluck('mtgo_id')->toArray();
+        $missing = array_diff($mtgoIds, $existing);
+
+        if (! empty($missing)) {
+            Card::insert(
+                collect($missing)->map(fn ($id) => [
+                    'mtgo_id' => $id,
+                    'name' => $cardNames[$id] ?? null,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ])->toArray()
+            );
+        }
+
+        // Try the API for any stubs missing oracle_ids
+        ParseImportableMatches::populateCardsInChunks();
+
+        // Fall back: resolve oracle_ids by name for cards the API doesn't know.
+        // Game logs give us @[CardName@:CatalogID,...] so we know the name even
+        // when the API hasn't indexed this particular printing.
+        $stillMissing = Card::whereIn('mtgo_id', $mtgoIds)
+            ->whereNull('oracle_id')
+            ->get();
+
+        if ($stillMissing->isEmpty()) {
+            return;
+        }
+
+        // Build name → oracle_id lookup from cards we DO have
+        $knownOracles = Card::whereNotNull('oracle_id')
+            ->whereNotNull('name')
+            ->get()
+            ->groupBy('name')
+            ->map(fn ($cards) => $cards->first()->oracle_id);
+
+        foreach ($stillMissing as $card) {
+            $name = $card->name ?: ($cardNames[$card->mtgo_id] ?? null);
+
+            if (! $name) {
+                continue;
+            }
+
+            $oracleId = $knownOracles->get($name);
+
+            if ($oracleId) {
+                $card->update(array_filter([
+                    'name' => $card->name ?: $name,
+                    'oracle_id' => $oracleId,
+                ]));
             }
         }
     }
