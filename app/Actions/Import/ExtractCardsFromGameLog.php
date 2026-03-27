@@ -9,19 +9,65 @@ class ExtractCardsFromGameLog
     /**
      * Extract unique card names and CatalogIDs per player from parsed game log entries.
      *
+     * Returns match-level aggregates (cards_by_player) and per-game breakdowns (cards_by_game).
+     *
      * @param  array<int, array{timestamp: string, message: string}>  $entries
-     * @return array{players: string[], cards_by_player: array<string, array<int, array{mtgo_id: int, name: string}>>}
+     * @return array{players: string[], cards_by_player: array<string, array<int, array{mtgo_id: int, name: string}>>, cards_by_game: array<int, array<string, array<int, array{mtgo_id: int, name: string}>>>}
      */
     public static function run(array $entries): array
     {
         $players = ExtractGameResults::detectPlayers($entries);
+        $games = self::splitIntoGames($entries);
+
+        // Per-game extraction
+        $cardsByGame = [];
+        // Match-level aggregate (union of all games)
+        $matchSeen = [];
         $cardsByPlayer = [];
 
         foreach ($players as $player) {
             $cardsByPlayer[$player] = [];
         }
 
+        foreach ($games as $gameIndex => $gameEntries) {
+            $gameCards = self::extractFromEntries($gameEntries, $players);
+            $cardsByGame[$gameIndex] = $gameCards;
+
+            // Merge into match-level aggregate
+            foreach ($players as $player) {
+                foreach ($gameCards[$player] ?? [] as $card) {
+                    if (isset($matchSeen[$player][$card['mtgo_id']])) {
+                        continue;
+                    }
+
+                    $matchSeen[$player][$card['mtgo_id']] = true;
+                    $cardsByPlayer[$player][] = $card;
+                }
+            }
+        }
+
+        return [
+            'players' => $players,
+            'cards_by_player' => $cardsByPlayer,
+            'cards_by_game' => $cardsByGame,
+        ];
+    }
+
+    /**
+     * Extract unique cards per player from a set of entries (single game or full match).
+     *
+     * @param  array<int, array{timestamp: string, message: string}>  $entries
+     * @param  array<int, string>  $players
+     * @return array<string, array<int, array{mtgo_id: int, name: string}>>
+     */
+    private static function extractFromEntries(array $entries, array $players): array
+    {
+        $cardsByPlayer = [];
         $seen = [];
+
+        foreach ($players as $player) {
+            $cardsByPlayer[$player] = [];
+        }
 
         foreach ($entries as $entry) {
             $msg = $entry['message'];
@@ -50,9 +96,42 @@ class ExtractCardsFromGameLog
             }
         }
 
-        return [
-            'players' => $players,
-            'cards_by_player' => $cardsByPlayer,
-        ];
+        return $cardsByPlayer;
+    }
+
+    /**
+     * Split entries into per-game groups using game boundary detection.
+     *
+     * Mirrors ExtractGameResults::splitIntoGames logic.
+     *
+     * @return array<int, array<int, array{timestamp: string, message: string}>>
+     */
+    private static function splitIntoGames(array $entries): array
+    {
+        $games = [];
+        $current = [];
+        $gameEndSeen = false;
+
+        foreach ($entries as $entry) {
+            $msg = $entry['message'];
+
+            if (preg_match('/wins the game|has conceded from the game|has lost connection to the game/', $msg)) {
+                $gameEndSeen = true;
+            }
+
+            if ($gameEndSeen && (preg_match('/^@P\w+ rolled a \d/', $msg) || preg_match('/^@P@P\w+ joined the game/', $msg))) {
+                $games[] = $current;
+                $current = [];
+                $gameEndSeen = false;
+            }
+
+            $current[] = $entry;
+        }
+
+        if (! empty($current)) {
+            $games[] = $current;
+        }
+
+        return $games;
     }
 }
