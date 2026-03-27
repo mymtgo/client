@@ -331,104 +331,125 @@ function showCards(match: ImportableMatch) {
             </div>
 
             <!-- Table -->
-            <div class="rounded-md border">
-                <table class="w-full text-sm">
+            <div class="rounded-md border overflow-hidden">
+                <table class="w-full table-fixed text-sm">
                     <thead>
                         <tr class="border-b bg-muted/50 text-left text-xs text-muted-foreground">
                             <th class="w-10 p-3"></th>
-                            <th class="p-3">Date</th>
+                            <th class="w-[100px] p-3">Date</th>
                             <th class="p-3">Opponent</th>
-                            <th class="p-3">Format</th>
-                            <th class="p-3">Result</th>
-                            <th class="p-3">Deck</th>
+                            <th class="w-[90px] p-3">Format</th>
+                            <th class="w-[100px] p-3">Result</th>
+                            <th class="w-[200px] p-3">Deck</th>
                             <th class="w-20 p-3 text-center">Confidence</th>
-                            <th class="w-16 p-3"></th>
+                            <th class="w-10 p-3"></th>
                         </tr>
                     </thead>
                     <tbody>
-                        <tr
-                            v-for="match in filteredMatches"
-                            :key="match.history_id"
-                            class="border-b transition-colors hover:bg-muted/30"
-                            :class="{ 'bg-muted/10': selectedIds.has(match.history_id) }"
-                        >
-                            <td class="p-3">
-                                <input
-                                    type="checkbox"
-                                    :checked="selectedIds.has(match.history_id)"
-                                    @change="toggleSelect(match.history_id)"
-                                    class="size-4 rounded border-input accent-primary"
-                                />
-                            </td>
-                            <td class="p-3 whitespace-nowrap">{{ formatDate(match.started_at) }}</td>
-                            <td class="p-3">{{ match.opponent }}</td>
-                            <td class="p-3">{{ match.format }}</td>
-                            <td class="p-3">
-                                <template v-if="match.has_game_log && match.games">
-                                    <span class="flex gap-1">
+                        <template v-for="match in filteredMatches" :key="match.history_id">
+                            <tr
+                                class="transition-colors hover:bg-muted/30"
+                                :class="[
+                                    selectedIds.has(match.history_id) ? 'bg-muted/10' : '',
+                                    match.local_cards && match.local_cards.length > 0 ? '' : 'border-b',
+                                ]"
+                            >
+                                <td class="p-3">
+                                    <input
+                                        type="checkbox"
+                                        :checked="selectedIds.has(match.history_id)"
+                                        @change="toggleSelect(match.history_id)"
+                                        class="size-4 rounded border-input accent-primary"
+                                    />
+                                </td>
+                                <td class="p-3 whitespace-nowrap">{{ formatDate(match.started_at) }}</td>
+                                <td class="p-3">{{ match.opponent }}</td>
+                                <td class="p-3">{{ match.format }}</td>
+                                <td class="p-3">
+                                    <template v-if="match.has_game_log && match.games">
+                                        <span class="flex gap-1">
+                                            <Badge
+                                                v-for="(game, i) in match.games"
+                                                :key="i"
+                                                :variant="game.won ? 'default' : 'destructive'"
+                                                class="text-xs"
+                                            >
+                                                {{ game.won ? 'W' : 'L' }}
+                                            </Badge>
+                                        </span>
+                                    </template>
+                                    <template v-else>
+                                        <span class="text-muted-foreground">
+                                            {{ match.games_won }}-{{ match.games_lost }}
+                                        </span>
+                                    </template>
+                                </td>
+                                <td class="p-3">
+                                    <select
+                                        class="h-8 w-full max-w-[200px] rounded-md border border-input bg-background px-2 text-xs"
+                                        :value="deckChoices[match.history_id] ?? ''"
+                                        @change="deckChoices[match.history_id] = ($event.target as HTMLSelectElement).value ? Number(($event.target as HTMLSelectElement).value) : null"
+                                    >
+                                        <option value="">No deck</option>
+                                        <optgroup v-if="activeDeckVersions.length" label="Active Decks">
+                                            <option
+                                                v-for="dv in activeDeckVersions"
+                                                :key="dv.id"
+                                                :value="dv.id"
+                                            >
+                                                {{ dv.deck_name }} ({{ dv.modified_at }})
+                                            </option>
+                                        </optgroup>
+                                        <optgroup v-if="deletedDeckVersions.length" label="Deleted Decks">
+                                            <option
+                                                v-for="dv in deletedDeckVersions"
+                                                :key="dv.id"
+                                                :value="dv.id"
+                                            >
+                                                {{ dv.deck_name }} (deleted) ({{ dv.modified_at }})
+                                            </option>
+                                        </optgroup>
+                                    </select>
+                                </td>
+                                <td class="p-3 text-center">
+                                    <span
+                                        v-if="match.deck_match_confidence !== null"
+                                        :class="confidenceColor(match.deck_match_confidence)"
+                                        class="text-xs font-medium"
+                                    >
+                                        {{ Math.round(match.deck_match_confidence * 100) }}%
+                                    </span>
+                                    <Minus v-else class="mx-auto size-4 text-muted-foreground" />
+                                </td>
+                                <td class="p-3 text-center">
+                                    <button
+                                        v-if="match.local_cards && match.local_cards.length > 0"
+                                        @click="showCards(match)"
+                                        class="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs text-muted-foreground hover:text-foreground"
+                                    >
+                                        <Eye class="size-3.5" />
+                                    </button>
+                                </td>
+                            </tr>
+                            <tr
+                                v-if="match.local_cards && match.local_cards.length > 0"
+                                class="border-b"
+                                :class="{ 'bg-muted/10': selectedIds.has(match.history_id) }"
+                            >
+                                <td colspan="8" class="px-3 pb-2 pt-0">
+                                    <div class="flex items-center gap-1 overflow-x-auto scrollbar-none">
                                         <Badge
-                                            v-for="(game, i) in match.games"
-                                            :key="i"
-                                            :variant="game.won ? 'default' : 'destructive'"
-                                            class="text-xs"
+                                            v-for="card in match.local_cards"
+                                            :key="card.mtgo_id"
+                                            variant="secondary"
+                                            class="shrink-0 text-[11px] leading-tight px-1.5 py-0"
                                         >
-                                            {{ game.won ? 'W' : 'L' }}
+                                            {{ card.name }}
                                         </Badge>
-                                    </span>
-                                </template>
-                                <template v-else>
-                                    <span class="text-muted-foreground">
-                                        {{ match.games_won }}-{{ match.games_lost }}
-                                    </span>
-                                </template>
-                            </td>
-                            <td class="p-3">
-                                <select
-                                    class="h-8 w-full max-w-[200px] rounded-md border border-input bg-background px-2 text-xs"
-                                    :value="deckChoices[match.history_id] ?? ''"
-                                    @change="deckChoices[match.history_id] = ($event.target as HTMLSelectElement).value ? Number(($event.target as HTMLSelectElement).value) : null"
-                                >
-                                    <option value="">No deck</option>
-                                    <optgroup v-if="activeDeckVersions.length" label="Active Decks">
-                                        <option
-                                            v-for="dv in activeDeckVersions"
-                                            :key="dv.id"
-                                            :value="dv.id"
-                                        >
-                                            {{ dv.deck_name }} ({{ dv.modified_at }})
-                                        </option>
-                                    </optgroup>
-                                    <optgroup v-if="deletedDeckVersions.length" label="Deleted Decks">
-                                        <option
-                                            v-for="dv in deletedDeckVersions"
-                                            :key="dv.id"
-                                            :value="dv.id"
-                                        >
-                                            {{ dv.deck_name }} (deleted) ({{ dv.modified_at }})
-                                        </option>
-                                    </optgroup>
-                                </select>
-                            </td>
-                            <td class="p-3 text-center">
-                                <span
-                                    v-if="match.deck_match_confidence !== null"
-                                    :class="confidenceColor(match.deck_match_confidence)"
-                                    class="text-xs font-medium"
-                                >
-                                    {{ Math.round(match.deck_match_confidence * 100) }}%
-                                </span>
-                                <Minus v-else class="mx-auto size-4 text-muted-foreground" />
-                            </td>
-                            <td class="p-3 text-center">
-                                <button
-                                    v-if="match.local_cards && match.local_cards.length > 0"
-                                    @click="showCards(match)"
-                                    class="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs text-muted-foreground hover:text-foreground"
-                                >
-                                    <Eye class="size-3.5" />
-                                </button>
-                            </td>
-                        </tr>
+                                    </div>
+                                </td>
+                            </tr>
+                        </template>
                     </tbody>
                 </table>
             </div>
