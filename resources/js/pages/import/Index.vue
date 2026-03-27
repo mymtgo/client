@@ -4,7 +4,7 @@ import StoreController from '@/actions/App/Http/Controllers/Import/StoreControll
 import DestroyController from '@/actions/App/Http/Controllers/Import/DestroyController';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Spinner } from '@/components/ui/spinner';
 import { AlertTriangle, Check, Eye, FileUp, Minus, Trash2 } from 'lucide-vue-next';
@@ -65,6 +65,14 @@ interface ImportableMatch {
     game_ids: number[];
 }
 
+interface MatchGroup {
+    key: string;
+    date: string;
+    format: string;
+    sharedCards: Array<{ mtgo_id: number; name: string }>;
+    matches: ImportableMatch[];
+}
+
 const props = defineProps<{
     deckVersions: DeckVersionOption[];
     importedCount: number;
@@ -111,6 +119,136 @@ const selectedWithoutDeck = computed(() => {
 const canImport = computed(() => {
     return selectedCount.value > 0 && selectedWithoutDeck.value.length === 0 && !importing.value;
 });
+
+// --- Grouping logic ---
+
+function getDateKey(iso: string): string {
+    return new Date(iso).toISOString().slice(0, 10);
+}
+
+function cardSet(m: ImportableMatch): Set<number> {
+    return new Set((m.local_cards ?? []).map((c) => c.mtgo_id));
+}
+
+function jaccard(a: Set<number>, b: Set<number>): number {
+    if (a.size === 0 && b.size === 0) return 1;
+    if (a.size === 0 || b.size === 0) return 0;
+    let intersection = 0;
+    for (const id of a) {
+        if (b.has(id)) intersection++;
+    }
+    return intersection / (a.size + b.size - intersection);
+}
+
+function sharedCardsForGroup(groupMatches: ImportableMatch[]): Array<{ mtgo_id: number; name: string }> {
+    const counts = new Map<number, { name: string; count: number }>();
+    for (const m of groupMatches) {
+        for (const c of m.local_cards ?? []) {
+            const entry = counts.get(c.mtgo_id);
+            if (entry) {
+                entry.count++;
+            } else {
+                counts.set(c.mtgo_id, { name: c.name, count: 1 });
+            }
+        }
+    }
+    // Cards seen in at least half the matches in the group
+    const threshold = Math.max(1, Math.ceil(groupMatches.length / 2));
+    return [...counts.entries()]
+        .filter(([, v]) => v.count >= threshold)
+        .map(([mtgo_id, v]) => ({ mtgo_id, name: v.name }));
+}
+
+const SIMILARITY_THRESHOLD = 0.4;
+
+const groupedMatches = computed<MatchGroup[]>(() => {
+    // Group by format first, then cluster by card similarity within each format
+    const byFormat = new Map<string, ImportableMatch[]>();
+    for (const m of filteredMatches.value) {
+        const arr = byFormat.get(m.format);
+        if (arr) {
+            arr.push(m);
+        } else {
+            byFormat.set(m.format, [m]);
+        }
+    }
+
+    const groups: MatchGroup[] = [];
+
+    for (const [format, formatMatches] of byFormat) {
+        const clusters: { seed: Set<number>; matches: ImportableMatch[] }[] = [];
+
+        for (const m of formatMatches) {
+            const mCards = cardSet(m);
+            let placed = false;
+
+            if (mCards.size > 0) {
+                for (const cluster of clusters) {
+                    if (cluster.seed.size > 0 && jaccard(mCards, cluster.seed) >= SIMILARITY_THRESHOLD) {
+                        cluster.matches.push(m);
+                        for (const id of mCards) cluster.seed.add(id);
+                        placed = true;
+                        break;
+                    }
+                }
+            }
+
+            if (!placed) {
+                clusters.push({ seed: mCards, matches: [m] });
+            }
+        }
+
+        for (let i = 0; i < clusters.length; i++) {
+            const cluster = clusters[i];
+            // Sort matches within cluster by date descending
+            cluster.matches.sort((a, b) => b.started_at.localeCompare(a.started_at));
+            groups.push({
+                key: `${format}|${i}`,
+                date: '',
+                format,
+                sharedCards: sharedCardsForGroup(cluster.matches),
+                matches: cluster.matches,
+            });
+        }
+    }
+
+    // Sort groups by match count descending (biggest clusters first)
+    groups.sort((a, b) => b.matches.length - a.matches.length);
+
+    return groups;
+});
+
+// --- Group selection helpers ---
+
+function isGroupFullySelected(group: MatchGroup): boolean {
+    return group.matches.every((m) => selectedIds.value.has(m.history_id));
+}
+
+function isGroupPartiallySelected(group: MatchGroup): boolean {
+    const selected = group.matches.filter((m) => selectedIds.value.has(m.history_id));
+    return selected.length > 0 && selected.length < group.matches.length;
+}
+
+function toggleGroupSelect(group: MatchGroup) {
+    if (isGroupFullySelected(group)) {
+        for (const m of group.matches) {
+            selectedIds.value.delete(m.history_id);
+        }
+    } else {
+        for (const m of group.matches) {
+            selectedIds.value.add(m.history_id);
+        }
+    }
+    selectedIds.value = new Set(selectedIds.value);
+}
+
+function setGroupDeck(group: MatchGroup, deckId: number | null) {
+    for (const m of group.matches) {
+        deckChoices.value[m.history_id] = deckId;
+    }
+}
+
+// --- Core actions ---
 
 async function scan() {
     scanning.value = true;
@@ -227,6 +365,11 @@ function formatDate(iso: string): string {
     return d.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
+function formatDateKey(dateKey: string): string {
+    const d = new Date(dateKey + 'T00:00:00');
+    return d.toLocaleDateString('en-GB', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' });
+}
+
 function confidenceColor(confidence: number | null): string {
     if (confidence === null) return 'text-muted-foreground';
     if (confidence >= 0.8) return 'text-green-500';
@@ -263,11 +406,9 @@ async function deleteAllImported() {
             return;
         }
 
-        const data = await response.json();
         importedCount.value = 0;
         deleteModalOpen.value = false;
 
-        // Re-scan to refresh the list since deleted matches are now importable again
         if (scanned.value) {
             await scan();
         }
@@ -342,153 +483,155 @@ async function deleteAllImported() {
         <!-- Results -->
         <template v-if="scanned && matches.length > 0">
             <!-- Summary + filters -->
-            <div class="flex flex-col gap-3">
-                <div class="flex items-center justify-between">
-                    <p class="text-sm text-muted-foreground">
-                        Found <strong>{{ summary.total }}</strong> matches.
-                        <strong>{{ summary.withGameLog }}</strong> have game logs.
-                        <strong>{{ summary.withDeck }}</strong> have suggested deck matches.
-                    </p>
-                    <div class="flex items-center gap-2">
-                        <select
-                            v-model="formatFilter"
-                            class="h-8 rounded-md border border-input bg-background px-2 text-xs"
-                        >
-                            <option value="all">All formats</option>
-                            <option v-for="fmt in availableFormats" :key="fmt" :value="fmt">{{ fmt }}</option>
-                        </select>
-                        <Button variant="outline" size="sm" @click="selectAll">Select all</Button>
-                        <Button variant="outline" size="sm" @click="selectWithDeck">Select with deck</Button>
-                        <Button variant="outline" size="sm" @click="deselectAll">Deselect all</Button>
-                    </div>
+            <div class="flex items-center justify-between">
+                <p class="text-sm text-muted-foreground">
+                    Found <strong>{{ summary.total }}</strong> matches in
+                    <strong>{{ groupedMatches.length }}</strong> groups.
+                    <strong>{{ summary.withGameLog }}</strong> have game logs.
+                </p>
+                <div class="flex items-center gap-2">
+                    <select
+                        v-model="formatFilter"
+                        class="h-8 rounded-md border border-input bg-background px-2 text-xs"
+                    >
+                        <option value="all">All formats</option>
+                        <option v-for="fmt in availableFormats" :key="fmt" :value="fmt">{{ fmt }}</option>
+                    </select>
+                    <Button variant="outline" size="sm" @click="selectAll">Select all</Button>
+                    <Button variant="outline" size="sm" @click="deselectAll">Deselect all</Button>
                 </div>
             </div>
 
-            <!-- Table -->
-            <div class="rounded-md border overflow-hidden">
-                <table class="w-full table-fixed text-sm">
-                    <thead>
-                        <tr class="border-b bg-muted/50 text-left text-xs text-muted-foreground">
-                            <th class="w-10 p-3"></th>
-                            <th class="w-[100px] p-3">Date</th>
-                            <th class="p-3">Opponent</th>
-                            <th class="w-[90px] p-3">Format</th>
-                            <th class="w-[100px] p-3">Result</th>
-                            <th class="w-[200px] p-3">Deck</th>
-                            <th class="w-20 p-3 text-center">Confidence</th>
-                            <th class="w-10 p-3"></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <template v-for="match in filteredMatches" :key="match.history_id">
-                            <tr
-                                class="transition-colors hover:bg-muted/30"
-                                :class="[
-                                    selectedIds.has(match.history_id) ? 'bg-muted/10' : '',
-                                    match.local_cards && match.local_cards.length > 0 ? '' : 'border-b',
-                                ]"
-                            >
-                                <td class="p-3">
-                                    <input
-                                        type="checkbox"
-                                        :checked="selectedIds.has(match.history_id)"
-                                        @change="toggleSelect(match.history_id)"
-                                        class="size-4 rounded border-input accent-primary"
-                                    />
-                                </td>
-                                <td class="p-3 whitespace-nowrap">{{ formatDate(match.started_at) }}</td>
-                                <td class="p-3">{{ match.opponent }}</td>
-                                <td class="p-3">{{ match.format }}</td>
-                                <td class="p-3">
-                                    <template v-if="match.has_game_log && match.games">
-                                        <span class="flex gap-1">
-                                            <Badge
-                                                v-for="(game, i) in match.games"
-                                                :key="i"
-                                                :variant="game.won ? 'default' : 'destructive'"
-                                                class="text-xs"
-                                            >
-                                                {{ game.won ? 'W' : 'L' }}
-                                            </Badge>
-                                        </span>
-                                    </template>
-                                    <template v-else>
-                                        <span class="text-muted-foreground">
-                                            {{ match.games_won }}-{{ match.games_lost }}
-                                        </span>
-                                    </template>
-                                </td>
-                                <td class="p-3">
-                                    <select
-                                        class="h-8 w-full max-w-[200px] rounded-md border border-input bg-background px-2 text-xs"
-                                        :value="deckChoices[match.history_id] ?? ''"
-                                        @change="deckChoices[match.history_id] = ($event.target as HTMLSelectElement).value ? Number(($event.target as HTMLSelectElement).value) : null"
-                                    >
-                                        <option value="">No deck</option>
-                                        <optgroup v-if="activeDeckVersions.length" label="Active Decks">
-                                            <option
-                                                v-for="dv in activeDeckVersions"
-                                                :key="dv.id"
-                                                :value="dv.id"
-                                            >
-                                                {{ dv.deck_name }} ({{ dv.modified_at }})
-                                            </option>
-                                        </optgroup>
-                                        <optgroup v-if="deletedDeckVersions.length" label="Deleted Decks">
-                                            <option
-                                                v-for="dv in deletedDeckVersions"
-                                                :key="dv.id"
-                                                :value="dv.id"
-                                            >
-                                                {{ dv.deck_name }} (deleted) ({{ dv.modified_at }})
-                                            </option>
-                                        </optgroup>
-                                    </select>
-                                </td>
-                                <td class="p-3 text-center">
-                                    <span
-                                        v-if="match.deck_match_confidence !== null"
-                                        :class="confidenceColor(match.deck_match_confidence)"
-                                        class="text-xs font-medium"
-                                    >
-                                        {{ Math.round(match.deck_match_confidence * 100) }}%
-                                    </span>
-                                    <Minus v-else class="mx-auto size-4 text-muted-foreground" />
-                                </td>
-                                <td class="p-3 text-center">
-                                    <button
-                                        v-if="match.local_cards && match.local_cards.length > 0"
-                                        @click="showCards(match)"
-                                        class="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs text-muted-foreground hover:text-foreground"
-                                    >
-                                        <Eye class="size-3.5" />
-                                    </button>
-                                </td>
-                            </tr>
-                            <tr
-                                v-if="match.local_cards && match.local_cards.length > 0"
-                                class="border-b"
-                                :class="{ 'bg-muted/10': selectedIds.has(match.history_id) }"
-                            >
-                                <td colspan="8" class="px-3 pb-2 pt-0">
-                                    <div class="flex items-center gap-1 overflow-x-auto scrollbar-none">
-                                        <Badge
-                                            v-for="card in match.local_cards"
-                                            :key="card.mtgo_id"
-                                            variant="secondary"
-                                            class="shrink-0 text-[11px] leading-tight px-1.5 py-0"
+            <!-- Grouped cards -->
+            <div class="space-y-4">
+                <Card v-for="group in groupedMatches" :key="group.key" class="overflow-hidden">
+                    <CardHeader class="flex flex-row items-center gap-3 space-y-0 border-b bg-muted/30 px-4 py-3">
+                        <input
+                            type="checkbox"
+                            :checked="isGroupFullySelected(group)"
+                            :indeterminate="isGroupPartiallySelected(group)"
+                            @change="toggleGroupSelect(group)"
+                            class="size-4 rounded border-input accent-primary"
+                        />
+                        <div class="flex flex-1 items-center gap-3">
+                            <Badge variant="outline" class="text-xs">{{ group.format }}</Badge>
+                            <span class="text-xs text-muted-foreground">{{ group.matches.length }} match(es)</span>
+                        </div>
+                        <select
+                            class="h-8 w-[200px] rounded-md border border-input bg-background px-2 text-xs"
+                            :value="deckChoices[group.matches[0]?.history_id] ?? ''"
+                            @change="setGroupDeck(group, ($event.target as HTMLSelectElement).value ? Number(($event.target as HTMLSelectElement).value) : null)"
+                        >
+                            <option value="">Assign deck...</option>
+                            <optgroup v-if="activeDeckVersions.length" label="Active Decks">
+                                <option v-for="dv in activeDeckVersions" :key="dv.id" :value="dv.id">
+                                    {{ dv.deck_name }} ({{ dv.modified_at }})
+                                </option>
+                            </optgroup>
+                            <optgroup v-if="deletedDeckVersions.length" label="Deleted Decks">
+                                <option v-for="dv in deletedDeckVersions" :key="dv.id" :value="dv.id">
+                                    {{ dv.deck_name }} (deleted) ({{ dv.modified_at }})
+                                </option>
+                            </optgroup>
+                        </select>
+                    </CardHeader>
+
+                    <!-- Shared cards preview -->
+                    <div v-if="group.sharedCards.length > 0" class="flex items-center gap-1 overflow-x-auto border-b bg-muted/10 px-4 py-2 scrollbar-none">
+                        <Badge
+                            v-for="card in group.sharedCards"
+                            :key="card.mtgo_id"
+                            variant="secondary"
+                            class="shrink-0 text-[11px] leading-tight px-1.5 py-0"
+                        >
+                            {{ card.name }}
+                        </Badge>
+                    </div>
+
+                    <CardContent class="p-0">
+                        <table class="w-full table-fixed text-sm">
+                            <tbody>
+                                <tr
+                                    v-for="match in group.matches"
+                                    :key="match.history_id"
+                                    class="border-b last:border-b-0 transition-colors hover:bg-muted/30"
+                                    :class="{ 'bg-muted/10': selectedIds.has(match.history_id) }"
+                                >
+                                    <td class="w-10 p-3">
+                                        <input
+                                            type="checkbox"
+                                            :checked="selectedIds.has(match.history_id)"
+                                            @change="toggleSelect(match.history_id)"
+                                            class="size-4 rounded border-input accent-primary"
+                                        />
+                                    </td>
+                                    <td class="w-[90px] p-3 whitespace-nowrap text-muted-foreground">{{ formatDate(match.started_at) }}</td>
+                                    <td class="p-3">{{ match.opponent }}</td>
+                                    <td class="w-[100px] p-3">
+                                        <template v-if="match.has_game_log && match.games">
+                                            <span class="flex gap-1">
+                                                <Badge
+                                                    v-for="(game, i) in match.games"
+                                                    :key="i"
+                                                    :variant="game.won ? 'default' : 'destructive'"
+                                                    class="text-xs"
+                                                >
+                                                    {{ game.won ? 'W' : 'L' }}
+                                                </Badge>
+                                            </span>
+                                        </template>
+                                        <template v-else>
+                                            <span class="text-muted-foreground">
+                                                {{ match.games_won }}-{{ match.games_lost }}
+                                            </span>
+                                        </template>
+                                    </td>
+                                    <td class="w-[200px] p-3">
+                                        <select
+                                            class="h-8 w-full rounded-md border border-input bg-background px-2 text-xs"
+                                            :value="deckChoices[match.history_id] ?? ''"
+                                            @change="deckChoices[match.history_id] = ($event.target as HTMLSelectElement).value ? Number(($event.target as HTMLSelectElement).value) : null"
                                         >
-                                            {{ card.name }}
-                                        </Badge>
-                                    </div>
-                                </td>
-                            </tr>
-                        </template>
-                    </tbody>
-                </table>
+                                            <option value="">No deck</option>
+                                            <optgroup v-if="activeDeckVersions.length" label="Active Decks">
+                                                <option v-for="dv in activeDeckVersions" :key="dv.id" :value="dv.id">
+                                                    {{ dv.deck_name }} ({{ dv.modified_at }})
+                                                </option>
+                                            </optgroup>
+                                            <optgroup v-if="deletedDeckVersions.length" label="Deleted Decks">
+                                                <option v-for="dv in deletedDeckVersions" :key="dv.id" :value="dv.id">
+                                                    {{ dv.deck_name }} (deleted) ({{ dv.modified_at }})
+                                                </option>
+                                            </optgroup>
+                                        </select>
+                                    </td>
+                                    <td class="w-20 p-3 text-center">
+                                        <span
+                                            v-if="match.deck_match_confidence !== null"
+                                            :class="confidenceColor(match.deck_match_confidence)"
+                                            class="text-xs font-medium"
+                                        >
+                                            {{ Math.round(match.deck_match_confidence * 100) }}%
+                                        </span>
+                                        <Minus v-else class="mx-auto size-4 text-muted-foreground" />
+                                    </td>
+                                    <td class="w-10 p-3 text-center">
+                                        <button
+                                            v-if="match.local_cards && match.local_cards.length > 0"
+                                            @click="showCards(match)"
+                                            class="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs text-muted-foreground hover:text-foreground"
+                                        >
+                                            <Eye class="size-3.5" />
+                                        </button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </CardContent>
+                </Card>
             </div>
 
-            <!-- Bottom spacer so table content isn't hidden behind fixed bar -->
+            <!-- Bottom spacer -->
             <div class="h-20"></div>
         </template>
 
