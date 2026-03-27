@@ -20,12 +20,11 @@ class ImportMatches
      * Import selected matches into the database.
      *
      * @param  array<int, array>  $matches
-     * @param  string|null  $dataPath  Override data path (for dev/testing)
      * @return array{imported: int, skipped: int}
      */
-    public static function run(array $matches, ?string $dataPath = null): array
+    public static function run(array $matches): array
     {
-        $dataPath ??= config('mymtgo.import_data_path') ?: Mtgo::getLogDataPath();
+        $dataPath = Mtgo::getLogDataPath();
         $imported = 0;
         $skipped = 0;
 

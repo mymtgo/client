@@ -17,12 +17,11 @@ class ParseImportableMatches
     /**
      * Parse MTGO history + game logs and return importable match data.
      *
-     * @param  string|null  $dataPath  Override data path (for dev/testing)
      * @return array<int, array>
      */
-    public static function run(?string $dataPath = null): array
+    public static function run(): array
     {
-        $dataPath ??= Mtgo::getLogDataPath();
+        $dataPath = Mtgo::getLogDataPath();
         $historyPath = ParseGameHistory::findFile() ?? $dataPath.'/mtgo_game_history';
         $historyRecords = ParseGameHistory::parse($historyPath);
 
