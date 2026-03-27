@@ -2,9 +2,12 @@
 
 namespace App\Actions\Import;
 
+use App\Actions\Matches\ParseGameLogBinary;
 use App\Enums\MatchOutcome;
 use App\Enums\MatchState;
+use App\Facades\Mtgo;
 use App\Models\Game;
+use App\Models\GameLog;
 use App\Models\MtgoMatch;
 use App\Models\Player;
 use Illuminate\Support\Str;
@@ -15,10 +18,12 @@ class ImportMatches
      * Import selected matches into the database.
      *
      * @param  array<int, array>  $matches
+     * @param  string|null  $dataPath  Override data path (for dev/testing)
      * @return array{imported: int, skipped: int}
      */
-    public static function run(array $matches): array
+    public static function run(array $matches, ?string $dataPath = null): array
     {
+        $dataPath ??= config('mymtgo.import_data_path') ?: Mtgo::getLogDataPath();
         $imported = 0;
         $skipped = 0;
 
@@ -55,6 +60,11 @@ class ImportMatches
                 'outcome' => $outcome,
                 'imported' => true,
             ]);
+
+            // Create GameLog record if we have a game log token
+            if ($data['game_log_token'] ?? null) {
+                self::createGameLog($match, $data['game_log_token'], $dataPath);
+            }
 
             if (! empty($data['games']) && $data['local_player']) {
                 self::createGames($match, $data);
@@ -112,5 +122,30 @@ class ImportMatches
                 );
             }
         }
+    }
+
+    private static function createGameLog(MtgoMatch $match, string $gameLogToken, string $dataPath): void
+    {
+        $filePath = $dataPath.'/Match_GameLog_'.$gameLogToken.'.dat';
+
+        if (! file_exists($filePath)) {
+            return;
+        }
+
+        $raw = file_get_contents($filePath);
+        $parsed = ParseGameLogBinary::run($raw);
+
+        if (! $parsed || empty($parsed['entries'])) {
+            return;
+        }
+
+        GameLog::create([
+            'match_token' => $match->token,
+            'file_path' => $filePath,
+            'decoded_entries' => $parsed['entries'],
+            'decoded_at' => now(),
+            'byte_offset' => $parsed['byte_offset'],
+            'decoded_version' => ParseGameLogBinary::VERSION,
+        ]);
     }
 }

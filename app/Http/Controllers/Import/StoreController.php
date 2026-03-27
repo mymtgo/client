@@ -30,7 +30,8 @@ class StoreController extends Controller
             'matches.*.deck_version_id' => 'nullable|integer|exists:deck_versions,id',
         ]);
 
-        $result = ImportMatches::run($validated['matches']);
+        $dataPath = config('mymtgo.import_data_path');
+        $result = ImportMatches::run($validated['matches'], $dataPath ?: null);
 
         return response()->json($result);
     }
