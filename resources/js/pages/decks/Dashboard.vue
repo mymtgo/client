@@ -13,6 +13,7 @@ const props = defineProps<{
     currentVersionId: number | null;
     trophies: number;
     currentPage: string;
+    timeframe: string;
     matchesWon: number;
     matchesLost: number;
     gamesWon: number;
@@ -43,6 +44,8 @@ const activeVersion = computed((): VersionStats => {
             :chart-data="chartData"
             :matchup-spread="matchupSpread"
             :league-results="leagueResults"
+            :deck-id="deck.id"
+            :timeframe="timeframe"
         />
     </div>
 </template>

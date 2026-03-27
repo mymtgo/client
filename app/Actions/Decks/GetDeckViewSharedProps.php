@@ -5,6 +5,7 @@ namespace App\Actions\Decks;
 use App\Data\Front\DeckData;
 use App\Enums\MatchOutcome;
 use App\Models\Deck;
+use Carbon\Carbon;
 
 class GetDeckViewSharedProps
 {
@@ -13,13 +14,13 @@ class GetDeckViewSharedProps
      *
      * @return array{deck: DeckData, versions: array, currentVersionId: int|null, trophies: int}
      */
-    public static function run(Deck $deck): array
+    public static function run(Deck $deck, ?Carbon $from = null, ?Carbon $to = null): array
     {
         $deck->loadCount(['wonMatches', 'lostMatches', 'matches']);
         $deck->loadMax('matches', 'started_at');
 
-        $from = now()->subMonths(2)->startOfDay();
-        $to = now()->endOfDay();
+        $from ??= now()->subMonths(2)->startOfDay();
+        $to ??= now()->endOfDay();
 
         $versions = GetDeckVersionStats::run($deck, $from, $to);
 
