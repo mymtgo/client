@@ -430,8 +430,8 @@ async function deleteAllImported() {
         </div>
 
         <!-- Warning banner -->
-        <Card class="border-yellow-500/50 bg-yellow-500/5">
-            <CardContent class="flex items-start gap-3 p-4">
+        <Card class="border-yellow-500/50 bg-yellow-500/5 py-0">
+            <CardContent class="flex items-start gap-3 p-3">
                 <AlertTriangle class="mt-0.5 size-5 shrink-0 text-yellow-500" />
                 <p class="text-sm">
                     <strong>Imported matches have reduced data fidelity.</strong> Opening hands, sideboard changes,

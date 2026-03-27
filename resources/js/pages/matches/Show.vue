@@ -75,8 +75,8 @@ const opponentArchetype = computed(() => {
 
     <div class="flex flex-col gap-4 p-3 lg:p-4">
             <!-- Imported match banner -->
-            <Card v-if="imported" class="border-yellow-500/30 bg-yellow-500/5">
-                <CardContent class="flex items-center gap-2 py-3 text-sm text-yellow-600 dark:text-yellow-400">
+            <Card v-if="imported" class="border-yellow-500/30 bg-yellow-500/5 py-0">
+                <CardContent class="flex items-center gap-2 p-3 text-sm text-yellow-600 dark:text-yellow-400">
                     <AlertTriangle class="size-4 shrink-0" />
                     This is an imported match. Opening hands, sideboard changes, and turn estimates are not available.
                 </CardContent>
