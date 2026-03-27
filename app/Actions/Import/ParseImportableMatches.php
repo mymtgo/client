@@ -2,11 +2,15 @@
 
 namespace App\Actions\Import;
 
-use App\Actions\Cards\CreateMissingCards;
 use App\Actions\Matches\ExtractGameResults;
 use App\Actions\Matches\ParseGameHistory;
+use App\Actions\RegisterDevice;
 use App\Facades\Mtgo;
+use App\Models\Card;
 use App\Models\MtgoMatch;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
+use Native\Desktop\Facades\Settings;
 
 class ParseImportableMatches
 {
@@ -60,9 +64,19 @@ class ParseImportableMatches
             }
         }
 
-        // Create missing card stubs
+        // Create missing card stubs and populate via API in chunks
         if (! empty($allMtgoIds)) {
-            CreateMissingCards::run(array_keys($allMtgoIds));
+            $mtgoIdList = collect(array_keys($allMtgoIds))->unique()->values();
+            $existing = Card::whereIn('mtgo_id', $mtgoIdList)->pluck('mtgo_id');
+            $newIds = $mtgoIdList->diff($existing);
+
+            if ($newIds->isNotEmpty()) {
+                Card::insert(
+                    $newIds->map(fn ($id) => ['mtgo_id' => $id, 'created_at' => now(), 'updated_at' => now()])->toArray()
+                );
+            }
+
+            self::populateCardsInChunks();
         }
 
         // Build importable match array
@@ -140,5 +154,75 @@ class ParseImportableMatches
         }
 
         return $results;
+    }
+
+    /**
+     * Populate card data from the API in chunks of 200 to avoid request size limits.
+     */
+    private static function populateCardsInChunks(): void
+    {
+        $unpopulated = Card::whereNull('name')->pluck('mtgo_id');
+
+        if ($unpopulated->isEmpty()) {
+            return;
+        }
+
+        $deviceId = Settings::get('device_id');
+        $apiKey = RegisterDevice::retrieveKey();
+
+        if (! $deviceId || ! $apiKey) {
+            Log::channel('pipeline')->warning('ParseImportableMatches: cannot populate cards — no device registration');
+
+            return;
+        }
+
+        foreach ($unpopulated->chunk(200) as $chunk) {
+            try {
+                $response = Http::withHeaders([
+                    'X-Device-Id' => $deviceId,
+                    'X-Api-Key' => $apiKey,
+                ])->post(config('mymtgo_api.url').'/api/cards', [
+                    'ids' => $chunk->values(),
+                    'tokens' => [],
+                ]);
+
+                if (! $response->successful()) {
+                    Log::channel('pipeline')->warning('ParseImportableMatches: card populate chunk failed', [
+                        'status' => $response->status(),
+                    ]);
+
+                    continue;
+                }
+
+                $cardsResponse = collect($response->json());
+
+                foreach ($chunk as $mtgoId) {
+                    $cardData = $cardsResponse->first(
+                        fn ($data) => ($data['value'] ?? null) == $mtgoId
+                    );
+
+                    if (! $cardData) {
+                        continue;
+                    }
+
+                    Card::where('mtgo_id', $mtgoId)->update([
+                        'scryfall_id' => $cardData['scryfall_id'] ?? null,
+                        'oracle_id' => $cardData['oracle_id'] ?? null,
+                        'name' => $cardData['name'] ?? null,
+                        'type' => $cardData['type'] ?? null,
+                        'sub_type' => $cardData['sub_type'] ?? null,
+                        'rarity' => $cardData['rarity'] ?? null,
+                        'color_identity' => isset($cardData['color_identity'])
+                            ? collect(explode(',', $cardData['color_identity']))->map(fn ($c) => $c ?: 'C')->join(',')
+                            : null,
+                        'image' => $cardData['image'] ?? null,
+                    ]);
+                }
+            } catch (\Throwable $e) {
+                Log::channel('pipeline')->warning('ParseImportableMatches: card populate chunk exception', [
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
     }
 }
