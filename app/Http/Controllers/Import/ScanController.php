@@ -10,7 +10,8 @@ class ScanController extends Controller
 {
     public function __invoke(): JsonResponse
     {
-        $matches = ParseImportableMatches::run();
+        $dataPath = config('mymtgo.import_data_path');
+        $matches = ParseImportableMatches::run($dataPath ?: null);
 
         return response()->json([
             'matches' => $matches,

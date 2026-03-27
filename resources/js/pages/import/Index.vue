@@ -9,6 +9,19 @@ import { Spinner } from '@/components/ui/spinner';
 import { AlertTriangle, Check, FileUp, Minus } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 
+function getCsrfToken(): string {
+    const match = document.cookie.match(/XSRF-TOKEN=([^;]+)/);
+    return match ? decodeURIComponent(match[1]) : '';
+}
+
+function jsonHeaders(): Record<string, string> {
+    return {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        'X-XSRF-TOKEN': getCsrfToken(),
+    };
+}
+
 interface DeckVersionOption {
     id: number;
     deck_name: string;
@@ -59,6 +72,7 @@ const scanned = ref(false);
 const matches = ref<ImportableMatch[]>([]);
 const selectedIds = ref<Set<number>>(new Set());
 const deckChoices = ref<Record<number, number | null>>({});
+const errorMessage = ref<string | null>(null);
 const accepted = ref(false);
 const importResult = ref<{ imported: number; skipped: number } | null>(null);
 
@@ -78,15 +92,19 @@ async function scan() {
     scanning.value = true;
     scanned.value = false;
     importResult.value = null;
+    errorMessage.value = null;
 
     try {
         const response = await fetch(ScanController.url(), {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content ?? '',
-            },
+            headers: jsonHeaders(),
         });
+
+        if (!response.ok) {
+            const text = await response.text();
+            errorMessage.value = `Scan failed (${response.status}): ${text || response.statusText}`;
+            return;
+        }
 
         const data = await response.json();
         matches.value = data.matches;
@@ -100,7 +118,7 @@ async function scan() {
             }
         }
     } catch (e) {
-        console.error('Scan failed:', e);
+        errorMessage.value = `Scan failed: ${e instanceof Error ? e.message : 'Unknown error'}`;
     } finally {
         scanning.value = false;
     }
@@ -133,6 +151,7 @@ async function importSelected() {
     if (!accepted.value || selectedCount.value === 0) return;
 
     importing.value = true;
+    errorMessage.value = null;
 
     const selected = matches.value
         .filter((m) => selectedIds.value.has(m.history_id))
@@ -144,12 +163,15 @@ async function importSelected() {
     try {
         const response = await fetch(StoreController.url(), {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content ?? '',
-            },
+            headers: jsonHeaders(),
             body: JSON.stringify({ matches: selected }),
         });
+
+        if (!response.ok) {
+            const text = await response.text();
+            errorMessage.value = `Import failed (${response.status}): ${text || response.statusText}`;
+            return;
+        }
 
         const data = await response.json();
         importResult.value = data;
@@ -158,7 +180,7 @@ async function importSelected() {
         matches.value = matches.value.filter((m) => !importedIds.has(m.history_id));
         selectedIds.value = new Set();
     } catch (e) {
-        console.error('Import failed:', e);
+        errorMessage.value = `Import failed: ${e instanceof Error ? e.message : 'Unknown error'}`;
     } finally {
         importing.value = false;
     }
@@ -212,6 +234,14 @@ function confidenceColor(confidence: number | null): string {
                 {{ scanning ? 'Scanning...' : 'Scan Match History' }}
             </Button>
         </div>
+
+        <!-- Error banner -->
+        <Card v-if="errorMessage" class="border-red-500/50 bg-red-500/5">
+            <CardContent class="flex items-center gap-3 pt-6">
+                <AlertTriangle class="size-5 shrink-0 text-red-500" />
+                <p class="text-sm text-red-600 dark:text-red-400">{{ errorMessage }}</p>
+            </CardContent>
+        </Card>
 
         <!-- Import result banner -->
         <Card v-if="importResult" class="border-green-500/50 bg-green-500/5">
