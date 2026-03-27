@@ -4,8 +4,9 @@ import StoreController from '@/actions/App/Http/Controllers/Import/StoreControll
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Spinner } from '@/components/ui/spinner';
-import { AlertTriangle, Check, FileUp, Minus } from 'lucide-vue-next';
+import { AlertTriangle, Check, Eye, FileUp, Minus } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 
 function getCsrfToken(): string {
@@ -216,6 +217,14 @@ function confidenceColor(confidence: number | null): string {
     if (confidence >= 0.6) return 'text-yellow-500';
     return 'text-red-500';
 }
+
+const cardsModalMatch = ref<ImportableMatch | null>(null);
+const cardsModalOpen = ref(false);
+
+function showCards(match: ImportableMatch) {
+    cardsModalMatch.value = match;
+    cardsModalOpen.value = true;
+}
 </script>
 
 <template>
@@ -331,6 +340,7 @@ function confidenceColor(confidence: number | null): string {
                             <th class="p-3">Result</th>
                             <th class="p-3">Deck</th>
                             <th class="w-20 p-3 text-center">Confidence</th>
+                            <th class="w-16 p-3"></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -407,6 +417,15 @@ function confidenceColor(confidence: number | null): string {
                                 </span>
                                 <Minus v-else class="mx-auto size-4 text-muted-foreground" />
                             </td>
+                            <td class="p-3 text-center">
+                                <button
+                                    v-if="match.local_cards && match.local_cards.length > 0"
+                                    @click="showCards(match)"
+                                    class="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs text-muted-foreground hover:text-foreground"
+                                >
+                                    <Eye class="size-3.5" />
+                                </button>
+                            </td>
                         </tr>
                     </tbody>
                 </table>
@@ -432,5 +451,50 @@ function confidenceColor(confidence: number | null): string {
                 No importable matches found. All history records are already in your database.
             </CardContent>
         </Card>
+
+        <!-- Cards modal -->
+        <Dialog v-model:open="cardsModalOpen">
+            <DialogContent class="max-h-[80vh] max-w-lg overflow-y-auto">
+                <DialogHeader>
+                    <DialogTitle>
+                        Cards seen — {{ cardsModalMatch?.opponent }}
+                        <span class="text-muted-foreground font-normal">
+                            ({{ cardsModalMatch?.format }}, {{ cardsModalMatch ? formatDate(cardsModalMatch.started_at) : '' }})
+                        </span>
+                    </DialogTitle>
+                    <DialogDescription>
+                        Cards played or revealed by {{ cardsModalMatch?.local_player ?? 'you' }} during this match.
+                    </DialogDescription>
+                </DialogHeader>
+                <div v-if="cardsModalMatch?.local_cards" class="space-y-4">
+                    <div>
+                        <h4 class="mb-2 text-xs font-medium text-muted-foreground uppercase">Your cards ({{ cardsModalMatch.local_cards.length }})</h4>
+                        <div class="flex flex-wrap gap-1">
+                            <Badge
+                                v-for="card in cardsModalMatch.local_cards"
+                                :key="card.mtgo_id"
+                                variant="secondary"
+                                class="text-xs"
+                            >
+                                {{ card.name }}
+                            </Badge>
+                        </div>
+                    </div>
+                    <div v-if="cardsModalMatch.opponent_cards && cardsModalMatch.opponent_cards.length > 0">
+                        <h4 class="mb-2 text-xs font-medium text-muted-foreground uppercase">Opponent cards ({{ cardsModalMatch.opponent_cards.length }})</h4>
+                        <div class="flex flex-wrap gap-1">
+                            <Badge
+                                v-for="card in cardsModalMatch.opponent_cards"
+                                :key="card.mtgo_id"
+                                variant="outline"
+                                class="text-xs"
+                            >
+                                {{ card.name }}
+                            </Badge>
+                        </div>
+                    </div>
+                </div>
+            </DialogContent>
+        </Dialog>
     </div>
 </template>
