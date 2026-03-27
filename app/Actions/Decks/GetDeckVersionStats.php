@@ -43,8 +43,10 @@ class GetDeckVersionStats
         $latestVersionId = $versions->last()?->id;
         $versionIds = $versions->pluck('id');
 
-        // Single batch query for OTP/OTD stats across all versions
-        $otpStats = Game::query()
+        // Single batch query for OTP/OTD stats across all versions.
+        // Uses DB::table to avoid Game model's boolean cast on 'won'
+        // which would cast the SUM() aggregate to true/false.
+        $otpStats = DB::table('games')
             ->join('game_player as gp', fn ($j) => $j->on('gp.game_id', '=', 'games.id')->where('gp.is_local', 1))
             ->join('matches as m', 'm.id', '=', 'games.match_id')
             ->whereIn('m.deck_version_id', $versionIds)
