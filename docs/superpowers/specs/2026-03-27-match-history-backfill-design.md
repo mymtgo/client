@@ -27,9 +27,26 @@ Migration: `add_imported_to_matches_table`
 
 ---
 
+## Navigation — Import Wizard Entry Point
+
+The import wizard is accessed via a dedicated button in the `AppHeader` top-right area, next to the settings button. Both buttons are styled consistently as bordered buttons with icon + text label.
+
+**Current layout** (in `AppHeader.vue`, right-side `div`):
+- Account switcher / display
+- Settings cog (icon-only, no border)
+
+**New layout**:
+- Account switcher / display
+- **"Import" button** — bordered button with `Import` icon (lucide `FileUp` or similar) + "Import" text label. Links to the import wizard page.
+- **"Settings" button** — bordered button with `Settings` icon + "Settings" text label. Same link as current cog.
+
+Both buttons use the same style: `inline-flex items-center gap-1.5 rounded-md border border-sidebar-border px-2.5 py-1 text-sm text-sidebar-foreground/70 transition-colors hover:text-sidebar-foreground` (consistent bordered look).
+
+---
+
 ## Step 1 — Initiate (Backend Processing)
 
-Triggered by the user clicking "Import Match History" (likely from a settings or tools page). Runs as a queued job or synchronous action depending on UX preference.
+Triggered by the user navigating to the Import Wizard page and clicking a "Scan Match History" button. Runs as a queued job or synchronous action depending on UX preference.
 
 ### Process
 
