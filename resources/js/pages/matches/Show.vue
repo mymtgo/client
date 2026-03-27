@@ -8,7 +8,8 @@ import ManaSymbols from '@/components/ManaSymbols.vue';
 import SetArchetypeDialog from '@/components/matches/SetArchetypeDialog.vue';
 import MatchGame from '@/pages/matches/partials/MatchGame.vue';
 import UpdateNotesController from '@/actions/App/Http/Controllers/Matches/UpdateNotesController';
-import { PencilIcon, NotepadText } from 'lucide-vue-next';
+import { Card, CardContent } from '@/components/ui/card';
+import { AlertTriangle, PencilIcon, NotepadText } from 'lucide-vue-next';
 import { useForm } from '@inertiajs/vue3';
 import type { VersionStats } from '@/types/decks';
 
@@ -38,6 +39,7 @@ const props = defineProps<{
     games: GameDetail[];
     gameLogs: Record<number, Array<{ timestamp: string; message: string }>>;
     archetypes: App.Data.Front.ArchetypeData[];
+    imported: boolean;
 }>();
 
 const archetypeDialog = ref<InstanceType<typeof SetArchetypeDialog> | null>(null);
@@ -72,6 +74,14 @@ const opponentArchetype = computed(() => {
     <SetArchetypeDialog ref="archetypeDialog" :archetypes="archetypes" />
 
     <div class="flex flex-col gap-4 p-3 lg:p-4">
+            <!-- Imported match banner -->
+            <Card v-if="imported" class="border-yellow-500/30 bg-yellow-500/5">
+                <CardContent class="flex items-center gap-2 py-3 text-sm text-yellow-600 dark:text-yellow-400">
+                    <AlertTriangle class="size-4 shrink-0" />
+                    This is an imported match. Opening hands, sideboard changes, and turn estimates are not available.
+                </CardContent>
+            </Card>
+
             <!-- Match header -->
             <div class="flex flex-col gap-1">
                 <!-- Result + opponent -->
