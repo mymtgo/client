@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Import;
 
 use App\Http\Controllers\Controller;
 use App\Models\DeckVersion;
+use App\Models\MtgoMatch;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -22,8 +23,11 @@ class IndexController extends Controller
                 'format' => $v->deck?->format ?? '',
             ]);
 
+        $importedCount = MtgoMatch::where('imported', true)->count();
+
         return Inertia::render('import/Index', [
             'deckVersions' => $deckVersions,
+            'importedCount' => $importedCount,
         ]);
     }
 }

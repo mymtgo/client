@@ -18,6 +18,7 @@ use App\Http\Controllers\Decks\MatchupsController;
 use App\Http\Controllers\Decks\OpenPopoutController;
 use App\Http\Controllers\Decks\PopoutController;
 use App\Http\Controllers\Games\OpenReplayController;
+use App\Http\Controllers\Import\DestroyController as ImportDestroyController;
 use App\Http\Controllers\Import\IndexController as ImportIndexController;
 use App\Http\Controllers\Import\ScanController;
 use App\Http\Controllers\Import\StoreController;
@@ -134,6 +135,7 @@ Route::group([], function (Router $router) {
         $group->get('/', ImportIndexController::class)->name('import.index');
         $group->post('scan', ScanController::class)->name('import.scan');
         $group->post('/', StoreController::class)->name('import.store');
+        $group->delete('/', ImportDestroyController::class)->name('import.destroy');
     });
 
     $router->get('updates/install', InstallController::class)->name('updates.install');

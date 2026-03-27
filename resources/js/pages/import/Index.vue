@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import ScanController from '@/actions/App/Http/Controllers/Import/ScanController';
 import StoreController from '@/actions/App/Http/Controllers/Import/StoreController';
+import DestroyController from '@/actions/App/Http/Controllers/Import/DestroyController';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Spinner } from '@/components/ui/spinner';
-import { AlertTriangle, Check, Eye, FileUp, Minus } from 'lucide-vue-next';
+import { AlertTriangle, Check, Eye, FileUp, Minus, Trash2 } from 'lucide-vue-next';
 import { computed, nextTick, ref } from 'vue';
 
 function getCsrfToken(): string {
@@ -66,6 +67,7 @@ interface ImportableMatch {
 
 const props = defineProps<{
     deckVersions: DeckVersionOption[];
+    importedCount: number;
 }>();
 
 const scanning = ref(false);
@@ -75,8 +77,8 @@ const matches = ref<ImportableMatch[]>([]);
 const selectedIds = ref<Set<number>>(new Set());
 const deckChoices = ref<Record<number, number | null>>({});
 const errorMessage = ref<string | null>(null);
-const accepted = ref(false);
 const importResult = ref<{ imported: number; skipped: number } | null>(null);
+const importedCount = ref(props.importedCount);
 
 const formatFilter = ref('all');
 
@@ -107,7 +109,7 @@ const selectedWithoutDeck = computed(() => {
 });
 
 const canImport = computed(() => {
-    return accepted.value && selectedCount.value > 0 && selectedWithoutDeck.value.length === 0 && !importing.value;
+    return selectedCount.value > 0 && selectedWithoutDeck.value.length === 0 && !importing.value;
 });
 
 async function scan() {
@@ -178,7 +180,7 @@ function assignDeckToSelected() {
 }
 
 async function importSelected() {
-    if (!accepted.value || selectedCount.value === 0) return;
+    if (!canImport.value) return;
 
     importing.value = true;
     errorMessage.value = null;
@@ -205,6 +207,7 @@ async function importSelected() {
 
         const data = await response.json();
         importResult.value = data;
+        importedCount.value += data.imported;
 
         const importedIds = new Set(selected.map((m) => m.history_id));
         matches.value = matches.value.filter((m) => !importedIds.has(m.history_id));
@@ -240,6 +243,40 @@ function showCards(match: ImportableMatch) {
     cardsModalMatch.value = match;
     cardsModalOpen.value = true;
 }
+
+const deleteModalOpen = ref(false);
+const deleting = ref(false);
+
+async function deleteAllImported() {
+    deleting.value = true;
+    errorMessage.value = null;
+
+    try {
+        const response = await fetch(DestroyController.url(), {
+            method: 'DELETE',
+            headers: jsonHeaders(),
+        });
+
+        if (!response.ok) {
+            const text = await response.text();
+            errorMessage.value = `Delete failed (${response.status}): ${text || response.statusText}`;
+            return;
+        }
+
+        const data = await response.json();
+        importedCount.value = 0;
+        deleteModalOpen.value = false;
+
+        // Re-scan to refresh the list since deleted matches are now importable again
+        if (scanned.value) {
+            await scan();
+        }
+    } catch (e) {
+        errorMessage.value = `Delete failed: ${e instanceof Error ? e.message : 'Unknown error'}`;
+    } finally {
+        deleting.value = false;
+    }
+}
 </script>
 
 <template>
@@ -255,19 +292,24 @@ function showCards(match: ImportableMatch) {
         <Card class="border-yellow-500/50 bg-yellow-500/5">
             <CardContent class="flex items-start gap-3 p-4">
                 <AlertTriangle class="mt-0.5 size-5 shrink-0 text-yellow-500" />
-                <div class="space-y-2 text-sm">
-                    <p>
-                        <strong>Imported matches have reduced data fidelity.</strong> Opening hands, sideboard changes,
-                        game timelines, and turn estimates will not be available. Card game statistics will be
-                        approximate — cards are counted as "seen" based on game log mentions, not zone tracking.
-                    </p>
-                    <label class="flex cursor-pointer items-center gap-2">
-                        <input type="checkbox" v-model="accepted" class="size-4 rounded border-input accent-primary" />
-                        <span>I understand and accept these limitations</span>
-                    </label>
-                </div>
+                <p class="text-sm">
+                    <strong>Imported matches have reduced data fidelity.</strong> Opening hands, sideboard changes,
+                    game timelines, and turn estimates will not be available. Card game statistics will be
+                    approximate — cards are counted as "seen" based on game log mentions, not zone tracking.
+                </p>
             </CardContent>
         </Card>
+
+        <!-- Imported count + delete -->
+        <div v-if="importedCount > 0" class="flex items-center justify-between rounded-md border border-border px-4 py-3">
+            <p class="text-sm text-muted-foreground">
+                <strong>{{ importedCount }}</strong> previously imported match(es) in the database.
+            </p>
+            <Button variant="outline" size="sm" class="text-red-500 hover:text-red-600" @click="deleteModalOpen = true">
+                <Trash2 class="mr-1.5 size-3.5" />
+                Delete all imported
+            </Button>
+        </div>
 
         <!-- Scan button -->
         <div v-if="!scanned" class="flex justify-center">
@@ -452,7 +494,7 @@ function showCards(match: ImportableMatch) {
 
         <!-- No results -->
         <Card v-if="scanned && matches.length === 0 && !importResult">
-            <CardContent class="pt-6 text-center text-sm text-muted-foreground">
+            <CardContent class="p-4 text-center text-sm text-muted-foreground">
                 No importable matches found. All history records are already in your database.
             </CardContent>
         </Card>
@@ -542,6 +584,26 @@ function showCards(match: ImportableMatch) {
                         </div>
                     </div>
                 </div>
+            </DialogContent>
+        </Dialog>
+
+        <!-- Delete confirmation modal -->
+        <Dialog v-model:open="deleteModalOpen">
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Delete all imported matches?</DialogTitle>
+                    <DialogDescription>
+                        This will permanently delete <strong>{{ importedCount }}</strong> imported match(es) and all
+                        associated data (games, card stats, archetypes). This cannot be undone.
+                    </DialogDescription>
+                </DialogHeader>
+                <DialogFooter class="gap-2 sm:gap-0">
+                    <Button variant="outline" @click="deleteModalOpen = false" :disabled="deleting">Cancel</Button>
+                    <Button variant="destructive" @click="deleteAllImported" :disabled="deleting">
+                        <Spinner v-if="deleting" class="mr-2 size-4" />
+                        {{ deleting ? 'Deleting...' : `Delete ${importedCount} match(es)` }}
+                    </Button>
+                </DialogFooter>
             </DialogContent>
         </Dialog>
     </div>
