@@ -102,6 +102,14 @@ const selectedCount = computed(() => selectedIds.value.size);
 const activeDeckVersions = computed(() => props.deckVersions.filter((d) => !d.deck_deleted));
 const deletedDeckVersions = computed(() => props.deckVersions.filter((d) => d.deck_deleted));
 
+const selectedWithoutDeck = computed(() => {
+    return [...selectedIds.value].filter((id) => !deckChoices.value[id]);
+});
+
+const canImport = computed(() => {
+    return accepted.value && selectedCount.value > 0 && selectedWithoutDeck.value.length === 0 && !importing.value;
+});
+
 async function scan() {
     scanning.value = true;
     scanned.value = false;
@@ -312,27 +320,6 @@ function showCards(match: ImportableMatch) {
                         <Button variant="outline" size="sm" @click="deselectAll">Deselect all</Button>
                     </div>
                 </div>
-                <div v-if="selectedCount > 0" class="flex items-center gap-2">
-                    <span class="text-xs text-muted-foreground">Assign deck to selected:</span>
-                    <select
-                        class="h-8 rounded-md border border-input bg-background px-2 text-xs"
-                        :value="bulkDeckId ?? ''"
-                        @change="bulkDeckId = ($event.target as HTMLSelectElement).value ? Number(($event.target as HTMLSelectElement).value) : null"
-                    >
-                        <option value="">No deck</option>
-                        <optgroup v-if="activeDeckVersions.length" label="Active Decks">
-                            <option v-for="dv in activeDeckVersions" :key="dv.id" :value="dv.id">
-                                {{ dv.deck_name }} ({{ dv.modified_at }})
-                            </option>
-                        </optgroup>
-                        <optgroup v-if="deletedDeckVersions.length" label="Deleted Decks">
-                            <option v-for="dv in deletedDeckVersions" :key="dv.id" :value="dv.id">
-                                {{ dv.deck_name }} (deleted) ({{ dv.modified_at }})
-                            </option>
-                        </optgroup>
-                    </select>
-                    <Button variant="outline" size="sm" @click="assignDeckToSelected">Apply</Button>
-                </div>
             </div>
 
             <!-- Table -->
@@ -459,18 +446,8 @@ function showCards(match: ImportableMatch) {
                 </table>
             </div>
 
-            <!-- Import button -->
-            <div class="flex items-center justify-between">
-                <p class="text-sm text-muted-foreground">{{ selectedCount }} match(es) selected</p>
-                <Button
-                    @click="importSelected"
-                    :disabled="!accepted || selectedCount === 0 || importing"
-                    size="lg"
-                >
-                    <Spinner v-if="importing" class="mr-2 size-4" />
-                    {{ importing ? 'Importing...' : `Import ${selectedCount} match(es)` }}
-                </Button>
-            </div>
+            <!-- Bottom spacer so table content isn't hidden behind fixed bar -->
+            <div class="h-20"></div>
         </template>
 
         <!-- No results -->
@@ -479,6 +456,49 @@ function showCards(match: ImportableMatch) {
                 No importable matches found. All history records are already in your database.
             </CardContent>
         </Card>
+
+        <!-- Fixed bottom bar -->
+        <div
+            v-if="scanned && matches.length > 0 && selectedCount > 0"
+            class="fixed inset-x-0 bottom-0 z-10 border-t border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80"
+        >
+            <div class="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-3">
+                <div class="flex items-center gap-3">
+                    <span class="text-sm text-muted-foreground">{{ selectedCount }} selected</span>
+                    <div class="flex items-center gap-2">
+                        <select
+                            class="h-8 rounded-md border border-input bg-background px-2 text-xs"
+                            :value="bulkDeckId ?? ''"
+                            @change="bulkDeckId = ($event.target as HTMLSelectElement).value ? Number(($event.target as HTMLSelectElement).value) : null"
+                        >
+                            <option value="">Assign deck...</option>
+                            <optgroup v-if="activeDeckVersions.length" label="Active Decks">
+                                <option v-for="dv in activeDeckVersions" :key="dv.id" :value="dv.id">
+                                    {{ dv.deck_name }} ({{ dv.modified_at }})
+                                </option>
+                            </optgroup>
+                            <optgroup v-if="deletedDeckVersions.length" label="Deleted Decks">
+                                <option v-for="dv in deletedDeckVersions" :key="dv.id" :value="dv.id">
+                                    {{ dv.deck_name }} (deleted) ({{ dv.modified_at }})
+                                </option>
+                            </optgroup>
+                        </select>
+                        <Button variant="outline" size="sm" @click="assignDeckToSelected" :disabled="!bulkDeckId">
+                            Apply
+                        </Button>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3">
+                    <span v-if="selectedWithoutDeck.length > 0" class="text-xs text-red-500">
+                        {{ selectedWithoutDeck.length }} match(es) missing a deck
+                    </span>
+                    <Button @click="importSelected" :disabled="!canImport">
+                        <Spinner v-if="importing" class="mr-2 size-4" />
+                        {{ importing ? 'Importing...' : `Import ${selectedCount} match(es)` }}
+                    </Button>
+                </div>
+            </div>
+        </div>
 
         <!-- Cards modal -->
         <Dialog v-model:open="cardsModalOpen">
