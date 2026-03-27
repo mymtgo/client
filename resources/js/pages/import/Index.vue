@@ -7,7 +7,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Spinner } from '@/components/ui/spinner';
 import { AlertTriangle, Check, Eye, FileUp, Minus } from 'lucide-vue-next';
-import { computed, ref } from 'vue';
+import { computed, nextTick, ref } from 'vue';
 
 function getCsrfToken(): string {
     const match = document.cookie.match(/XSRF-TOKEN=([^;]+)/);
@@ -201,6 +201,9 @@ async function importSelected() {
         const importedIds = new Set(selected.map((m) => m.history_id));
         matches.value = matches.value.filter((m) => !importedIds.has(m.history_id));
         selectedIds.value = new Set();
+
+        await nextTick();
+        importResultCard.value?.$el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     } catch (e) {
         errorMessage.value = `Import failed: ${e instanceof Error ? e.message : 'Unknown error'}`;
     } finally {
@@ -219,6 +222,8 @@ function confidenceColor(confidence: number | null): string {
     if (confidence >= 0.6) return 'text-yellow-500';
     return 'text-red-500';
 }
+
+const importResultCard = ref<InstanceType<typeof Card> | null>(null);
 
 const cardsModalMatch = ref<ImportableMatch | null>(null);
 const cardsModalOpen = ref(false);
@@ -240,7 +245,7 @@ function showCards(match: ImportableMatch) {
 
         <!-- Warning banner -->
         <Card class="border-yellow-500/50 bg-yellow-500/5">
-            <CardContent class="flex items-start gap-3 pt-6">
+            <CardContent class="flex items-start gap-3 p-4">
                 <AlertTriangle class="mt-0.5 size-5 shrink-0 text-yellow-500" />
                 <div class="space-y-2 text-sm">
                     <p>
@@ -267,15 +272,15 @@ function showCards(match: ImportableMatch) {
 
         <!-- Error banner -->
         <Card v-if="errorMessage" class="border-red-500/50 bg-red-500/5">
-            <CardContent class="flex items-center gap-3 pt-6">
+            <CardContent class="flex items-center gap-3 p-4">
                 <AlertTriangle class="size-5 shrink-0 text-red-500" />
                 <p class="text-sm text-red-600 dark:text-red-400">{{ errorMessage }}</p>
             </CardContent>
         </Card>
 
         <!-- Import result banner -->
-        <Card v-if="importResult" class="border-green-500/50 bg-green-500/5">
-            <CardContent class="flex items-center gap-3 pt-6">
+        <Card v-if="importResult" ref="importResultCard" class="border-green-500/50 bg-green-500/5">
+            <CardContent class="flex items-center gap-3 p-4">
                 <Check class="size-5 text-green-500" />
                 <p class="text-sm">
                     Successfully imported {{ importResult.imported }} match(es).
