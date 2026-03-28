@@ -220,24 +220,29 @@ function toggleSort(key: SortKey) {
     }
 }
 
+function pctWithTiebreak(num: number, denom: number): number {
+    if (denom <= 0) return -1;
+    return Math.round((num / denom) * 100) + denom / 10000;
+}
+
 function sortValue(stat: CardStat, key: SortKey): number | string {
     switch (key) {
         case 'name':
             return stat.name;
         case 'keptPct':
-            return pct(stat.totalKept, stat.totalPossible) ?? -1;
+            return pctWithTiebreak(stat.totalKept, stat.totalPossible);
         case 'keptWinPct':
-            return pct(stat.keptWon, stat.keptWon + stat.keptLost) ?? -1;
+            return pctWithTiebreak(stat.keptWon, stat.keptWon + stat.keptLost);
         case 'seenPct':
-            return pct(stat.totalSeen, stat.totalPossible) ?? -1;
+            return pctWithTiebreak(stat.totalSeen, stat.totalPossible);
         case 'seenWinPct':
-            return pct(stat.seenWon, stat.seenWon + stat.seenLost) ?? -1;
+            return pctWithTiebreak(stat.seenWon, stat.seenWon + stat.seenLost);
         case 'castPct':
-            return pct(stat.totalCast, stat.totalPossible) ?? -1;
+            return pctWithTiebreak(stat.totalCast, stat.totalPossible);
         case 'castWinPct':
-            return pct(stat.castWon, stat.castWon + stat.castLost) ?? -1;
+            return pctWithTiebreak(stat.castWon, stat.castWon + stat.castLost);
         case 'sbOutPct':
-            return pct(stat.sidedOutGames, stat.postboardGames) ?? -1;
+            return pctWithTiebreak(stat.sidedOutGames, stat.postboardGames);
         case 'games':
             return stat.totalGames;
     }
@@ -416,19 +421,19 @@ function winRateClass(pctVal: number | null): string {
                                 <span class="inline-flex items-center justify-end gap-1">Kept % <component :is="sortIcon('keptPct')" class="size-3" /></span>
                             </TableHead>
                             <TableHead class="cursor-pointer select-none text-right" @click="toggleSort('keptWinPct')">
-                                <span class="inline-flex items-center justify-end gap-1">Win % (kept) <component :is="sortIcon('keptWinPct')" class="size-3" /></span>
+                                <span class="inline-flex items-center justify-end gap-1">Kept Win % <component :is="sortIcon('keptWinPct')" class="size-3" /></span>
                             </TableHead>
                             <TableHead class="cursor-pointer select-none text-right" @click="toggleSort('castPct')">
                                 <span class="inline-flex items-center justify-end gap-1">Cast % <component :is="sortIcon('castPct')" class="size-3" /></span>
                             </TableHead>
                             <TableHead class="cursor-pointer select-none text-right" @click="toggleSort('castWinPct')">
-                                <span class="inline-flex items-center justify-end gap-1">Win % (cast) <component :is="sortIcon('castWinPct')" class="size-3" /></span>
+                                <span class="inline-flex items-center justify-end gap-1">Cast Win % <component :is="sortIcon('castWinPct')" class="size-3" /></span>
                             </TableHead>
                             <TableHead class="cursor-pointer select-none text-right" @click="toggleSort('seenPct')">
                                 <span class="inline-flex items-center justify-end gap-1">Seen % <component :is="sortIcon('seenPct')" class="size-3" /></span>
                             </TableHead>
                             <TableHead class="cursor-pointer select-none text-right" @click="toggleSort('seenWinPct')">
-                                <span class="inline-flex items-center justify-end gap-1">Win % (seen) <component :is="sortIcon('seenWinPct')" class="size-3" /></span>
+                                <span class="inline-flex items-center justify-end gap-1">Seen Win % <component :is="sortIcon('seenWinPct')" class="size-3" /></span>
                             </TableHead>
                             <TableHead class="cursor-pointer select-none text-right" @click="toggleSort('sbOutPct')">
                                 <span class="inline-flex items-center justify-end gap-1">SB Out % <component :is="sortIcon('sbOutPct')" class="size-3" /></span>
