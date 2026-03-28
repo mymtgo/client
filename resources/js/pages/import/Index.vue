@@ -1,14 +1,19 @@
 <script setup lang="ts">
 import ScanController from '@/actions/App/Http/Controllers/Import/ScanController';
+import ScanStatusController from '@/actions/App/Http/Controllers/Import/ScanStatusController';
+import ScanMatchesController from '@/actions/App/Http/Controllers/Import/ScanMatchesController';
+import ScanMatchCardsController from '@/actions/App/Http/Controllers/Import/ScanMatchCardsController';
 import StoreController from '@/actions/App/Http/Controllers/Import/StoreController';
+import ImportAllController from '@/actions/App/Http/Controllers/Import/ImportAllController';
+import CancelScanController from '@/actions/App/Http/Controllers/Import/CancelScanController';
 import DestroyController from '@/actions/App/Http/Controllers/Import/DestroyController';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Spinner } from '@/components/ui/spinner';
-import { AlertTriangle, Check, Eye, FileUp, Minus, Trash2 } from 'lucide-vue-next';
-import { computed, nextTick, ref } from 'vue';
+import { AlertTriangle, Check, ChevronLeft, ChevronRight, Eye, FileUp, Trash2, X } from 'lucide-vue-next';
+import { computed, onUnmounted, ref, watch } from 'vue';
 
 function getCsrfToken(): string {
     const match = document.cookie.match(/XSRF-TOKEN=([^;]+)/);
@@ -31,235 +36,173 @@ interface DeckVersionOption {
     format: string;
 }
 
-interface ImportableMatch {
+interface ConfidenceStats {
+    high: number;
+    low: number;
+    none: number;
+}
+
+interface ExistingScan {
+    id: number;
+    deck_version_id: number;
+    deck_name: string;
+    status: string;
+    progress: number;
+    total: number;
+    match_count: number;
+    formats: string[];
+    confidence_stats: ConfidenceStats | null;
+}
+
+interface ScanMatch {
+    id: number;
     history_id: number;
     started_at: string;
     opponent: string;
     format: string;
-    format_raw: string;
     games_won: number;
     games_lost: number;
     outcome: string;
+    confidence: number | null;
+    game_log_token: string | null;
     round: number;
     description: string;
-    has_game_log: boolean;
-    game_log_token: string | null;
-    games: Array<{
-        game_index: number;
-        won: boolean;
-        on_play: boolean;
-        starting_hand_size: number;
-        opponent_hand_size: number;
-        started_at: string;
-        ended_at: string;
-        local_cards: Array<{ mtgo_id: number; name: string }>;
-        opponent_cards: Array<{ mtgo_id: number; name: string }>;
-    }> | null;
-    local_player: string | null;
-    local_cards: Array<{ mtgo_id: number; name: string }> | null;
-    opponent_cards: Array<{ mtgo_id: number; name: string }> | null;
-    suggested_deck_version_id: number | null;
-    suggested_deck_name: string | null;
-    deck_match_confidence: number | null;
-    deck_deleted: boolean;
-    game_ids: number[];
 }
 
-interface MatchGroup {
-    key: string;
-    date: string;
-    format: string;
-    sharedCards: Array<{ mtgo_id: number; name: string }>;
-    matches: ImportableMatch[];
+interface PaginatedResponse {
+    data: ScanMatch[];
+    current_page: number;
+    last_page: number;
+    total: number;
+    per_page: number;
 }
 
 const props = defineProps<{
     deckVersions: DeckVersionOption[];
     importedCount: number;
+    existingScan: ExistingScan | null;
 }>();
 
-const scanning = ref(false);
-const importing = ref(false);
-const scanned = ref(false);
-const matches = ref<ImportableMatch[]>([]);
+// State
+type PageState = 'setup' | 'processing' | 'results';
+
+const state = ref<PageState>(props.existingScan?.status === 'processing' ? 'processing' : props.existingScan?.status === 'complete' ? 'results' : 'setup');
+const selectedDeckId = ref<number | null>(props.existingScan?.deck_version_id ?? null);
+const scanId = ref<number | null>(props.existingScan?.id ?? null);
+const scanDeckName = ref<string>(props.existingScan?.deck_name ?? '');
+const scanProgress = ref(props.existingScan?.progress ?? 0);
+const scanTotal = ref(props.existingScan?.total ?? 0);
+const scanError = ref<string | null>(null);
+
+const matches = ref<ScanMatch[]>([]);
+const currentPage = ref(1);
+const lastPage = ref(1);
+const totalMatches = ref(props.existingScan?.match_count ?? 0);
 const selectedIds = ref<Set<number>>(new Set());
-const deckChoices = ref<Record<number, number | null>>({});
+
 const errorMessage = ref<string | null>(null);
 const importResult = ref<{ imported: number; skipped: number } | null>(null);
 const importedCount = ref(props.importedCount);
+const importing = ref(false);
 
-const formatFilter = ref('all');
+const formatFilter = ref('');
+const availableFormats = ref<string[]>(props.existingScan?.formats ?? []);
+const confidenceStats = ref<ConfidenceStats | null>(props.existingScan?.confidence_stats ?? null);
 
-const availableFormats = computed(() => {
-    const formats = [...new Set(matches.value.map((m) => m.format))].sort();
-    return formats;
-});
+// Confidence threshold slider — default 0.1 to exclude matches with no game log
+const minConfidence = ref(0.1);
 
-const filteredMatches = computed(() => {
-    if (formatFilter.value === 'all') return matches.value;
-    return matches.value.filter((m) => m.format === formatFilter.value);
-});
-
-const summary = computed(() => {
-    const total = matches.value.length;
-    const withGameLog = matches.value.filter((m) => m.has_game_log).length;
-    const withDeck = matches.value.filter((m) => m.suggested_deck_version_id !== null).length;
-    return { total, withGameLog, withDeck };
-});
-
-const selectedCount = computed(() => selectedIds.value.size);
+// Sort
+const sortBy = ref('confidence');
+const sortOptions = [
+    { value: 'confidence', label: 'Confidence (high first)' },
+    { value: 'started_at', label: 'Date (newest first)' },
+    { value: 'opponent', label: 'Opponent (A-Z)' },
+];
 
 const activeDeckVersions = computed(() => props.deckVersions.filter((d) => !d.deck_deleted));
 const deletedDeckVersions = computed(() => props.deckVersions.filter((d) => d.deck_deleted));
 
-const selectedWithoutDeck = computed(() => {
-    return [...selectedIds.value].filter((id) => !deckChoices.value[id]);
+const selectedCount = computed(() => selectedIds.value.size);
+
+// Resolve deck name from selected ID
+const selectedDeckName = computed(() => {
+    if (!selectedDeckId.value) return '';
+    const dv = props.deckVersions.find((d) => d.id === selectedDeckId.value);
+    return dv?.deck_name ?? '';
 });
 
-const canImport = computed(() => {
-    return selectedCount.value > 0 && selectedWithoutDeck.value.length === 0 && !importing.value;
-});
+// Polling
+let pollTimer: ReturnType<typeof setInterval> | null = null;
 
-// --- Grouping logic ---
-
-function getDateKey(iso: string): string {
-    return new Date(iso).toISOString().slice(0, 10);
+function startPolling() {
+    stopPolling();
+    pollTimer = setInterval(pollStatus, 2000);
 }
 
-function cardSet(m: ImportableMatch): Set<number> {
-    return new Set((m.local_cards ?? []).map((c) => c.mtgo_id));
-}
-
-function jaccard(a: Set<number>, b: Set<number>): number {
-    if (a.size === 0 && b.size === 0) return 1;
-    if (a.size === 0 || b.size === 0) return 0;
-    let intersection = 0;
-    for (const id of a) {
-        if (b.has(id)) intersection++;
-    }
-    return intersection / (a.size + b.size - intersection);
-}
-
-function sharedCardsForGroup(groupMatches: ImportableMatch[]): Array<{ mtgo_id: number; name: string }> {
-    const counts = new Map<number, { name: string; count: number }>();
-    for (const m of groupMatches) {
-        for (const c of m.local_cards ?? []) {
-            const entry = counts.get(c.mtgo_id);
-            if (entry) {
-                entry.count++;
-            } else {
-                counts.set(c.mtgo_id, { name: c.name, count: 1 });
-            }
-        }
-    }
-    // Cards seen in at least half the matches in the group
-    const threshold = Math.max(1, Math.ceil(groupMatches.length / 2));
-    return [...counts.entries()]
-        .filter(([, v]) => v.count >= threshold)
-        .map(([mtgo_id, v]) => ({ mtgo_id, name: v.name }));
-}
-
-const SIMILARITY_THRESHOLD = 0.4;
-
-const groupedMatches = computed<MatchGroup[]>(() => {
-    // Group by format first, then cluster by card similarity within each format
-    const byFormat = new Map<string, ImportableMatch[]>();
-    for (const m of filteredMatches.value) {
-        const arr = byFormat.get(m.format);
-        if (arr) {
-            arr.push(m);
-        } else {
-            byFormat.set(m.format, [m]);
-        }
-    }
-
-    const groups: MatchGroup[] = [];
-
-    for (const [format, formatMatches] of byFormat) {
-        const clusters: { seed: Set<number>; matches: ImportableMatch[] }[] = [];
-
-        for (const m of formatMatches) {
-            const mCards = cardSet(m);
-            let placed = false;
-
-            if (mCards.size > 0) {
-                for (const cluster of clusters) {
-                    if (cluster.seed.size > 0 && jaccard(mCards, cluster.seed) >= SIMILARITY_THRESHOLD) {
-                        cluster.matches.push(m);
-                        for (const id of mCards) cluster.seed.add(id);
-                        placed = true;
-                        break;
-                    }
-                }
-            }
-
-            if (!placed) {
-                clusters.push({ seed: mCards, matches: [m] });
-            }
-        }
-
-        for (let i = 0; i < clusters.length; i++) {
-            const cluster = clusters[i];
-            // Sort matches within cluster by date descending
-            cluster.matches.sort((a, b) => b.started_at.localeCompare(a.started_at));
-            groups.push({
-                key: `${format}|${i}`,
-                date: '',
-                format,
-                sharedCards: sharedCardsForGroup(cluster.matches),
-                matches: cluster.matches,
-            });
-        }
-    }
-
-    // Sort groups by match count descending (biggest clusters first)
-    groups.sort((a, b) => b.matches.length - a.matches.length);
-
-    return groups;
-});
-
-// --- Group selection helpers ---
-
-function isGroupFullySelected(group: MatchGroup): boolean {
-    return group.matches.every((m) => selectedIds.value.has(m.history_id));
-}
-
-function isGroupPartiallySelected(group: MatchGroup): boolean {
-    const selected = group.matches.filter((m) => selectedIds.value.has(m.history_id));
-    return selected.length > 0 && selected.length < group.matches.length;
-}
-
-function toggleGroupSelect(group: MatchGroup) {
-    if (isGroupFullySelected(group)) {
-        for (const m of group.matches) {
-            selectedIds.value.delete(m.history_id);
-        }
-    } else {
-        for (const m of group.matches) {
-            selectedIds.value.add(m.history_id);
-        }
-    }
-    selectedIds.value = new Set(selectedIds.value);
-}
-
-function setGroupDeck(group: MatchGroup, deckId: number | null) {
-    for (const m of group.matches) {
-        deckChoices.value[m.history_id] = deckId;
+function stopPolling() {
+    if (pollTimer) {
+        clearInterval(pollTimer);
+        pollTimer = null;
     }
 }
 
-// --- Core actions ---
+onUnmounted(stopPolling);
 
-async function scan() {
-    scanning.value = true;
-    scanned.value = false;
-    importResult.value = null;
+if (state.value === 'processing' && scanId.value) {
+    startPolling();
+}
+if (state.value === 'results' && scanId.value) {
+    loadMatches();
+}
+
+async function pollStatus() {
+    if (!scanId.value) return;
+
+    try {
+        const response = await fetch(ScanStatusController.url(scanId.value), {
+            headers: { Accept: 'application/json', 'X-XSRF-TOKEN': getCsrfToken() },
+        });
+
+        if (!response.ok) return;
+
+        const data = await response.json();
+        scanProgress.value = data.progress;
+        scanTotal.value = data.total;
+
+        if (data.status === 'complete') {
+            stopPolling();
+            totalMatches.value = data.match_count ?? 0;
+            availableFormats.value = data.formats ?? [];
+            confidenceStats.value = data.confidence_stats ?? null;
+            state.value = 'results';
+            await loadMatches();
+        } else if (data.status === 'failed') {
+            stopPolling();
+            scanError.value = data.error ?? 'Scan failed';
+            state.value = 'setup';
+        } else if (data.status === 'cancelled') {
+            stopPolling();
+            state.value = 'setup';
+        }
+    } catch {
+        // Silently retry
+    }
+}
+
+async function startScan() {
+    if (!selectedDeckId.value) return;
+
     errorMessage.value = null;
+    importResult.value = null;
+    scanError.value = null;
+    scanDeckName.value = selectedDeckName.value;
 
     try {
         const response = await fetch(ScanController.url(), {
             method: 'POST',
             headers: jsonHeaders(),
+            body: JSON.stringify({ deck_version_id: selectedDeckId.value }),
         });
 
         if (!response.ok) {
@@ -269,72 +212,119 @@ async function scan() {
         }
 
         const data = await response.json();
-        matches.value = data.matches;
-        scanned.value = true;
-
-        for (const match of matches.value) {
-            if (match.suggested_deck_version_id && (match.deck_match_confidence ?? 0) >= 0.6) {
-                deckChoices.value[match.history_id] = match.suggested_deck_version_id;
-            } else {
-                deckChoices.value[match.history_id] = null;
-            }
-        }
+        scanId.value = data.scan_id;
+        scanProgress.value = 0;
+        scanTotal.value = 0;
+        state.value = 'processing';
+        startPolling();
     } catch (e) {
         errorMessage.value = `Scan failed: ${e instanceof Error ? e.message : 'Unknown error'}`;
-    } finally {
-        scanning.value = false;
     }
 }
 
-function toggleSelect(historyId: number) {
-    if (selectedIds.value.has(historyId)) {
-        selectedIds.value.delete(historyId);
-    } else {
-        selectedIds.value.add(historyId);
+async function cancelScanAndReset() {
+    if (scanId.value) {
+        try {
+            await fetch(CancelScanController.url(scanId.value), {
+                method: 'DELETE',
+                headers: jsonHeaders(),
+            });
+        } catch {
+            // Best effort
+        }
     }
-    selectedIds.value = new Set(selectedIds.value);
-}
 
-function selectAll() {
-    selectedIds.value = new Set(filteredMatches.value.map((m) => m.history_id));
-}
-
-function selectWithDeck() {
-    selectedIds.value = new Set(
-        filteredMatches.value.filter((m) => deckChoices.value[m.history_id] !== null).map((m) => m.history_id),
-    );
-}
-
-function deselectAll() {
+    stopPolling();
+    state.value = 'setup';
+    scanId.value = null;
+    matches.value = [];
     selectedIds.value = new Set();
+    totalMatches.value = 0;
+    confidenceStats.value = null;
+    availableFormats.value = [];
+    formatFilter.value = '';
+    minConfidence.value = 0;
 }
 
-const bulkDeckId = ref<number | null>(null);
+async function loadMatches(page = 1) {
+    if (!scanId.value) return;
 
-function assignDeckToSelected() {
-    for (const id of selectedIds.value) {
-        deckChoices.value[id] = bulkDeckId.value;
+    try {
+        const query: Record<string, string> = { page: String(page), sort: sortBy.value, dir: 'desc' };
+        if (sortBy.value === 'opponent') query.dir = 'asc';
+        if (formatFilter.value) query.format = formatFilter.value;
+        if (minConfidence.value > 0) query.min_confidence = String(minConfidence.value);
+
+        const response = await fetch(
+            ScanMatchesController.url(scanId.value, { query }),
+            {
+                headers: { Accept: 'application/json', 'X-XSRF-TOKEN': getCsrfToken() },
+            },
+        );
+
+        if (!response.ok) return;
+
+        const data: PaginatedResponse = await response.json();
+        matches.value = data.data;
+        currentPage.value = data.current_page;
+        lastPage.value = data.last_page;
+        totalMatches.value = data.total;
+    } catch (e) {
+        errorMessage.value = `Failed to load matches: ${e instanceof Error ? e.message : 'Unknown error'}`;
     }
 }
 
-async function importSelected() {
-    if (!canImport.value) return;
+// Debounced watchers for filters
+let filterTimeout: ReturnType<typeof setTimeout> | null = null;
 
+watch([formatFilter, minConfidence, sortBy], () => {
+    if (filterTimeout) clearTimeout(filterTimeout);
+    filterTimeout = setTimeout(() => {
+        currentPage.value = 1;
+        loadMatches(1);
+    }, 300);
+});
+
+// Selection
+function toggleSelect(historyId: number) {
+    const newSet = new Set(selectedIds.value);
+    if (newSet.has(historyId)) {
+        newSet.delete(historyId);
+    } else {
+        newSet.add(historyId);
+    }
+    selectedIds.value = newSet;
+}
+
+const allPageSelected = computed(() =>
+    matches.value.length > 0 && matches.value.every((m) => selectedIds.value.has(m.history_id)),
+);
+
+function togglePageSelect() {
+    const newSet = new Set(selectedIds.value);
+    if (allPageSelected.value) {
+        for (const m of matches.value) {
+            newSet.delete(m.history_id);
+        }
+    } else {
+        for (const m of matches.value) {
+            newSet.add(m.history_id);
+        }
+    }
+    selectedIds.value = newSet;
+}
+
+// Import
+async function importSelected() {
+    if (selectedIds.value.size === 0 || !scanId.value) return;
     importing.value = true;
     errorMessage.value = null;
 
-    const selected = matches.value
-        .filter((m) => selectedIds.value.has(m.history_id))
-        .map((m) => ({
-            ...m,
-            deck_version_id: deckChoices.value[m.history_id] ?? null,
-        }));
-
     try {
-        const response = await fetch(StoreController.url(), {
+        const response = await fetch(StoreController.url(scanId.value), {
             method: 'POST',
             headers: jsonHeaders(),
-            body: JSON.stringify({ matches: selected }),
+            body: JSON.stringify({ history_ids: [...selectedIds.value] }),
         });
 
         if (!response.ok) {
@@ -346,13 +336,8 @@ async function importSelected() {
         const data = await response.json();
         importResult.value = data;
         importedCount.value += data.imported;
-
-        const importedIds = new Set(selected.map((m) => m.history_id));
-        matches.value = matches.value.filter((m) => !importedIds.has(m.history_id));
         selectedIds.value = new Set();
-
-        await nextTick();
-        importResultCard.value?.$el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        await loadMatches(currentPage.value);
     } catch (e) {
         errorMessage.value = `Import failed: ${e instanceof Error ? e.message : 'Unknown error'}`;
     } finally {
@@ -360,33 +345,66 @@ async function importSelected() {
     }
 }
 
-function formatDate(iso: string): string {
-    const d = new Date(iso);
-    return d.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
+const importAllConfirmOpen = ref(false);
+
+async function importAll() {
+    if (!scanId.value) return;
+    importing.value = true;
+    importAllConfirmOpen.value = false;
+    errorMessage.value = null;
+
+    try {
+        const response = await fetch(ImportAllController.url(scanId.value), {
+            method: 'POST',
+            headers: jsonHeaders(),
+        });
+
+        if (!response.ok) {
+            const text = await response.text();
+            errorMessage.value = `Import failed (${response.status}): ${text || response.statusText}`;
+            return;
+        }
+
+        const data = await response.json();
+        importResult.value = data;
+        importedCount.value += data.imported;
+        selectedIds.value = new Set();
+        await loadMatches(currentPage.value);
+    } catch (e) {
+        errorMessage.value = `Import failed: ${e instanceof Error ? e.message : 'Unknown error'}`;
+    } finally {
+        importing.value = false;
+    }
 }
 
-function formatDateKey(dateKey: string): string {
-    const d = new Date(dateKey + 'T00:00:00');
-    return d.toLocaleDateString('en-GB', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' });
-}
-
-function confidenceColor(confidence: number | null): string {
-    if (confidence === null) return 'text-muted-foreground';
-    if (confidence >= 0.8) return 'text-green-500';
-    if (confidence >= 0.6) return 'text-yellow-500';
-    return 'text-red-500';
-}
-
-const importResultCard = ref<InstanceType<typeof Card> | null>(null);
-
-const cardsModalMatch = ref<ImportableMatch | null>(null);
+// Cards modal
 const cardsModalOpen = ref(false);
+const cardsModalMatch = ref<ScanMatch | null>(null);
+const cardsModalLoading = ref(false);
+const cardsModalData = ref<{ local_cards: Array<{ mtgo_id: number; name: string }>; opponent_cards: Array<{ mtgo_id: number; name: string }> } | null>(null);
 
-function showCards(match: ImportableMatch) {
+async function showCards(match: ScanMatch) {
     cardsModalMatch.value = match;
     cardsModalOpen.value = true;
+    cardsModalLoading.value = true;
+    cardsModalData.value = null;
+
+    try {
+        const response = await fetch(ScanMatchCardsController.url(match.id), {
+            headers: { Accept: 'application/json', 'X-XSRF-TOKEN': getCsrfToken() },
+        });
+
+        if (response.ok) {
+            cardsModalData.value = await response.json();
+        }
+    } catch {
+        // Silently fail
+    } finally {
+        cardsModalLoading.value = false;
+    }
 }
 
+// Delete all imported
 const deleteModalOpen = ref(false);
 const deleting = ref(false);
 
@@ -408,16 +426,41 @@ async function deleteAllImported() {
 
         importedCount.value = 0;
         deleteModalOpen.value = false;
-
-        if (scanned.value) {
-            await scan();
-        }
     } catch (e) {
         errorMessage.value = `Delete failed: ${e instanceof Error ? e.message : 'Unknown error'}`;
     } finally {
         deleting.value = false;
     }
 }
+
+// Helpers
+function formatDate(iso: string): string {
+    const d = new Date(iso);
+    return d.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
+}
+
+function confidenceColor(confidence: number | null): string {
+    if (confidence === null) return 'text-muted-foreground';
+    if (confidence >= 0.8) return 'text-green-500';
+    if (confidence >= 0.6) return 'text-yellow-500';
+    return 'text-red-500';
+}
+
+function confidenceText(confidence: number | null): string {
+    if (confidence === null) return '-';
+    return Math.round(confidence * 100) + '%';
+}
+
+const confidenceLabel = computed(() => {
+    if (minConfidence.value === 0) return 'Off';
+    if (minConfidence.value <= 0.1) return 'Any';
+    return Math.round(minConfidence.value * 100) + '%+';
+});
+
+const progressPercent = computed(() => {
+    if (scanTotal.value === 0) return 0;
+    return Math.round((scanProgress.value / scanTotal.value) * 100);
+});
 </script>
 
 <template>
@@ -452,25 +495,16 @@ async function deleteAllImported() {
             </Button>
         </div>
 
-        <!-- Scan button -->
-        <div v-if="!scanned" class="flex justify-center">
-            <Button @click="scan" :disabled="scanning" size="lg">
-                <Spinner v-if="scanning" class="mr-2 size-4" />
-                <FileUp v-else class="mr-2 size-4" />
-                {{ scanning ? 'Scanning...' : 'Scan Match History' }}
-            </Button>
-        </div>
-
         <!-- Error banner -->
-        <Card v-if="errorMessage" class="border-red-500/50 bg-red-500/5">
+        <Card v-if="errorMessage || scanError" class="border-red-500/50 bg-red-500/5">
             <CardContent class="flex items-center gap-3 p-4">
                 <AlertTriangle class="size-5 shrink-0 text-red-500" />
-                <p class="text-sm text-red-600 dark:text-red-400">{{ errorMessage }}</p>
+                <p class="text-sm text-red-600 dark:text-red-400">{{ errorMessage || scanError }}</p>
             </CardContent>
         </Card>
 
         <!-- Import result banner -->
-        <Card v-if="importResult" ref="importResultCard" class="border-green-500/50 bg-green-500/5">
+        <Card v-if="importResult" class="border-green-500/50 bg-green-500/5">
             <CardContent class="flex items-center gap-3 p-4">
                 <Check class="size-5 text-green-500" />
                 <p class="text-sm">
@@ -480,52 +514,20 @@ async function deleteAllImported() {
             </CardContent>
         </Card>
 
-        <!-- Results -->
-        <template v-if="scanned && matches.length > 0">
-            <!-- Summary + filters -->
-            <div class="flex items-center justify-between">
-                <p class="text-sm text-muted-foreground">
-                    Found <strong>{{ summary.total }}</strong> matches in
-                    <strong>{{ groupedMatches.length }}</strong> groups.
-                    <strong>{{ summary.withGameLog }}</strong> have game logs.
-                </p>
-                <div class="flex items-center gap-2">
-                    <select
-                        v-model="formatFilter"
-                        class="h-8 rounded-md border border-input bg-background px-2 text-xs"
-                    >
-                        <option value="all">All formats</option>
-                        <option v-for="fmt in availableFormats" :key="fmt" :value="fmt">{{ fmt }}</option>
-                    </select>
-                    <Button variant="outline" size="sm" @click="selectAll">Select all</Button>
-                    <Button variant="outline" size="sm" @click="deselectAll">Deselect all</Button>
-                </div>
-            </div>
-
-            <!-- Grouped cards -->
-            <div class="space-y-4">
-                <Card v-for="group in groupedMatches" :key="group.key" class="overflow-hidden">
-                    <CardHeader class="flex flex-row items-center gap-3 space-y-0 border-b bg-muted/30 px-4 py-3">
-                        <input
-                            type="checkbox"
-                            :checked="isGroupFullySelected(group)"
-                            :indeterminate="isGroupPartiallySelected(group)"
-                            @change="toggleGroupSelect(group)"
-                            class="size-4 rounded border-input accent-primary"
-                        />
-                        <div class="flex flex-1 items-center gap-3">
-                            <Badge variant="outline" class="text-xs">{{ group.format }}</Badge>
-                            <span class="text-xs text-muted-foreground">{{ group.matches.length }} match(es)</span>
-                        </div>
+        <!-- STATE 1: Setup -->
+        <template v-if="state === 'setup'">
+            <Card>
+                <CardContent class="space-y-4 p-6">
+                    <div>
+                        <label class="mb-2 block text-sm font-medium">Select a deck</label>
                         <select
-                            class="h-8 w-[200px] rounded-md border border-input bg-background px-2 text-xs"
-                            :value="deckChoices[group.matches[0]?.history_id] ?? ''"
-                            @change="setGroupDeck(group, ($event.target as HTMLSelectElement).value ? Number(($event.target as HTMLSelectElement).value) : null)"
+                            v-model.number="selectedDeckId"
+                            class="h-10 w-full max-w-md rounded-md border border-input bg-background px-3 text-sm"
                         >
-                            <option value="">Assign deck...</option>
+                            <option :value="null" disabled>Choose a deck version...</option>
                             <optgroup v-if="activeDeckVersions.length" label="Active Decks">
                                 <option v-for="dv in activeDeckVersions" :key="dv.id" :value="dv.id">
-                                    {{ dv.deck_name }} ({{ dv.modified_at }})
+                                    {{ dv.deck_name }} ({{ dv.format }}, {{ dv.modified_at }})
                                 </option>
                             </optgroup>
                             <optgroup v-if="deletedDeckVersions.length" label="Deleted Decks">
@@ -534,156 +536,251 @@ async function deleteAllImported() {
                                 </option>
                             </optgroup>
                         </select>
-                    </CardHeader>
-
-                    <!-- Shared cards preview -->
-                    <div v-if="group.sharedCards.length > 0" class="flex items-center gap-1 overflow-x-auto border-b bg-muted/10 px-4 py-2 scrollbar-none">
-                        <Badge
-                            v-for="card in group.sharedCards"
-                            :key="card.mtgo_id"
-                            variant="secondary"
-                            class="shrink-0 text-[11px] leading-tight px-1.5 py-0"
-                        >
-                            {{ card.name }}
-                        </Badge>
+                        <p class="mt-1.5 text-xs text-muted-foreground">
+                            All imported matches will be assigned to this deck. Confidence scoring compares
+                            cards seen in game logs against the deck's card list.
+                        </p>
                     </div>
 
-                    <CardContent class="p-0">
-                        <table class="w-full table-fixed text-sm">
-                            <tbody>
-                                <tr
-                                    v-for="match in group.matches"
-                                    :key="match.history_id"
-                                    class="border-b last:border-b-0 transition-colors hover:bg-muted/30"
-                                    :class="{ 'bg-muted/10': selectedIds.has(match.history_id) }"
-                                >
-                                    <td class="w-10 p-3">
-                                        <input
-                                            type="checkbox"
-                                            :checked="selectedIds.has(match.history_id)"
-                                            @change="toggleSelect(match.history_id)"
-                                            class="size-4 rounded border-input accent-primary"
-                                        />
-                                    </td>
-                                    <td class="w-[90px] p-3 whitespace-nowrap text-muted-foreground">{{ formatDate(match.started_at) }}</td>
-                                    <td class="p-3">{{ match.opponent }}</td>
-                                    <td class="w-[100px] p-3">
-                                        <template v-if="match.has_game_log && match.games">
-                                            <span class="flex gap-1">
-                                                <Badge
-                                                    v-for="(game, i) in match.games"
-                                                    :key="i"
-                                                    :variant="game.won ? 'default' : 'destructive'"
-                                                    class="text-xs"
-                                                >
-                                                    {{ game.won ? 'W' : 'L' }}
-                                                </Badge>
-                                            </span>
-                                        </template>
-                                        <template v-else>
-                                            <span class="text-muted-foreground">
-                                                {{ match.games_won }}-{{ match.games_lost }}
-                                            </span>
-                                        </template>
-                                    </td>
-                                    <td class="w-[200px] p-3">
-                                        <select
-                                            class="h-8 w-full rounded-md border border-input bg-background px-2 text-xs"
-                                            :value="deckChoices[match.history_id] ?? ''"
-                                            @change="deckChoices[match.history_id] = ($event.target as HTMLSelectElement).value ? Number(($event.target as HTMLSelectElement).value) : null"
-                                        >
-                                            <option value="">No deck</option>
-                                            <optgroup v-if="activeDeckVersions.length" label="Active Decks">
-                                                <option v-for="dv in activeDeckVersions" :key="dv.id" :value="dv.id">
-                                                    {{ dv.deck_name }} ({{ dv.modified_at }})
-                                                </option>
-                                            </optgroup>
-                                            <optgroup v-if="deletedDeckVersions.length" label="Deleted Decks">
-                                                <option v-for="dv in deletedDeckVersions" :key="dv.id" :value="dv.id">
-                                                    {{ dv.deck_name }} (deleted) ({{ dv.modified_at }})
-                                                </option>
-                                            </optgroup>
-                                        </select>
-                                    </td>
-                                    <td class="w-20 p-3 text-center">
-                                        <span
-                                            v-if="match.deck_match_confidence !== null"
-                                            :class="confidenceColor(match.deck_match_confidence)"
-                                            class="text-xs font-medium"
-                                        >
-                                            {{ Math.round(match.deck_match_confidence * 100) }}%
-                                        </span>
-                                        <Minus v-else class="mx-auto size-4 text-muted-foreground" />
-                                    </td>
-                                    <td class="w-10 p-3 text-center">
-                                        <button
-                                            v-if="match.local_cards && match.local_cards.length > 0"
-                                            @click="showCards(match)"
-                                            class="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs text-muted-foreground hover:text-foreground"
-                                        >
-                                            <Eye class="size-3.5" />
-                                        </button>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </CardContent>
-                </Card>
+                    <Button @click="startScan" :disabled="!selectedDeckId" size="lg">
+                        <FileUp class="mr-2 size-4" />
+                        Load Matches
+                    </Button>
+                </CardContent>
+            </Card>
+        </template>
+
+        <!-- STATE 2: Processing -->
+        <template v-if="state === 'processing'">
+            <Card>
+                <CardContent class="space-y-4 p-6 text-center">
+                    <Spinner class="mx-auto size-8" />
+                    <div>
+                        <p class="text-sm font-medium">Scanning match history for {{ scanDeckName }}...</p>
+                        <p class="mt-1 text-xs text-muted-foreground">
+                            This may take a moment for large histories.
+                        </p>
+                    </div>
+
+                    <div v-if="scanTotal > 0" class="mx-auto max-w-sm space-y-1">
+                        <div class="h-2 overflow-hidden rounded-full bg-muted">
+                            <div
+                                class="h-full rounded-full bg-primary transition-all duration-300"
+                                :style="{ width: progressPercent + '%' }"
+                            />
+                        </div>
+                        <p class="text-xs text-muted-foreground">
+                            {{ scanProgress }} / {{ scanTotal }} ({{ progressPercent }}%)
+                        </p>
+                    </div>
+
+                    <Button variant="outline" size="sm" @click="cancelScanAndReset">
+                        Cancel
+                    </Button>
+                </CardContent>
+            </Card>
+        </template>
+
+        <!-- STATE 3: Results -->
+        <template v-if="state === 'results'">
+            <!-- Deck header -->
+            <div class="flex items-center justify-between">
+                <div>
+                    <h2 class="text-xl font-semibold">{{ scanDeckName }}</h2>
+                    <div class="mt-1 flex items-center gap-4 text-sm text-muted-foreground">
+                        <span><strong>{{ totalMatches }}</strong> matches</span>
+                        <template v-if="confidenceStats">
+                            <span class="text-green-500">{{ confidenceStats.high }} high</span>
+                            <span class="text-red-500">{{ confidenceStats.low }} low</span>
+                            <span v-if="confidenceStats.none > 0">{{ confidenceStats.none }} no log</span>
+                        </template>
+                    </div>
+                </div>
+                <Button variant="outline" size="sm" @click="cancelScanAndReset">
+                    <X class="mr-1.5 size-3.5" />
+                    Start over
+                </Button>
+            </div>
+
+            <!-- Filter controls -->
+            <div class="flex flex-wrap items-center gap-4">
+                <div class="flex items-center gap-2">
+                    <label class="text-xs text-muted-foreground">Format</label>
+                    <select
+                        v-model="formatFilter"
+                        class="h-8 rounded-md border border-input bg-background px-2 text-xs"
+                    >
+                        <option value="">All formats</option>
+                        <option v-for="fmt in availableFormats" :key="fmt" :value="fmt">{{ fmt }}</option>
+                    </select>
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <label class="text-xs text-muted-foreground">Sort by</label>
+                    <select
+                        v-model="sortBy"
+                        class="h-8 rounded-md border border-input bg-background px-2 text-xs"
+                    >
+                        <option v-for="opt in sortOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+                    </select>
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <label class="text-xs text-muted-foreground">Min. confidence</label>
+                    <input
+                        v-model.number="minConfidence"
+                        type="range"
+                        min="0"
+                        max="1"
+                        step="0.1"
+                        class="h-1.5 w-24 cursor-pointer accent-primary"
+                    />
+                    <span class="w-10 text-xs text-muted-foreground">{{ confidenceLabel }}</span>
+                </div>
+            </div>
+
+            <!-- Match table -->
+            <Card class="overflow-hidden">
+                <CardContent class="p-0">
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="border-b bg-muted/30 text-left text-xs font-medium text-muted-foreground">
+                                <th class="w-10 p-3">
+                                    <input
+                                        type="checkbox"
+                                        :checked="allPageSelected"
+                                        @change="togglePageSelect"
+                                        class="size-4 rounded border-input accent-primary"
+                                    />
+                                </th>
+                                <th class="p-3">Date</th>
+                                <th class="p-3">Opponent</th>
+                                <th class="p-3">Format</th>
+                                <th class="p-3">Result</th>
+                                <th class="p-3 text-right">Confidence</th>
+                                <th class="w-10 p-3"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr
+                                v-for="match in matches"
+                                :key="match.history_id"
+                                class="border-b transition-colors last:border-b-0 hover:bg-muted/30"
+                                :class="{ 'bg-muted/10': selectedIds.has(match.history_id) }"
+                            >
+                                <td class="w-10 p-3">
+                                    <input
+                                        type="checkbox"
+                                        :checked="selectedIds.has(match.history_id)"
+                                        @change="toggleSelect(match.history_id)"
+                                        class="size-4 rounded border-input accent-primary"
+                                    />
+                                </td>
+                                <td class="p-3 whitespace-nowrap text-muted-foreground">{{ formatDate(match.started_at) }}</td>
+                                <td class="p-3">{{ match.opponent }}</td>
+                                <td class="p-3">
+                                    <Badge variant="outline" class="text-xs">{{ match.format }}</Badge>
+                                </td>
+                                <td class="p-3">
+                                    <Badge :variant="match.outcome === 'win' ? 'default' : 'destructive'" class="text-xs">
+                                        {{ match.games_won }}-{{ match.games_lost }}
+                                    </Badge>
+                                </td>
+                                <td class="p-3 text-right">
+                                    <span
+                                        :class="confidenceColor(match.confidence)"
+                                        class="text-xs font-medium"
+                                    >
+                                        {{ confidenceText(match.confidence) }}
+                                    </span>
+                                </td>
+                                <td class="w-10 p-3 text-center">
+                                    <button
+                                        v-if="match.game_log_token"
+                                        @click="showCards(match)"
+                                        class="inline-flex items-center rounded px-1.5 py-0.5 text-muted-foreground hover:text-foreground"
+                                    >
+                                        <Eye class="size-3.5" />
+                                    </button>
+                                </td>
+                            </tr>
+                            <tr v-if="matches.length === 0">
+                                <td colspan="7" class="p-8 text-center text-sm text-muted-foreground">
+                                    No matches found{{ formatFilter ? ' for this format' : '' }}{{ minConfidence > 0 ? ' at this confidence level' : '' }}.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </CardContent>
+            </Card>
+
+            <!-- Pagination -->
+            <div v-if="lastPage > 1" class="flex items-center justify-between">
+                <p class="text-xs text-muted-foreground">
+                    Page {{ currentPage }} of {{ lastPage }}
+                </p>
+                <div class="flex items-center gap-1">
+                    <Button variant="outline" size="sm" :disabled="currentPage <= 1" @click="loadMatches(currentPage - 1)">
+                        <ChevronLeft class="size-4" />
+                    </Button>
+                    <Button variant="outline" size="sm" :disabled="currentPage >= lastPage" @click="loadMatches(currentPage + 1)">
+                        <ChevronRight class="size-4" />
+                    </Button>
+                </div>
             </div>
 
             <!-- Bottom spacer -->
             <div class="h-20"></div>
         </template>
 
-        <!-- No results -->
-        <Card v-if="scanned && matches.length === 0 && !importResult">
-            <CardContent class="p-4 text-center text-sm text-muted-foreground">
-                No importable matches found. All history records are already in your database.
-            </CardContent>
-        </Card>
-
-        <!-- Fixed bottom bar -->
+        <!-- Sticky bottom bar -->
         <div
-            v-if="scanned && matches.length > 0 && selectedCount > 0"
+            v-if="state === 'results' && (selectedCount > 0 || totalMatches > 0)"
             class="fixed inset-x-0 bottom-0 z-10 border-t border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80"
         >
             <div class="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-3">
+                <span class="text-sm text-muted-foreground">
+                    <template v-if="selectedCount > 0">{{ selectedCount }} selected</template>
+                    <template v-else>{{ totalMatches }} total matches</template>
+                </span>
                 <div class="flex items-center gap-3">
-                    <span class="text-sm text-muted-foreground">{{ selectedCount }} selected</span>
-                    <div class="flex items-center gap-2">
-                        <select
-                            class="h-8 rounded-md border border-input bg-background px-2 text-xs"
-                            :value="bulkDeckId ?? ''"
-                            @change="bulkDeckId = ($event.target as HTMLSelectElement).value ? Number(($event.target as HTMLSelectElement).value) : null"
-                        >
-                            <option value="">Assign deck...</option>
-                            <optgroup v-if="activeDeckVersions.length" label="Active Decks">
-                                <option v-for="dv in activeDeckVersions" :key="dv.id" :value="dv.id">
-                                    {{ dv.deck_name }} ({{ dv.modified_at }})
-                                </option>
-                            </optgroup>
-                            <optgroup v-if="deletedDeckVersions.length" label="Deleted Decks">
-                                <option v-for="dv in deletedDeckVersions" :key="dv.id" :value="dv.id">
-                                    {{ dv.deck_name }} (deleted) ({{ dv.modified_at }})
-                                </option>
-                            </optgroup>
-                        </select>
-                        <Button variant="outline" size="sm" @click="assignDeckToSelected" :disabled="!bulkDeckId">
-                            Apply
-                        </Button>
-                    </div>
-                </div>
-                <div class="flex items-center gap-3">
-                    <span v-if="selectedWithoutDeck.length > 0" class="text-xs text-red-500">
-                        {{ selectedWithoutDeck.length }} match(es) missing a deck
-                    </span>
-                    <Button @click="importSelected" :disabled="!canImport">
+                    <Button
+                        v-if="selectedCount > 0"
+                        @click="importSelected"
+                        :disabled="importing"
+                    >
                         <Spinner v-if="importing" class="mr-2 size-4" />
                         {{ importing ? 'Importing...' : `Import ${selectedCount} match(es)` }}
+                    </Button>
+                    <Button
+                        variant="outline"
+                        @click="importAllConfirmOpen = true"
+                        :disabled="importing || totalMatches === 0"
+                    >
+                        Import All {{ totalMatches }} Matches
                     </Button>
                 </div>
             </div>
         </div>
+
+        <!-- Import all confirmation -->
+        <Dialog v-model:open="importAllConfirmOpen">
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Import all matches?</DialogTitle>
+                    <DialogDescription>
+                        This will import all <strong>{{ totalMatches }}</strong> matches from the scan
+                        and assign them to <strong>{{ scanDeckName }}</strong>.
+                    </DialogDescription>
+                </DialogHeader>
+                <DialogFooter class="gap-2 sm:gap-0">
+                    <Button variant="outline" @click="importAllConfirmOpen = false">Cancel</Button>
+                    <Button @click="importAll">
+                        Import {{ totalMatches }} matches
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
 
         <!-- Cards modal -->
         <Dialog v-model:open="cardsModalOpen">
@@ -691,20 +788,25 @@ async function deleteAllImported() {
                 <DialogHeader>
                     <DialogTitle>
                         Cards seen — {{ cardsModalMatch?.opponent }}
-                        <span class="text-muted-foreground font-normal">
+                        <span class="font-normal text-muted-foreground">
                             ({{ cardsModalMatch?.format }}, {{ cardsModalMatch ? formatDate(cardsModalMatch.started_at) : '' }})
                         </span>
                     </DialogTitle>
                     <DialogDescription>
-                        Cards played or revealed by {{ cardsModalMatch?.local_player ?? 'you' }} during this match.
+                        Cards played or revealed during this match.
                     </DialogDescription>
                 </DialogHeader>
-                <div v-if="cardsModalMatch?.local_cards" class="space-y-4">
-                    <div>
-                        <h4 class="mb-2 text-xs font-medium text-muted-foreground uppercase">Your cards ({{ cardsModalMatch.local_cards.length }})</h4>
+
+                <div v-if="cardsModalLoading" class="flex justify-center py-8">
+                    <Spinner class="size-6" />
+                </div>
+
+                <div v-else-if="cardsModalData" class="space-y-4">
+                    <div v-if="cardsModalData.local_cards.length > 0">
+                        <h4 class="mb-2 text-xs font-medium uppercase text-muted-foreground">Your cards ({{ cardsModalData.local_cards.length }})</h4>
                         <div class="flex flex-wrap gap-1">
                             <Badge
-                                v-for="card in cardsModalMatch.local_cards"
+                                v-for="card in cardsModalData.local_cards"
                                 :key="card.mtgo_id"
                                 variant="secondary"
                                 class="text-xs"
@@ -713,11 +815,11 @@ async function deleteAllImported() {
                             </Badge>
                         </div>
                     </div>
-                    <div v-if="cardsModalMatch.opponent_cards && cardsModalMatch.opponent_cards.length > 0">
-                        <h4 class="mb-2 text-xs font-medium text-muted-foreground uppercase">Opponent cards ({{ cardsModalMatch.opponent_cards.length }})</h4>
+                    <div v-if="cardsModalData.opponent_cards.length > 0">
+                        <h4 class="mb-2 text-xs font-medium uppercase text-muted-foreground">Opponent cards ({{ cardsModalData.opponent_cards.length }})</h4>
                         <div class="flex flex-wrap gap-1">
                             <Badge
-                                v-for="card in cardsModalMatch.opponent_cards"
+                                v-for="card in cardsModalData.opponent_cards"
                                 :key="card.mtgo_id"
                                 variant="outline"
                                 class="text-xs"
@@ -726,6 +828,12 @@ async function deleteAllImported() {
                             </Badge>
                         </div>
                     </div>
+                    <p
+                        v-if="cardsModalData.local_cards.length === 0 && cardsModalData.opponent_cards.length === 0"
+                        class="py-4 text-center text-sm text-muted-foreground"
+                    >
+                        No card data available for this match.
+                    </p>
                 </div>
             </DialogContent>
         </Dialog>
