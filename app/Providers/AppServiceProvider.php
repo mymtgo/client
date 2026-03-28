@@ -3,7 +3,6 @@
 namespace App\Providers;
 
 use App\Actions\RegisterDevice;
-use App\Actions\Updates\RunAppUpdates;
 use App\Managers\MtgoManager;
 use App\Models\LogCursor;
 use App\Observers\LogCursorObserver;
@@ -28,8 +27,6 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        RunAppUpdates::run();
-
         LogCursor::observe(LogCursorObserver::class);
 
         if (! config('mymtgo_api.verify_ssl')) {

@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Actions\Decks\OpenMostRecentDeckPopout;
 use App\Actions\Leagues\OpenOpponentScoutWindow;
 use App\Actions\Leagues\OpenOverlayWindow;
+use App\Actions\Updates\RunAppUpdates;
 use App\Facades\Mtgo;
 use Native\Desktop\Contracts\ProvidesPhpIni;
 use Native\Desktop\Facades\Menu;
@@ -20,6 +21,8 @@ class NativeAppServiceProvider implements ProvidesPhpIni
      */
     public function boot(): void
     {
+        RunAppUpdates::run();
+
         $this->configureTimezone();
 
         if (app()->isProduction()) {
