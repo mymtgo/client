@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\DB;
 
 class GetCardGameStats
 {
-    public static function run(DeckVersion $deckVersion, ?int $opponentArchetypeId = null, ?bool $onPlay = null): Collection
+    public static function run(DeckVersion $deckVersion, ?int $opponentArchetypeId = null, ?bool $onPlay = null, ?bool $isPostboard = null): Collection
     {
         $sideboardOracles = collect($deckVersion->cards)
             ->filter(fn ($card) => $card['sideboard'] === 'true' || $card['sideboard'] === true)
@@ -19,6 +19,8 @@ class GetCardGameStats
         $query = DB::table('card_game_stats as cgs')
             ->join(DB::raw('(SELECT oracle_id, name, color_identity, type, image FROM cards WHERE oracle_id IS NOT NULL GROUP BY oracle_id) as c'), 'c.oracle_id', '=', 'cgs.oracle_id')
             ->where('cgs.deck_version_id', $deckVersion->id);
+
+        $query->when($isPostboard !== null, fn ($q) => $q->where('cgs.is_postboard', $isPostboard));
 
         if ($opponentArchetypeId) {
             $query->join('games as g', 'g.id', '=', 'cgs.game_id')

@@ -65,14 +65,16 @@ const archetypes = computed(() => props.cardStats?.archetypes ?? []);
 
 const selectedArchetype = ref<string>('__all__');
 const selectedPlayDraw = ref<string>('__all__');
+const selectedBoard = ref<string>('__all__');
 const searchQuery = ref('');
 
 function reloadStats() {
     const archetypeId = selectedArchetype.value === '__all__' ? undefined : selectedArchetype.value;
     const playDraw = selectedPlayDraw.value === '__all__' ? undefined : selectedPlayDraw.value;
+    const board = selectedBoard.value === '__all__' ? undefined : selectedBoard.value;
     router.reload({
         only: ['cardStats'],
-        data: { card_stats_archetype: archetypeId, card_stats_play_draw: playDraw },
+        data: { card_stats_archetype: archetypeId, card_stats_play_draw: playDraw, card_stats_board: board },
         preserveScroll: true,
         preserveState: true,
     });
@@ -85,6 +87,11 @@ function filterByArchetype(value: string) {
 
 function filterByPlayDraw(value: string) {
     selectedPlayDraw.value = value;
+    reloadStats();
+}
+
+function filterByBoard(value: string) {
+    selectedBoard.value = value;
     reloadStats();
 }
 
@@ -282,14 +289,32 @@ function winRateClass(pctVal: number | null): string {
             </Card>
         </template>
 
-        <div v-if="archetypes.length || stats.length" class="mb-4 grid grid-cols-3 items-center gap-4">
-            <div class="col-span-2 relative">
-                <Search class="pointer-events-none absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-                <Input v-model="searchQuery" placeholder="Search cards..." class="h-8 py-0 pl-7 text-xs" />
-            </div>
+        <div v-if="archetypes.length || stats.length" class="mb-4 flex flex-col gap-4">
+            <div class="flex items-center gap-4">
+                <div class="relative flex-1">
+                    <Search class="pointer-events-none absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+                    <Input v-model="searchQuery" placeholder="Search cards..." class="h-8 py-0 pl-7 text-xs" />
+                </div>
 
-            <div class="flex items-center justify-end gap-2">
-                <Select :modelValue="selectedPlayDraw" @update:modelValue="filterByPlayDraw">
+                <div class="flex items-center gap-1 rounded-md border p-1">
+                    <Button
+                        v-for="opt in [
+                            { value: '__all__', label: 'Overall' },
+                            { value: 'preboard', label: 'Game 1' },
+                            { value: 'postboard', label: 'Postboard' },
+                        ]"
+                        :key="opt.value"
+                        size="sm"
+                        :variant="selectedBoard === opt.value ? 'default' : 'ghost'"
+                        class="h-7 px-3 text-xs"
+                        @click="filterByBoard(opt.value)"
+                    >
+                        {{ opt.label }}
+                    </Button>
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <Select :modelValue="selectedPlayDraw" @update:modelValue="filterByPlayDraw">
                     <SelectTrigger class="h-8 w-36 text-xs">
                         <SelectValue placeholder="Play / Draw" />
                     </SelectTrigger>
@@ -312,44 +337,45 @@ function winRateClass(pctVal: number | null): string {
                     </SelectContent>
                 </Select>
 
-            <DropdownMenu>
-                <DropdownMenuTrigger as-child>
-                    <Button
-                        :variant="activeFilterCount > 0 ? 'default' : 'outline'"
-                        class="h-[34px] gap-1.5 rounded-md border px-3 text-xs"
-                    >
-                        <Filter class="size-3.5" />
-                        <span v-if="activeFilterCount > 0">{{ activeFilterCount }} hidden</span>
-                        <span v-else>Card types</span>
-                    </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" class="w-48">
-                    <div class="flex items-center justify-between px-2 py-1.5">
-                        <span class="text-xs font-semibold">Filter by type</span>
-                        <button
-                            class="text-xs text-muted-foreground hover:text-foreground"
-                            @click="toggleAll"
-                        >
-                            {{ allVisible ? 'Hide all' : 'Show all' }}
-                        </button>
-                    </div>
-                    <DropdownMenuSeparator />
-                    <template v-for="filter in visibleFilters" :key="filter.key">
-                        <DropdownMenuSeparator v-if="filter.key === 'Sideboard'" />
-                        <DropdownMenuCheckboxItem
-                            :modelValue="typeFilters[filter.key]"
-                            @update:modelValue="(val: boolean) => setFilter(filter.key, val)"
-                            @select.prevent
-                        >
-                            <template #indicator-icon>
-                                <Check class="size-4 text-success" />
+                    <DropdownMenu>
+                        <DropdownMenuTrigger as-child>
+                            <Button
+                                :variant="activeFilterCount > 0 ? 'default' : 'outline'"
+                                class="h-[34px] gap-1.5 rounded-md border px-3 text-xs"
+                            >
+                                <Filter class="size-3.5" />
+                                <span v-if="activeFilterCount > 0">{{ activeFilterCount }} hidden</span>
+                                <span v-else>Card types</span>
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" class="w-48">
+                            <div class="flex items-center justify-between px-2 py-1.5">
+                                <span class="text-xs font-semibold">Filter by type</span>
+                                <button
+                                    class="text-xs text-muted-foreground hover:text-foreground"
+                                    @click="toggleAll"
+                                >
+                                    {{ allVisible ? 'Hide all' : 'Show all' }}
+                                </button>
+                            </div>
+                            <DropdownMenuSeparator />
+                            <template v-for="filter in visibleFilters" :key="filter.key">
+                                <DropdownMenuSeparator v-if="filter.key === 'Sideboard'" />
+                                <DropdownMenuCheckboxItem
+                                    :modelValue="typeFilters[filter.key]"
+                                    @update:modelValue="(val: boolean) => setFilter(filter.key, val)"
+                                    @select.prevent
+                                >
+                                    <template #indicator-icon>
+                                        <Check class="size-4 text-success" />
+                                    </template>
+                                    <component :is="filter.icon" class="mr-2 size-3.5 text-muted-foreground" />
+                                    {{ filter.label }}
+                                </DropdownMenuCheckboxItem>
                             </template>
-                            <component :is="filter.icon" class="mr-2 size-3.5 text-muted-foreground" />
-                            {{ filter.label }}
-                        </DropdownMenuCheckboxItem>
-                    </template>
-                </DropdownMenuContent>
-            </DropdownMenu>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                </div>
             </div>
         </div>
 

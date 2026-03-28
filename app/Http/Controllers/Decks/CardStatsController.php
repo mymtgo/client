@@ -41,8 +41,12 @@ class CardStatsController extends Controller
                     ? $request->input('card_stats_play_draw') === 'play'
                     : null;
 
+                $isPostboard = $request->filled('card_stats_board')
+                    ? $request->input('card_stats_board') === 'postboard'
+                    : null;
+
                 return [
-                    'stats' => GetCardGameStats::run($deckVersion, $opponentArchetypeId, $onPlay),
+                    'stats' => GetCardGameStats::run($deckVersion, $opponentArchetypeId, $onPlay, $isPostboard),
                     'archetypes' => GetCardGameStats::availableArchetypes($deckVersion),
                 ];
             },
