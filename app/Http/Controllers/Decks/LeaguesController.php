@@ -8,6 +8,7 @@ use App\Actions\Leagues\FormatLeagueRuns;
 use App\Concerns\HasTimeframeFilter;
 use App\Http\Controllers\Controller;
 use App\Models\Deck;
+use App\Models\DeckVersion;
 use App\Models\League;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -23,7 +24,11 @@ class LeaguesController extends Controller
 
         $shared = GetDeckViewSharedProps::run($deck, $from, $to);
 
-        $stats = GetDeckStats::run($deck, $from, $to);
+        $deckVersion = $request->filled('version')
+            ? DeckVersion::find($request->input('version'))
+            : null;
+
+        $stats = GetDeckStats::run($deck, $from, $to, $deckVersion);
         $allMatchIds = $stats['allMatchIds'];
 
         $leagues = League::whereHas('matches', fn ($q) => $q->whereIn('matches.id', $allMatchIds))
@@ -33,6 +38,7 @@ class LeaguesController extends Controller
 
         return Inertia::render('decks/Leagues', [
             ...$shared,
+            'currentVersionId' => $deckVersion?->id,
             'currentPage' => 'leagues',
             'timeframe' => $timeframe,
             'leagues' => FormatLeagueRuns::run($leagues, deckId: $deck->id),

@@ -11,6 +11,7 @@ use App\Enums\MatchOutcome;
 use App\Http\Controllers\Controller;
 use App\Models\Archetype;
 use App\Models\Deck;
+use App\Models\DeckVersion;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -26,11 +27,16 @@ class MatchesController extends Controller
 
         $shared = GetDeckViewSharedProps::run($deck, $from, $to);
 
-        $stats = GetDeckStats::run($deck, $from, $to);
+        $deckVersion = $request->filled('version')
+            ? DeckVersion::find($request->input('version'))
+            : null;
+
+        $stats = GetDeckStats::run($deck, $from, $to, $deckVersion);
         $allMatchIds = $stats['allMatchIds'];
 
         // Build filtered match query
-        $query = $deck->matches()->select('matches.*')->where('state', 'complete');
+        $query = $deck->matches()->select('matches.*')->where('state', 'complete')
+            ->when($deckVersion, fn ($q) => $q->where('deck_version_id', $deckVersion->id));
 
         if ($filterFrom = $request->input('filter_from')) {
             $query->where('started_at', '>=', Carbon::parse($filterFrom)->startOfDay());
@@ -85,6 +91,7 @@ class MatchesController extends Controller
 
         return Inertia::render('decks/Matches', [
             ...$shared,
+            'currentVersionId' => $deckVersion?->id,
             'currentPage' => 'matches',
             'timeframe' => $timeframe,
             'matches' => $matches,
