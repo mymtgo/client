@@ -31,7 +31,10 @@ class UpdateController extends Controller
 
         $request->validate([$field => $rules[$field]]);
 
-        $game->update([$field => $request->input($field)]);
+        $value = $request->input($field);
+        $value = $value === '' ? null : $value;
+
+        $game->update([$field => $value]);
 
         return back();
     }

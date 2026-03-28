@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Debug\Matches;
 
+use App\Enums\MatchOutcome;
 use App\Enums\MatchState;
 use App\Http\Controllers\Controller;
 use App\Models\MtgoMatch;
@@ -17,7 +18,7 @@ class UpdateController extends Controller
 
         $allowed = [
             'token', 'mtgo_id', 'league_id', 'deck_version_id',
-            'format', 'match_type', 'state',
+            'format', 'match_type', 'state', 'outcome',
             'started_at', 'ended_at', 'submitted_at',
         ];
 
@@ -35,6 +36,7 @@ class UpdateController extends Controller
             'format' => 'nullable|string',
             'match_type' => 'nullable|string',
             'state' => ['nullable', Rule::enum(MatchState::class)],
+            'outcome' => ['nullable', Rule::enum(MatchOutcome::class)],
             'started_at' => 'nullable|date',
             'ended_at' => 'nullable|date',
             'submitted_at' => 'nullable|date',
@@ -42,7 +44,10 @@ class UpdateController extends Controller
 
         $request->validate([$field => $rules[$field]]);
 
-        $match->update([$field => $request->input($field)]);
+        $value = $request->input($field);
+        $value = $value === '' ? null : $value;
+
+        $match->update([$field => $value]);
 
         return back();
     }
