@@ -10,17 +10,21 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { useForm, router } from '@inertiajs/vue3';
 import DeleteController from '@/actions/App/Http/Controllers/Matches/DeleteController';
 import UpdateArchetypeController from '@/actions/App/Http/Controllers/Matches/UpdateArchetypeController';
+import DetectArchetypeController from '@/actions/App/Http/Controllers/Matches/DetectArchetypeController';
 import ShowController from '@/actions/App/Http/Controllers/Matches/ShowController';
 import SetArchetypeDialog from '@/components/matches/SetArchetypeDialog.vue';
-import { NotepadText } from 'lucide-vue-next';
+import { useToast } from '@/composables/useToast';
+import { NotepadText, RefreshCw } from 'lucide-vue-next';
 
-defineProps<{
+const props = defineProps<{
     matches: App.Data.Front.MatchData[];
     archetypes?: App.Data.Front.ArchetypeData[];
 }>();
 
 const archetypeDialog = ref<InstanceType<typeof SetArchetypeDialog> | null>(null);
 const notesDialog = ref<InstanceType<typeof MatchNotesDialog> | null>(null);
+const detectingMatchId = ref<number | null>(null);
+const { add: toast } = useToast();
 
 const deleteForm = useForm<{
     id: string | number;
@@ -44,6 +48,27 @@ const clearArchetypeForm = useForm<{ archetype_id: null }>({
 const clearArchetype = (matchId: number) => {
     clearArchetypeForm.submit(UpdateArchetypeController({ id: matchId }), {
         onSuccess: () => clearArchetypeForm.reset(),
+    });
+};
+
+const detectArchetype = (matchId: number) => {
+    detectingMatchId.value = matchId;
+
+    router.post(DetectArchetypeController({ id: matchId }).url, {}, {
+        preserveScroll: true,
+        onSuccess: () => {
+            const match = props.matches.find(m => m.id === matchId);
+            if (!match?.opponentArchetypes?.[0]?.archetype) {
+                toast({
+                    type: 'error',
+                    title: 'Detection failed',
+                    message: 'Could not determine the opponent\'s archetype for this match.',
+                });
+            }
+        },
+        onFinish: () => {
+            detectingMatchId.value = null;
+        },
     });
 };
 </script>
@@ -87,6 +112,9 @@ const clearArchetype = (matchId: number) => {
                                 <div class="flex items-center gap-1" v-if="match.opponentArchetypes?.[0]?.archetype">
                                     {{ match.opponentArchetypes[0].archetype.name }}
                                 </div>
+                                <span v-else-if="detectingMatchId === match.id" class="text-muted-foreground">
+                                    <RefreshCw class="size-3.5 animate-spin" />
+                                </span>
                                 <span v-else class="text-muted-foreground">Unknown</span>
                             </TableCell>
                             <TableCell>
@@ -125,7 +153,8 @@ const clearArchetype = (matchId: number) => {
                         <ContextMenuItem @click="notesDialog?.openForMatch(match.id, match.notes ?? null)">
                             {{ match.notes ? 'Edit notes' : 'Add notes' }}
                         </ContextMenuItem>
-                        <ContextMenuItem @click="archetypeDialog?.openForMatch(match.id, match.format)">Set archetype</ContextMenuItem>
+                        <ContextMenuItem @click="detectArchetype(match.id)">Detect archetype</ContextMenuItem>
+                        <ContextMenuItem @click="archetypeDialog?.openForMatch(match.id, match.format)">Set manual archetype</ContextMenuItem>
                         <ContextMenuItem
                             v-if="match.opponentArchetypes?.[0]?.archetype"
                             @click="clearArchetype(match.id)"
