@@ -101,7 +101,7 @@ const totalMatches = ref(props.existingScan?.match_count ?? 0);
 const selectedIds = ref<Set<number>>(new Set());
 
 const errorMessage = ref<string | null>(null);
-const importResult = ref<{ imported: number; skipped: number } | null>(null);
+const importResult = ref<{ imported?: number; skipped?: number; dispatched?: number } | null>(null);
 const importedCount = ref(props.importedCount);
 const importing = ref(false);
 
@@ -235,6 +235,7 @@ async function cancelScanAndReset() {
     }
 
     stopPolling();
+    stopImportPolling();
     state.value = 'setup';
     scanId.value = null;
     matches.value = [];
@@ -269,6 +270,10 @@ async function loadMatches(page = 1) {
         currentPage.value = data.current_page;
         lastPage.value = data.last_page;
         totalMatches.value = data.total;
+
+        if (data.total === 0) {
+            stopImportPolling();
+        }
     } catch (e) {
         errorMessage.value = `Failed to load matches: ${e instanceof Error ? e.message : 'Unknown error'}`;
     }
@@ -314,6 +319,23 @@ function togglePageSelect() {
     selectedIds.value = newSet;
 }
 
+// Import polling — reload match list until queue finishes processing
+let importPollTimer: ReturnType<typeof setInterval> | null = null;
+
+function startImportPolling() {
+    stopImportPolling();
+    importPollTimer = setInterval(() => loadMatches(currentPage.value), 3000);
+}
+
+function stopImportPolling() {
+    if (importPollTimer) {
+        clearInterval(importPollTimer);
+        importPollTimer = null;
+    }
+}
+
+onUnmounted(stopImportPolling);
+
 // Import
 async function importSelected() {
     if (selectedIds.value.size === 0 || !scanId.value) return;
@@ -335,9 +357,8 @@ async function importSelected() {
 
         const data = await response.json();
         importResult.value = data;
-        importedCount.value += data.imported;
         selectedIds.value = new Set();
-        await loadMatches(currentPage.value);
+        startImportPolling();
     } catch (e) {
         errorMessage.value = `Import failed: ${e instanceof Error ? e.message : 'Unknown error'}`;
     } finally {
@@ -354,7 +375,11 @@ async function importAll() {
     errorMessage.value = null;
 
     try {
-        const response = await fetch(ImportAllController.url(scanId.value), {
+        const query: Record<string, string> = {};
+        if (formatFilter.value) query.format = formatFilter.value;
+        if (minConfidence.value > 0) query.min_confidence = String(minConfidence.value);
+
+        const response = await fetch(ImportAllController.url(scanId.value, { query }), {
             method: 'POST',
             headers: jsonHeaders(),
         });
@@ -367,9 +392,8 @@ async function importAll() {
 
         const data = await response.json();
         importResult.value = data;
-        importedCount.value += data.imported;
         selectedIds.value = new Set();
-        await loadMatches(currentPage.value);
+        startImportPolling();
     } catch (e) {
         errorMessage.value = `Import failed: ${e instanceof Error ? e.message : 'Unknown error'}`;
     } finally {
@@ -508,8 +532,7 @@ const progressPercent = computed(() => {
             <CardContent class="flex items-center gap-3 p-4">
                 <Check class="size-5 text-green-500" />
                 <p class="text-sm">
-                    Successfully imported {{ importResult.imported }} match(es).
-                    <span v-if="importResult.skipped"> {{ importResult.skipped }} skipped (already exist).</span>
+                    {{ importResult.dispatched }} match(es) queued for import. They will appear in your match history as they are processed.
                 </p>
             </CardContent>
         </Card>

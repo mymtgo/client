@@ -2,7 +2,6 @@
 
 namespace App\Actions\Import;
 
-use App\Actions\Matches\ExtractCardsFromGameLog;
 use App\Actions\Matches\ExtractGameResults;
 use App\Actions\Matches\ParseGameLogBinary;
 use App\Enums\MatchOutcome;
@@ -78,7 +77,7 @@ class ImportMatches
                 self::createGames($match, $data);
 
                 // Dispatch archetype detection to the queue — external API calls are too slow for inline
-                DetermineMatchArchetypesJob::dispatch($match->id);
+                DetermineMatchArchetypesJob::dispatch($match->id)->onQueue('match_archetypes');
             }
 
             $imported++;
@@ -195,7 +194,7 @@ class ImportMatches
                 ];
 
                 self::createGames($match, $data);
-                DetermineMatchArchetypesJob::dispatch($match->id);
+                DetermineMatchArchetypesJob::dispatch($match->id)->onQueue('match_archetypes');
             }
 
             $imported++;

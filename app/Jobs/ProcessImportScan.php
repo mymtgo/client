@@ -29,7 +29,9 @@ class ProcessImportScan implements ShouldQueue
 
     public function __construct(
         public int $scanId,
-    ) {}
+    ) {
+        $this->onQueue('importer');
+    }
 
     public function handle(): void
     {
