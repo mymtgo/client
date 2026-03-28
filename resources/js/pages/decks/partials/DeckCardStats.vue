@@ -49,6 +49,9 @@ type CardStat = {
     totalSeen: number;
     seenWon: number;
     seenLost: number;
+    totalCast: number;
+    castWon: number;
+    castLost: number;
     postboardGames: number;
     sidedOutGames: number;
 };
@@ -200,7 +203,7 @@ function passesFilter(stat: CardStat): boolean {
 
 // ── Sorting ──────────────────────────────────────────────────────────────────
 
-type SortKey = 'name' | 'keptPct' | 'keptWinPct' | 'seenPct' | 'seenWinPct' | 'sbOutPct' | 'games';
+type SortKey = 'name' | 'keptPct' | 'keptWinPct' | 'seenPct' | 'seenWinPct' | 'castPct' | 'castWinPct' | 'sbOutPct' | 'games';
 const sortBy = ref<SortKey>('name');
 const sortDesc = ref(false);
 
@@ -229,6 +232,10 @@ function sortValue(stat: CardStat, key: SortKey): number | string {
             return pct(stat.totalSeen, stat.totalPossible) ?? -1;
         case 'seenWinPct':
             return pct(stat.seenWon, stat.seenWon + stat.seenLost) ?? -1;
+        case 'castPct':
+            return pct(stat.totalCast, stat.totalPossible) ?? -1;
+        case 'castWinPct':
+            return pct(stat.castWon, stat.castWon + stat.castLost) ?? -1;
         case 'sbOutPct':
             return pct(stat.sidedOutGames, stat.postboardGames) ?? -1;
         case 'games':
@@ -411,6 +418,12 @@ function winRateClass(pctVal: number | null): string {
                             <TableHead class="cursor-pointer select-none text-right" @click="toggleSort('keptWinPct')">
                                 <span class="inline-flex items-center justify-end gap-1">Win % (kept) <component :is="sortIcon('keptWinPct')" class="size-3" /></span>
                             </TableHead>
+                            <TableHead class="cursor-pointer select-none text-right" @click="toggleSort('castPct')">
+                                <span class="inline-flex items-center justify-end gap-1">Cast % <component :is="sortIcon('castPct')" class="size-3" /></span>
+                            </TableHead>
+                            <TableHead class="cursor-pointer select-none text-right" @click="toggleSort('castWinPct')">
+                                <span class="inline-flex items-center justify-end gap-1">Win % (cast) <component :is="sortIcon('castWinPct')" class="size-3" /></span>
+                            </TableHead>
                             <TableHead class="cursor-pointer select-none text-right" @click="toggleSort('seenPct')">
                                 <span class="inline-flex items-center justify-end gap-1">Seen % <component :is="sortIcon('seenPct')" class="size-3" /></span>
                             </TableHead>
@@ -444,41 +457,67 @@ function winRateClass(pctVal: number | null): string {
                                 <Check v-if="stat.isSideboard" class="mx-auto size-3.5 text-muted-foreground" />
                             </TableCell>
                             <TableCell class="text-right tabular-nums">
-                                <span v-if="pct(stat.totalKept, stat.totalPossible) !== null">
+                                <template v-if="pct(stat.totalKept, stat.totalPossible) !== null">
                                     {{ pct(stat.totalKept, stat.totalPossible) }}%
-                                </span>
+                                    <span class="text-muted-foreground text-[10px]">({{ stat.totalKept }})</span>
+                                </template>
                                 <span v-else class="text-muted-foreground">—</span>
                             </TableCell>
                             <TableCell class="text-right tabular-nums">
-                                <span
-                                    v-if="pct(stat.keptWon, stat.keptWon + stat.keptLost) !== null"
-                                    class="font-medium"
-                                    :class="winRateClass(pct(stat.keptWon, stat.keptWon + stat.keptLost))"
-                                >
-                                    {{ pct(stat.keptWon, stat.keptWon + stat.keptLost) }}%
-                                </span>
+                                <template v-if="pct(stat.keptWon, stat.keptWon + stat.keptLost) !== null">
+                                    <span
+                                        class="font-medium"
+                                        :class="winRateClass(pct(stat.keptWon, stat.keptWon + stat.keptLost))"
+                                    >
+                                        {{ pct(stat.keptWon, stat.keptWon + stat.keptLost) }}%
+                                    </span>
+                                    <span class="text-muted-foreground text-[10px]">({{ stat.keptWon + stat.keptLost }})</span>
+                                </template>
                                 <span v-else class="text-muted-foreground">—</span>
                             </TableCell>
                             <TableCell class="text-right tabular-nums">
-                                <span v-if="pct(stat.totalSeen, stat.totalPossible) !== null">
+                                <template v-if="pct(stat.totalCast, stat.totalPossible) !== null">
+                                    {{ pct(stat.totalCast, stat.totalPossible) }}%
+                                    <span class="text-muted-foreground text-[10px]">({{ stat.totalCast }})</span>
+                                </template>
+                                <span v-else class="text-muted-foreground">—</span>
+                            </TableCell>
+                            <TableCell class="text-right tabular-nums">
+                                <template v-if="pct(stat.castWon, stat.castWon + stat.castLost) !== null">
+                                    <span
+                                        class="font-medium"
+                                        :class="winRateClass(pct(stat.castWon, stat.castWon + stat.castLost))"
+                                    >
+                                        {{ pct(stat.castWon, stat.castWon + stat.castLost) }}%
+                                    </span>
+                                    <span class="text-muted-foreground text-[10px]">({{ stat.castWon + stat.castLost }})</span>
+                                </template>
+                                <span v-else class="text-muted-foreground">—</span>
+                            </TableCell>
+                            <TableCell class="text-right tabular-nums">
+                                <template v-if="pct(stat.totalSeen, stat.totalPossible) !== null">
                                     {{ pct(stat.totalSeen, stat.totalPossible) }}%
-                                </span>
+                                    <span class="text-muted-foreground text-[10px]">({{ stat.totalSeen }})</span>
+                                </template>
                                 <span v-else class="text-muted-foreground">—</span>
                             </TableCell>
                             <TableCell class="text-right tabular-nums">
-                                <span
-                                    v-if="pct(stat.seenWon, stat.seenWon + stat.seenLost) !== null"
-                                    class="font-medium"
-                                    :class="winRateClass(pct(stat.seenWon, stat.seenWon + stat.seenLost))"
-                                >
-                                    {{ pct(stat.seenWon, stat.seenWon + stat.seenLost) }}%
-                                </span>
+                                <template v-if="pct(stat.seenWon, stat.seenWon + stat.seenLost) !== null">
+                                    <span
+                                        class="font-medium"
+                                        :class="winRateClass(pct(stat.seenWon, stat.seenWon + stat.seenLost))"
+                                    >
+                                        {{ pct(stat.seenWon, stat.seenWon + stat.seenLost) }}%
+                                    </span>
+                                    <span class="text-muted-foreground text-[10px]">({{ stat.seenWon + stat.seenLost }})</span>
+                                </template>
                                 <span v-else class="text-muted-foreground">—</span>
                             </TableCell>
                             <TableCell class="text-right tabular-nums">
-                                <span v-if="pct(stat.sidedOutGames, stat.postboardGames) !== null">
+                                <template v-if="pct(stat.sidedOutGames, stat.postboardGames) !== null">
                                     {{ pct(stat.sidedOutGames, stat.postboardGames) }}%
-                                </span>
+                                    <span class="text-muted-foreground text-[10px]">({{ stat.sidedOutGames }})</span>
+                                </template>
                                 <span v-else class="text-muted-foreground">—</span>
                             </TableCell>
                             <TableCell class="text-right tabular-nums text-muted-foreground">

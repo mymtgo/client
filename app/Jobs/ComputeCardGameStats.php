@@ -109,7 +109,7 @@ class ComputeCardGameStats implements ShouldQueue
         }
 
         // Count seen copies per oracle_id from timeline
-        $seenByOracle = $this->computeSeenCards($game, $localInstanceId, $catalogToOracle);
+        [$seenByOracle, $castByOracle] = $this->computeSeenAndCastCards($game, $localInstanceId, $catalogToOracle);
 
         // Insert rows
         $rows = [];
@@ -129,6 +129,7 @@ class ComputeCardGameStats implements ShouldQueue
                 'quantity' => $quantity,
                 'kept' => min($keptByOracle[$oracleId] ?? 0, $quantity),
                 'seen' => min($seenByOracle[$oracleId] ?? 0, $quantity),
+                'cast' => min($castByOracle[$oracleId] ?? 0, $quantity),
                 'won' => $game->won,
                 'is_postboard' => $isPostboard,
                 'sided_out' => $sidedOut,
@@ -146,11 +147,17 @@ class ComputeCardGameStats implements ShouldQueue
     }
 
     /**
-     * Count distinct card instances seen in visible zones per oracle_id.
+     * Count distinct card instances seen in visible zones and cast/played per oracle_id.
+     *
+     * "Seen" = appeared in Hand, Battlefield, Graveyard, Exile, or Stack.
+     * "Cast/Played" = appeared on Stack (spells) or Battlefield (lands/permanents).
+     *
+     * @return array{0: array<string, int>, 1: array<string, int>} [seenByOracle, castByOracle]
      */
-    private function computeSeenCards(Game $game, int $localInstanceId, array $catalogToOracle): array
+    private function computeSeenAndCastCards(Game $game, int $localInstanceId, array $catalogToOracle): array
     {
         $seenInstances = []; // [oracle_id => [instanceId => true]]
+        $castInstances = []; // [oracle_id => [instanceId => true]]
 
         foreach ($game->timeline as $snapshot) {
             $cards = $snapshot->content['Cards'] ?? [];
@@ -161,21 +168,27 @@ class ComputeCardGameStats implements ShouldQueue
                 }
 
                 $zone = $card['Zone'] ?? '';
-                if (! in_array($zone, ['Hand', 'Battlefield', 'Graveyard', 'Exile', 'Stack'])) {
-                    continue;
-                }
-
                 $catalogId = (string) ($card['CatalogID'] ?? '');
                 $instanceId = (int) ($card['Id'] ?? 0);
                 $oracleId = $catalogToOracle[$catalogId] ?? null;
 
-                if ($oracleId && $instanceId) {
+                if (! $oracleId || ! $instanceId) {
+                    continue;
+                }
+
+                if (in_array($zone, ['Hand', 'Battlefield', 'Graveyard', 'Exile', 'Stack'])) {
                     $seenInstances[$oracleId][$instanceId] = true;
+                }
+
+                if (in_array($zone, ['Stack', 'Battlefield'])) {
+                    $castInstances[$oracleId][$instanceId] = true;
                 }
             }
         }
 
-        // Convert to counts
-        return array_map('count', $seenInstances);
+        return [
+            array_map('count', $seenInstances),
+            array_map('count', $castInstances),
+        ];
     }
 }
