@@ -4,14 +4,17 @@ namespace App\Http\Controllers\Decks;
 
 use App\Actions\Decks\GetArchetypeMatchupSpread;
 use App\Actions\Decks\GetDeckViewSharedProps;
+use App\Concerns\HasTimeframeFilter;
 use App\Http\Controllers\Controller;
 use App\Models\Deck;
-use Carbon\Carbon;
+use App\Models\DeckVersion;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
 class MatchupsController extends Controller
 {
+    use HasTimeframeFilter;
+
     public function __invoke(Request $request, Deck $deck)
     {
         $timeframe = $request->input('timeframe', 'alltime');
@@ -19,29 +22,16 @@ class MatchupsController extends Controller
 
         $shared = GetDeckViewSharedProps::run($deck, $from, $to);
 
+        $deckVersion = $request->filled('version')
+            ? DeckVersion::find($request->input('version'))
+            : null;
+
         return Inertia::render('decks/Matchups', [
             ...$shared,
+            'currentVersionId' => $deckVersion?->id,
             'currentPage' => 'matchups',
             'timeframe' => $timeframe,
-            'matchupSpread' => GetArchetypeMatchupSpread::run($deck, $from, $to),
+            'matchupSpread' => GetArchetypeMatchupSpread::run($deck, $from, $to, $deckVersion),
         ]);
-    }
-
-    /**
-     * @return array{0: Carbon, 1: Carbon}
-     */
-    private function getTimeRange(string $timeframe): array
-    {
-        $end = now()->endOfDay();
-
-        $start = match ($timeframe) {
-            'week' => now()->subDays(7)->startOfDay(),
-            'biweekly' => now()->subWeeks(2)->startOfDay(),
-            'monthly' => now()->subDays(30)->startOfDay(),
-            'year' => now()->startOfYear()->startOfDay(),
-            default => now()->startOfCentury()->startOfDay(),
-        };
-
-        return [$start, $end];
     }
 }

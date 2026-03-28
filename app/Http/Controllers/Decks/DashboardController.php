@@ -6,8 +6,10 @@ use App\Actions\Decks\GetArchetypeMatchupSpread;
 use App\Actions\Decks\GetDeckStats;
 use App\Actions\Decks\GetDeckViewSharedProps;
 use App\Actions\Leagues\GetLeagueResultDistribution;
+use App\Concerns\HasTimeframeFilter;
 use App\Http\Controllers\Controller;
 use App\Models\Deck;
+use App\Models\DeckVersion;
 use App\Models\MtgoMatch;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
@@ -16,6 +18,8 @@ use Inertia\Inertia;
 
 class DashboardController extends Controller
 {
+    use HasTimeframeFilter;
+
     public function __invoke(Request $request, Deck $deck)
     {
         $timeframe = $request->input('timeframe', 'alltime');
@@ -23,10 +27,15 @@ class DashboardController extends Controller
 
         $shared = GetDeckViewSharedProps::run($deck, $from, $to);
 
-        $stats = GetDeckStats::run($deck, $from, $to);
+        $deckVersion = $request->filled('version')
+            ? DeckVersion::find($request->input('version'))
+            : null;
+
+        $stats = GetDeckStats::run($deck, $from, $to, $deckVersion);
 
         return Inertia::render('decks/Dashboard', [
             ...$shared,
+            'currentVersionId' => $deckVersion?->id,
             'currentPage' => 'dashboard',
             'timeframe' => $timeframe,
 
@@ -47,11 +56,11 @@ class DashboardController extends Controller
             'otdRate' => $stats['otdRate'],
 
             // Lazy closure
-            'chartData' => fn () => $this->buildDeckChartData($deck, $from, $to),
+            'chartData' => fn () => $this->buildDeckChartData($deck, $from, $to, $deckVersion),
 
             // Deferred
             'matchupSpread' => Inertia::defer(
-                fn () => GetArchetypeMatchupSpread::run($deck, $from, $to),
+                fn () => GetArchetypeMatchupSpread::run($deck, $from, $to, $deckVersion),
             ),
             'leagueResults' => Inertia::defer(
                 fn () => GetLeagueResultDistribution::run($deck, $stats['allMatchIds']),
@@ -59,27 +68,11 @@ class DashboardController extends Controller
         ]);
     }
 
-    /**
-     * @return array{0: Carbon, 1: Carbon}
-     */
-    private function getTimeRange(string $timeframe): array
+    private function buildDeckChartData(Deck $deck, Carbon $from, Carbon $to, ?DeckVersion $deckVersion = null): array
     {
-        $end = now()->endOfDay();
-
-        $start = match ($timeframe) {
-            'biweekly' => now()->subWeeks(2)->startOfDay(),
-            'monthly' => now()->subDays(30)->startOfDay(),
-            'year' => now()->startOfYear()->startOfDay(),
-            'alltime' => now()->startOfCentury()->startOfDay(),
-            default => now()->subDays(7)->startOfDay(),
-        };
-
-        return [$start, $end];
-    }
-
-    private function buildDeckChartData(Deck $deck, Carbon $from, Carbon $to): array
-    {
-        $versionIds = $deck->versions()->pluck('id');
+        $versionIds = $deckVersion
+            ? collect([$deckVersion->id])
+            : $deck->versions()->pluck('id');
 
         $results = MtgoMatch::complete()
             ->selectRaw("strftime('%Y-%m-%d', started_at) as period, SUM(CASE WHEN outcome = 'win' THEN 1 ELSE 0 END) as wins, COUNT(*) as total")

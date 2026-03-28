@@ -49,6 +49,9 @@ type CardStat = {
     totalSeen: number;
     seenWon: number;
     seenLost: number;
+    totalCast: number;
+    castWon: number;
+    castLost: number;
     postboardGames: number;
     sidedOutGames: number;
 };
@@ -65,14 +68,16 @@ const archetypes = computed(() => props.cardStats?.archetypes ?? []);
 
 const selectedArchetype = ref<string>('__all__');
 const selectedPlayDraw = ref<string>('__all__');
+const selectedBoard = ref<string>('__all__');
 const searchQuery = ref('');
 
 function reloadStats() {
     const archetypeId = selectedArchetype.value === '__all__' ? undefined : selectedArchetype.value;
     const playDraw = selectedPlayDraw.value === '__all__' ? undefined : selectedPlayDraw.value;
+    const board = selectedBoard.value === '__all__' ? undefined : selectedBoard.value;
     router.reload({
         only: ['cardStats'],
-        data: { card_stats_archetype: archetypeId, card_stats_play_draw: playDraw },
+        data: { card_stats_archetype: archetypeId, card_stats_play_draw: playDraw, card_stats_board: board },
         preserveScroll: true,
         preserveState: true,
     });
@@ -85,6 +90,11 @@ function filterByArchetype(value: string) {
 
 function filterByPlayDraw(value: string) {
     selectedPlayDraw.value = value;
+    reloadStats();
+}
+
+function filterByBoard(value: string) {
+    selectedBoard.value = value;
     reloadStats();
 }
 
@@ -193,7 +203,7 @@ function passesFilter(stat: CardStat): boolean {
 
 // ── Sorting ──────────────────────────────────────────────────────────────────
 
-type SortKey = 'name' | 'keptPct' | 'keptWinPct' | 'seenPct' | 'seenWinPct' | 'sbOutPct' | 'games';
+type SortKey = 'name' | 'keptPct' | 'keptWinPct' | 'seenPct' | 'seenWinPct' | 'castPct' | 'castWinPct' | 'sbOutPct' | 'games';
 const sortBy = ref<SortKey>('name');
 const sortDesc = ref(false);
 
@@ -210,20 +220,29 @@ function toggleSort(key: SortKey) {
     }
 }
 
+function pctWithTiebreak(num: number, denom: number): number {
+    if (denom <= 0) return -1;
+    return Math.round((num / denom) * 100) + denom / 10000;
+}
+
 function sortValue(stat: CardStat, key: SortKey): number | string {
     switch (key) {
         case 'name':
             return stat.name;
         case 'keptPct':
-            return pct(stat.totalKept, stat.totalPossible) ?? -1;
+            return pctWithTiebreak(stat.totalKept, stat.totalPossible);
         case 'keptWinPct':
-            return pct(stat.keptWon, stat.keptWon + stat.keptLost) ?? -1;
+            return pctWithTiebreak(stat.keptWon, stat.keptWon + stat.keptLost);
         case 'seenPct':
-            return pct(stat.totalSeen, stat.totalPossible) ?? -1;
+            return pctWithTiebreak(stat.totalSeen, stat.totalPossible);
         case 'seenWinPct':
-            return pct(stat.seenWon, stat.seenWon + stat.seenLost) ?? -1;
+            return pctWithTiebreak(stat.seenWon, stat.seenWon + stat.seenLost);
+        case 'castPct':
+            return pctWithTiebreak(stat.totalCast, stat.totalPossible);
+        case 'castWinPct':
+            return pctWithTiebreak(stat.castWon, stat.castWon + stat.castLost);
         case 'sbOutPct':
-            return pct(stat.sidedOutGames, stat.postboardGames) ?? -1;
+            return pctWithTiebreak(stat.sidedOutGames, stat.postboardGames);
         case 'games':
             return stat.totalGames;
     }
@@ -282,14 +301,32 @@ function winRateClass(pctVal: number | null): string {
             </Card>
         </template>
 
-        <div v-if="archetypes.length || stats.length" class="mb-4 grid grid-cols-3 items-center gap-4">
-            <div class="col-span-2 relative">
-                <Search class="pointer-events-none absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-                <Input v-model="searchQuery" placeholder="Search cards..." class="h-8 py-0 pl-7 text-xs" />
-            </div>
+        <div v-if="archetypes.length || stats.length" class="mb-4 flex flex-col gap-4">
+            <div class="flex items-center gap-4">
+                <div class="relative flex-1">
+                    <Search class="pointer-events-none absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+                    <Input v-model="searchQuery" placeholder="Search cards..." class="h-8 py-0 pl-7 text-xs" />
+                </div>
 
-            <div class="flex items-center justify-end gap-2">
-                <Select :modelValue="selectedPlayDraw" @update:modelValue="filterByPlayDraw">
+                <div class="flex items-center gap-1 rounded-md border p-1">
+                    <Button
+                        v-for="opt in [
+                            { value: '__all__', label: 'Overall' },
+                            { value: 'preboard', label: 'Game 1' },
+                            { value: 'postboard', label: 'Postboard' },
+                        ]"
+                        :key="opt.value"
+                        size="sm"
+                        :variant="selectedBoard === opt.value ? 'default' : 'ghost'"
+                        class="h-7 px-3 text-xs"
+                        @click="filterByBoard(opt.value)"
+                    >
+                        {{ opt.label }}
+                    </Button>
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <Select :modelValue="selectedPlayDraw" @update:modelValue="filterByPlayDraw">
                     <SelectTrigger class="h-8 w-36 text-xs">
                         <SelectValue placeholder="Play / Draw" />
                     </SelectTrigger>
@@ -312,44 +349,45 @@ function winRateClass(pctVal: number | null): string {
                     </SelectContent>
                 </Select>
 
-            <DropdownMenu>
-                <DropdownMenuTrigger as-child>
-                    <Button
-                        :variant="activeFilterCount > 0 ? 'default' : 'outline'"
-                        class="h-[34px] gap-1.5 rounded-md border px-3 text-xs"
-                    >
-                        <Filter class="size-3.5" />
-                        <span v-if="activeFilterCount > 0">{{ activeFilterCount }} hidden</span>
-                        <span v-else>Card types</span>
-                    </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" class="w-48">
-                    <div class="flex items-center justify-between px-2 py-1.5">
-                        <span class="text-xs font-semibold">Filter by type</span>
-                        <button
-                            class="text-xs text-muted-foreground hover:text-foreground"
-                            @click="toggleAll"
-                        >
-                            {{ allVisible ? 'Hide all' : 'Show all' }}
-                        </button>
-                    </div>
-                    <DropdownMenuSeparator />
-                    <template v-for="filter in visibleFilters" :key="filter.key">
-                        <DropdownMenuSeparator v-if="filter.key === 'Sideboard'" />
-                        <DropdownMenuCheckboxItem
-                            :modelValue="typeFilters[filter.key]"
-                            @update:modelValue="(val: boolean) => setFilter(filter.key, val)"
-                            @select.prevent
-                        >
-                            <template #indicator-icon>
-                                <Check class="size-4 text-success" />
+                    <DropdownMenu>
+                        <DropdownMenuTrigger as-child>
+                            <Button
+                                :variant="activeFilterCount > 0 ? 'default' : 'outline'"
+                                class="h-[34px] gap-1.5 rounded-md border px-3 text-xs"
+                            >
+                                <Filter class="size-3.5" />
+                                <span v-if="activeFilterCount > 0">{{ activeFilterCount }} hidden</span>
+                                <span v-else>Card types</span>
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" class="w-48">
+                            <div class="flex items-center justify-between px-2 py-1.5">
+                                <span class="text-xs font-semibold">Filter by type</span>
+                                <button
+                                    class="text-xs text-muted-foreground hover:text-foreground"
+                                    @click="toggleAll"
+                                >
+                                    {{ allVisible ? 'Hide all' : 'Show all' }}
+                                </button>
+                            </div>
+                            <DropdownMenuSeparator />
+                            <template v-for="filter in visibleFilters" :key="filter.key">
+                                <DropdownMenuSeparator v-if="filter.key === 'Sideboard'" />
+                                <DropdownMenuCheckboxItem
+                                    :modelValue="typeFilters[filter.key]"
+                                    @update:modelValue="(val: boolean) => setFilter(filter.key, val)"
+                                    @select.prevent
+                                >
+                                    <template #indicator-icon>
+                                        <Check class="size-4 text-success" />
+                                    </template>
+                                    <component :is="filter.icon" class="mr-2 size-3.5 text-muted-foreground" />
+                                    {{ filter.label }}
+                                </DropdownMenuCheckboxItem>
                             </template>
-                            <component :is="filter.icon" class="mr-2 size-3.5 text-muted-foreground" />
-                            {{ filter.label }}
-                        </DropdownMenuCheckboxItem>
-                    </template>
-                </DropdownMenuContent>
-            </DropdownMenu>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                </div>
             </div>
         </div>
 
@@ -383,13 +421,19 @@ function winRateClass(pctVal: number | null): string {
                                 <span class="inline-flex items-center justify-end gap-1">Kept % <component :is="sortIcon('keptPct')" class="size-3" /></span>
                             </TableHead>
                             <TableHead class="cursor-pointer select-none text-right" @click="toggleSort('keptWinPct')">
-                                <span class="inline-flex items-center justify-end gap-1">Win % (kept) <component :is="sortIcon('keptWinPct')" class="size-3" /></span>
+                                <span class="inline-flex items-center justify-end gap-1">Kept Win % <component :is="sortIcon('keptWinPct')" class="size-3" /></span>
+                            </TableHead>
+                            <TableHead class="cursor-pointer select-none text-right" @click="toggleSort('castPct')">
+                                <span class="inline-flex items-center justify-end gap-1">Cast % <component :is="sortIcon('castPct')" class="size-3" /></span>
+                            </TableHead>
+                            <TableHead class="cursor-pointer select-none text-right" @click="toggleSort('castWinPct')">
+                                <span class="inline-flex items-center justify-end gap-1">Cast Win % <component :is="sortIcon('castWinPct')" class="size-3" /></span>
                             </TableHead>
                             <TableHead class="cursor-pointer select-none text-right" @click="toggleSort('seenPct')">
                                 <span class="inline-flex items-center justify-end gap-1">Seen % <component :is="sortIcon('seenPct')" class="size-3" /></span>
                             </TableHead>
                             <TableHead class="cursor-pointer select-none text-right" @click="toggleSort('seenWinPct')">
-                                <span class="inline-flex items-center justify-end gap-1">Win % (seen) <component :is="sortIcon('seenWinPct')" class="size-3" /></span>
+                                <span class="inline-flex items-center justify-end gap-1">Seen Win % <component :is="sortIcon('seenWinPct')" class="size-3" /></span>
                             </TableHead>
                             <TableHead class="cursor-pointer select-none text-right" @click="toggleSort('sbOutPct')">
                                 <span class="inline-flex items-center justify-end gap-1">SB Out % <component :is="sortIcon('sbOutPct')" class="size-3" /></span>
@@ -418,41 +462,67 @@ function winRateClass(pctVal: number | null): string {
                                 <Check v-if="stat.isSideboard" class="mx-auto size-3.5 text-muted-foreground" />
                             </TableCell>
                             <TableCell class="text-right tabular-nums">
-                                <span v-if="pct(stat.totalKept, stat.totalPossible) !== null">
+                                <template v-if="pct(stat.totalKept, stat.totalPossible) !== null">
                                     {{ pct(stat.totalKept, stat.totalPossible) }}%
-                                </span>
+                                    <span class="text-muted-foreground text-[10px]">({{ stat.totalKept }})</span>
+                                </template>
                                 <span v-else class="text-muted-foreground">—</span>
                             </TableCell>
                             <TableCell class="text-right tabular-nums">
-                                <span
-                                    v-if="pct(stat.keptWon, stat.keptWon + stat.keptLost) !== null"
-                                    class="font-medium"
-                                    :class="winRateClass(pct(stat.keptWon, stat.keptWon + stat.keptLost))"
-                                >
-                                    {{ pct(stat.keptWon, stat.keptWon + stat.keptLost) }}%
-                                </span>
+                                <template v-if="pct(stat.keptWon, stat.keptWon + stat.keptLost) !== null">
+                                    <span
+                                        class="font-medium"
+                                        :class="winRateClass(pct(stat.keptWon, stat.keptWon + stat.keptLost))"
+                                    >
+                                        {{ pct(stat.keptWon, stat.keptWon + stat.keptLost) }}%
+                                    </span>
+                                    <span class="text-muted-foreground text-[10px]">({{ stat.keptWon + stat.keptLost }})</span>
+                                </template>
                                 <span v-else class="text-muted-foreground">—</span>
                             </TableCell>
                             <TableCell class="text-right tabular-nums">
-                                <span v-if="pct(stat.totalSeen, stat.totalPossible) !== null">
+                                <template v-if="pct(stat.totalCast, stat.totalPossible) !== null">
+                                    {{ pct(stat.totalCast, stat.totalPossible) }}%
+                                    <span class="text-muted-foreground text-[10px]">({{ stat.totalCast }})</span>
+                                </template>
+                                <span v-else class="text-muted-foreground">—</span>
+                            </TableCell>
+                            <TableCell class="text-right tabular-nums">
+                                <template v-if="pct(stat.castWon, stat.castWon + stat.castLost) !== null">
+                                    <span
+                                        class="font-medium"
+                                        :class="winRateClass(pct(stat.castWon, stat.castWon + stat.castLost))"
+                                    >
+                                        {{ pct(stat.castWon, stat.castWon + stat.castLost) }}%
+                                    </span>
+                                    <span class="text-muted-foreground text-[10px]">({{ stat.castWon + stat.castLost }})</span>
+                                </template>
+                                <span v-else class="text-muted-foreground">—</span>
+                            </TableCell>
+                            <TableCell class="text-right tabular-nums">
+                                <template v-if="pct(stat.totalSeen, stat.totalPossible) !== null">
                                     {{ pct(stat.totalSeen, stat.totalPossible) }}%
-                                </span>
+                                    <span class="text-muted-foreground text-[10px]">({{ stat.totalSeen }})</span>
+                                </template>
                                 <span v-else class="text-muted-foreground">—</span>
                             </TableCell>
                             <TableCell class="text-right tabular-nums">
-                                <span
-                                    v-if="pct(stat.seenWon, stat.seenWon + stat.seenLost) !== null"
-                                    class="font-medium"
-                                    :class="winRateClass(pct(stat.seenWon, stat.seenWon + stat.seenLost))"
-                                >
-                                    {{ pct(stat.seenWon, stat.seenWon + stat.seenLost) }}%
-                                </span>
+                                <template v-if="pct(stat.seenWon, stat.seenWon + stat.seenLost) !== null">
+                                    <span
+                                        class="font-medium"
+                                        :class="winRateClass(pct(stat.seenWon, stat.seenWon + stat.seenLost))"
+                                    >
+                                        {{ pct(stat.seenWon, stat.seenWon + stat.seenLost) }}%
+                                    </span>
+                                    <span class="text-muted-foreground text-[10px]">({{ stat.seenWon + stat.seenLost }})</span>
+                                </template>
                                 <span v-else class="text-muted-foreground">—</span>
                             </TableCell>
                             <TableCell class="text-right tabular-nums">
-                                <span v-if="pct(stat.sidedOutGames, stat.postboardGames) !== null">
+                                <template v-if="pct(stat.sidedOutGames, stat.postboardGames) !== null">
                                     {{ pct(stat.sidedOutGames, stat.postboardGames) }}%
-                                </span>
+                                    <span class="text-muted-foreground text-[10px]">({{ stat.sidedOutGames }})</span>
+                                </template>
                                 <span v-else class="text-muted-foreground">—</span>
                             </TableCell>
                             <TableCell class="text-right tabular-nums text-muted-foreground">

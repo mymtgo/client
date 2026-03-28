@@ -3,22 +3,44 @@
 namespace App\Actions\Cards;
 
 use App\Models\Archetype;
+use App\Models\Deck;
 use App\Models\DeckVersion;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 class GetCardGameStats
 {
-    public static function run(DeckVersion $deckVersion, ?int $opponentArchetypeId = null, ?bool $onPlay = null): Collection
-    {
-        $sideboardOracles = collect($deckVersion->cards)
+    public static function run(
+        Deck $deck,
+        ?DeckVersion $deckVersion = null,
+        ?int $opponentArchetypeId = null,
+        ?bool $onPlay = null,
+        ?bool $isPostboard = null,
+    ): Collection {
+        $sideboardSource = $deckVersion ?? $deck->latestVersion;
+
+        if (! $sideboardSource) {
+            return collect();
+        }
+
+        $sideboardOracles = collect($sideboardSource->cards)
             ->filter(fn ($card) => $card['sideboard'] === 'true' || $card['sideboard'] === true)
             ->pluck('oracle_id')
             ->flip();
 
+        $versionIds = $deckVersion
+            ? [$deckVersion->id]
+            : $deck->versions()->pluck('id')->all();
+
+        if (empty($versionIds)) {
+            return collect();
+        }
+
         $query = DB::table('card_game_stats as cgs')
             ->join(DB::raw('(SELECT oracle_id, name, color_identity, type, image FROM cards WHERE oracle_id IS NOT NULL GROUP BY oracle_id) as c'), 'c.oracle_id', '=', 'cgs.oracle_id')
-            ->where('cgs.deck_version_id', $deckVersion->id);
+            ->whereIn('cgs.deck_version_id', $versionIds);
+
+        $query->when($isPostboard !== null, fn ($q) => $q->where('cgs.is_postboard', $isPostboard));
 
         if ($opponentArchetypeId) {
             $query->join('games as g', 'g.id', '=', 'cgs.game_id')
@@ -36,7 +58,6 @@ class GetCardGameStats
         }
 
         if ($onPlay !== null) {
-            // Join games if not already joined by archetype filter
             if (! $opponentArchetypeId) {
                 $query->join('games as g', 'g.id', '=', 'cgs.game_id');
             }
@@ -65,6 +86,9 @@ class GetCardGameStats
                 SUM(cgs.seen) as total_seen,
                 SUM(CASE WHEN cgs.seen > 0 AND cgs.won THEN 1 ELSE 0 END) as seen_won,
                 SUM(CASE WHEN cgs.seen > 0 AND NOT cgs.won THEN 1 ELSE 0 END) as seen_lost,
+                SUM(cgs.cast) as total_cast,
+                SUM(CASE WHEN cgs.cast > 0 AND cgs.won THEN 1 ELSE 0 END) as cast_won,
+                SUM(CASE WHEN cgs.cast > 0 AND NOT cgs.won THEN 1 ELSE 0 END) as cast_lost,
                 SUM(CASE WHEN cgs.is_postboard THEN 1 ELSE 0 END) as postboard_games,
                 SUM(CASE WHEN cgs.sided_out THEN 1 ELSE 0 END) as sided_out_games
             ')
@@ -86,6 +110,9 @@ class GetCardGameStats
                 'totalSeen' => (int) $row->total_seen,
                 'seenWon' => (int) $row->seen_won,
                 'seenLost' => (int) $row->seen_lost,
+                'totalCast' => (int) $row->total_cast,
+                'castWon' => (int) $row->cast_won,
+                'castLost' => (int) $row->cast_lost,
                 'postboardGames' => (int) $row->postboard_games,
                 'sidedOutGames' => (int) $row->sided_out_games,
             ]);
@@ -94,11 +121,15 @@ class GetCardGameStats
     /**
      * Get archetypes that have card_game_stats data for this deck version.
      */
-    public static function availableArchetypes(DeckVersion $deckVersion): Collection
+    public static function availableArchetypes(Deck $deck, ?DeckVersion $deckVersion = null): Collection
     {
+        $versionIds = $deckVersion
+            ? [$deckVersion->id]
+            : $deck->versions()->pluck('id')->all();
+
         return Archetype::query()
-            ->whereHas('matchArchetypes', function ($q) use ($deckVersion) {
-                $q->whereHas('match', fn ($mq) => $mq->where('deck_version_id', $deckVersion->id))
+            ->whereHas('matchArchetypes', function ($q) use ($versionIds) {
+                $q->whereHas('match', fn ($mq) => $mq->whereIn('deck_version_id', $versionIds))
                     ->whereExists(function ($sub) {
                         $sub->select(DB::raw(1))
                             ->from('game_player as gp')

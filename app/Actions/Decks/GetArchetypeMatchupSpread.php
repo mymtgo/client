@@ -3,14 +3,17 @@
 namespace App\Actions\Decks;
 
 use App\Models\Deck;
+use App\Models\DeckVersion;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class GetArchetypeMatchupSpread
 {
-    public static function run(Deck $deck, ?Carbon $from, ?Carbon $to)
+    public static function run(Deck $deck, ?Carbon $from, ?Carbon $to, ?DeckVersion $deckVersion = null)
     {
-        $deckVersions = $deck->versions()->pluck('id');
+        $deckVersions = $deckVersion
+            ? collect([$deckVersion->id])
+            : $deck->versions()->pluck('id');
 
         $query = DB::table('matches as m')
             ->join('match_archetypes as ma', 'ma.mtgo_match_id', '=', 'm.id')

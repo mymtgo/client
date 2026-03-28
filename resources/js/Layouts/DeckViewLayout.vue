@@ -8,6 +8,7 @@ defineProps<{
     currentVersionId: number | null;
     trophies: number;
     currentPage: string;
+    timeframe?: string;
 }>();
 </script>
 
@@ -20,6 +21,7 @@ defineProps<{
                 :current-version-id="currentVersionId"
                 :trophies="trophies"
                 :current-page="currentPage"
+                :timeframe="timeframe"
             />
         </div>
         <div class="flex min-h-0 flex-1 flex-col overflow-y-auto">

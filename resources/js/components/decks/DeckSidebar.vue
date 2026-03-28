@@ -20,15 +20,16 @@ const props = defineProps<{
     currentVersionId: number | null;
     trophies: number;
     currentPage: string;
+    timeframe?: string;
 }>();
 
-const realVersions = computed(() => props.versions.filter((v) => v.id !== null));
-const selectedVersionKey = ref<string>(String(props.currentVersionId ?? ''));
+const selectableVersions = computed(() => props.versions);
+const selectedVersionKey = ref<string>(props.currentVersionId ? String(props.currentVersionId) : '__all__');
 
 // When version changes, reload current page with version param
 watch(selectedVersionKey, (newVal) => {
     const url = new URL(window.location.href);
-    if (newVal && newVal !== String(props.currentVersionId)) {
+    if (newVal && newVal !== '__all__') {
         url.searchParams.set('version', newVal);
     } else {
         url.searchParams.delete('version');
@@ -36,12 +37,19 @@ watch(selectedVersionKey, (newVal) => {
     router.get(url.pathname + url.search, {}, { preserveState: true, preserveScroll: true });
 });
 
+const timeframeQuery = computed(() => {
+    if (props.timeframe && props.timeframe !== 'alltime') {
+        return `?timeframe=${props.timeframe}`;
+    }
+    return '';
+});
+
 const navItems = computed(() => [
-    { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, href: DashboardController.url({ deck: props.deck.id }) },
-    { key: 'card-stats', label: 'Card Stats', icon: BarChart3, href: CardStatsController.url({ deck: props.deck.id }) },
-    { key: 'matches', label: 'Matches', icon: Swords, href: MatchesController.url({ deck: props.deck.id }) },
-    { key: 'leagues', label: 'Leagues', icon: TrophyIcon, href: LeaguesController.url({ deck: props.deck.id }) },
-    { key: 'matchups', label: 'Matchups', icon: ScrollText, href: MatchupsController.url({ deck: props.deck.id }) },
+    { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, href: DashboardController.url({ deck: props.deck.id }) + timeframeQuery.value },
+    { key: 'card-stats', label: 'Card Stats', icon: BarChart3, href: CardStatsController.url({ deck: props.deck.id }) + timeframeQuery.value },
+    { key: 'matches', label: 'Matches', icon: Swords, href: MatchesController.url({ deck: props.deck.id }) + timeframeQuery.value },
+    { key: 'leagues', label: 'Leagues', icon: TrophyIcon, href: LeaguesController.url({ deck: props.deck.id }) + timeframeQuery.value },
+    { key: 'matchups', label: 'Matchups', icon: ScrollText, href: MatchupsController.url({ deck: props.deck.id }) + timeframeQuery.value },
     { key: 'decklist', label: 'Decklist', icon: List, href: DecklistController.url({ deck: props.deck.id }) },
 ]);
 </script>
@@ -63,12 +71,12 @@ const navItems = computed(() => [
             </div>
 
             <!-- Version selector -->
-            <Select v-if="realVersions.length > 1" v-model="selectedVersionKey">
-                <SelectTrigger class="mt-1 h-8 text-xs">
+            <Select v-if="selectableVersions.length > 2" v-model="selectedVersionKey">
+                <SelectTrigger class="mt-1 h-8 w-full text-xs">
                     <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                    <SelectItem v-for="version in realVersions" :key="version.id" :value="String(version.id)">
+                    <SelectItem v-for="version in selectableVersions" :key="String(version.id ?? '__all__')" :value="String(version.id ?? '__all__')">
                         {{ version.label }}
                         <span v-if="version.isCurrent" class="ml-1 text-muted-foreground">&middot; Current</span>
                         <span v-if="version.dateLabel" class="ml-1 text-muted-foreground">&middot; {{ version.dateLabel }}</span>
