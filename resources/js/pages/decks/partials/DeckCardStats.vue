@@ -31,7 +31,8 @@ import {
     Zap,
 } from 'lucide-vue-next';
 import { Input } from '@/components/ui/input';
-import { Search } from 'lucide-vue-next';
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { CircleHelp, Search } from 'lucide-vue-next';
 import { computed, ref, watch, type Component } from 'vue';
 
 type CardStat = {
@@ -387,6 +388,106 @@ function winRateClass(pctVal: number | null): string {
                             </template>
                         </DropdownMenuContent>
                     </DropdownMenu>
+
+                    <Sheet>
+                        <SheetTrigger as-child>
+                            <Button variant="ghost" size="sm" class="h-[34px] gap-1.5 px-2.5 text-xs text-muted-foreground">
+                                <CircleHelp class="size-3.5" />
+                                <span class="hidden lg:inline">Help</span>
+                            </Button>
+                        </SheetTrigger>
+                        <SheetContent side="right" class="overflow-y-auto sm:max-w-md">
+                            <SheetHeader>
+                                <SheetTitle>Understanding Card Stats</SheetTitle>
+                                <SheetDescription>How to read the metrics on this page and what they mean for your deck.</SheetDescription>
+                            </SheetHeader>
+                            <div class="flex flex-col gap-6 px-4 pb-6">
+                                <section>
+                                    <h3 class="mb-1 text-sm font-semibold">Kept %</h3>
+                                    <p class="text-sm text-muted-foreground">
+                                        The percentage of games where this card appeared in your opening hand and was kept (not mulliganed away). The number in brackets is the raw count of games kept.
+                                    </p>
+                                    <div class="mt-2 rounded-md bg-muted px-3 py-2 text-xs">
+                                        <span class="font-medium">Example:</span> <span class="font-mono">23% (12)</span> means the card was kept in 12 out of ~52 possible games.
+                                    </div>
+                                </section>
+
+                                <section>
+                                    <h3 class="mb-1 text-sm font-semibold">Kept Win %</h3>
+                                    <p class="text-sm text-muted-foreground">
+                                        Your win rate in games where this card was kept in your opening hand. The number in brackets is the sample size (total games where the card was kept).
+                                    </p>
+                                    <div class="mt-2 rounded-md bg-muted px-3 py-2 text-xs">
+                                        <span class="font-medium">Example:</span> <span class="font-mono">38% (8)</span> means you won 38% of the 8 games where this card was kept. A high Kept Win % suggests the card is strong in openers.
+                                    </div>
+                                </section>
+
+                                <section>
+                                    <h3 class="mb-1 text-sm font-semibold">Cast %</h3>
+                                    <p class="text-sm text-muted-foreground">
+                                        The percentage of games where this card was actually cast (put on the stack). The number in brackets is the raw count of games where the card was cast.
+                                    </p>
+                                    <div class="mt-2 rounded-md bg-muted px-3 py-2 text-xs">
+                                        <span class="font-medium">Example:</span> <span class="font-mono">27% (14)</span> means you cast the card in 14 games. A low Cast % on a mainboard card may indicate it's hard to cast or frequently sided out.
+                                    </div>
+                                </section>
+
+                                <section>
+                                    <h3 class="mb-1 text-sm font-semibold">Cast Win %</h3>
+                                    <p class="text-sm text-muted-foreground">
+                                        Your win rate in games where this card was cast. The number in brackets is the sample size. This shows correlation, not causation &mdash; a low Cast Win % doesn't necessarily mean the card is bad; you might only cast it when behind.
+                                    </p>
+                                    <div class="mt-2 rounded-md bg-muted px-3 py-2 text-xs">
+                                        <span class="font-medium">Example:</span> <span class="font-mono">75% (4)</span> means you won 3 out of 4 games where the card was cast. Look for cards with decent sample sizes (5+) to draw meaningful conclusions.
+                                    </div>
+                                </section>
+
+                                <section>
+                                    <h3 class="mb-1 text-sm font-semibold">Seen %</h3>
+                                    <p class="text-sm text-muted-foreground">
+                                        The percentage of games where this card left your library &mdash; whether drawn naturally, tutored, milled, or exiled. Any card that appeared in your hand, on the battlefield, in the graveyard, in exile, or on the stack counts as "seen." The number in brackets is the raw count of games seen.
+                                    </p>
+                                    <div class="mt-2 rounded-md bg-muted px-3 py-2 text-xs">
+                                        <span class="font-medium">Example:</span> <span class="font-mono">54% (28)</span> means the card was seen in 28 games. Seen % is usually higher than Cast % since it includes cards drawn but never cast.
+                                    </div>
+                                </section>
+
+                                <section>
+                                    <h3 class="mb-1 text-sm font-semibold">Seen Win %</h3>
+                                    <p class="text-sm text-muted-foreground">
+                                        Your win rate in games where this card was seen (drawn or otherwise left the library). The number in brackets is the sample size.
+                                    </p>
+                                    <div class="mt-2 rounded-md bg-muted px-3 py-2 text-xs">
+                                        <span class="font-medium">Example:</span> <span class="font-mono">40% (10)</span> means you won 4 out of 10 games where this card was seen. Compare Seen Win % with Cast Win % &mdash; a big gap may indicate the card is only good when you can actually cast it.
+                                    </div>
+                                </section>
+
+                                <section>
+                                    <h3 class="mb-1 text-sm font-semibold">SB Out %</h3>
+                                    <p class="text-sm text-muted-foreground">
+                                        The percentage of postboard games (games 2 and 3) where this card was sided out of your deck. The number in brackets is the count of games it was removed. Only applies to postboard games.
+                                    </p>
+                                    <div class="mt-2 rounded-md bg-muted px-3 py-2 text-xs">
+                                        <span class="font-medium">Example:</span> <span class="font-mono">50% (10)</span> means the card was sided out in 10 postboard games. A high SB Out % on a mainboard card may suggest it's a frequent sideboard cut in your meta.
+                                    </div>
+                                </section>
+
+                                <section>
+                                    <h3 class="mb-1 text-sm font-semibold">Games</h3>
+                                    <p class="text-sm text-muted-foreground">
+                                        The total number of games played with this card in the deck. This is the denominator for most percentage calculations. Cards with low game counts will have less reliable statistics.
+                                    </p>
+                                </section>
+
+                                <section>
+                                    <h3 class="mb-1 text-sm font-semibold">Reading Win Rate Colors</h3>
+                                    <p class="text-sm text-muted-foreground">
+                                        Win rate values are color-coded: <span class="font-medium text-success">green</span> for win rates above 55%, <span class="font-medium text-destructive">red</span> for win rates below 45%, and neutral for values in between. These thresholds help you quickly spot over- and under-performers.
+                                    </p>
+                                </section>
+                            </div>
+                        </SheetContent>
+                    </Sheet>
                 </div>
             </div>
         </div>
