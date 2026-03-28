@@ -23,13 +23,13 @@ const props = defineProps<{
     timeframe?: string;
 }>();
 
-const realVersions = computed(() => props.versions.filter((v) => v.id !== null));
-const selectedVersionKey = ref<string>(String(props.currentVersionId ?? ''));
+const selectableVersions = computed(() => props.versions);
+const selectedVersionKey = ref<string>(props.currentVersionId ? String(props.currentVersionId) : '');
 
 // When version changes, reload current page with version param
 watch(selectedVersionKey, (newVal) => {
     const url = new URL(window.location.href);
-    if (newVal && newVal !== String(props.currentVersionId)) {
+    if (newVal) {
         url.searchParams.set('version', newVal);
     } else {
         url.searchParams.delete('version');
@@ -71,12 +71,12 @@ const navItems = computed(() => [
             </div>
 
             <!-- Version selector -->
-            <Select v-if="realVersions.length > 1" v-model="selectedVersionKey">
+            <Select v-if="selectableVersions.length > 2" v-model="selectedVersionKey">
                 <SelectTrigger class="mt-1 h-8 text-xs">
                     <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                    <SelectItem v-for="version in realVersions" :key="version.id" :value="String(version.id)">
+                    <SelectItem v-for="version in selectableVersions" :key="String(version.id ?? '')" :value="String(version.id ?? '')">
                         {{ version.label }}
                         <span v-if="version.isCurrent" class="ml-1 text-muted-foreground">&middot; Current</span>
                         <span v-if="version.dateLabel" class="ml-1 text-muted-foreground">&middot; {{ version.dateLabel }}</span>
