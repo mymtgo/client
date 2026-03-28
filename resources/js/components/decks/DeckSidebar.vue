@@ -20,6 +20,7 @@ const props = defineProps<{
     currentVersionId: number | null;
     trophies: number;
     currentPage: string;
+    timeframe?: string;
 }>();
 
 const realVersions = computed(() => props.versions.filter((v) => v.id !== null));
@@ -36,12 +37,19 @@ watch(selectedVersionKey, (newVal) => {
     router.get(url.pathname + url.search, {}, { preserveState: true, preserveScroll: true });
 });
 
+const timeframeQuery = computed(() => {
+    if (props.timeframe && props.timeframe !== 'alltime') {
+        return `?timeframe=${props.timeframe}`;
+    }
+    return '';
+});
+
 const navItems = computed(() => [
-    { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, href: DashboardController.url({ deck: props.deck.id }) },
-    { key: 'card-stats', label: 'Card Stats', icon: BarChart3, href: CardStatsController.url({ deck: props.deck.id }) },
-    { key: 'matches', label: 'Matches', icon: Swords, href: MatchesController.url({ deck: props.deck.id }) },
-    { key: 'leagues', label: 'Leagues', icon: TrophyIcon, href: LeaguesController.url({ deck: props.deck.id }) },
-    { key: 'matchups', label: 'Matchups', icon: ScrollText, href: MatchupsController.url({ deck: props.deck.id }) },
+    { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, href: DashboardController.url({ deck: props.deck.id }) + timeframeQuery.value },
+    { key: 'card-stats', label: 'Card Stats', icon: BarChart3, href: CardStatsController.url({ deck: props.deck.id }) + timeframeQuery.value },
+    { key: 'matches', label: 'Matches', icon: Swords, href: MatchesController.url({ deck: props.deck.id }) + timeframeQuery.value },
+    { key: 'leagues', label: 'Leagues', icon: TrophyIcon, href: LeaguesController.url({ deck: props.deck.id }) + timeframeQuery.value },
+    { key: 'matchups', label: 'Matchups', icon: ScrollText, href: MatchupsController.url({ deck: props.deck.id }) + timeframeQuery.value },
     { key: 'decklist', label: 'Decklist', icon: List, href: DecklistController.url({ deck: props.deck.id }) },
 ]);
 </script>

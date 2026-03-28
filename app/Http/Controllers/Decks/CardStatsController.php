@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Decks;
 
 use App\Actions\Cards\GetCardGameStats;
 use App\Actions\Decks\GetDeckViewSharedProps;
+use App\Concerns\HasTimeframeFilter;
 use App\Http\Controllers\Controller;
 use App\Models\Deck;
 use Illuminate\Http\Request;
@@ -11,15 +12,21 @@ use Inertia\Inertia;
 
 class CardStatsController extends Controller
 {
+    use HasTimeframeFilter;
+
     public function __invoke(Deck $deck, Request $request)
     {
-        $shared = GetDeckViewSharedProps::run($deck);
+        $timeframe = $request->input('timeframe', 'alltime');
+        [$from, $to] = $this->getTimeRange($timeframe);
+
+        $shared = GetDeckViewSharedProps::run($deck, $from, $to);
 
         $deckVersion = $deck->latestVersion;
 
         return Inertia::render('decks/CardStats', [
             ...$shared,
             'currentPage' => 'card-stats',
+            'timeframe' => $timeframe,
 
             'cardStats' => function () use ($deckVersion, $request) {
                 if (! $deckVersion) {

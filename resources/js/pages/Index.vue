@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { Deferred, router } from '@inertiajs/vue3';
 import { computed } from 'vue';
-import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import TimeframeFilter from '@/components/TimeframeFilter.vue';
 import { LayoutDashboard } from 'lucide-vue-next';
 import DashboardKpiStrip from '@/pages/partials/DashboardKpiStrip.vue';
 import DashboardDecks from '@/pages/partials/DashboardDecks.vue';
@@ -97,14 +97,6 @@ const props = defineProps<{
     recentMatches?: App.Data.Front.MatchData[];
 }>();
 
-const timeframes = [
-    { value: 'week', label: '7 days' },
-    { value: 'biweekly', label: '2 weeks' },
-    { value: 'monthly', label: '30 days' },
-    { value: 'year', label: 'This year' },
-    { value: 'alltime', label: 'All time' },
-];
-
 const hasData = computed(() => props.matchesWon + props.matchesLost > 0);
 
 function navigate(params: Record<string, string | null>) {
@@ -146,18 +138,7 @@ function setFormat(value: string) {
 
         <!-- Timeframe + Format selector -->
         <div class="flex items-center gap-3">
-            <div class="flex items-center gap-1 rounded-md border p-1">
-                <Button
-                    v-for="tf in timeframes"
-                    :key="tf.value"
-                    size="sm"
-                    :variant="timeframe === tf.value ? 'default' : 'ghost'"
-                    class="h-7 px-3 text-xs"
-                    @click="setTimeframe(tf.value)"
-                >
-                    {{ tf.label }}
-                </Button>
-            </div>
+            <TimeframeFilter :model-value="timeframe" @update:model-value="setTimeframe" />
 
             <Select :modelValue="format ?? 'all'" @update:modelValue="setFormat" v-if="formats.length > 1">
                 <SelectTrigger class="h-9 w-40">

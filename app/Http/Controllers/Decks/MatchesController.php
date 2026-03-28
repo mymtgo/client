@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Decks;
 
 use App\Actions\Decks\GetDeckStats;
 use App\Actions\Decks\GetDeckViewSharedProps;
+use App\Concerns\HasTimeframeFilter;
 use App\Data\Front\ArchetypeData;
 use App\Data\Front\MatchData;
 use App\Enums\MatchOutcome;
@@ -16,12 +17,14 @@ use Inertia\Inertia;
 
 class MatchesController extends Controller
 {
+    use HasTimeframeFilter;
+
     public function __invoke(Deck $deck, Request $request)
     {
-        $shared = GetDeckViewSharedProps::run($deck);
+        $timeframe = $request->input('timeframe', 'alltime');
+        [$from, $to] = $this->getTimeRange($timeframe);
 
-        $from = now()->subMonths(2)->startOfDay();
-        $to = now()->endOfDay();
+        $shared = GetDeckViewSharedProps::run($deck, $from, $to);
 
         $stats = GetDeckStats::run($deck, $from, $to);
         $allMatchIds = $stats['allMatchIds'];
@@ -83,6 +86,7 @@ class MatchesController extends Controller
         return Inertia::render('decks/Matches', [
             ...$shared,
             'currentPage' => 'matches',
+            'timeframe' => $timeframe,
             'matches' => $matches,
             'archetypes' => $archetypes,
         ]);

@@ -6,27 +6,32 @@ use App\Actions\Decks\GetArchetypeMatchupSpread;
 use App\Actions\Decks\GetDeckStats;
 use App\Actions\Decks\GetDeckViewSharedProps;
 use App\Actions\Leagues\GetLeagueResultDistribution;
+use App\Concerns\HasTimeframeFilter;
 use App\Http\Controllers\Controller;
 use App\Models\Deck;
 use App\Models\MtgoMatch;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
+use Illuminate\Http\Request;
 use Inertia\Inertia;
 
 class DashboardController extends Controller
 {
-    public function __invoke(Deck $deck)
-    {
-        $shared = GetDeckViewSharedProps::run($deck);
+    use HasTimeframeFilter;
 
-        $from = now()->subMonths(2)->startOfDay();
-        $to = now()->endOfDay();
+    public function __invoke(Request $request, Deck $deck)
+    {
+        $timeframe = $request->input('timeframe', 'alltime');
+        [$from, $to] = $this->getTimeRange($timeframe);
+
+        $shared = GetDeckViewSharedProps::run($deck, $from, $to);
 
         $stats = GetDeckStats::run($deck, $from, $to);
 
         return Inertia::render('decks/Dashboard', [
             ...$shared,
             'currentPage' => 'dashboard',
+            'timeframe' => $timeframe,
 
             // KPI stats — eager
             'matchesWon' => $stats['wins'],
@@ -75,7 +80,11 @@ class DashboardController extends Controller
             return [];
         }
 
-        $carbonPeriod = CarbonPeriod::between($from->copy()->startOfDay(), $to->copy()->startOfDay())->days();
+        // Narrow chart range to actual data bounds to avoid generating thousands of empty days
+        $firstDate = Carbon::parse($results->keys()->first())->startOfDay();
+        $lastDate = Carbon::parse($results->keys()->last())->startOfDay();
+
+        $carbonPeriod = CarbonPeriod::between($firstDate, $lastDate)->days();
 
         return collect($carbonPeriod)->map(function (Carbon $point) use ($results) {
             $key = $point->format('Y-m-d');
