@@ -5,10 +5,20 @@ import { Deferred } from '@inertiajs/vue3';
 import ManaSymbols from '@/components/ManaSymbols.vue';
 import MatchHistoryChart from '@/pages/decks/partials/MatchHistoryChart.vue';
 import { computed } from 'vue';
-import type { VersionStats } from '@/types/decks';
 
 const props = defineProps<{
-    activeVersion: VersionStats;
+    matchesWon: number;
+    matchesLost: number;
+    matchWinrate: number;
+    gamesWon: number;
+    gamesLost: number;
+    gameWinrate: number;
+    gamesOtpWon: number;
+    gamesOtpLost: number;
+    otpRate: number;
+    gamesOtdWon: number;
+    gamesOtdLost: number;
+    otdRate: number;
     chartData: { date: string; wins: number; losses: number; winrate: string | null }[];
     matchupSpread?: any[];
     leagueResults?: Record<string, number>;
@@ -42,8 +52,6 @@ const leagueResultsBuckets = ['5-0', '4-1', '3-2', '2-3', '1-4', '0-5'];
 
 <template>
     <div class="space-y-4">
-        <p class="text-xs text-muted-foreground">Stats from the last 2 months</p>
-
         <!-- KPI Cards -->
         <div class="grid grid-cols-5 gap-4">
             <Card class="gap-0 py-0">
@@ -51,10 +59,10 @@ const leagueResultsBuckets = ['5-0', '4-1', '3-2', '2-3', '1-4', '0-5'];
                     <span class="text-xs tracking-wide text-muted-foreground uppercase">Match Win Rate</span>
                     <span
                         class="text-3xl font-bold tabular-nums"
-                        :class="activeVersion.matchWinrate > 50 ? 'text-success' : activeVersion.matchWinrate < 50 ? 'text-destructive' : ''"
-                    >{{ activeVersion.matchWinrate }}%</span>
+                        :class="matchWinrate > 50 ? 'text-success' : matchWinrate < 50 ? 'text-destructive' : ''"
+                    >{{ matchWinrate }}%</span>
                     <span class="text-sm text-muted-foreground">
-                        {{ activeVersion.matchesWon }}-{{ activeVersion.matchesLost }}
+                        {{ matchesWon }}-{{ matchesLost }}
                     </span>
                 </CardContent>
             </Card>
@@ -63,10 +71,10 @@ const leagueResultsBuckets = ['5-0', '4-1', '3-2', '2-3', '1-4', '0-5'];
                     <span class="text-xs tracking-wide text-muted-foreground uppercase">Game Win Rate</span>
                     <span
                         class="text-3xl font-bold tabular-nums"
-                        :class="activeVersion.gameWinrate > 50 ? 'text-success' : activeVersion.gameWinrate < 50 ? 'text-destructive' : ''"
-                    >{{ activeVersion.gameWinrate }}%</span>
+                        :class="gameWinrate > 50 ? 'text-success' : gameWinrate < 50 ? 'text-destructive' : ''"
+                    >{{ gameWinrate }}%</span>
                     <span class="text-sm text-muted-foreground">
-                        {{ activeVersion.gamesWon }}-{{ activeVersion.gamesLost }}
+                        {{ gamesWon }}-{{ gamesLost }}
                     </span>
                 </CardContent>
             </Card>
@@ -74,10 +82,10 @@ const leagueResultsBuckets = ['5-0', '4-1', '3-2', '2-3', '1-4', '0-5'];
                 <CardContent class="flex flex-col gap-0.5 p-3">
                     <span class="text-xs tracking-wide text-muted-foreground uppercase">Match Record</span>
                     <span class="text-3xl font-bold tabular-nums">
-                        {{ activeVersion.matchesWon }}-{{ activeVersion.matchesLost }}
+                        {{ matchesWon }}-{{ matchesLost }}
                     </span>
                     <span class="text-sm text-muted-foreground">
-                        {{ activeVersion.matchesWon + activeVersion.matchesLost }} played
+                        {{ matchesWon + matchesLost }} played
                     </span>
                 </CardContent>
             </Card>
@@ -86,10 +94,10 @@ const leagueResultsBuckets = ['5-0', '4-1', '3-2', '2-3', '1-4', '0-5'];
                     <span class="text-xs tracking-wide text-muted-foreground uppercase">Win % on the Play</span>
                     <span
                         class="text-3xl font-bold tabular-nums"
-                        :class="activeVersion.otpRate > 50 ? 'text-success' : activeVersion.otpRate < 50 ? 'text-destructive' : ''"
-                    >{{ activeVersion.otpRate }}%</span>
+                        :class="otpRate > 50 ? 'text-success' : otpRate < 50 ? 'text-destructive' : ''"
+                    >{{ otpRate }}%</span>
                     <span class="text-sm text-muted-foreground">
-                        {{ activeVersion.gamesOtpWon }}-{{ activeVersion.gamesOtpLost }} games
+                        {{ gamesOtpWon }}-{{ gamesOtpLost }} games
                     </span>
                 </CardContent>
             </Card>
@@ -98,10 +106,10 @@ const leagueResultsBuckets = ['5-0', '4-1', '3-2', '2-3', '1-4', '0-5'];
                     <span class="text-xs tracking-wide text-muted-foreground uppercase">Win % on the Draw</span>
                     <span
                         class="text-3xl font-bold tabular-nums"
-                        :class="activeVersion.otdRate > 50 ? 'text-success' : activeVersion.otdRate < 50 ? 'text-destructive' : ''"
-                    >{{ activeVersion.otdRate }}%</span>
+                        :class="otdRate > 50 ? 'text-success' : otdRate < 50 ? 'text-destructive' : ''"
+                    >{{ otdRate }}%</span>
                     <span class="text-sm text-muted-foreground">
-                        {{ activeVersion.gamesOtdWon }}-{{ activeVersion.gamesOtdLost }} games
+                        {{ gamesOtdWon }}-{{ gamesOtdLost }} games
                     </span>
                 </CardContent>
             </Card>

@@ -4,30 +4,39 @@ namespace App\Http\Controllers\Decks;
 
 use App\Actions\Decks\GetDeckStats;
 use App\Actions\Decks\GetDeckViewSharedProps;
+use App\Concerns\HasTimeframeFilter;
 use App\Data\Front\ArchetypeData;
 use App\Data\Front\MatchData;
 use App\Enums\MatchOutcome;
 use App\Http\Controllers\Controller;
 use App\Models\Archetype;
 use App\Models\Deck;
+use App\Models\DeckVersion;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
 class MatchesController extends Controller
 {
+    use HasTimeframeFilter;
+
     public function __invoke(Deck $deck, Request $request)
     {
-        $shared = GetDeckViewSharedProps::run($deck);
+        $timeframe = $request->input('timeframe', 'alltime');
+        [$from, $to] = $this->getTimeRange($timeframe);
 
-        $from = now()->subMonths(2)->startOfDay();
-        $to = now()->endOfDay();
+        $shared = GetDeckViewSharedProps::run($deck, $from, $to);
 
-        $stats = GetDeckStats::run($deck, $from, $to);
+        $deckVersion = $request->filled('version')
+            ? DeckVersion::find($request->input('version'))
+            : null;
+
+        $stats = GetDeckStats::run($deck, $from, $to, $deckVersion);
         $allMatchIds = $stats['allMatchIds'];
 
         // Build filtered match query
-        $query = $deck->matches()->select('matches.*')->where('state', 'complete');
+        $query = $deck->matches()->select('matches.*')->where('state', 'complete')
+            ->when($deckVersion, fn ($q) => $q->where('deck_version_id', $deckVersion->id));
 
         if ($filterFrom = $request->input('filter_from')) {
             $query->where('started_at', '>=', Carbon::parse($filterFrom)->startOfDay());
@@ -82,7 +91,9 @@ class MatchesController extends Controller
 
         return Inertia::render('decks/Matches', [
             ...$shared,
+            'currentVersionId' => $deckVersion?->id,
             'currentPage' => 'matches',
+            'timeframe' => $timeframe,
             'matches' => $matches,
             'archetypes' => $archetypes,
         ]);

@@ -6,27 +6,38 @@ use App\Actions\Decks\GetArchetypeMatchupSpread;
 use App\Actions\Decks\GetDeckStats;
 use App\Actions\Decks\GetDeckViewSharedProps;
 use App\Actions\Leagues\GetLeagueResultDistribution;
+use App\Concerns\HasTimeframeFilter;
 use App\Http\Controllers\Controller;
 use App\Models\Deck;
+use App\Models\DeckVersion;
 use App\Models\MtgoMatch;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
+use Illuminate\Http\Request;
 use Inertia\Inertia;
 
 class DashboardController extends Controller
 {
-    public function __invoke(Deck $deck)
+    use HasTimeframeFilter;
+
+    public function __invoke(Request $request, Deck $deck)
     {
-        $shared = GetDeckViewSharedProps::run($deck);
+        $timeframe = $request->input('timeframe', 'alltime');
+        [$from, $to] = $this->getTimeRange($timeframe);
 
-        $from = now()->subMonths(2)->startOfDay();
-        $to = now()->endOfDay();
+        $shared = GetDeckViewSharedProps::run($deck, $from, $to);
 
-        $stats = GetDeckStats::run($deck, $from, $to);
+        $deckVersion = $request->filled('version')
+            ? DeckVersion::find($request->input('version'))
+            : null;
+
+        $stats = GetDeckStats::run($deck, $from, $to, $deckVersion);
 
         return Inertia::render('decks/Dashboard', [
             ...$shared,
+            'currentVersionId' => $deckVersion?->id,
             'currentPage' => 'dashboard',
+            'timeframe' => $timeframe,
 
             // KPI stats — eager
             'matchesWon' => $stats['wins'],
@@ -45,11 +56,11 @@ class DashboardController extends Controller
             'otdRate' => $stats['otdRate'],
 
             // Lazy closure
-            'chartData' => fn () => $this->buildDeckChartData($deck, $from, $to),
+            'chartData' => fn () => $this->buildDeckChartData($deck, $from, $to, $deckVersion),
 
             // Deferred
             'matchupSpread' => Inertia::defer(
-                fn () => GetArchetypeMatchupSpread::run($deck, $from, $to),
+                fn () => GetArchetypeMatchupSpread::run($deck, $from, $to, $deckVersion),
             ),
             'leagueResults' => Inertia::defer(
                 fn () => GetLeagueResultDistribution::run($deck, $stats['allMatchIds']),
@@ -57,9 +68,11 @@ class DashboardController extends Controller
         ]);
     }
 
-    private function buildDeckChartData(Deck $deck, Carbon $from, Carbon $to): array
+    private function buildDeckChartData(Deck $deck, Carbon $from, Carbon $to, ?DeckVersion $deckVersion = null): array
     {
-        $versionIds = $deck->versions()->pluck('id');
+        $versionIds = $deckVersion
+            ? collect([$deckVersion->id])
+            : $deck->versions()->pluck('id');
 
         $results = MtgoMatch::complete()
             ->selectRaw("strftime('%Y-%m-%d', started_at) as period, SUM(CASE WHEN outcome = 'win' THEN 1 ELSE 0 END) as wins, COUNT(*) as total")
@@ -75,7 +88,11 @@ class DashboardController extends Controller
             return [];
         }
 
-        $carbonPeriod = CarbonPeriod::between($from->copy()->startOfDay(), $to->copy()->startOfDay())->days();
+        // Narrow chart range to actual data bounds to avoid generating thousands of empty days
+        $firstDate = Carbon::parse($results->keys()->first())->startOfDay();
+        $lastDate = Carbon::parse($results->keys()->last())->startOfDay();
+
+        $carbonPeriod = CarbonPeriod::between($firstDate, $lastDate)->days();
 
         return collect($carbonPeriod)->map(function (Carbon $point) use ($results) {
             $key = $point->format('Y-m-d');
