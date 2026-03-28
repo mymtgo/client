@@ -7,6 +7,7 @@ use App\Actions\Decks\GetDeckViewSharedProps;
 use App\Concerns\HasTimeframeFilter;
 use App\Http\Controllers\Controller;
 use App\Models\Deck;
+use App\Models\DeckVersion;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -21,18 +22,17 @@ class CardStatsController extends Controller
 
         $shared = GetDeckViewSharedProps::run($deck, $from, $to);
 
-        $deckVersion = $deck->latestVersion;
+        $deckVersion = $request->filled('version')
+            ? DeckVersion::find($request->input('version'))
+            : null;
 
         return Inertia::render('decks/CardStats', [
             ...$shared,
+            'currentVersionId' => $deckVersion?->id,
             'currentPage' => 'card-stats',
             'timeframe' => $timeframe,
 
-            'cardStats' => function () use ($deckVersion, $request) {
-                if (! $deckVersion) {
-                    return ['stats' => [], 'archetypes' => []];
-                }
-
+            'cardStats' => function () use ($deck, $deckVersion, $request) {
                 $opponentArchetypeId = $request->filled('card_stats_archetype')
                     ? (int) $request->input('card_stats_archetype')
                     : null;
@@ -46,8 +46,8 @@ class CardStatsController extends Controller
                     : null;
 
                 return [
-                    'stats' => GetCardGameStats::run($deckVersion, $opponentArchetypeId, $onPlay, $isPostboard),
-                    'archetypes' => GetCardGameStats::availableArchetypes($deckVersion),
+                    'stats' => GetCardGameStats::run($deck, $deckVersion, $opponentArchetypeId, $onPlay, $isPostboard),
+                    'archetypes' => GetCardGameStats::availableArchetypes($deck, $deckVersion),
                 ];
             },
         ]);
