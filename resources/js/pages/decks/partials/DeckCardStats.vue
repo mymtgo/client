@@ -521,10 +521,10 @@ function winRateClass(pctVal: number | null): string {
             </p>
         </div>
 
-        <Card v-else class="gap-0 overflow-hidden p-0">
-            <CardContent class="px-0">
+        <Card v-else class="gap-0 p-0">
+            <CardContent class="px-0 [&_[data-slot=table-container]]:overflow-visible">
                 <Table>
-                    <TableHeader class="bg-muted sticky top-0">
+                    <TableHeader class="bg-muted sticky top-0 z-10">
                         <TableRow>
                             <TableHead class="cursor-pointer select-none" @click="toggleSort('name')">
                                 <span class="inline-flex items-center gap-1">Card <component :is="sortIcon('name')" class="size-3" /></span>
