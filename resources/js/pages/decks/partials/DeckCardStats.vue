@@ -55,6 +55,7 @@ type CardStat = {
     castLost: number;
     postboardGames: number;
     sidedOutGames: number;
+    sidedInGames: number;
 };
 
 const props = defineProps<{
@@ -204,7 +205,7 @@ function passesFilter(stat: CardStat): boolean {
 
 // ── Sorting ──────────────────────────────────────────────────────────────────
 
-type SortKey = 'name' | 'keptPct' | 'keptWinPct' | 'seenPct' | 'seenWinPct' | 'castPct' | 'castWinPct' | 'sbOutPct' | 'games';
+type SortKey = 'name' | 'keptPct' | 'keptWinPct' | 'seenPct' | 'seenWinPct' | 'castPct' | 'castWinPct' | 'sbOutPct' | 'sbInPct' | 'games';
 const sortBy = ref<SortKey>('name');
 const sortDesc = ref(false);
 
@@ -244,6 +245,8 @@ function sortValue(stat: CardStat, key: SortKey): number | string {
             return pctWithTiebreak(stat.castWon, stat.castWon + stat.castLost);
         case 'sbOutPct':
             return pctWithTiebreak(stat.sidedOutGames, stat.postboardGames);
+        case 'sbInPct':
+            return pctWithTiebreak(stat.sidedInGames, stat.postboardGames);
         case 'games':
             return stat.totalGames;
     }
@@ -473,6 +476,16 @@ function winRateClass(pctVal: number | null): string {
                                 </section>
 
                                 <section>
+                                    <h3 class="mb-1 text-sm font-semibold">SB In %</h3>
+                                    <p class="text-sm text-muted-foreground">
+                                        The percentage of postboard games (games 2 and 3) where this card was sided into your deck from the sideboard. The number in brackets is the count of games it was brought in. Only applies to postboard games.
+                                    </p>
+                                    <div class="mt-2 rounded-md bg-muted px-3 py-2 text-xs">
+                                        <span class="font-medium">Example:</span> <span class="font-mono">75% (6)</span> means the card was sided in for 6 postboard games. A high SB In % on a sideboard card shows it's frequently relevant in your meta.
+                                    </div>
+                                </section>
+
+                                <section>
                                     <h3 class="mb-1 text-sm font-semibold">Games</h3>
                                     <p class="text-sm text-muted-foreground">
                                         The total number of games played with this card in the deck. This is the denominator for most percentage calculations. Cards with low game counts will have less reliable statistics.
@@ -538,6 +551,9 @@ function winRateClass(pctVal: number | null): string {
                             </TableHead>
                             <TableHead class="cursor-pointer select-none text-right" @click="toggleSort('sbOutPct')">
                                 <span class="inline-flex items-center justify-end gap-1">SB Out % <component :is="sortIcon('sbOutPct')" class="size-3" /></span>
+                            </TableHead>
+                            <TableHead class="cursor-pointer select-none text-right" @click="toggleSort('sbInPct')">
+                                <span class="inline-flex items-center justify-end gap-1">SB In % <component :is="sortIcon('sbInPct')" class="size-3" /></span>
                             </TableHead>
                             <TableHead class="cursor-pointer select-none text-right" @click="toggleSort('games')">
                                 <span class="inline-flex items-center justify-end gap-1">Games <component :is="sortIcon('games')" class="size-3" /></span>
@@ -623,6 +639,13 @@ function winRateClass(pctVal: number | null): string {
                                 <template v-if="pct(stat.sidedOutGames, stat.postboardGames) !== null">
                                     {{ pct(stat.sidedOutGames, stat.postboardGames) }}%
                                     <span class="text-muted-foreground text-[10px]">({{ stat.sidedOutGames }})</span>
+                                </template>
+                                <span v-else class="text-muted-foreground">—</span>
+                            </TableCell>
+                            <TableCell class="text-right tabular-nums">
+                                <template v-if="pct(stat.sidedInGames, stat.postboardGames) !== null">
+                                    {{ pct(stat.sidedInGames, stat.postboardGames) }}%
+                                    <span class="text-muted-foreground text-[10px]">({{ stat.sidedInGames }})</span>
                                 </template>
                                 <span v-else class="text-muted-foreground">—</span>
                             </TableCell>

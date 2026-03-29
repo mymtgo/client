@@ -90,7 +90,8 @@ class GetCardGameStats
                 SUM(CASE WHEN cgs.cast > 0 AND cgs.won THEN 1 ELSE 0 END) as cast_won,
                 SUM(CASE WHEN cgs.cast > 0 AND NOT cgs.won THEN 1 ELSE 0 END) as cast_lost,
                 SUM(CASE WHEN cgs.is_postboard THEN 1 ELSE 0 END) as postboard_games,
-                SUM(CASE WHEN cgs.sided_out THEN 1 ELSE 0 END) as sided_out_games
+                SUM(CASE WHEN cgs.sided_out THEN 1 ELSE 0 END) as sided_out_games,
+                SUM(CASE WHEN cgs.sided_in THEN 1 ELSE 0 END) as sided_in_games
             ')
             ->orderBy('c.type')
             ->orderBy('c.name')
@@ -115,6 +116,7 @@ class GetCardGameStats
                 'castLost' => (int) $row->cast_lost,
                 'postboardGames' => (int) $row->postboard_games,
                 'sidedOutGames' => (int) $row->sided_out_games,
+                'sidedInGames' => (int) $row->sided_in_games,
             ]);
     }
 

@@ -30,6 +30,11 @@ class ComputeCardGameStats implements ShouldQueue
         }
 
         $games = $match->games->sortBy('started_at')->values();
+        $gameIds = $games->pluck('id');
+
+        // Clear existing stats so reprocessing works (insertOrIgnore won't update stale rows)
+        CardGameStat::whereIn('game_id', $gameIds)->delete();
+
         $game1Quantities = null;
 
         foreach ($games as $index => $game) {
@@ -55,19 +60,23 @@ class ComputeCardGameStats implements ShouldQueue
 
         $localInstanceId = (int) $localPlayer->pivot->instance_id;
 
-        // Get deck cards from game_player pivot (has mtgo_ids, reflects sideboard changes)
+        // Get deck cards from game_player pivot (sideboard flags reflect actual per-game state)
         $deckJson = $localPlayer->pivot->deck_json;
 
         if (empty($deckJson)) {
             return null;
         }
 
-        // Build quantity map: mtgo_id => quantity
-        $deckQuantities = collect($deckJson)->mapWithKeys(fn ($card) => [
-            (string) $card['mtgo_id'] => (int) $card['quantity'],
-        ]);
+        // Build quantity map from maindeck cards only (sideboard cards aren't in the playing deck)
+        $deckCollection = collect($deckJson);
+        $deckQuantities = $deckCollection
+            ->reject(fn ($card) => $card['sideboard'] ?? false)
+            ->mapWithKeys(fn ($card) => [
+                (string) $card['mtgo_id'] => (int) $card['quantity'],
+            ]);
 
-        $allMtgoIds = $deckQuantities->keys()->toArray();
+        // Need all mtgo_ids (including sideboard) for oracle mapping
+        $allMtgoIds = $deckCollection->pluck('mtgo_id')->map(fn ($id) => (string) $id)->unique()->values()->toArray();
 
         // Map mtgo_id => oracle_id
         $mtgoToOracle = Card::whereIn('mtgo_id', $allMtgoIds)
@@ -117,9 +126,11 @@ class ComputeCardGameStats implements ShouldQueue
 
         foreach ($oracleQuantities as $oracleId => $quantity) {
             $sidedOut = false;
+            $sidedIn = false;
             if ($isPostboard && $game1Quantities !== null) {
                 $g1Qty = $game1Quantities[$oracleId] ?? 0;
                 $sidedOut = $quantity < $g1Qty;
+                $sidedIn = $quantity > $g1Qty;
             }
 
             $rows[] = [
@@ -133,9 +144,33 @@ class ComputeCardGameStats implements ShouldQueue
                 'won' => $game->won,
                 'is_postboard' => $isPostboard,
                 'sided_out' => $sidedOut,
+                'sided_in' => $sidedIn,
                 'created_at' => $now,
                 'updated_at' => $now,
             ];
+        }
+
+        // Cards completely sided out (in game 1 maindeck but entirely absent from current maindeck)
+        if ($isPostboard && $game1Quantities !== null) {
+            foreach ($game1Quantities as $oracleId => $g1Qty) {
+                if ($g1Qty > 0 && ! isset($oracleQuantities[$oracleId])) {
+                    $rows[] = [
+                        'oracle_id' => $oracleId,
+                        'game_id' => $game->id,
+                        'deck_version_id' => $deckVersionId,
+                        'quantity' => 0,
+                        'kept' => 0,
+                        'seen' => 0,
+                        'cast' => 0,
+                        'won' => $game->won,
+                        'is_postboard' => true,
+                        'sided_out' => true,
+                        'sided_in' => false,
+                        'created_at' => $now,
+                        'updated_at' => $now,
+                    ];
+                }
+            }
         }
 
         if (! empty($rows)) {

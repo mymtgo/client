@@ -89,14 +89,36 @@ class CreateGames
 
             $isYou = $playerModel->username == $username;
 
-            if ($isYou) {
-                $deck = collect($playerDeck)->map(function ($card) {
-                    return [
-                        'mtgo_id' => $card['CatalogId'],
-                        'quantity' => $card['Quantity'],
-                        'sideboard' => $card['InSideboard'],
-                    ];
-                })->values()->toArray();
+            if ($isYou && ! empty($playerDeck)) {
+                // Build total quantities per CatalogId from DeckUsedInGame (the full 75)
+                $totalQuantities = [];
+                foreach ($playerDeck as $card) {
+                    $catalogId = $card['CatalogId'];
+                    $totalQuantities[$catalogId] = ($totalQuantities[$catalogId] ?? 0) + $card['Quantity'];
+                }
+
+                // Count actual sideboard cards from first game snapshot
+                $sideboardCounts = [];
+                foreach ($parsedState['Cards'] ?? [] as $snapshotCard) {
+                    if ((int) $snapshotCard['Owner'] === (int) $player['Id'] && ($snapshotCard['Zone'] ?? '') === 'Sideboard') {
+                        $catalogId = $snapshotCard['CatalogID'];
+                        $sideboardCounts[$catalogId] = ($sideboardCounts[$catalogId] ?? 0) + 1;
+                    }
+                }
+
+                // Build deck_json with sideboard flags reflecting actual game state
+                $deck = [];
+                foreach ($totalQuantities as $catalogId => $total) {
+                    $sbQty = $sideboardCounts[$catalogId] ?? 0;
+                    $mbQty = $total - $sbQty;
+
+                    if ($mbQty > 0) {
+                        $deck[] = ['mtgo_id' => $catalogId, 'quantity' => $mbQty, 'sideboard' => false];
+                    }
+                    if ($sbQty > 0) {
+                        $deck[] = ['mtgo_id' => $catalogId, 'quantity' => $sbQty, 'sideboard' => true];
+                    }
+                }
             }
 
             if (! $isYou) {
