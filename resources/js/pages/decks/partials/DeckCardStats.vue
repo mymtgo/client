@@ -524,7 +524,7 @@ function winRateClass(pctVal: number | null): string {
         <Card v-else class="gap-0 p-0">
             <CardContent class="px-0 [&_[data-slot=table-container]]:overflow-visible">
                 <Table>
-                    <TableHeader class="bg-muted sticky top-0 z-10">
+                    <TableHeader class="backdrop-blur-sm sticky top-0 z-10">
                         <TableRow>
                             <TableHead class="cursor-pointer select-none" @click="toggleSort('name')">
                                 <span class="inline-flex items-center gap-1">Card <component :is="sortIcon('name')" class="size-3" /></span>

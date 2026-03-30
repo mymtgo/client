@@ -54,22 +54,26 @@ const clearArchetype = (matchId: number) => {
 const detectArchetype = (matchId: number) => {
     detectingMatchId.value = matchId;
 
-    router.post(DetectArchetypeController({ id: matchId }).url, {}, {
-        preserveScroll: true,
-        onSuccess: () => {
-            const match = props.matches.find(m => m.id === matchId);
-            if (!match?.opponentArchetypes?.[0]?.archetype) {
-                toast({
-                    type: 'error',
-                    title: 'Detection failed',
-                    message: 'Could not determine the opponent\'s archetype for this match.',
-                });
-            }
+    router.post(
+        DetectArchetypeController({ id: matchId }).url,
+        {},
+        {
+            preserveScroll: true,
+            onSuccess: () => {
+                const match = props.matches.find((m) => m.id === matchId);
+                if (!match?.opponentArchetypes?.[0]?.archetype) {
+                    toast({
+                        type: 'error',
+                        title: 'Detection failed',
+                        message: "Could not determine the opponent's archetype for this match.",
+                    });
+                }
+            },
+            onFinish: () => {
+                detectingMatchId.value = null;
+            },
         },
-        onFinish: () => {
-            detectingMatchId.value = null;
-        },
-    });
+    );
 };
 </script>
 
@@ -78,7 +82,7 @@ const detectArchetype = (matchId: number) => {
     <MatchNotesDialog ref="notesDialog" />
 
     <Table>
-        <TableHeader class="bg-muted">
+        <TableHeader class="sticky top-0 z-10 backdrop-blur-sm">
             <TableRow>
                 <TableHead>Result</TableHead>
                 <TableHead>Type</TableHead>
@@ -106,7 +110,7 @@ const detectArchetype = (matchId: number) => {
                             </TableCell>
                             <TableCell class="font-medium">
                                 <span v-if="match.opponentName">{{ match.opponentName }}</span>
-                                <span v-else class="text-muted-foreground text-xs">—</span>
+                                <span v-else class="text-xs text-muted-foreground">—</span>
                             </TableCell>
                             <TableCell>
                                 <div class="flex items-center gap-1" v-if="match.opponentArchetypes?.[0]?.archetype">
@@ -141,12 +145,11 @@ const detectArchetype = (matchId: number) => {
                                             <NotepadText :size="14" class="text-muted-foreground" />
                                         </TooltipTrigger>
                                         <TooltipContent side="left" class="max-w-xs">
-                                            <p class="whitespace-pre-wrap text-xs">{{ match.notes }}</p>
+                                            <p class="text-xs whitespace-pre-wrap">{{ match.notes }}</p>
                                         </TooltipContent>
                                     </Tooltip>
                                 </TooltipProvider>
                             </TableCell>
-
                         </TableRow>
                     </ContextMenuTrigger>
                     <ContextMenuContent>
@@ -155,10 +158,7 @@ const detectArchetype = (matchId: number) => {
                         </ContextMenuItem>
                         <ContextMenuItem @click="detectArchetype(match.id)">Detect archetype</ContextMenuItem>
                         <ContextMenuItem @click="archetypeDialog?.openForMatch(match.id, match.format)">Set manual archetype</ContextMenuItem>
-                        <ContextMenuItem
-                            v-if="match.opponentArchetypes?.[0]?.archetype"
-                            @click="clearArchetype(match.id)"
-                        >
+                        <ContextMenuItem v-if="match.opponentArchetypes?.[0]?.archetype" @click="clearArchetype(match.id)">
                             Clear archetype
                         </ContextMenuItem>
                         <ContextMenuItem @click="deleteMatch(match.id)">Remove from stats</ContextMenuItem>
