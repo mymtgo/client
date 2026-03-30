@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import SegmentedControl from '@/components/SegmentedControl.vue';
 import {
     DropdownMenu,
     DropdownMenuCheckboxItem,
@@ -308,57 +309,47 @@ function winRateClass(pctVal: number | null): string {
         <div v-if="archetypes.length || stats.length" class="mb-4 flex flex-col gap-4">
             <div class="flex items-center gap-4">
                 <div class="relative flex-1">
-                    <Search class="pointer-events-none absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+                    <Search class="pointer-events-none absolute top-1/2 left-2 size-3.5 -translate-y-1/2 text-muted-foreground" />
                     <Input v-model="searchQuery" placeholder="Search cards..." class="h-8 py-0 pl-7 text-xs" />
                 </div>
 
-                <div class="flex items-center gap-1 rounded-md border p-1">
-                    <Button
-                        v-for="opt in [
-                            { value: '__all__', label: 'Overall' },
-                            { value: 'preboard', label: 'Game 1' },
-                            { value: 'postboard', label: 'Postboard' },
-                        ]"
-                        :key="opt.value"
-                        size="sm"
-                        :variant="selectedBoard === opt.value ? 'default' : 'ghost'"
-                        class="h-7 px-3 text-xs"
-                        @click="filterByBoard(opt.value)"
-                    >
-                        {{ opt.label }}
-                    </Button>
-                </div>
+                <SegmentedControl
+                    :modelValue="selectedBoard"
+                    :options="[
+                        { value: '__all__', label: 'Overall' },
+                        { value: 'preboard', label: 'Game 1' },
+                        { value: 'postboard', label: 'Postboard' },
+                    ]"
+                    @update:modelValue="filterByBoard"
+                />
 
                 <div class="flex items-center gap-2">
                     <Select :modelValue="selectedPlayDraw" @update:modelValue="filterByPlayDraw">
-                    <SelectTrigger class="h-8 w-36 text-xs">
-                        <SelectValue placeholder="Play / Draw" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="__all__">Play & Draw</SelectItem>
-                        <SelectItem value="play">On the Play</SelectItem>
-                        <SelectItem value="draw">On the Draw</SelectItem>
-                    </SelectContent>
-                </Select>
+                        <SelectTrigger class="h-8 w-36 text-xs">
+                            <SelectValue placeholder="Play / Draw" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="__all__">Play & Draw</SelectItem>
+                            <SelectItem value="play">On the Play</SelectItem>
+                            <SelectItem value="draw">On the Draw</SelectItem>
+                        </SelectContent>
+                    </Select>
 
-                <Select v-if="archetypes.length" :modelValue="selectedArchetype" @update:modelValue="filterByArchetype">
-                    <SelectTrigger class="h-8 w-48 text-xs">
-                        <SelectValue placeholder="All opponent archetypes" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="__all__">All opponent archetypes</SelectItem>
-                        <SelectItem v-for="arch in archetypes" :key="arch.id" :value="String(arch.id)">
-                            {{ arch.name }}
-                        </SelectItem>
-                    </SelectContent>
-                </Select>
+                    <Select v-if="archetypes.length" :modelValue="selectedArchetype" @update:modelValue="filterByArchetype">
+                        <SelectTrigger class="h-8 w-48 text-xs">
+                            <SelectValue placeholder="All opponent archetypes" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="__all__">All opponent archetypes</SelectItem>
+                            <SelectItem v-for="arch in archetypes" :key="arch.id" :value="String(arch.id)">
+                                {{ arch.name }}
+                            </SelectItem>
+                        </SelectContent>
+                    </Select>
 
                     <DropdownMenu>
                         <DropdownMenuTrigger as-child>
-                            <Button
-                                :variant="activeFilterCount > 0 ? 'default' : 'outline'"
-                                class="h-[34px] gap-1.5 rounded-md border px-3 text-xs"
-                            >
+                            <Button variant="ghost" class="bevel h-8 gap-1.5 rounded-md border border-black/60 px-3 text-xs">
                                 <Filter class="size-3.5" />
                                 <span v-if="activeFilterCount > 0">{{ activeFilterCount }} hidden</span>
                                 <span v-else>Card types</span>
@@ -367,10 +358,7 @@ function winRateClass(pctVal: number | null): string {
                         <DropdownMenuContent align="end" class="w-48">
                             <div class="flex items-center justify-between px-2 py-1.5">
                                 <span class="text-xs font-semibold">Filter by type</span>
-                                <button
-                                    class="text-xs text-muted-foreground hover:text-foreground"
-                                    @click="toggleAll"
-                                >
+                                <button class="text-xs text-muted-foreground hover:text-foreground" @click="toggleAll">
                                     {{ allVisible ? 'Hide all' : 'Show all' }}
                                 </button>
                             </div>
@@ -394,7 +382,7 @@ function winRateClass(pctVal: number | null): string {
 
                     <Sheet>
                         <SheetTrigger as-child>
-                            <Button variant="ghost" size="sm" class="h-[34px] gap-1.5 px-2.5 text-xs text-muted-foreground">
+                            <Button variant="ghost" size="sm" class="bevel h-8 gap-1.5 border border-black/60 px-2.5 text-xs text-muted-foreground">
                                 <CircleHelp class="size-3.5" />
                                 <span class="hidden lg:inline">Help</span>
                             </Button>
@@ -408,94 +396,117 @@ function winRateClass(pctVal: number | null): string {
                                 <section>
                                     <h3 class="mb-1 text-sm font-semibold">Kept %</h3>
                                     <p class="text-sm text-muted-foreground">
-                                        The percentage of games where this card appeared in your opening hand and was kept (not mulliganed away). The number in brackets is the raw count of games kept.
+                                        The percentage of games where this card appeared in your opening hand and was kept (not mulliganed away). The
+                                        number in brackets is the raw count of games kept.
                                     </p>
                                     <div class="mt-2 rounded-md bg-muted px-3 py-2 text-xs">
-                                        <span class="font-medium">Example:</span> <span class="font-mono">23% (12)</span> means the card was kept in 12 out of ~52 possible games.
+                                        <span class="font-medium">Example:</span> <span class="font-mono">23% (12)</span> means the card was kept in
+                                        12 out of ~52 possible games.
                                     </div>
                                 </section>
 
                                 <section>
                                     <h3 class="mb-1 text-sm font-semibold">Kept Win %</h3>
                                     <p class="text-sm text-muted-foreground">
-                                        Your win rate in games where this card was kept in your opening hand. The number in brackets is the sample size (total games where the card was kept).
+                                        Your win rate in games where this card was kept in your opening hand. The number in brackets is the sample
+                                        size (total games where the card was kept).
                                     </p>
                                     <div class="mt-2 rounded-md bg-muted px-3 py-2 text-xs">
-                                        <span class="font-medium">Example:</span> <span class="font-mono">38% (8)</span> means you won 38% of the 8 games where this card was kept. A high Kept Win % suggests the card is strong in openers.
+                                        <span class="font-medium">Example:</span> <span class="font-mono">38% (8)</span> means you won 38% of the 8
+                                        games where this card was kept. A high Kept Win % suggests the card is strong in openers.
                                     </div>
                                 </section>
 
                                 <section>
                                     <h3 class="mb-1 text-sm font-semibold">Cast %</h3>
                                     <p class="text-sm text-muted-foreground">
-                                        The percentage of games where this card was actually cast (put on the stack). The number in brackets is the raw count of games where the card was cast.
+                                        The percentage of games where this card was actually cast (put on the stack). The number in brackets is the
+                                        raw count of games where the card was cast.
                                     </p>
                                     <div class="mt-2 rounded-md bg-muted px-3 py-2 text-xs">
-                                        <span class="font-medium">Example:</span> <span class="font-mono">27% (14)</span> means you cast the card in 14 games. A low Cast % on a mainboard card may indicate it's hard to cast or frequently sided out.
+                                        <span class="font-medium">Example:</span> <span class="font-mono">27% (14)</span> means you cast the card in
+                                        14 games. A low Cast % on a mainboard card may indicate it's hard to cast or frequently sided out.
                                     </div>
                                 </section>
 
                                 <section>
                                     <h3 class="mb-1 text-sm font-semibold">Cast Win %</h3>
                                     <p class="text-sm text-muted-foreground">
-                                        Your win rate in games where this card was cast. The number in brackets is the sample size. This shows correlation, not causation &mdash; a low Cast Win % doesn't necessarily mean the card is bad; you might only cast it when behind.
+                                        Your win rate in games where this card was cast. The number in brackets is the sample size. This shows
+                                        correlation, not causation &mdash; a low Cast Win % doesn't necessarily mean the card is bad; you might only
+                                        cast it when behind.
                                     </p>
                                     <div class="mt-2 rounded-md bg-muted px-3 py-2 text-xs">
-                                        <span class="font-medium">Example:</span> <span class="font-mono">75% (4)</span> means you won 3 out of 4 games where the card was cast. Look for cards with decent sample sizes (5+) to draw meaningful conclusions.
+                                        <span class="font-medium">Example:</span> <span class="font-mono">75% (4)</span> means you won 3 out of 4
+                                        games where the card was cast. Look for cards with decent sample sizes (5+) to draw meaningful conclusions.
                                     </div>
                                 </section>
 
                                 <section>
                                     <h3 class="mb-1 text-sm font-semibold">Seen %</h3>
                                     <p class="text-sm text-muted-foreground">
-                                        The percentage of games where this card left your library &mdash; whether drawn naturally, tutored, milled, or exiled. Any card that appeared in your hand, on the battlefield, in the graveyard, in exile, or on the stack counts as "seen." The number in brackets is the raw count of games seen.
+                                        The percentage of games where this card left your library &mdash; whether drawn naturally, tutored, milled, or
+                                        exiled. Any card that appeared in your hand, on the battlefield, in the graveyard, in exile, or on the stack
+                                        counts as "seen." The number in brackets is the raw count of games seen.
                                     </p>
                                     <div class="mt-2 rounded-md bg-muted px-3 py-2 text-xs">
-                                        <span class="font-medium">Example:</span> <span class="font-mono">54% (28)</span> means the card was seen in 28 games. Seen % is usually higher than Cast % since it includes cards drawn but never cast.
+                                        <span class="font-medium">Example:</span> <span class="font-mono">54% (28)</span> means the card was seen in
+                                        28 games. Seen % is usually higher than Cast % since it includes cards drawn but never cast.
                                     </div>
                                 </section>
 
                                 <section>
                                     <h3 class="mb-1 text-sm font-semibold">Seen Win %</h3>
                                     <p class="text-sm text-muted-foreground">
-                                        Your win rate in games where this card was seen (drawn or otherwise left the library). The number in brackets is the sample size.
+                                        Your win rate in games where this card was seen (drawn or otherwise left the library). The number in brackets
+                                        is the sample size.
                                     </p>
                                     <div class="mt-2 rounded-md bg-muted px-3 py-2 text-xs">
-                                        <span class="font-medium">Example:</span> <span class="font-mono">40% (10)</span> means you won 4 out of 10 games where this card was seen. Compare Seen Win % with Cast Win % &mdash; a big gap may indicate the card is only good when you can actually cast it.
+                                        <span class="font-medium">Example:</span> <span class="font-mono">40% (10)</span> means you won 4 out of 10
+                                        games where this card was seen. Compare Seen Win % with Cast Win % &mdash; a big gap may indicate the card is
+                                        only good when you can actually cast it.
                                     </div>
                                 </section>
 
                                 <section>
                                     <h3 class="mb-1 text-sm font-semibold">SB Out %</h3>
                                     <p class="text-sm text-muted-foreground">
-                                        The percentage of postboard games (games 2 and 3) where this card was sided out of your deck. The number in brackets is the count of games it was removed. Only applies to postboard games.
+                                        The percentage of postboard games (games 2 and 3) where this card was sided out of your deck. The number in
+                                        brackets is the count of games it was removed. Only applies to postboard games.
                                     </p>
                                     <div class="mt-2 rounded-md bg-muted px-3 py-2 text-xs">
-                                        <span class="font-medium">Example:</span> <span class="font-mono">50% (10)</span> means the card was sided out in 10 postboard games. A high SB Out % on a mainboard card may suggest it's a frequent sideboard cut in your meta.
+                                        <span class="font-medium">Example:</span> <span class="font-mono">50% (10)</span> means the card was sided out
+                                        in 10 postboard games. A high SB Out % on a mainboard card may suggest it's a frequent sideboard cut in your
+                                        meta.
                                     </div>
                                 </section>
 
                                 <section>
                                     <h3 class="mb-1 text-sm font-semibold">SB In %</h3>
                                     <p class="text-sm text-muted-foreground">
-                                        The percentage of postboard games (games 2 and 3) where this card was sided into your deck from the sideboard. The number in brackets is the count of games it was brought in. Only applies to postboard games.
+                                        The percentage of postboard games (games 2 and 3) where this card was sided into your deck from the sideboard.
+                                        The number in brackets is the count of games it was brought in. Only applies to postboard games.
                                     </p>
                                     <div class="mt-2 rounded-md bg-muted px-3 py-2 text-xs">
-                                        <span class="font-medium">Example:</span> <span class="font-mono">75% (6)</span> means the card was sided in for 6 postboard games. A high SB In % on a sideboard card shows it's frequently relevant in your meta.
+                                        <span class="font-medium">Example:</span> <span class="font-mono">75% (6)</span> means the card was sided in
+                                        for 6 postboard games. A high SB In % on a sideboard card shows it's frequently relevant in your meta.
                                     </div>
                                 </section>
 
                                 <section>
                                     <h3 class="mb-1 text-sm font-semibold">Games</h3>
                                     <p class="text-sm text-muted-foreground">
-                                        The total number of games played with this card in the deck. This is the denominator for most percentage calculations. Cards with low game counts will have less reliable statistics.
+                                        The total number of games played with this card in the deck. This is the denominator for most percentage
+                                        calculations. Cards with low game counts will have less reliable statistics.
                                     </p>
                                 </section>
 
                                 <section>
                                     <h3 class="mb-1 text-sm font-semibold">Reading Win Rate Colors</h3>
                                     <p class="text-sm text-muted-foreground">
-                                        Win rate values are color-coded: <span class="font-medium text-success">green</span> for win rates above 55%, <span class="font-medium text-destructive">red</span> for win rates below 45%, and neutral for values in between. These thresholds help you quickly spot over- and under-performers.
+                                        Win rate values are color-coded: <span class="font-medium text-success">green</span> for win rates above 55%,
+                                        <span class="font-medium text-destructive">red</span> for win rates below 45%, and neutral for values in
+                                        between. These thresholds help you quickly spot over- and under-performers.
                                     </p>
                                 </section>
                             </div>
@@ -516,47 +527,63 @@ function winRateClass(pctVal: number | null): string {
         <div v-else-if="!filteredAndSortedStats.length" class="flex flex-col items-center gap-3 py-16 text-center">
             <Filter class="size-10 text-muted-foreground/40" />
             <p class="font-medium">All card types are hidden</p>
-            <p class="max-w-sm text-sm text-muted-foreground">
-                Enable some card types in the filter to view stats.
-            </p>
+            <p class="max-w-sm text-sm text-muted-foreground">Enable some card types in the filter to view stats.</p>
         </div>
 
         <Card v-else class="gap-0 p-0">
             <CardContent class="px-0 [&_[data-slot=table-container]]:overflow-visible">
                 <Table>
-                    <TableHeader class="backdrop-blur-sm sticky top-0 z-10">
+                    <TableHeader>
                         <TableRow>
                             <TableHead class="cursor-pointer select-none" @click="toggleSort('name')">
                                 <span class="inline-flex items-center gap-1">Card <component :is="sortIcon('name')" class="size-3" /></span>
                             </TableHead>
                             <TableHead>Type</TableHead>
                             <TableHead class="w-10 text-center">SB</TableHead>
-                            <TableHead class="cursor-pointer select-none text-right" @click="toggleSort('keptPct')">
-                                <span class="inline-flex items-center justify-end gap-1">Kept % <component :is="sortIcon('keptPct')" class="size-3" /></span>
+                            <TableHead class="cursor-pointer text-right select-none" @click="toggleSort('keptPct')">
+                                <span class="inline-flex items-center justify-end gap-1"
+                                    >Kept % <component :is="sortIcon('keptPct')" class="size-3"
+                                /></span>
                             </TableHead>
-                            <TableHead class="cursor-pointer select-none text-right" @click="toggleSort('keptWinPct')">
-                                <span class="inline-flex items-center justify-end gap-1">Kept Win % <component :is="sortIcon('keptWinPct')" class="size-3" /></span>
+                            <TableHead class="cursor-pointer text-right select-none" @click="toggleSort('keptWinPct')">
+                                <span class="inline-flex items-center justify-end gap-1"
+                                    >Kept Win % <component :is="sortIcon('keptWinPct')" class="size-3"
+                                /></span>
                             </TableHead>
-                            <TableHead class="cursor-pointer select-none text-right" @click="toggleSort('castPct')">
-                                <span class="inline-flex items-center justify-end gap-1">Cast % <component :is="sortIcon('castPct')" class="size-3" /></span>
+                            <TableHead class="cursor-pointer text-right select-none" @click="toggleSort('castPct')">
+                                <span class="inline-flex items-center justify-end gap-1"
+                                    >Cast % <component :is="sortIcon('castPct')" class="size-3"
+                                /></span>
                             </TableHead>
-                            <TableHead class="cursor-pointer select-none text-right" @click="toggleSort('castWinPct')">
-                                <span class="inline-flex items-center justify-end gap-1">Cast Win % <component :is="sortIcon('castWinPct')" class="size-3" /></span>
+                            <TableHead class="cursor-pointer text-right select-none" @click="toggleSort('castWinPct')">
+                                <span class="inline-flex items-center justify-end gap-1"
+                                    >Cast Win % <component :is="sortIcon('castWinPct')" class="size-3"
+                                /></span>
                             </TableHead>
-                            <TableHead class="cursor-pointer select-none text-right" @click="toggleSort('seenPct')">
-                                <span class="inline-flex items-center justify-end gap-1">Seen % <component :is="sortIcon('seenPct')" class="size-3" /></span>
+                            <TableHead class="cursor-pointer text-right select-none" @click="toggleSort('seenPct')">
+                                <span class="inline-flex items-center justify-end gap-1"
+                                    >Seen % <component :is="sortIcon('seenPct')" class="size-3"
+                                /></span>
                             </TableHead>
-                            <TableHead class="cursor-pointer select-none text-right" @click="toggleSort('seenWinPct')">
-                                <span class="inline-flex items-center justify-end gap-1">Seen Win % <component :is="sortIcon('seenWinPct')" class="size-3" /></span>
+                            <TableHead class="cursor-pointer text-right select-none" @click="toggleSort('seenWinPct')">
+                                <span class="inline-flex items-center justify-end gap-1"
+                                    >Seen Win % <component :is="sortIcon('seenWinPct')" class="size-3"
+                                /></span>
                             </TableHead>
-                            <TableHead class="cursor-pointer select-none text-right" @click="toggleSort('sbOutPct')">
-                                <span class="inline-flex items-center justify-end gap-1">SB Out % <component :is="sortIcon('sbOutPct')" class="size-3" /></span>
+                            <TableHead class="cursor-pointer text-right select-none" @click="toggleSort('sbOutPct')">
+                                <span class="inline-flex items-center justify-end gap-1"
+                                    >SB Out % <component :is="sortIcon('sbOutPct')" class="size-3"
+                                /></span>
                             </TableHead>
-                            <TableHead class="cursor-pointer select-none text-right" @click="toggleSort('sbInPct')">
-                                <span class="inline-flex items-center justify-end gap-1">SB In % <component :is="sortIcon('sbInPct')" class="size-3" /></span>
+                            <TableHead class="cursor-pointer text-right select-none" @click="toggleSort('sbInPct')">
+                                <span class="inline-flex items-center justify-end gap-1"
+                                    >SB In % <component :is="sortIcon('sbInPct')" class="size-3"
+                                /></span>
                             </TableHead>
-                            <TableHead class="cursor-pointer select-none text-right" @click="toggleSort('games')">
-                                <span class="inline-flex items-center justify-end gap-1">Games <component :is="sortIcon('games')" class="size-3" /></span>
+                            <TableHead class="cursor-pointer text-right select-none" @click="toggleSort('games')">
+                                <span class="inline-flex items-center justify-end gap-1"
+                                    >Games <component :is="sortIcon('games')" class="size-3"
+                                /></span>
                             </TableHead>
                         </TableRow>
                     </TableHeader>
@@ -581,75 +608,66 @@ function winRateClass(pctVal: number | null): string {
                             <TableCell class="text-right tabular-nums">
                                 <template v-if="pct(stat.totalKept, stat.totalPossible) !== null">
                                     {{ pct(stat.totalKept, stat.totalPossible) }}%
-                                    <span class="text-muted-foreground text-[10px]">({{ stat.totalKept }})</span>
+                                    <span class="text-[10px] text-muted-foreground">({{ stat.totalKept }})</span>
                                 </template>
                                 <span v-else class="text-muted-foreground">—</span>
                             </TableCell>
                             <TableCell class="text-right tabular-nums">
                                 <template v-if="pct(stat.keptWon, stat.keptWon + stat.keptLost) !== null">
-                                    <span
-                                        class="font-medium"
-                                        :class="winRateClass(pct(stat.keptWon, stat.keptWon + stat.keptLost))"
-                                    >
+                                    <span class="font-medium" :class="winRateClass(pct(stat.keptWon, stat.keptWon + stat.keptLost))">
                                         {{ pct(stat.keptWon, stat.keptWon + stat.keptLost) }}%
                                     </span>
-                                    <span class="text-muted-foreground text-[10px]">({{ stat.keptWon + stat.keptLost }})</span>
+                                    <span class="text-[10px] text-muted-foreground">({{ stat.keptWon + stat.keptLost }})</span>
                                 </template>
                                 <span v-else class="text-muted-foreground">—</span>
                             </TableCell>
                             <TableCell class="text-right tabular-nums">
                                 <template v-if="pct(stat.totalCast, stat.totalPossible) !== null">
                                     {{ pct(stat.totalCast, stat.totalPossible) }}%
-                                    <span class="text-muted-foreground text-[10px]">({{ stat.totalCast }})</span>
+                                    <span class="text-[10px] text-muted-foreground">({{ stat.totalCast }})</span>
                                 </template>
                                 <span v-else class="text-muted-foreground">—</span>
                             </TableCell>
                             <TableCell class="text-right tabular-nums">
                                 <template v-if="pct(stat.castWon, stat.castWon + stat.castLost) !== null">
-                                    <span
-                                        class="font-medium"
-                                        :class="winRateClass(pct(stat.castWon, stat.castWon + stat.castLost))"
-                                    >
+                                    <span class="font-medium" :class="winRateClass(pct(stat.castWon, stat.castWon + stat.castLost))">
                                         {{ pct(stat.castWon, stat.castWon + stat.castLost) }}%
                                     </span>
-                                    <span class="text-muted-foreground text-[10px]">({{ stat.castWon + stat.castLost }})</span>
+                                    <span class="text-[10px] text-muted-foreground">({{ stat.castWon + stat.castLost }})</span>
                                 </template>
                                 <span v-else class="text-muted-foreground">—</span>
                             </TableCell>
                             <TableCell class="text-right tabular-nums">
                                 <template v-if="pct(stat.totalSeen, stat.totalPossible) !== null">
                                     {{ pct(stat.totalSeen, stat.totalPossible) }}%
-                                    <span class="text-muted-foreground text-[10px]">({{ stat.totalSeen }})</span>
+                                    <span class="text-[10px] text-muted-foreground">({{ stat.totalSeen }})</span>
                                 </template>
                                 <span v-else class="text-muted-foreground">—</span>
                             </TableCell>
                             <TableCell class="text-right tabular-nums">
                                 <template v-if="pct(stat.seenWon, stat.seenWon + stat.seenLost) !== null">
-                                    <span
-                                        class="font-medium"
-                                        :class="winRateClass(pct(stat.seenWon, stat.seenWon + stat.seenLost))"
-                                    >
+                                    <span class="font-medium" :class="winRateClass(pct(stat.seenWon, stat.seenWon + stat.seenLost))">
                                         {{ pct(stat.seenWon, stat.seenWon + stat.seenLost) }}%
                                     </span>
-                                    <span class="text-muted-foreground text-[10px]">({{ stat.seenWon + stat.seenLost }})</span>
+                                    <span class="text-[10px] text-muted-foreground">({{ stat.seenWon + stat.seenLost }})</span>
                                 </template>
                                 <span v-else class="text-muted-foreground">—</span>
                             </TableCell>
                             <TableCell class="text-right tabular-nums">
                                 <template v-if="pct(stat.sidedOutGames, stat.postboardGames) !== null">
                                     {{ pct(stat.sidedOutGames, stat.postboardGames) }}%
-                                    <span class="text-muted-foreground text-[10px]">({{ stat.sidedOutGames }})</span>
+                                    <span class="text-[10px] text-muted-foreground">({{ stat.sidedOutGames }})</span>
                                 </template>
                                 <span v-else class="text-muted-foreground">—</span>
                             </TableCell>
                             <TableCell class="text-right tabular-nums">
                                 <template v-if="pct(stat.sidedInGames, stat.postboardGames) !== null">
                                     {{ pct(stat.sidedInGames, stat.postboardGames) }}%
-                                    <span class="text-muted-foreground text-[10px]">({{ stat.sidedInGames }})</span>
+                                    <span class="text-[10px] text-muted-foreground">({{ stat.sidedInGames }})</span>
                                 </template>
                                 <span v-else class="text-muted-foreground">—</span>
                             </TableCell>
-                            <TableCell class="text-right tabular-nums text-muted-foreground">
+                            <TableCell class="text-right text-muted-foreground tabular-nums">
                                 {{ stat.totalGames }}
                             </TableCell>
                         </TableRow>

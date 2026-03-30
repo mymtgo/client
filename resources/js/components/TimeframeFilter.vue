@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Button } from '@/components/ui/button';
+import SegmentedControl from '@/components/SegmentedControl.vue';
 
 defineProps<{
     modelValue: string;
@@ -9,7 +9,7 @@ const emit = defineEmits<{
     'update:modelValue': [value: string];
 }>();
 
-const timeframes = [
+const options = [
     { value: 'alltime', label: 'All time' },
     { value: 'year', label: 'This year' },
     { value: 'monthly', label: '30 days' },
@@ -19,16 +19,5 @@ const timeframes = [
 </script>
 
 <template>
-    <div class="flex items-center gap-1 rounded-md border p-1">
-        <Button
-            v-for="tf in timeframes"
-            :key="tf.value"
-            size="sm"
-            :variant="modelValue === tf.value ? 'default' : 'ghost'"
-            class="h-7 px-3 text-xs"
-            @click="emit('update:modelValue', tf.value)"
-        >
-            {{ tf.label }}
-        </Button>
-    </div>
+    <SegmentedControl :modelValue="modelValue" :options="options" @update:modelValue="emit('update:modelValue', $event)" />
 </template>
