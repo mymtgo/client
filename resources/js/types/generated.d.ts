@@ -23,6 +23,7 @@ type: string | null;
 identity: string | null;
 image: string | null;
 artCrop: string | null;
+cmc: number | null;
 quantity: number;
 sideboard: boolean;
 };

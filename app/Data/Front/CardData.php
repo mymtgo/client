@@ -15,6 +15,7 @@ class CardData extends Data
         public ?string $identity,
         public ?string $image,
         public ?string $artCrop = null,
+        public ?float $cmc = null,
         public int $quantity = 1,
         public bool $sideboard = false
     ) {}
@@ -34,6 +35,7 @@ class CardData extends Data
             identity: $card->color_identity,
             image: $card->image,
             artCrop: $card->art_crop,
+            cmc: $card->cmc !== null ? (float) $card->cmc : null,
             quantity: $card->quantity ?: 1,
             sideboard: $card->sideboard ?: false,
         );

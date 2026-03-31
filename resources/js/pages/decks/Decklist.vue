@@ -57,6 +57,36 @@ const colorDistribution = computed((): ColorStat[] => {
     });
 });
 
+const visibleColorDistribution = computed(() => colorDistribution.value.filter(s => s.count > 0));
+
+type CmcBucket = { cmc: string; count: number };
+
+const cmcDistribution = computed((): CmcBucket[] => {
+    const dl = activeDecklist.value;
+    const nonLandCards = Object.entries(dl.maindeck)
+        .filter(([type]) => !type.includes('Land'))
+        .flatMap(([, cards]) => cards);
+
+    const buckets = new Map<number, number>();
+    for (const card of nonLandCards) {
+        const cmc = Math.floor(card.cmc ?? 0);
+        buckets.set(cmc, (buckets.get(cmc) ?? 0) + card.quantity);
+    }
+
+    const sorted = [...buckets.entries()].sort((a, b) => a[0] - b[0]);
+
+    // Cap at 7+ bucket
+    const result = new Map<string, number>();
+    for (const [cmc, count] of sorted) {
+        const key = cmc >= 7 ? '7+' : String(cmc);
+        result.set(key, (result.get(key) ?? 0) + count);
+    }
+
+    return [...result.entries()].map(([cmc, count]) => ({ cmc, count }));
+});
+
+const cmcMax = computed(() => Math.max(...cmcDistribution.value.map(d => d.count), 1));
+
 const decklistOrgUrl = computed(() => {
     const dl = activeDecklist.value;
     const mainCards = Object.values(dl.maindeck).flat().map((c) => `${c.quantity} ${c.name}`).join('\n');
@@ -81,21 +111,42 @@ const decklistOrgUrl = computed(() => {
             <div class="col-span-3">
                 <DeckList :maindeck="activeDecklist.maindeck" :sideboard="activeDecklist.sideboard" />
             </div>
-            <div class="col-span-1 flex flex-col gap-2">
-                <h3 class="text-sm font-medium text-muted-foreground">Color Distribution <span class="text-xs font-normal">(maindeck, nonland)</span></h3>
-                <div class="grid grid-cols-2 gap-2">
-                <div
-                    v-for="stat in colorDistribution"
-                    :key="stat.color"
-                    class="flex items-center gap-3 rounded-md border border-border bg-muted/30 px-3 py-2.5"
-                    :class="stat.count === 0 ? 'opacity-40' : ''"
-                >
-                    <ManaSymbols :symbols="stat.color" class="shrink-0" />
-                    <div class="flex flex-1 flex-col">
-                        <span class="text-sm font-semibold tabular-nums">{{ stat.percentage }}%</span>
-                        <span class="text-xs text-muted-foreground">{{ stat.count }} of {{ stat.total }} cards</span>
+            <div class="col-span-1 flex flex-col gap-4">
+                <!-- CMC Distribution -->
+                <div v-if="cmcDistribution.length" class="flex flex-col gap-2">
+                    <h3 class="text-sm font-medium text-muted-foreground">Mana Curve <span class="text-xs font-normal">(maindeck, nonland)</span></h3>
+                    <div class="flex items-end gap-1" style="height: 120px;">
+                        <div
+                            v-for="bucket in cmcDistribution"
+                            :key="bucket.cmc"
+                            class="flex flex-1 flex-col items-center gap-1"
+                        >
+                            <span class="text-xs tabular-nums text-muted-foreground">{{ bucket.count }}</span>
+                            <div
+                                class="w-full rounded-t bg-primary/80 transition-all"
+                                :style="{ height: `${(bucket.count / cmcMax) * 90}px` }"
+                            />
+                            <span class="text-xs tabular-nums text-muted-foreground">{{ bucket.cmc }}</span>
+                        </div>
                     </div>
                 </div>
+
+                <!-- Color Distribution -->
+                <div v-if="visibleColorDistribution.length" class="flex flex-col gap-2">
+                    <h3 class="text-sm font-medium text-muted-foreground">Color Distribution <span class="text-xs font-normal">(maindeck, nonland)</span></h3>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div
+                            v-for="stat in visibleColorDistribution"
+                            :key="stat.color"
+                            class="flex items-center gap-3 rounded-md border border-border bg-muted/30 px-3 py-2.5"
+                        >
+                            <ManaSymbols :symbols="stat.color" class="shrink-0" />
+                            <div class="flex flex-1 flex-col">
+                                <span class="text-sm font-semibold tabular-nums">{{ stat.percentage }}%</span>
+                                <span class="text-xs text-muted-foreground">{{ stat.count }} of {{ stat.total }} cards</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
