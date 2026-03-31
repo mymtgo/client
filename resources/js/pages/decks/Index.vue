@@ -150,7 +150,7 @@ function updatePage(page: number) {
 
             <template v-else>
                 <!-- Deck cards grid -->
-                <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                     <Card
                         v-for="deck in decks.data"
                         :key="deck.id"
@@ -161,9 +161,9 @@ function updatePage(page: number) {
                             v-if="deck.coverArt"
                             :src="deck.coverArt"
                             :alt="deck.name"
-                            class="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-15"
+                            class="pointer-events-none absolute inset-0 h-full w-full object-cover object-top opacity-50"
                         />
-                        <CardContent class="relative flex flex-col gap-3">
+                        <CardContent class="relative flex flex-col gap-3" :class="deck.coverArt ? '[text-shadow:_0_1px_4px_rgb(0_0_0_/_80%)]' : ''">
                             <!-- Name + meta -->
                             <div class="flex justify-between gap-1">
                                 <div class="flex items-center gap-1.5">
@@ -181,7 +181,7 @@ function updatePage(page: number) {
                             <div class="flex items-end justify-between gap-4">
                                 <div class="flex flex-1 flex-col gap-1">
                                     <span class="text-xs text-muted-foreground">win rate</span>
-                                    <WinRateBar :winrate="deck.winrate" />
+                                    <WinRateBar :winrate="deck.winrate" :solid="!!deck.coverArt" />
                                 </div>
                                 <div class="text-right">
                                     <div class="text-sm font-medium tabular-nums">{{ deck.matchesCount }} matches</div>

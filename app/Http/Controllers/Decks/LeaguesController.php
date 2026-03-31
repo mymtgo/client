@@ -32,7 +32,7 @@ class LeaguesController extends Controller
         $allMatchIds = $stats['allMatchIds'];
 
         $leagues = League::whereHas('matches', fn ($q) => $q->whereIn('matches.id', $allMatchIds))
-            ->with(['deckVersion.deck'])
+            ->with(['deckVersion.deck.cover'])
             ->orderByDesc('started_at')
             ->get();
 

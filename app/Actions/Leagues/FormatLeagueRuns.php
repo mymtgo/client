@@ -44,11 +44,12 @@ class FormatLeagueRuns
         return DB::table('matches as m')
             ->join('deck_versions as dv', 'dv.id', '=', 'm.deck_version_id')
             ->join('decks as d', 'd.id', '=', 'dv.deck_id')
+            ->leftJoin('cards as c', 'c.id', '=', 'd.cover_id')
             ->whereIn('m.league_id', $leagueIds)
             ->where('m.state', 'complete')
             ->when($accountId, fn ($q, $id) => $q->where('d.account_id', $id))
             ->when($deckId, fn ($q, $id) => $q->where('d.id', $id))
-            ->select('m.id', 'm.league_id', 'm.outcome', 'm.started_at', 'd.id as deck_id', 'd.name as deck_name', 'd.color_identity as deck_color_identity')
+            ->select('m.id', 'm.league_id', 'm.outcome', 'm.started_at', 'd.id as deck_id', 'd.name as deck_name', 'd.color_identity as deck_color_identity', 'c.art_crop as deck_cover_art')
             ->orderBy('m.started_at')
             ->get();
     }
@@ -126,14 +127,20 @@ class FormatLeagueRuns
         // Prefer league's direct deck version; fall back to most common deck in matches
         if ($league->deck_version_id && $league->deckVersion?->deck) {
             $deckModel = $league->deckVersion->deck;
-            $deck = ['id' => $deckModel->id, 'name' => $deckModel->name, 'colorIdentity' => $deckModel->color_identity];
+            $coverArtUrl = $deckModel->cover?->art_crop;
+            $deck = ['id' => $deckModel->id, 'name' => $deckModel->name, 'colorIdentity' => $deckModel->color_identity, 'coverArt' => $coverArtUrl, 'coverArtBase64' => self::toBase64($coverArtUrl)];
         } else {
+            $coverArtUrl = $matches->groupBy('deck_id')->map->count()->sortDesc()->keys()
+                ->map(fn ($deckId) => $matches->firstWhere('deck_id', $deckId))
+                ->pluck('deck_cover_art')
+                ->first();
+
             $deck = $matches->groupBy('deck_id')
                 ->map->count()
                 ->sortDesc()
                 ->keys()
                 ->map(fn ($deckId) => $matches->firstWhere('deck_id', $deckId))
-                ->map(fn ($row) => ['id' => $row->deck_id, 'name' => $row->deck_name, 'colorIdentity' => $row->deck_color_identity])
+                ->map(fn ($row) => ['id' => $row->deck_id, 'name' => $row->deck_name, 'colorIdentity' => $row->deck_color_identity, 'coverArt' => $row->deck_cover_art, 'coverArtBase64' => self::toBase64($row->deck_cover_art)])
                 ->first();
         }
 
@@ -190,5 +197,31 @@ class FormatLeagueRuns
             'results' => $results,
             'matches' => $matchData,
         ];
+    }
+
+    private static function toBase64(?string $url): ?string
+    {
+        if (! $url) {
+            return null;
+        }
+
+        try {
+            $contents = file_get_contents($url);
+
+            if ($contents === false) {
+                return null;
+            }
+
+            $mime = 'image/jpeg';
+            if (str_contains($url, '.png')) {
+                $mime = 'image/png';
+            } elseif (str_contains($url, '.webp')) {
+                $mime = 'image/webp';
+            }
+
+            return 'data:'.$mime.';base64,'.base64_encode($contents);
+        } catch (\Throwable) {
+            return null;
+        }
     }
 }

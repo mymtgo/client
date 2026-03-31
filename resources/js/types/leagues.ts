@@ -17,7 +17,7 @@ export type LeagueRun = {
     id: number;
     name: string;
     format: string;
-    deck: { id: number; name: string; colorIdentity?: string | null } | null;
+    deck: { id: number; name: string; colorIdentity?: string | null; coverArt?: string | null; coverArtBase64?: string | null } | null;
     versionLabel?: string | null;
     startedAt: string;
     startedAtHuman: string | null;

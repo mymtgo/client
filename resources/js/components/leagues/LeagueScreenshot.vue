@@ -25,8 +25,28 @@ const colors = {
             fontFamily: 'system-ui, -apple-system, sans-serif',
             padding: '20px 24px',
             borderRadius: '12px',
+            position: 'relative',
+            overflow: 'hidden',
         }"
     >
+        <!-- Cover art background (base64 from server for html-to-image compatibility) -->
+        <img
+            v-if="league.deck?.coverArtBase64"
+            :src="league.deck.coverArtBase64"
+            :style="{
+                position: 'absolute',
+                top: '0',
+                left: '0',
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+                objectPosition: 'top',
+                opacity: '0.25',
+                pointerEvents: 'none',
+            }"
+        />
+        <!-- Content (above background) -->
+        <div :style="{ position: 'relative' }">
         <!-- Header -->
         <div :style="{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }">
             <div>
@@ -84,5 +104,6 @@ const colors = {
 
         <!-- Footer -->
         <div :style="{ marginTop: '12px', textAlign: 'right', fontSize: '10px', color: colors.muted }">mymtgo.com</div>
+        </div>
     </div>
 </template>

@@ -22,7 +22,7 @@ class OverlayController extends Controller
             'matches as total_matches_count',
             'matches as has_active_match_count' => fn ($q) => $q->whereIn('state', [MatchState::Started, MatchState::InProgress]),
         ])
-            ->with(['deckVersion.deck'])
+            ->with(['deckVersion.deck.cover'])
             ->where('leagues.state', LeagueState::Active)
             ->has('matches')
             ->orderByDesc('has_active_match_count')

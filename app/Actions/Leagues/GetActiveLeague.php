@@ -22,7 +22,7 @@ class GetActiveLeague
                 $q->forAccount($accountId);
             }
         })
-            ->with(['deckVersion.deck'])
+            ->with(['deckVersion.deck.cover'])
             ->latest('started_at')
             ->first();
 

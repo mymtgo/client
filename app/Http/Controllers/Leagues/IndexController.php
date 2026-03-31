@@ -20,7 +20,7 @@ class IndexController extends Controller
         $leagues = League::query()
             ->when($hidePhantom, fn ($q) => $q->where('phantom', false))
             ->whereHas('matches', fn ($q) => $q->where('state', 'complete'))
-            ->with(['deckVersion.deck'])
+            ->with(['deckVersion.deck.cover'])
             ->orderByDesc('started_at')
             ->get();
 
