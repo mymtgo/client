@@ -310,7 +310,7 @@ function winRateClass(pctVal: number | null): string {
             <div class="flex items-center gap-4">
                 <div class="relative flex-1">
                     <Search class="pointer-events-none absolute top-1/2 left-2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-                    <Input v-model="searchQuery" placeholder="Search cards..." class="h-8 py-0 pl-7 text-xs" />
+                    <Input v-model="searchQuery" placeholder="Search cards..." class="pl-7 text-xs" />
                 </div>
 
                 <SegmentedControl
@@ -325,7 +325,7 @@ function winRateClass(pctVal: number | null): string {
 
                 <div class="flex items-center gap-2">
                     <Select :modelValue="selectedPlayDraw" @update:modelValue="filterByPlayDraw">
-                        <SelectTrigger class="h-8 w-36 text-xs">
+                        <SelectTrigger>
                             <SelectValue placeholder="Play / Draw" />
                         </SelectTrigger>
                         <SelectContent>
@@ -336,7 +336,7 @@ function winRateClass(pctVal: number | null): string {
                     </Select>
 
                     <Select v-if="archetypes.length" :modelValue="selectedArchetype" @update:modelValue="filterByArchetype">
-                        <SelectTrigger class="h-8 w-48 text-xs">
+                        <SelectTrigger>
                             <SelectValue placeholder="All opponent archetypes" />
                         </SelectTrigger>
                         <SelectContent>
@@ -349,7 +349,7 @@ function winRateClass(pctVal: number | null): string {
 
                     <DropdownMenu>
                         <DropdownMenuTrigger as-child>
-                            <Button variant="ghost" class="bevel h-8 gap-1.5 rounded-md border border-black/60 px-3 text-xs">
+                            <Button variant="ghost" class="bevel py-2 gap-1.5 rounded-md border border-black/60 px-3 text-xs">
                                 <Filter class="size-3.5" />
                                 <span v-if="activeFilterCount > 0">{{ activeFilterCount }} hidden</span>
                                 <span v-else>Card types</span>
@@ -382,7 +382,7 @@ function winRateClass(pctVal: number | null): string {
 
                     <Sheet>
                         <SheetTrigger as-child>
-                            <Button variant="ghost" size="sm" class="bevel h-8 gap-1.5 border border-black/60 px-2.5 text-xs text-muted-foreground">
+                            <Button variant="ghost" size="sm" class="bevel py-4 gap-1.5 border border-black/60 px-2.5 text-xs text-muted-foreground">
                                 <CircleHelp class="size-3.5" />
                                 <span class="hidden lg:inline">Help</span>
                             </Button>

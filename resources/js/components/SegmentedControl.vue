@@ -19,10 +19,10 @@ const emit = defineEmits<{
         <button
             v-for="opt in options"
             :key="opt.value"
-            class="relative h-8 cursor-pointer rounded border border-black px-3 text-xs font-medium transition-all"
+            class="relative py-2 cursor-pointer rounded border border-black px-4 text-xs font-medium transition-all"
             :class="
                 modelValue === opt.value
-                    ? 'border border-black/50 bg-background text-foreground shadow-inner shadow-black/50 outline-[1px] outline-none'
+                    ? 'border border-black/50 bg-black/20 text-foreground shadow-inner shadow-black/60 outline-[1px] outline-none'
                     : 'bevel border text-muted-foreground hover:text-foreground bg-background hover:brightness-125'
             "
             @click="emit('update:modelValue', opt.value)"
