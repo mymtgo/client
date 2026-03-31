@@ -9,10 +9,12 @@ import MatchesController from '@/actions/App/Http/Controllers/Decks/MatchesContr
 import LeaguesController from '@/actions/App/Http/Controllers/Decks/LeaguesController';
 import MatchupsController from '@/actions/App/Http/Controllers/Decks/MatchupsController';
 import DecklistController from '@/actions/App/Http/Controllers/Decks/DecklistController';
+import SettingsController from '@/actions/App/Http/Controllers/Decks/SettingsController';
 import OpenPopoutController from '@/actions/App/Http/Controllers/Decks/OpenPopoutController';
 import type { VersionStats } from '@/types/decks';
-import { ExternalLink, LayoutDashboard, BarChart3, Swords, Trophy as TrophyIcon, ScrollText, List } from 'lucide-vue-next';
+import { ExternalLink, LayoutDashboard, BarChart3, Swords, Trophy as TrophyIcon, ScrollText, List, SettingsIcon } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
+import { Button } from '@/components/ui/button';
 
 const props = defineProps<{
     deck: App.Data.Front.DeckData;
@@ -51,6 +53,7 @@ const navItems = computed(() => [
     { key: 'leagues', label: 'Leagues', icon: TrophyIcon, href: LeaguesController.url({ deck: props.deck.id }) + timeframeQuery.value },
     { key: 'matchups', label: 'Matchups', icon: ScrollText, href: MatchupsController.url({ deck: props.deck.id }) + timeframeQuery.value },
     { key: 'decklist', label: 'Decklist', icon: List, href: DecklistController.url({ deck: props.deck.id }) },
+    { key: 'settings', label: 'Settings', icon: SettingsIcon, href: SettingsController.url({ deck: props.deck.id }) },
 ]);
 </script>
 
