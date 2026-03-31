@@ -10,6 +10,7 @@ use App\Http\Controllers\Debug\Matches\ProcessController;
 use App\Http\Controllers\Debug\Matches\RestoreController;
 use App\Http\Controllers\Debug\Matches\UpdateController;
 use App\Http\Controllers\Decks\CardStatsController;
+use App\Http\Controllers\Decks\CoverArtOptionsController;
 use App\Http\Controllers\Decks\DashboardController;
 use App\Http\Controllers\Decks\DecklistController;
 use App\Http\Controllers\Decks\LeaguesController;
@@ -17,6 +18,8 @@ use App\Http\Controllers\Decks\MatchesController;
 use App\Http\Controllers\Decks\MatchupsController;
 use App\Http\Controllers\Decks\OpenPopoutController;
 use App\Http\Controllers\Decks\PopoutController;
+use App\Http\Controllers\Decks\SettingsController;
+use App\Http\Controllers\Decks\UpdateCoverArtController;
 use App\Http\Controllers\Games\OpenReplayController;
 use App\Http\Controllers\IndexController;
 use App\Http\Controllers\Leagues\AbandonController;
@@ -94,6 +97,9 @@ Route::group([], function (Router $router) {
         $group->get('{deck:id}/decklist', DecklistController::class)->name('decks.decklist');
         $group->get('{deck:id}/popout', PopoutController::class)->name('decks.popout');
         $group->post('{deck:id}/popout', OpenPopoutController::class)->name('decks.open-popout');
+        $group->get('{deck:id}/settings', SettingsController::class)->name('decks.settings');
+        $group->get('{deck:id}/cover-art-options', CoverArtOptionsController::class)->name('decks.cover-art-options');
+        $group->patch('{deck:id}/cover-art', UpdateCoverArtController::class)->name('decks.update-cover-art');
     });
 
     $router->group([
