@@ -16,17 +16,12 @@ class RunAppUpdates
             return;
         }
 
-        $appVersion = config('nativephp.version');
         $completed = DB::table('app_updates')->pluck('update')->flip();
 
         foreach (self::discoverUpdates() as $update) {
             $key = $update::class;
 
             if ($completed->has($key)) {
-                continue;
-            }
-
-            if ($update->version() !== $appVersion) {
                 continue;
             }
 
