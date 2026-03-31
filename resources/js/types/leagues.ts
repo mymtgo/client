@@ -1,9 +1,14 @@
+export type LeagueGameResult = {
+    result: 'W' | 'L';
+    onPlay: boolean | null;
+};
+
 export type LeagueMatch = {
     id: number;
     result: 'W' | 'L';
     opponentName: string | null;
     opponentArchetype: string | null;
-    games: string;
+    gameResults: LeagueGameResult[];
     startedAt: string;
     startedAtHuman: string;
 };

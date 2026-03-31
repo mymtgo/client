@@ -65,7 +65,7 @@ const colors = {
                     {{ match.opponentArchetype ?? 'Unknown or rogue archetype' }}
                 </div>
                 <div :style="{ fontVariantNumeric: 'tabular-nums', color: colors.muted, flexShrink: '0' }">
-                    {{ match.games }}
+                    {{ match.gameResults.filter(g => g.result === 'W').length }}-{{ match.gameResults.filter(g => g.result === 'L').length }}
                 </div>
             </div>
         </div>

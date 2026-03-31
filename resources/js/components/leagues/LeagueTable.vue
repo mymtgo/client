@@ -16,7 +16,7 @@ import { Card } from '../ui/card';
 import type { LeagueRun } from '@/types/leagues';
 import PhantomBadge from './PhantomBadge.vue';
 
-defineProps<{
+const props = defineProps<{
     league: LeagueRun;
 }>();
 
@@ -112,46 +112,48 @@ async function copyScreenshot() {
         <!-- Matches table -->
         <div class="border-t">
             <Table>
-                    <TableHeader class="bg-muted/20">
-                        <TableRow>
-                            <TableHead>Result</TableHead>
-                            <TableHead>Opponent</TableHead>
-                            <TableHead>Archetype</TableHead>
-                            <TableHead>Games</TableHead>
-                            <TableHead>When</TableHead>
-                            <TableHead></TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        <TableRow
-                            v-for="match in league.matches"
-                            :key="match.id"
-                            class="cursor-pointer"
-                            @click="router.visit(MatchShowController({ id: match.id }).url)"
-                        >
-                            <TableCell>
-                                <ResultBadge :won="match.result === 'W'" :showText="true" />
-                            </TableCell>
-                            <TableCell class="font-medium">
-                                <span v-if="match.opponentName">{{ match.opponentName }}</span>
-                                <span v-else class="text-xs text-muted-foreground">—</span>
-                            </TableCell>
-                            <TableCell>
-                                <span v-if="match.opponentArchetype" class="text-sm">{{ match.opponentArchetype }}</span>
-                                <span v-else class="text-xs text-muted-foreground">Unknown</span>
-                            </TableCell>
-                            <TableCell class="text-sm tabular-nums">{{ match.games }}</TableCell>
-                            <TableCell class="text-xs whitespace-nowrap text-muted-foreground">
-                                {{ match.startedAtHuman }}
-                            </TableCell>
-                            <TableCell>
-                                <Button size="sm" variant="ghost" @click.stop="router.visit(MatchShowController({ id: match.id }).url)">
-                                    View
-                                </Button>
-                            </TableCell>
-                        </TableRow>
-                    </TableBody>
-                </Table>
+                <TableHeader class="bg-muted/20">
+                    <TableRow>
+                        <TableHead>Result</TableHead>
+                        <TableHead>Opponent</TableHead>
+                        <TableHead>Vs</TableHead>
+                        <TableHead class="text-center">Game 1</TableHead>
+                        <TableHead class="text-center">Game 2</TableHead>
+                        <TableHead class="text-center">Game 3</TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    <TableRow
+                        v-for="match in league.matches"
+                        :key="match.id"
+                        class="cursor-pointer"
+                        @click="router.visit(MatchShowController({ id: match.id }).url)"
+                    >
+                        <TableCell>
+                            <ResultBadge :won="match.result === 'W'" :showText="true" />
+                        </TableCell>
+                        <TableCell class="font-medium">
+                            <span v-if="match.opponentName">{{ match.opponentName }}</span>
+                            <span v-else class="text-muted-foreground">—</span>
+                        </TableCell>
+                        <TableCell>
+                            <span v-if="match.opponentArchetype" class="text-sm">{{ match.opponentArchetype }}</span>
+                            <span v-else class="text-xs text-muted-foreground">Unknown</span>
+                        </TableCell>
+                        <TableCell v-for="gameIdx in 3" :key="gameIdx" class="text-center text-sm">
+                            <template v-if="match.gameResults[gameIdx - 1]">
+                                <span :class="match.gameResults[gameIdx - 1].result === 'W' ? 'text-success' : 'text-destructive'">
+                                    {{ match.gameResults[gameIdx - 1].result === 'W' ? 'Win' : 'Loss' }}
+                                </span>
+                                <span v-if="match.gameResults[gameIdx - 1].onPlay !== null" class="text-xs text-muted-foreground">
+                                    ({{ match.gameResults[gameIdx - 1].onPlay ? 'OTP' : 'OTD' }})
+                                </span>
+                            </template>
+                            <span v-else class="text-muted-foreground">—</span>
+                        </TableCell>
+                    </TableRow>
+                </TableBody>
+            </Table>
         </div>
 
     </Card>

@@ -53,19 +53,28 @@ class FormatLeagueRuns
             ->get();
     }
 
+    /**
+     * Get individual game results with on_play status, grouped by match.
+     *
+     * @return Collection<int, Collection> match_id => collection of game rows (ordered by started_at)
+     */
     private static function getGameRecords(Collection $matchIds): Collection
     {
         if ($matchIds->isEmpty()) {
             return collect();
         }
 
-        return DB::table('games')
-            ->whereIn('match_id', $matchIds)
-            ->whereNotNull('won')
-            ->selectRaw('match_id, SUM(CASE WHEN won = 1 THEN 1 ELSE 0 END) as games_won, SUM(CASE WHEN won = 0 THEN 1 ELSE 0 END) as games_lost')
-            ->groupBy('match_id')
+        return DB::table('games as g')
+            ->leftJoin('game_player as gp', function ($join) {
+                $join->on('gp.game_id', '=', 'g.id')
+                    ->where('gp.is_local', true);
+            })
+            ->whereIn('g.match_id', $matchIds)
+            ->whereNotNull('g.won')
+            ->select('g.match_id', 'g.won', 'g.started_at', 'gp.on_play')
+            ->orderBy('g.started_at')
             ->get()
-            ->keyBy('match_id');
+            ->groupBy('match_id');
     }
 
     private static function getOpponentsByMatch(Collection $matchIds): Collection
@@ -131,16 +140,20 @@ class FormatLeagueRuns
         $matchData = $matches->map(function ($row) use ($opponentByMatch, $gameRecords) {
             $opp = $opponentByMatch[$row->id] ?? null;
             $won = $row->outcome === 'win';
-            $record = $gameRecords->get($row->id);
-            $gamesWon = (int) ($record->games_won ?? 0);
-            $gamesLost = (int) ($record->games_lost ?? 0);
+            $games = $gameRecords->get($row->id, collect());
+
+            // Build per-game results with on_play status
+            $gameResults = $games->values()->map(fn ($g) => [
+                'result' => (bool) $g->won ? 'W' : 'L',
+                'onPlay' => $g->on_play !== null ? (bool) $g->on_play : null,
+            ])->all();
 
             return [
                 'id' => $row->id,
                 'result' => $won ? 'W' : 'L',
                 'opponentName' => $opp?->username,
                 'opponentArchetype' => $opp?->archetype_name,
-                'games' => "{$gamesWon}-{$gamesLost}",
+                'gameResults' => $gameResults,
                 'startedAt' => $row->started_at,
                 'startedAtHuman' => Carbon::parse($row->started_at)->diffForHumans(),
             ];
