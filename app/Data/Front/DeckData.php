@@ -21,6 +21,7 @@ class DeckData extends Data
         public int $winrate,
         public ?string $colorIdentity,
         public ?Carbon $lastPlayedAt,
+        public ?string $lastPlayedAtHuman,
         public Lazy $matches,
         public Lazy $identity,
         public Lazy $cards,
@@ -44,6 +45,7 @@ class DeckData extends Data
             winrate: (int) round($winrate * 100),
             colorIdentity: $deck->color_identity,
             lastPlayedAt: $deck->matches_max_started_at ? Carbon::parse($deck->matches_max_started_at) : null,
+            lastPlayedAtHuman: $deck->matches_max_started_at ? Carbon::parse($deck->matches_max_started_at)->diffForHumans() : null,
             matches: Lazy::whenLoaded('matches', $deck, fn () => MatchData::collect($deck->matches)),
             identity: Lazy::whenLoaded('cards', $deck, function () use ($deck) {
                 return $deck->cards->pluck('color_identity')->map(

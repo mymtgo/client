@@ -5,6 +5,7 @@ export type LeagueMatch = {
     opponentArchetype: string | null;
     games: string;
     startedAt: string;
+    startedAtHuman: string;
 };
 
 export type LeagueRun = {
@@ -14,6 +15,7 @@ export type LeagueRun = {
     deck: { id: number; name: string; colorIdentity?: string | null } | null;
     versionLabel?: string | null;
     startedAt: string;
+    startedAtHuman: string | null;
     results: ('W' | 'L' | null)[];
     phantom: boolean;
     state: 'active' | 'complete' | 'partial';

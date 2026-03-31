@@ -1,16 +1,13 @@
 <script setup lang="ts">
 import { usePage } from '@inertiajs/vue3';
 import { computed } from 'vue';
-import dayjs from 'dayjs';
-import relativeTime from 'dayjs/plugin/relativeTime';
-
-dayjs.extend(relativeTime);
 
 const page = usePage();
 
 const status = computed(() => page.props.status as {
     watcherRunning: boolean;
     lastIngestAt: string | null;
+    lastIngestAtHuman: string | null;
     pendingMatchCount: number;
 });
 </script>
@@ -29,8 +26,8 @@ const status = computed(() => page.props.status as {
         <div class="h-3 w-px bg-border" />
 
         <!-- Last ingestion -->
-        <span v-if="status.lastIngestAt">
-            Last ingestion {{ dayjs(status.lastIngestAt).fromNow() }}
+        <span v-if="status.lastIngestAtHuman">
+            Last ingestion {{ status.lastIngestAtHuman }}
         </span>
         <span v-else>Never ingested</span>
 

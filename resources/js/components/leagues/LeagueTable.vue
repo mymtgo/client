@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { router } from '@inertiajs/vue3';
-import dayjs from 'dayjs';
 import { useLeagueScreenshot } from '@/composables/useLeagueScreenshot';
 import { Camera, Ellipsis, Trash2, Trophy } from 'lucide-vue-next';
 import { nextTick, ref } from 'vue';
@@ -54,7 +53,7 @@ async function copyScreenshot() {
             <!-- Left: date + format + deck -->
             <div class="flex min-w-0 items-center gap-2">
                 <span class="text-sm whitespace-nowrap text-muted-foreground">
-                    {{ dayjs(league.startedAt).fromNow() }}
+                    {{ league.startedAtHuman }}
                 </span>
                 <Badge variant="outline" class="shrink-0">{{ league.format }}</Badge>
                 <span
@@ -143,7 +142,7 @@ async function copyScreenshot() {
                             </TableCell>
                             <TableCell class="text-sm tabular-nums">{{ match.games }}</TableCell>
                             <TableCell class="text-xs whitespace-nowrap text-muted-foreground">
-                                {{ dayjs(match.startedAt).fromNow() }}
+                                {{ match.startedAtHuman }}
                             </TableCell>
                             <TableCell>
                                 <Button size="sm" variant="ghost" @click.stop="router.visit(MatchShowController({ id: match.id }).url)">

@@ -11,12 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import ManaSymbols from '@/components/ManaSymbols.vue';
 import WinRateBar from '@/components/WinRateBar.vue';
 import { router } from '@inertiajs/vue3';
-import dayjs from 'dayjs';
-import relativeTime from 'dayjs/plugin/relativeTime';
 import { ArrowUpDown, Layers, Search } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
-
-dayjs.extend(relativeTime);
 
 type Paginator<T> = { data: T[]; total: number; per_page: number; current_page: number };
 
@@ -171,7 +167,7 @@ function updatePage(page: number) {
                                 <div class="flex shrink-0 items-center gap-2 text-xs text-muted-foreground">
                                     <Badge variant="outline" class="py-0 text-xs">{{ deck.format }}</Badge>
                                     <span>·</span>
-                                    <span>Last played {{ deck.lastPlayedAt ? dayjs(deck.lastPlayedAt).fromNow() : 'never' }}</span>
+                                    <span>Last played {{ deck.lastPlayedAtHuman ?? 'never' }}</span>
                                 </div>
                             </div>
 

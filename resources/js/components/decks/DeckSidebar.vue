@@ -55,11 +55,11 @@ const navItems = computed(() => [
 </script>
 
 <template>
-    <div class="flex h-full flex-col border-r border-border bg-muted/20">
+    <div class="flex h-full flex-col border-r border-black/80 bg-muted/20">
         <!-- Deck header -->
-        <div class="flex flex-col gap-1.5 border-b border-border px-4 py-4">
+        <div class="flex flex-col gap-1.5 border-b border-black/60 px-4 py-4">
             <div class="flex items-center gap-2">
-                <h2 class="truncate text-base font-semibold leading-tight">{{ deck.name }}</h2>
+                <h2 class="truncate text-base leading-tight font-semibold">{{ deck.name }}</h2>
                 <ManaSymbols v-if="deck.colorIdentity" :symbols="deck.colorIdentity" class="shrink-0" />
             </div>
             <div class="flex items-center gap-2">
@@ -86,19 +86,27 @@ const navItems = computed(() => [
         </div>
 
         <!-- Navigation -->
-        <nav class="flex flex-1 flex-col gap-0.5 px-2 py-3">
+        <nav class="flex flex-1 flex-col gap-0.5 border-t border-white/5 px-2 py-3">
             <Link
                 v-for="item in navItems"
                 :key="item.key"
                 :href="item.href"
                 preserve-state
-                class="flex items-center gap-3 rounded-md px-4 py-3 text-sm font-medium transition-colors"
-                :class="currentPage === item.key
-                    ? 'bg-muted border border-border text-foreground'
-                    : 'border border-transparent text-muted-foreground hover:bg-muted/50 hover:text-foreground'"
+                class="flex items-center gap-3 rounded px-3 py-2 text-sm font-medium transition-colors"
+                :class="
+                    currentPage === item.key
+                        ? 'border border-black/50 bg-black/10 text-foreground shadow-inner shadow-black/50 outline outline-white/5'
+                        : 'border border-transparent text-muted-foreground hover:bg-muted/50 hover:text-foreground'
+                "
             >
-                <component :is="item.icon" class="size-4 shrink-0" />
-                {{ item.label }}
+                <component
+                    :is="item.icon"
+                    class="size-4 shrink-0"
+                    :class="{
+                        'text-primary shadow': currentPage === item.key,
+                    }"
+                />
+                <span class="shadow-red-500 text-shadow-md">{{ item.label }}</span>
             </Link>
         </nav>
 

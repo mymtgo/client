@@ -4,6 +4,7 @@ namespace App\Actions\Leagues;
 
 use App\Models\League;
 use App\Models\MtgoMatch;
+use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -141,6 +142,7 @@ class FormatLeagueRuns
                 'opponentArchetype' => $opp?->archetype_name,
                 'games' => "{$gamesWon}-{$gamesLost}",
                 'startedAt' => $row->started_at,
+                'startedAtHuman' => Carbon::parse($row->started_at)->diffForHumans(),
             ];
         })->values()->all();
 
@@ -169,6 +171,7 @@ class FormatLeagueRuns
             'phantom' => (bool) $league->phantom,
             'state' => $league->state->value,
             'startedAt' => $league->started_at,
+            'startedAtHuman' => $league->started_at ? Carbon::parse($league->started_at)->diffForHumans() : null,
             'deck' => $deck,
             'versionLabel' => $versionLabel,
             'results' => $results,

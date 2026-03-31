@@ -10,10 +10,6 @@ import { Pagination, PaginationContent, PaginationItem, PaginationNext, Paginati
 import ManaSymbols from '@/components/ManaSymbols.vue';
 import WinRateBar from '@/components/WinRateBar.vue';
 import { Skull, Swords } from 'lucide-vue-next';
-import dayjs from 'dayjs';
-import relativeTime from 'dayjs/plugin/relativeTime';
-
-dayjs.extend(relativeTime);
 
 type Opponent = {
     playerId: number;
@@ -23,6 +19,7 @@ type Opponent = {
     formats: string[];
     archetypes: { name: string; colorIdentity: string | null }[];
     lastPlayedAt: string;
+    lastPlayedAtHuman: string;
 };
 
 const props = defineProps<{
@@ -72,7 +69,7 @@ const filtered = computed(() => {
             case 'winrate_desc':
                 return winrate(b) - winrate(a);
             case 'most_recent':
-                return dayjs(b.lastPlayedAt).diff(dayjs(a.lastPlayedAt));
+                return (b.lastPlayedAt ?? '').localeCompare(a.lastPlayedAt ?? '');
             default:
                 return b.matchesWon + b.matchesLost - (a.matchesWon + a.matchesLost);
         }
@@ -212,7 +209,7 @@ watch([search, sortBy, selectedFormat], () => {
                             </div>
                         </TableCell>
                         <TableCell class="text-sm whitespace-nowrap text-muted-foreground">
-                            {{ dayjs(opp.lastPlayedAt).fromNow() }}
+                            {{ opp.lastPlayedAtHuman }}
                         </TableCell>
                     </TableRow>
                 </TableBody>

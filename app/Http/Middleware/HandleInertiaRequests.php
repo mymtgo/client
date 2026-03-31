@@ -29,6 +29,7 @@ class HandleInertiaRequests extends Middleware
             'status' => fn () => [
                 'watcherRunning' => (bool) Settings::get('watcher_active', true),
                 'lastIngestAt' => LogCursor::max('updated_at'),
+                'lastIngestAtHuman' => ($ts = LogCursor::max('updated_at')) ? \Carbon\Carbon::parse($ts)->diffForHumans() : null,
                 'pendingMatchCount' => MtgoMatch::submittable()->count(),
             ],
             'debugMode' => fn () => (bool) Settings::get('debug_mode'),
