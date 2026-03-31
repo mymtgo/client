@@ -170,6 +170,12 @@ Route::group([], function (Router $router) {
         $group->get('cards', App\Http\Controllers\Debug\Cards\IndexController::class)->name('debug.cards.index');
         $group->post('cards/populate', PopulateController::class)->name('debug.cards.populate');
 
+        // Leagues
+        $group->get('leagues', App\Http\Controllers\Debug\Leagues\IndexController::class)->name('debug.leagues.index');
+        $group->patch('leagues/{league}', App\Http\Controllers\Debug\Leagues\UpdateController::class)->name('debug.leagues.update');
+        $group->delete('leagues/{league}', App\Http\Controllers\Debug\Leagues\DestroyController::class)->name('debug.leagues.destroy');
+        $group->patch('leagues/{league}/restore', App\Http\Controllers\Debug\Leagues\RestoreController::class)->name('debug.leagues.restore');
+
         // Log Cursors
         $group->get('log-cursors', App\Http\Controllers\Debug\LogCursors\IndexController::class)->name('debug.log-cursors.index');
 
