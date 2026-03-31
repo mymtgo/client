@@ -78,6 +78,7 @@ opponentArchetypes: any;
 opponentName: any | string | null;
 leagueName: any | string | null;
 games: any | Array<any>;
+gameResults: Array<{ result: 'W' | 'L'; onPlay: boolean | null }>;
 };
 export type MatchDeckData = {
 deck: any | App.Data.Front.DeckData;

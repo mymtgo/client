@@ -31,21 +31,17 @@ const props = defineProps<{
 
 const MIN_MATCHES_THRESHOLD = 3;
 
-// TODO: Remove dummy fallback data after visual review
-const DUMMY_BEST = { name: 'Ruby Storm', color_identity: 'R', match_record: '4-1', match_winrate: 80, matches: 5 };
-const DUMMY_WORST = { name: 'Amulet Titan', color_identity: 'U,G', match_record: '1-3', match_winrate: 25, matches: 4 };
-
 const bestArchetype = computed(() => {
-    if (!props.matchupSpread?.length) return DUMMY_BEST;
+    if (!props.matchupSpread?.length) return null;
     const eligible = props.matchupSpread.filter((m: any) => m.matches >= MIN_MATCHES_THRESHOLD);
-    if (!eligible.length) return DUMMY_BEST;
+    if (!eligible.length) return null;
     return eligible.reduce((best: any, m: any) => m.match_winrate > best.match_winrate ? m : best);
 });
 
 const worstArchetype = computed(() => {
-    if (!props.matchupSpread?.length) return DUMMY_WORST;
+    if (!props.matchupSpread?.length) return null;
     const eligible = props.matchupSpread.filter((m: any) => m.matches >= MIN_MATCHES_THRESHOLD);
-    if (!eligible.length) return DUMMY_WORST;
+    if (!eligible.length) return null;
     return eligible.reduce((worst: any, m: any) => m.match_winrate < worst.match_winrate ? m : worst);
 });
 

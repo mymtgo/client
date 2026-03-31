@@ -85,12 +85,12 @@ const detectArchetype = (matchId: number) => {
         <TableHeader class="sticky top-0 z-10 backdrop-blur-sm">
             <TableRow>
                 <TableHead>Result</TableHead>
-                <TableHead>Type</TableHead>
                 <TableHead>Opponent</TableHead>
                 <TableHead>Archetype</TableHead>
                 <TableHead></TableHead>
-                <TableHead>Games won</TableHead>
-                <TableHead>Games lost</TableHead>
+                <TableHead class="text-center">Game 1</TableHead>
+                <TableHead class="text-center">Game 2</TableHead>
+                <TableHead class="text-center">Game 3</TableHead>
                 <TableHead>Duration</TableHead>
                 <TableHead>Date</TableHead>
                 <TableHead></TableHead>
@@ -103,10 +103,6 @@ const detectArchetype = (matchId: number) => {
                         <TableRow class="cursor-pointer" @click="router.visit(ShowController({ id: match.id }).url)">
                             <TableCell>
                                 <ResultBadge :won="match.gamesWon > match.gamesLost" v-if="match.gamesWon !== match.gamesLost" :showText="true" />
-                            </TableCell>
-                            <TableCell>
-                                <span v-if="match.leagueGame">League</span>
-                                <span v-if="!match.leagueGame">Casual</span>
                             </TableCell>
                             <TableCell class="font-medium">
                                 <span v-if="match.opponentName">{{ match.opponentName }}</span>
@@ -126,11 +122,16 @@ const detectArchetype = (matchId: number) => {
                                     <ManaSymbols :symbols="match.opponentArchetypes[0].archetype.colorIdentity" />
                                 </div>
                             </TableCell>
-                            <TableCell>
-                                {{ match.gamesWon }}
-                            </TableCell>
-                            <TableCell>
-                                {{ match.gamesLost }}
+                            <TableCell v-for="gameIdx in 3" :key="gameIdx" class="text-center text-sm">
+                                <template v-if="match.gameResults?.[gameIdx - 1]">
+                                    <span :class="match.gameResults[gameIdx - 1].result === 'W' ? 'text-success' : 'text-destructive'">
+                                        {{ match.gameResults[gameIdx - 1].result === 'W' ? 'Win' : 'Loss' }}
+                                    </span>
+                                    <span v-if="match.gameResults[gameIdx - 1].onPlay !== null" class="text-xs text-muted-foreground">
+                                        ({{ match.gameResults[gameIdx - 1].onPlay ? 'OTP' : 'OTD' }})
+                                    </span>
+                                </template>
+                                <span v-else class="text-muted-foreground">—</span>
                             </TableCell>
                             <TableCell>
                                 {{ match.matchTime }}

@@ -29,6 +29,8 @@ class MatchData extends Data
         public Lazy|string|null $opponentName,
         public Lazy|string|null $leagueName,
         public Lazy|Collection $games,
+        /** @var array<int, array{result: string, onPlay: bool|null}> */
+        public Lazy|array $gameResults,
     ) {}
 
     public static function fromModel(MtgoMatch $match): self
@@ -51,6 +53,14 @@ class MatchData extends Data
             opponentName: Lazy::whenLoaded('games', $match, fn () => $match->games->first()?->players->first(fn ($p) => ! $p->pivot->is_local)?->username),
             leagueName: Lazy::whenLoaded('league', $match, fn () => $match->league?->name),
             games: Lazy::whenLoaded('games', $match, fn () => GameData::collect($match->games)),
+            gameResults: Lazy::whenLoaded('games', $match, fn () => $match->games
+                ->filter(fn ($g) => $g->won !== null)
+                ->sortBy('started_at')
+                ->values()
+                ->map(fn ($g) => [
+                    'result' => $g->won ? 'W' : 'L',
+                    'onPlay' => $g->players->first(fn ($p) => $p->pivot->is_local)?->pivot->on_play,
+                ])->all()),
         );
     }
 }

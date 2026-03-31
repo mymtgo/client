@@ -80,6 +80,11 @@ class PopulateMissingCardData implements ShouldQueue
                     'color_identity' => collect(explode(',', $cardData['color_identity']))->map(function ($color) {
                         return ! $color ? 'C' : $color;
                     })->join(','),
+                    'colors' => $cardData['colors'] ?? null,
+                    'cmc' => $cardData['cmc'] ?? null,
+                    'set_name' => $cardData['set_name'] ?? null,
+                    'set_code' => $cardData['set'] ?? null,
+                    'art_crop' => $cardData['art_crop'] ?? null,
                     'image' => $cardData['image'],
                 ]);
             }
@@ -101,6 +106,11 @@ class PopulateMissingCardData implements ShouldQueue
                     'color_identity' => $cardData['color_identity']
                         ? collect(explode(',', $cardData['color_identity']))->map(fn ($c) => ! $c ? 'C' : $c)->join(',')
                         : $card->color_identity,
+                    'colors' => $cardData['colors'] ?? null,
+                    'cmc' => $cardData['cmc'] ?? null,
+                    'set_name' => $cardData['set_name'] ?? null,
+                    'set_code' => $cardData['set'] ?? null,
+                    'art_crop' => $cardData['art_crop'] ?? null,
                     'image' => $cardData['image'],
                 ]);
             }
