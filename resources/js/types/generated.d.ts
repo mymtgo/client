@@ -22,6 +22,7 @@ name: string | null;
 type: string | null;
 identity: string | null;
 image: string | null;
+artCrop: string | null;
 quantity: number;
 sideboard: boolean;
 };
