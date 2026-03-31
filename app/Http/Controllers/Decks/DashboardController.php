@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Decks;
 use App\Actions\Decks\GetArchetypeMatchupSpread;
 use App\Actions\Decks\GetDeckStats;
 use App\Actions\Decks\GetDeckViewSharedProps;
+use App\Actions\Decks\GetStandoutCards;
+use App\Actions\Leagues\GetLatestLeague;
 use App\Actions\Leagues\GetLeagueResultDistribution;
 use App\Concerns\HasTimeframeFilter;
 use App\Http\Controllers\Controller;
@@ -64,6 +66,12 @@ class DashboardController extends Controller
             ),
             'leagueResults' => Inertia::defer(
                 fn () => GetLeagueResultDistribution::run($deck, $stats['allMatchIds']),
+            ),
+            'standoutCards' => Inertia::defer(
+                fn () => GetStandoutCards::run($deck, $deckVersion),
+            ),
+            'latestLeague' => Inertia::defer(
+                fn () => GetLatestLeague::run($deck, $stats['allMatchIds']),
             ),
         ]);
     }

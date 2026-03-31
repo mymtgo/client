@@ -31,6 +31,8 @@ const props = defineProps<{
     chartData: { date: string; wins: number; losses: number; winrate: string | null }[];
     matchupSpread?: any[];
     leagueResults?: Record<string, number>;
+    standoutCards?: Record<string, any>;
+    latestLeague?: any;
 }>();
 
 function setTimeframe(value: string) {
@@ -59,6 +61,8 @@ function setTimeframe(value: string) {
             :chart-data="chartData"
             :matchup-spread="matchupSpread"
             :league-results="leagueResults"
+            :standout-cards="standoutCards"
+            :latest-league="latestLeague"
         />
     </div>
 </template>

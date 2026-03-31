@@ -19,7 +19,7 @@ const colors = {
 <template>
     <div
         :style="{
-            width: '480px',
+            width: '520px',
             backgroundColor: colors.bg,
             color: colors.text,
             fontFamily: 'system-ui, -apple-system, sans-serif',
@@ -58,14 +58,26 @@ const colors = {
                     backgroundColor: index % 2 === 0 ? 'rgba(255, 255, 255, 0.04)' : 'transparent',
                 }"
             >
-                <div :style="{ color: match.result === 'W' ? colors.win : colors.loss, fontWeight: '600', width: '70px', flexShrink: '0' }">
+                <div :style="{ color: match.result === 'W' ? colors.win : colors.loss, fontWeight: '600', width: '50px', flexShrink: '0' }">
                     ● {{ match.result === 'W' ? 'Win' : 'Loss' }}
                 </div>
-                <div :style="{ flex: '1', color: match.opponentArchetype ? colors.text : colors.muted }">
-                    {{ match.opponentArchetype ?? 'Unknown or rogue archetype' }}
+                <div :style="{ width: '100px', flexShrink: '0', fontWeight: '500' }">
+                    {{ match.opponentName ?? '—' }}
                 </div>
-                <div :style="{ fontVariantNumeric: 'tabular-nums', color: colors.muted, flexShrink: '0' }">
-                    {{ match.gameResults.filter(g => g.result === 'W').length }}-{{ match.gameResults.filter(g => g.result === 'L').length }}
+                <div :style="{ flex: '1', color: match.opponentArchetype ? colors.text : colors.muted }">
+                    {{ match.opponentArchetype ?? 'Unknown' }}
+                </div>
+                <div :style="{ display: 'flex', gap: '4px', alignItems: 'center', flexShrink: '0' }">
+                    <div
+                        v-for="(game, i) in match.gameResults"
+                        :key="i"
+                        :style="{
+                            width: '8px',
+                            height: '8px',
+                            borderRadius: '50%',
+                            backgroundColor: game.result === 'W' ? colors.win : colors.loss,
+                        }"
+                    />
                 </div>
             </div>
         </div>
