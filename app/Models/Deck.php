@@ -61,6 +61,12 @@ class Deck extends Model
         return $this->belongsTo(Account::class);
     }
 
+    /** @return BelongsTo<Card, $this> */
+    public function cover(): BelongsTo
+    {
+        return $this->belongsTo(Card::class, 'cover_id');
+    }
+
     public function scopeForActiveAccount(Builder $query): Builder
     {
         $accountId = Account::active()->value('id');
