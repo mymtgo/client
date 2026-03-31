@@ -145,8 +145,8 @@ const selectedArt = computed(() => artOptions.value.find(o => o.id === selectedC
                             type="button"
                             class="overflow-hidden rounded-md border-2 transition-all"
                             :class="selectedCoverId === option.id
-                                ? 'border-primary ring-2 ring-primary/30'
-                                : 'border-border hover:border-muted-foreground'"
+                                ? 'border-primary ring-2 ring-primary/30 scale-105'
+                                : 'border-border opacity-60 hover:opacity-100 hover:border-muted-foreground'"
                             @click="selectedCoverId = option.id"
                         >
                             <img
@@ -157,7 +157,7 @@ const selectedArt = computed(() => artOptions.value.find(o => o.id === selectedC
                         </button>
                     </div>
 
-                    <div v-if="selectedArt" class="overflow-hidden rounded-lg border border-border">
+                    <div v-if="selectedArt" class="max-w-sm overflow-hidden rounded-lg border border-border">
                         <img
                             :src="selectedArt.art_crop"
                             :alt="selectedArt.name"

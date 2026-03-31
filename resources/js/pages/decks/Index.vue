@@ -154,10 +154,16 @@ function updatePage(page: number) {
                     <Card
                         v-for="deck in decks.data"
                         :key="deck.id"
-                        class="cursor-pointer transition-colors hover:bg-black/20"
+                        class="relative cursor-pointer overflow-hidden transition-colors hover:bg-black/20"
                         @click="router.visit(ShowController({ deck: deck.id }).url)"
                     >
-                        <CardContent class="flex flex-col gap-3">
+                        <img
+                            v-if="deck.coverArt"
+                            :src="deck.coverArt"
+                            :alt="deck.name"
+                            class="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-15"
+                        />
+                        <CardContent class="relative flex flex-col gap-3">
                             <!-- Name + meta -->
                             <div class="flex justify-between gap-1">
                                 <div class="flex items-center gap-1.5">

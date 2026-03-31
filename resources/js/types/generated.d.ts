@@ -35,6 +35,7 @@ matchesWon: number;
 matchesLost: number;
 winrate: number;
 colorIdentity: string | null;
+coverArt: string | null;
 lastPlayedAt: string | null;
 lastPlayedAtHuman: string | null;
 matches: any;
