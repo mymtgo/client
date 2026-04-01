@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Actions\Cards\DownloadCardImage;
 use App\Actions\RegisterDevice;
 use App\Models\Card;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -39,6 +40,8 @@ class BackfillCardDetails implements ShouldQueue
 
         Log::info("BackfillCardDetails: backfilling {$cards->count()} cards");
 
+        $this->downloadImages = (bool) Settings::get('local_images');
+
         $regularCards = $cards->where('rarity', '!=', 'token');
         $tokenCards = $cards->where('rarity', 'token');
 
@@ -50,6 +53,8 @@ class BackfillCardDetails implements ShouldQueue
             $this->updateTokenCards($chunk);
         }
     }
+
+    private bool $downloadImages = false;
 
     /**
      * @param  Collection<int, Card>  $cards
@@ -91,6 +96,10 @@ class BackfillCardDetails implements ShouldQueue
                 'art_crop' => $cardData['art_crop'] ?? null,
                 'image' => $cardData['image'],
             ]);
+
+            if ($this->downloadImages) {
+                DownloadCardImage::run($card);
+            }
         }
     }
 
@@ -132,6 +141,10 @@ class BackfillCardDetails implements ShouldQueue
                 'art_crop' => $cardData['art_crop'] ?? null,
                 'image' => $cardData['image'],
             ]);
+
+            if ($this->downloadImages) {
+                DownloadCardImage::run($card);
+            }
         }
     }
 }

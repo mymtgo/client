@@ -150,6 +150,12 @@ return [
             'timeout' => 60,
             'sleep' => 3,
         ],
+        'downloads' => [
+            'queues' => ['card_downloads'],
+            'memory_limit' => 512,
+            'timeout' => 60,
+            'sleep' => 3,
+        ],
     ],
 
     /**

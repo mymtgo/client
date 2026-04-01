@@ -41,6 +41,7 @@ use App\Http\Controllers\Settings\UpdateAnonymousStatsController;
 use App\Http\Controllers\Settings\UpdateDataPathController;
 use App\Http\Controllers\Settings\UpdateDebugModeController;
 use App\Http\Controllers\Settings\UpdateHidePhantomController;
+use App\Http\Controllers\Settings\UpdateLocalImagesController;
 use App\Http\Controllers\Settings\UpdateLogPathController;
 use App\Http\Controllers\Settings\UpdateOverlaySettingsController;
 use App\Http\Controllers\Settings\UpdateShareStatsController;
@@ -130,6 +131,7 @@ Route::group([], function (Router $router) {
         $group->patch('account-tracking', UpdateAccountTrackingController::class)->name('settings.account-tracking');
         $group->post('overlay', UpdateOverlaySettingsController::class)->name('settings.overlay');
         $group->patch('debug-mode', UpdateDebugModeController::class)->name('settings.debug-mode');
+        $group->patch('local-images', UpdateLocalImagesController::class)->name('settings.local-images');
         $group->patch('timezone', UpdateTimezoneController::class)->name('settings.timezone');
     });
 

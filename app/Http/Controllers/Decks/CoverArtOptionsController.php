@@ -19,7 +19,14 @@ class CoverArtOptionsController extends Controller
         $cards = Card::where('name', $request->input('card_name'))
             ->whereNotNull('art_crop')
             ->where('art_crop', '!=', '')
-            ->get(['id', 'name', 'set_name', 'set_code', 'art_crop']);
+            ->get(['id', 'name', 'set_name', 'set_code', 'art_crop', 'local_art_crop'])
+            ->map(fn (Card $card) => [
+                'id' => $card->id,
+                'name' => $card->name,
+                'set_name' => $card->set_name,
+                'set_code' => $card->set_code,
+                'art_crop' => $card->art_crop_url,
+            ]);
 
         return response()->json($cards);
     }

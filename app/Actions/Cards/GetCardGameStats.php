@@ -7,6 +7,7 @@ use App\Models\Deck;
 use App\Models\DeckVersion;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 class GetCardGameStats
 {
@@ -37,7 +38,7 @@ class GetCardGameStats
         }
 
         $query = DB::table('card_game_stats as cgs')
-            ->join(DB::raw('(SELECT oracle_id, name, color_identity, type, image FROM cards WHERE oracle_id IS NOT NULL GROUP BY oracle_id) as c'), 'c.oracle_id', '=', 'cgs.oracle_id')
+            ->join(DB::raw('(SELECT oracle_id, name, color_identity, type, image, local_image FROM cards WHERE oracle_id IS NOT NULL GROUP BY oracle_id) as c'), 'c.oracle_id', '=', 'cgs.oracle_id')
             ->whereIn('cgs.deck_version_id', $versionIds);
 
         $query->when($isPostboard !== null, fn ($q) => $q->where('cgs.is_postboard', $isPostboard));
@@ -78,6 +79,7 @@ class GetCardGameStats
                 c.color_identity,
                 c.type,
                 c.image,
+                c.local_image,
                 COUNT(*) as total_games,
                 SUM(cgs.quantity) as total_possible,
                 SUM(cgs.kept) as total_kept,
@@ -101,7 +103,7 @@ class GetCardGameStats
                 'oracleId' => $row->oracle_id,
                 'colorIdentity' => $row->color_identity,
                 'type' => $row->type,
-                'image' => $row->image,
+                'image' => $row->local_image ? Storage::disk('cards')->url($row->local_image) : $row->image,
                 'isSideboard' => $sideboardOracles->has($row->oracle_id),
                 'totalGames' => (int) $row->total_games,
                 'totalPossible' => (int) $row->total_possible,

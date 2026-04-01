@@ -7,6 +7,7 @@ use App\Models\MtgoMatch;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 class FormatLeagueRuns
 {
@@ -49,7 +50,7 @@ class FormatLeagueRuns
             ->where('m.state', 'complete')
             ->when($accountId, fn ($q, $id) => $q->where('d.account_id', $id))
             ->when($deckId, fn ($q, $id) => $q->where('d.id', $id))
-            ->select('m.id', 'm.league_id', 'm.outcome', 'm.started_at', 'd.id as deck_id', 'd.name as deck_name', 'd.color_identity as deck_color_identity', 'c.art_crop as deck_cover_art')
+            ->select('m.id', 'm.league_id', 'm.outcome', 'm.started_at', 'd.id as deck_id', 'd.name as deck_name', 'd.color_identity as deck_color_identity', 'c.art_crop as deck_cover_art', 'c.local_art_crop as deck_local_cover_art')
             ->orderBy('m.started_at')
             ->get();
     }
@@ -127,20 +128,27 @@ class FormatLeagueRuns
         // Prefer league's direct deck version; fall back to most common deck in matches
         if ($league->deck_version_id && $league->deckVersion?->deck) {
             $deckModel = $league->deckVersion->deck;
-            $coverArtUrl = $deckModel->cover?->art_crop;
-            $deck = ['id' => $deckModel->id, 'name' => $deckModel->name, 'colorIdentity' => $deckModel->color_identity, 'coverArt' => $coverArtUrl, 'coverArtBase64' => self::toBase64($coverArtUrl)];
+            $coverArtUrl = $deckModel->cover?->art_crop_url;
+            $deck = ['id' => $deckModel->id, 'name' => $deckModel->name, 'colorIdentity' => $deckModel->color_identity, 'coverArt' => $coverArtUrl, 'coverArtBase64' => self::toBase64($deckModel->cover?->art_crop, $deckModel->cover?->local_art_crop)];
         } else {
-            $coverArtUrl = $matches->groupBy('deck_id')->map->count()->sortDesc()->keys()
+            $topRow = $matches->groupBy('deck_id')->map->count()->sortDesc()->keys()
                 ->map(fn ($deckId) => $matches->firstWhere('deck_id', $deckId))
-                ->pluck('deck_cover_art')
                 ->first();
+
+            $coverArtUrl = $topRow ? self::resolveArtCrop($topRow->deck_cover_art, $topRow->deck_local_cover_art) : null;
 
             $deck = $matches->groupBy('deck_id')
                 ->map->count()
                 ->sortDesc()
                 ->keys()
                 ->map(fn ($deckId) => $matches->firstWhere('deck_id', $deckId))
-                ->map(fn ($row) => ['id' => $row->deck_id, 'name' => $row->deck_name, 'colorIdentity' => $row->deck_color_identity, 'coverArt' => $row->deck_cover_art, 'coverArtBase64' => self::toBase64($row->deck_cover_art)])
+                ->map(fn ($row) => [
+                    'id' => $row->deck_id,
+                    'name' => $row->deck_name,
+                    'colorIdentity' => $row->deck_color_identity,
+                    'coverArt' => self::resolveArtCrop($row->deck_cover_art, $row->deck_local_cover_art),
+                    'coverArtBase64' => self::toBase64($row->deck_cover_art, $row->deck_local_cover_art),
+                ])
                 ->first();
         }
 
@@ -199,23 +207,37 @@ class FormatLeagueRuns
         ];
     }
 
-    private static function toBase64(?string $url): ?string
+    private static function resolveArtCrop(?string $artCrop, ?string $localArtCrop): ?string
     {
-        if (! $url) {
+        return $localArtCrop ? Storage::disk('cards')->url($localArtCrop) : $artCrop;
+    }
+
+    private static function toBase64(?string $url, ?string $localStoragePath = null): ?string
+    {
+        if (! $url && ! $localStoragePath) {
             return null;
         }
 
         try {
-            $contents = file_get_contents($url);
+            if ($localStoragePath && Storage::disk('cards')->exists($localStoragePath)) {
+                $contents = Storage::disk('cards')->get($localStoragePath);
+            } else {
+                if (! $url) {
+                    return null;
+                }
 
-            if ($contents === false) {
+                $contents = file_get_contents($url);
+            }
+
+            if ($contents === false || $contents === null) {
                 return null;
             }
 
             $mime = 'image/jpeg';
-            if (str_contains($url, '.png')) {
+            $source = $localStoragePath ?? $url ?? '';
+            if (str_contains($source, '.png')) {
                 $mime = 'image/png';
-            } elseif (str_contains($url, '.webp')) {
+            } elseif (str_contains($source, '.webp')) {
                 $mime = 'image/webp';
             }
 

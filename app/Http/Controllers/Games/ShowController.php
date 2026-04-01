@@ -35,7 +35,7 @@ class ShowController extends Controller
 
             foreach ($content['Cards'] as $i => $card) {
                 $cardModel = $cardsByMtgoId->get($card['CatalogID']);
-                $content['Cards'][$i]['image'] = $cardModel?->image;
+                $content['Cards'][$i]['image'] = $cardModel?->image_url;
                 $content['Cards'][$i]['type'] = $cardModel?->type;
                 $content['Cards'][$i]['name'] = $cardModel?->name;
             }
