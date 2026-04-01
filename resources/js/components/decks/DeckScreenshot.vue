@@ -231,8 +231,34 @@ const sideboardCount = props.sideboardCards.reduce((s, c) => s + c.quantity, 0);
                     Sideboard
                 </div>
 
-                <!-- Stats: Mana Curve + Type Distribution -->
-                <div :style="{ marginBottom: '12px', paddingBottom: '12px', borderBottom: `1px solid ${colors.border}` }">
+                <div :style="{ display: 'flex', flexWrap: 'wrap', gap: '6px', maxWidth: `${cardWidth * 3 + 12}px` }">
+                    <div
+                        v-for="(stack, i) in sideboardStacks"
+                        :key="`sb-${i}`"
+                        :style="{
+                            position: 'relative',
+                            width: `${cardWidth}px`,
+                            height: `${stack.height}px`,
+                        }"
+                    >
+                        <img
+                            v-for="(item, j) in stack.items"
+                            :key="`sb-${i}-${j}`"
+                            :src="item.imageBase64 ?? undefined"
+                            :alt="item.name"
+                            :style="{
+                                position: 'absolute',
+                                width: `${cardWidth}px`,
+                                borderRadius: '5px',
+                                top: `${j * stackOffset}px`,
+                                zIndex: j + 1,
+                            }"
+                        />
+                    </div>
+                </div>
+
+                <!-- Stats below sideboard -->
+                <div :style="{ marginTop: '12px', paddingTop: '12px', borderTop: `1px solid ${colors.border}` }">
                     <div :style="{ display: 'flex', alignItems: 'flex-end', gap: '3px', height: '60px', marginBottom: '8px' }">
                         <div
                             v-for="bucket in cmcDistribution"
@@ -261,32 +287,6 @@ const sideboardCount = props.sideboardCards.reduce((s, c) => s + c.quantity, 0);
                             {{ t.type }}
                             <strong :style="{ color: colors.text }">{{ t.count }}</strong>
                         </span>
-                    </div>
-                </div>
-
-                <div :style="{ display: 'flex', flexWrap: 'wrap', gap: '6px', maxWidth: `${cardWidth * 3 + 12}px` }">
-                    <div
-                        v-for="(stack, i) in sideboardStacks"
-                        :key="`sb-${i}`"
-                        :style="{
-                            position: 'relative',
-                            width: `${cardWidth}px`,
-                            height: `${stack.height}px`,
-                        }"
-                    >
-                        <img
-                            v-for="(item, j) in stack.items"
-                            :key="`sb-${i}-${j}`"
-                            :src="item.imageBase64 ?? undefined"
-                            :alt="item.name"
-                            :style="{
-                                position: 'absolute',
-                                width: `${cardWidth}px`,
-                                borderRadius: '5px',
-                                top: `${j * stackOffset}px`,
-                                zIndex: j + 1,
-                            }"
-                        />
                     </div>
                 </div>
             </div>
