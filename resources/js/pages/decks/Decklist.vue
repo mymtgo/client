@@ -3,8 +3,12 @@ import AppLayout from '@/AppLayout.vue';
 import DeckViewLayout from '@/Layouts/DeckViewLayout.vue';
 import DeckList from '@/pages/decks/partials/DeckList.vue';
 import ManaSymbols from '@/components/ManaSymbols.vue';
+import DeckScreenshot from '@/components/decks/DeckScreenshot.vue';
+import ScreenshotDataController from '@/actions/App/Http/Controllers/Decks/ScreenshotDataController';
+import { useScreenshot } from '@/composables/useScreenshot';
 import type { VersionStats, VersionDecklist } from '@/types/decks';
-import { computed, ref } from 'vue';
+import { computed, nextTick, ref } from 'vue';
+import { Camera } from 'lucide-vue-next';
 
 defineOptions({ layout: [AppLayout, DeckViewLayout] });
 
@@ -98,11 +102,43 @@ const decklistOrgUrl = computed(() => {
     });
     return `https://decklist.org/?${params.toString()}`;
 });
+
+const screenshotRef = ref<InstanceType<typeof DeckScreenshot> | null>(null);
+const showScreenshot = ref(false);
+const screenshotData = ref<Record<string, any> | null>(null);
+const { capture, capturing } = useScreenshot();
+
+async function copyDeckScreenshot() {
+    if (capturing.value) return;
+
+    try {
+        const response = await fetch(ScreenshotDataController.url(props.deck.id));
+        screenshotData.value = await response.json();
+        showScreenshot.value = true;
+        await nextTick();
+
+        const el = screenshotRef.value?.$el as HTMLElement | undefined;
+        if (el) {
+            await capture(el);
+        }
+    } finally {
+        showScreenshot.value = false;
+        screenshotData.value = null;
+    }
+}
 </script>
 
 <template>
     <div class="p-3 lg:p-4">
-        <div class="mb-4 flex items-center justify-end">
+        <div class="mb-4 flex items-center justify-end gap-2">
+            <button
+                :disabled="capturing"
+                class="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
+                @click="copyDeckScreenshot"
+            >
+                <Camera class="size-4" />
+                {{ capturing ? 'Capturing...' : 'Share Deck' }}
+            </button>
             <a :href="decklistOrgUrl" target="_blank" class="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground">
                 Deck Registration
             </a>
@@ -149,6 +185,24 @@ const decklistOrgUrl = computed(() => {
                     </div>
                 </div>
             </div>
+        </div>
+        <!-- Off-screen screenshot capture -->
+        <div v-if="showScreenshot && screenshotData" style="position: fixed; top: -9999px; left: -9999px; pointer-events: none;">
+            <DeckScreenshot
+                ref="screenshotRef"
+                :name="screenshotData.name"
+                :format="screenshotData.format"
+                :color-identity="screenshotData.colorIdentity"
+                :win-rate="screenshotData.winRate"
+                :matches-won="screenshotData.matchesWon"
+                :matches-lost="screenshotData.matchesLost"
+                :cover-art-base64="screenshotData.coverArtBase64"
+                :non-land-cards="screenshotData.nonLandCards"
+                :land-cards="screenshotData.landCards"
+                :sideboard-cards="screenshotData.sideboardCards"
+                :cmc-distribution="screenshotData.cmcDistribution"
+                :type-distribution="screenshotData.typeDistribution"
+            />
         </div>
     </div>
 </template>
