@@ -12,9 +12,9 @@ class ComputeImportedCardGameStats
     /**
      * Create reduced-fidelity card_game_stats for an imported game.
      *
-     * @param  array<int>  $seenMtgoIds  CatalogIDs seen in game log for local player
+     * @param  array<int, array{mtgo_id: int, cast: int}>  $cardStats  Cards seen in game log with cast counts
      */
-    public static function run(Game $game, int $deckVersionId, array $seenMtgoIds, bool $isPostboard): void
+    public static function run(Game $game, int $deckVersionId, array $cardStats, bool $isPostboard): void
     {
         if ($game->won === null) {
             return;
@@ -32,14 +32,27 @@ class ComputeImportedCardGameStats
             return;
         }
 
-        // Map seen mtgo_ids to oracle_ids
+        // Extract mtgo_ids and cast counts from card stats
+        $seenMtgoIds = [];
+        $castByMtgoId = [];
+        foreach ($cardStats as $stat) {
+            $seenMtgoIds[] = $stat['mtgo_id'];
+            $castByMtgoId[$stat['mtgo_id']] = $stat['cast'];
+        }
+
+        // Map seen mtgo_ids to oracle_ids and build cast-by-oracle lookup
         $seenOracleIds = [];
+        $castByOracle = [];
         if (! empty($seenMtgoIds)) {
-            $seenOracleIds = Card::whereIn('mtgo_id', $seenMtgoIds)
+            $mtgoToOracle = Card::whereIn('mtgo_id', $seenMtgoIds)
                 ->whereNotNull('oracle_id')
-                ->pluck('oracle_id')
-                ->unique()
-                ->toArray();
+                ->pluck('oracle_id', 'mtgo_id');
+
+            $seenOracleIds = $mtgoToOracle->unique()->values()->toArray();
+
+            foreach ($mtgoToOracle as $mtgoId => $oracleId) {
+                $castByOracle[$oracleId] = ($castByOracle[$oracleId] ?? 0) + ($castByMtgoId[$mtgoId] ?? 0);
+            }
         }
 
         // Build mainboard quantities by oracle_id
@@ -62,6 +75,7 @@ class ComputeImportedCardGameStats
                 'quantity' => $quantity,
                 'kept' => 0,
                 'seen' => in_array($oracleId, $seenOracleIds) ? 1 : 0,
+                'cast' => min($castByOracle[$oracleId] ?? 0, $quantity),
                 'won' => $game->won,
                 'is_postboard' => $isPostboard,
                 'sided_out' => false,

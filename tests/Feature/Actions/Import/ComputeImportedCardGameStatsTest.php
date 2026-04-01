@@ -33,9 +33,9 @@ it('creates card game stats for an imported game with deck version', function ()
     ]);
 
     // Cards seen in game log for local player
-    $seenMtgoIds = [100]; // Only Card A was seen
+    $cardStats = [['mtgo_id' => 100, 'cast' => 2]]; // Only Card A was seen
 
-    ComputeImportedCardGameStats::run($game, $version->id, $seenMtgoIds, isPostboard: false);
+    ComputeImportedCardGameStats::run($game, $version->id, $cardStats, isPostboard: false);
 
     $stats = CardGameStat::where('game_id', $game->id)->get();
 
@@ -46,6 +46,7 @@ it('creates card game stats for an imported game with deck version', function ()
     expect($statA->quantity)->toBe(4); // mainboard quantity only
     expect($statA->seen)->toBe(1);     // was seen in game log
     expect($statA->kept)->toBe(0);     // always 0 for imports
+    expect($statA->cast)->toBe(2);
     expect($statA->won)->toBeTrue();
     expect($statA->is_postboard)->toBeFalse();
     expect($statA->sided_out)->toBeFalse();
@@ -76,7 +77,7 @@ it('handles capitalized sideboard values from SyncDecks XML', function () {
         'won' => true,
     ]);
 
-    ComputeImportedCardGameStats::run($game, $version->id, [100], isPostboard: false);
+    ComputeImportedCardGameStats::run($game, $version->id, [['mtgo_id' => 100, 'cast' => 0]], isPostboard: false);
 
     $stats = CardGameStat::where('game_id', $game->id)->get();
 
