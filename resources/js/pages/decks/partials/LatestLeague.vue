@@ -4,7 +4,7 @@ import ResultBadge from '@/components/matches/ResultBadge.vue';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import LeagueScreenshot from '@/components/leagues/LeagueScreenshot.vue';
-import { useLeagueScreenshot } from '@/composables/useLeagueScreenshot';
+import { useScreenshot } from '@/composables/useScreenshot';
 import { Badge } from '@/components/ui/badge';
 import { Camera } from 'lucide-vue-next';
 import { router } from '@inertiajs/vue3';
@@ -17,7 +17,7 @@ defineProps<{
 
 const screenshotRef = ref<InstanceType<typeof LeagueScreenshot> | null>(null);
 const showScreenshot = ref(false);
-const { capture, capturing } = useLeagueScreenshot();
+const { capture, capturing } = useScreenshot();
 
 async function copyScreenshot() {
     showScreenshot.value = true;

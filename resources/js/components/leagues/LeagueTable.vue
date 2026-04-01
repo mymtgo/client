@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { router } from '@inertiajs/vue3';
-import { useLeagueScreenshot } from '@/composables/useLeagueScreenshot';
+import { useScreenshot } from '@/composables/useScreenshot';
 import { Camera, Ellipsis, Trash2, Trophy } from 'lucide-vue-next';
 import { nextTick, ref } from 'vue';
 import LeagueScreenshot from './LeagueScreenshot.vue';
@@ -33,7 +33,7 @@ function abandonLeague(league: LeagueRun) {
 
 const screenshotRef = ref<InstanceType<typeof LeagueScreenshot> | null>(null);
 const showScreenshot = ref(false);
-const { capture, capturing } = useLeagueScreenshot();
+const { capture, capturing } = useScreenshot();
 
 async function copyScreenshot() {
     showScreenshot.value = true;
