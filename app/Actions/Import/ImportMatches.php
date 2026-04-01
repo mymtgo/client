@@ -2,6 +2,7 @@
 
 namespace App\Actions\Import;
 
+use App\Actions\Matches\ExtractGameResults;
 use App\Actions\Matches\ParseGameLogBinary;
 use App\Enums\MatchOutcome;
 use App\Enums\MatchState;
@@ -10,6 +11,7 @@ use App\Jobs\DetermineMatchArchetypesJob;
 use App\Models\Card;
 use App\Models\Game;
 use App\Models\GameLog;
+use App\Models\ImportScan;
 use App\Models\MtgoMatch;
 use App\Models\Player;
 use Illuminate\Support\Str;
@@ -75,7 +77,124 @@ class ImportMatches
                 self::createGames($match, $data);
 
                 // Dispatch archetype detection to the queue — external API calls are too slow for inline
-                DetermineMatchArchetypesJob::dispatch($match->id);
+                DetermineMatchArchetypesJob::dispatch($match->id)->onQueue('match_archetypes');
+            }
+
+            $imported++;
+        }
+
+        return ['imported' => $imported, 'skipped' => $skipped];
+    }
+
+    /**
+     * Import matches from a completed scan.
+     *
+     * @param  array<int>|null  $historyIds  Specific matches to import, or null for all
+     * @return array{imported: int, skipped: int}
+     */
+    public static function runFromScan(ImportScan $scan, ?array $historyIds = null): array
+    {
+        $query = $scan->matches();
+
+        if ($historyIds !== null) {
+            $query->whereIn('history_id', $historyIds);
+        }
+
+        $scanMatches = $query->get();
+        $imported = 0;
+        $skipped = 0;
+
+        foreach ($scanMatches as $scanMatch) {
+            if (MtgoMatch::where('mtgo_id', (string) $scanMatch->history_id)->exists()) {
+                $skipped++;
+
+                continue;
+            }
+
+            $outcome = match ($scanMatch->outcome) {
+                'win' => MatchOutcome::Win,
+                'loss' => MatchOutcome::Loss,
+                'draw' => MatchOutcome::Draw,
+                default => MatchOutcome::Unknown,
+            };
+
+            // Try to build game data from the game log
+            $games = null;
+            $localPlayer = $scanMatch->local_player;
+            $opponent = $scanMatch->opponent;
+            $localCards = [];
+            $opponentCards = [];
+
+            if ($scanMatch->game_log_token && $localPlayer) {
+                $gameLog = GameLog::where('match_token', $scanMatch->game_log_token)
+                    ->whereNotNull('decoded_entries')
+                    ->first();
+
+                if ($gameLog?->decoded_entries) {
+                    $cardData = ExtractCardsFromGameLog::run($gameLog->decoded_entries);
+                    $localCards = $cardData['cards_by_player'][$localPlayer] ?? [];
+                    $opponentCards = $cardData['cards_by_player'][$opponent] ?? [];
+
+                    $gameResults = ExtractGameResults::run($gameLog->decoded_entries, $localPlayer);
+                    $cardsByGame = $cardData['cards_by_game'] ?? [];
+
+                    $games = collect($gameResults['games'])->map(function ($g) use ($localPlayer, $opponent, $cardsByGame) {
+                        $gameCards = $cardsByGame[$g['game_index']] ?? [];
+
+                        return [
+                            'game_index' => $g['game_index'],
+                            'won' => $g['winner'] === $localPlayer,
+                            'on_play' => $g['on_play'] === $localPlayer,
+                            'starting_hand_size' => $g['starting_hands'][$localPlayer] ?? 7,
+                            'opponent_hand_size' => $g['starting_hands'][$opponent] ?? 7,
+                            'started_at' => $g['started_at'],
+                            'ended_at' => $g['ended_at'],
+                            'local_cards' => $gameCards[$localPlayer] ?? [],
+                            'opponent_cards' => $gameCards[$opponent] ?? [],
+                        ];
+                    })->toArray();
+                }
+            }
+
+            $lastGameEnd = null;
+            if (! empty($games)) {
+                $lastGameEnd = collect($games)->pluck('ended_at')->filter()->last();
+            }
+
+            $match = MtgoMatch::create([
+                'token' => Str::uuid()->toString(),
+                'mtgo_id' => (string) $scanMatch->history_id,
+                'deck_version_id' => $scan->deck_version_id,
+                'format' => $scanMatch->format,
+                'match_type' => $scanMatch->round > 0 ? 'League' : 'Constructed',
+                'games_won' => $scanMatch->games_won,
+                'games_lost' => $scanMatch->games_lost,
+                'started_at' => $scanMatch->started_at,
+                'ended_at' => $lastGameEnd,
+                'state' => MatchState::Complete,
+                'outcome' => $outcome,
+                'imported' => true,
+            ]);
+
+            // Link existing GameLog to this match
+            if ($scanMatch->game_log_token) {
+                GameLog::where('match_token', $scanMatch->game_log_token)
+                    ->whereNull('match_token')
+                    ->update(['match_token' => $match->token]);
+            }
+
+            if (! empty($games) && $localPlayer) {
+                $data = [
+                    'local_player' => $localPlayer,
+                    'opponent' => $opponent,
+                    'local_cards' => $localCards,
+                    'opponent_cards' => $opponentCards,
+                    'games' => $games,
+                    'game_ids' => $scanMatch->game_ids ?? [],
+                ];
+
+                self::createGames($match, $data);
+                DetermineMatchArchetypesJob::dispatch($match->id)->onQueue('match_archetypes');
             }
 
             $imported++;
@@ -210,7 +329,7 @@ class ImportMatches
         }
 
         // Try the API for any stubs missing oracle_ids
-        ParseImportableMatches::populateCardsInChunks();
+        PopulateCardsInChunks::run();
 
         // Fall back: resolve oracle_ids by name for cards the API doesn't know.
         // Game logs give us @[CardName@:CatalogID,...] so we know the name even

@@ -34,5 +34,4 @@ class MatchupsController extends Controller
             'matchupSpread' => GetArchetypeMatchupSpread::run($deck, $from, $to, $deckVersion),
         ]);
     }
-
 }
