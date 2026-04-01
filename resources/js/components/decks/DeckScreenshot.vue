@@ -147,55 +147,6 @@ const sideboardCount = props.sideboardCards.reduce((s, c) => s + c.quantity, 0);
             </div>
         </div>
 
-        <!-- STATS BAR -->
-        <div :style="{ display: 'flex', gap: '24px', marginBottom: '16px', alignItems: 'flex-end' }">
-            <!-- Mana Curve -->
-            <div :style="{ flexShrink: '0' }">
-                <div
-                    :style="{
-                        fontSize: '10px',
-                        color: colors.muted,
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.5px',
-                        marginBottom: '6px',
-                    }"
-                >
-                    Mana Curve
-                </div>
-                <div :style="{ display: 'flex', alignItems: 'flex-end', gap: '3px', height: '60px' }">
-                    <div
-                        v-for="bucket in cmcDistribution"
-                        :key="bucket.cmc"
-                        :style="{
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: 'center',
-                            gap: '2px',
-                        }"
-                    >
-                        <span :style="{ fontSize: '8px', color: colors.muted }">{{ bucket.count || '' }}</span>
-                        <div
-                            :style="{
-                                width: '16px',
-                                backgroundColor: colors.bar,
-                                borderRadius: '2px 2px 0 0',
-                                height: `${Math.max((bucket.count / cmcMax) * 48, bucket.count > 0 ? 3 : 0)}px`,
-                            }"
-                        />
-                        <span :style="{ fontSize: '9px', color: colors.muted }">{{ bucket.cmc }}</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Type Distribution -->
-            <div :style="{ display: 'flex', gap: '14px', fontSize: '12px', color: colors.muted, flexWrap: 'wrap', paddingBottom: '4px' }">
-                <span v-for="t in typeDistribution" :key="t.type">
-                    {{ t.type }}
-                    <strong :style="{ color: colors.text }">{{ t.count }}</strong>
-                </span>
-            </div>
-        </div>
-
         <!-- CARD GRID + SIDEBOARD -->
         <div :style="{ display: 'flex', gap: '16px' }">
             <!-- Main Deck -->
@@ -279,6 +230,40 @@ const sideboardCount = props.sideboardCards.reduce((s, c) => s + c.quantity, 0);
                 >
                     Sideboard
                 </div>
+
+                <!-- Stats: Mana Curve + Type Distribution -->
+                <div :style="{ marginBottom: '12px', paddingBottom: '12px', borderBottom: `1px solid ${colors.border}` }">
+                    <div :style="{ display: 'flex', alignItems: 'flex-end', gap: '3px', height: '60px', marginBottom: '8px' }">
+                        <div
+                            v-for="bucket in cmcDistribution"
+                            :key="bucket.cmc"
+                            :style="{
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                gap: '2px',
+                            }"
+                        >
+                            <span :style="{ fontSize: '8px', color: colors.muted }">{{ bucket.count || '' }}</span>
+                            <div
+                                :style="{
+                                    width: '16px',
+                                    backgroundColor: colors.bar,
+                                    borderRadius: '2px 2px 0 0',
+                                    height: `${Math.max((bucket.count / cmcMax) * 48, bucket.count > 0 ? 3 : 0)}px`,
+                                }"
+                            />
+                            <span :style="{ fontSize: '9px', color: colors.muted }">{{ bucket.cmc }}</span>
+                        </div>
+                    </div>
+                    <div :style="{ display: 'flex', gap: '8px', fontSize: '11px', color: colors.muted, flexWrap: 'wrap' }">
+                        <span v-for="t in typeDistribution" :key="t.type">
+                            {{ t.type }}
+                            <strong :style="{ color: colors.text }">{{ t.count }}</strong>
+                        </span>
+                    </div>
+                </div>
+
                 <div :style="{ display: 'flex', flexWrap: 'wrap', gap: '6px', maxWidth: `${cardWidth * 3 + 12}px` }">
                     <div
                         v-for="(stack, i) in sideboardStacks"
