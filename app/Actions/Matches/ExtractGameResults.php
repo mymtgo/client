@@ -93,7 +93,7 @@ class ExtractGameResults
      *
      * @return array<int, array<int, array{timestamp: string, message: string}>>
      */
-    private static function splitIntoGames(array $entries): array
+    public static function splitIntoGames(array $entries): array
     {
         $games = [];
         $current = [];

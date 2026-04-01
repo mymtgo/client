@@ -22,7 +22,7 @@ class MatchData extends Data
         public Carbon $startedAt,
         public string $since,
         public string $startedAtFormatted,
-        public string $matchTime,
+        public ?string $matchTime,
         public ?string $notes,
         public Lazy|DeckData $deck,
         public Lazy $opponentArchetypes,

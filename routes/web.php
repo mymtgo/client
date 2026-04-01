@@ -23,6 +23,15 @@ use App\Http\Controllers\Decks\SettingsController;
 use App\Http\Controllers\Decks\UpdateCoverArtController;
 use App\Http\Controllers\Decks\UpdateDeckArchetypeController;
 use App\Http\Controllers\Games\OpenReplayController;
+use App\Http\Controllers\Import\CancelScanController;
+use App\Http\Controllers\Import\DestroyController as ImportDestroyController;
+use App\Http\Controllers\Import\ImportAllController;
+use App\Http\Controllers\Import\IndexController as ImportIndexController;
+use App\Http\Controllers\Import\ScanController;
+use App\Http\Controllers\Import\ScanMatchCardsController;
+use App\Http\Controllers\Import\ScanMatchesController;
+use App\Http\Controllers\Import\ScanStatusController;
+use App\Http\Controllers\Import\StoreController;
 use App\Http\Controllers\IndexController;
 use App\Http\Controllers\Leagues\AbandonController;
 use App\Http\Controllers\Leagues\OpponentScoutWindowController;
@@ -137,6 +146,20 @@ Route::group([], function (Router $router) {
         $group->patch('debug-mode', UpdateDebugModeController::class)->name('settings.debug-mode');
         $group->patch('local-images', UpdateLocalImagesController::class)->name('settings.local-images');
         $group->patch('timezone', UpdateTimezoneController::class)->name('settings.timezone');
+    });
+
+    $router->group([
+        'prefix' => 'import',
+    ], function (Router $group) {
+        $group->get('/', ImportIndexController::class)->name('import.index');
+        $group->post('scan', ScanController::class)->name('import.scan');
+        $group->get('scan/{scan}', ScanStatusController::class)->name('import.scan.status');
+        $group->get('scan/{scan}/matches', ScanMatchesController::class)->name('import.scan.matches');
+        $group->get('scan/match/{match}/cards', ScanMatchCardsController::class)->name('import.scan.match.cards');
+        $group->post('scan/{scan}/import', StoreController::class)->name('import.store');
+        $group->post('scan/{scan}/import-all', ImportAllController::class)->name('import.import-all');
+        $group->delete('scan/{scan}', CancelScanController::class)->name('import.scan.cancel');
+        $group->delete('/', ImportDestroyController::class)->name('import.destroy');
     });
 
     $router->get('updates/install', InstallController::class)->name('updates.install');

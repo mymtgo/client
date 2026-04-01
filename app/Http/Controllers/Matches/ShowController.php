@@ -74,6 +74,7 @@ class ShowController extends Controller
             'games' => $games,
             'gameLogs' => $gameLogs,
             'archetypes' => ArchetypeData::collect(Archetype::orderBy('name')->get()),
+            'imported' => (bool) $match->imported,
         ]);
     }
 }

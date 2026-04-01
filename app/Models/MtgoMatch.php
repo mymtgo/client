@@ -41,6 +41,7 @@ class MtgoMatch extends Model
         'attempts' => 'integer',
         'state' => MatchState::class,
         'outcome' => MatchOutcome::class,
+        'imported' => 'boolean',
     ];
 
     public function getTable()
