@@ -43,13 +43,18 @@ const stackOffset = 22;
  * Group cards into stacks for grid rendering.
  * Each stack = one unique card with its quantity for vertical stacking.
  */
+const maxStack = 4;
+
 function groupIntoStacks(cards: ScreenshotCard[]) {
-    return cards.map((card) => ({
-        name: card.name,
-        imageBase64: card.imageBase64,
-        quantity: card.quantity,
-        height: cardHeight + (card.quantity - 1) * stackOffset,
-    }));
+    return cards.map((card) => {
+        const visualQty = Math.min(card.quantity, maxStack);
+        return {
+            name: card.name,
+            imageBase64: card.imageBase64,
+            quantity: visualQty,
+            height: cardHeight + (visualQty - 1) * stackOffset,
+        };
+    });
 }
 
 const nonLandStacks = groupIntoStacks(props.nonLandCards);
