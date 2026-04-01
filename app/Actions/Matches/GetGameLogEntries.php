@@ -24,7 +24,9 @@ class GetGameLogEntries
             return [];
         }
 
-        $gameLog = GameLog::where('match_token', $match->token)->first();
+        $gameLog = GameLog::where('match_token', $match->token)
+            ->whereNotNull('decoded_entries')
+            ->first();
 
         if (! $gameLog) {
             return [];

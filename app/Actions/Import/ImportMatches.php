@@ -179,7 +179,6 @@ class ImportMatches
             // Link existing GameLog to this match
             if ($scanMatch->game_log_token) {
                 GameLog::where('match_token', $scanMatch->game_log_token)
-                    ->whereNull('match_token')
                     ->update(['match_token' => $match->token]);
             }
 
@@ -237,16 +236,17 @@ class ImportMatches
                     ->values()
                     ->toArray();
 
-            // Build opponent deck_json from per-game opponent cards
-            $opponentDeckJson = null;
-            $gameOpponentCards = $gameData['opponent_cards'] ?? null;
-            if ($gameOpponentCards !== null && ! empty($gameOpponentCards)) {
-                $opponentDeckJson = collect($gameOpponentCards)->map(fn ($card) => [
+            // Build deck_json from per-game cards extracted from game log
+            $buildDeckJson = fn ($cards) => ! empty($cards)
+                ? collect($cards)->map(fn ($card) => [
                     'mtgo_id' => $card['mtgo_id'],
                     'quantity' => 1,
                     'sideboard' => false,
-                ])->values()->toArray();
-            }
+                ])->values()->toArray()
+                : null;
+
+            $localDeckJson = $buildDeckJson($gameData['local_cards'] ?? []);
+            $opponentDeckJson = $buildDeckJson($gameData['opponent_cards'] ?? []);
 
             $game = Game::create([
                 'match_id' => $match->id,
@@ -261,7 +261,7 @@ class ImportMatches
                 'on_play' => $gameData['on_play'] ?? false,
                 'starting_hand_size' => $gameData['starting_hand_size'] ?? 7,
                 'instance_id' => 0,
-                'deck_json' => null,
+                'deck_json' => $localDeckJson,
             ]);
 
             $game->players()->attach($opponent->id, [
@@ -377,6 +377,17 @@ class ImportMatches
         $filePath = $dataPath.'/Match_GameLog_'.$gameLogToken.'.dat';
 
         if (! file_exists($filePath)) {
+            return;
+        }
+
+        // Link existing decoded GameLog if discovery already processed this file
+        $existing = GameLog::where('match_token', $gameLogToken)
+            ->whereNotNull('decoded_entries')
+            ->first();
+
+        if ($existing) {
+            $existing->update(['match_token' => $match->token]);
+
             return;
         }
 
