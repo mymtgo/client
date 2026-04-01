@@ -67,6 +67,12 @@ class Deck extends Model
         return $this->belongsTo(Card::class, 'cover_id');
     }
 
+    /** @return BelongsTo<Archetype, $this> */
+    public function archetype(): BelongsTo
+    {
+        return $this->belongsTo(Archetype::class);
+    }
+
     public function scopeForActiveAccount(Builder $query): Builder
     {
         $accountId = Account::active()->value('id');

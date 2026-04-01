@@ -4,8 +4,10 @@ namespace App\Http\Controllers\Decks;
 
 use App\Actions\Cards\GetCards;
 use App\Actions\Decks\GetDeckViewSharedProps;
+use App\Data\Front\ArchetypeData;
 use App\Data\Front\CardData;
 use App\Http\Controllers\Controller;
+use App\Models\Archetype;
 use App\Models\Card;
 use App\Models\Deck;
 use Inertia\Inertia;
@@ -16,6 +18,22 @@ class SettingsController extends Controller
     public function __invoke(Deck $deck): Response
     {
         $shared = GetDeckViewSharedProps::run($deck);
+
+        $deck->load('archetype');
+
+        $formatMap = [
+            'CMODERN' => 'modern',
+            'CPAUPER' => 'pauper',
+            'CLEGACY' => 'legacy',
+            'CVINTAGE' => 'vintage',
+            'CPREMODERN' => 'premodern',
+        ];
+        $archetypeFormat = $formatMap[$deck->format] ?? strtolower($deck->format);
+
+        $archetypes = Archetype::where('format', $archetypeFormat)
+            ->orderBy('name')
+            ->get()
+            ->map(fn (Archetype $a) => ArchetypeData::fromModel($a));
 
         $coverArtWithId = null;
         if ($deck->cover) {
@@ -32,6 +50,7 @@ class SettingsController extends Controller
             'currentPage' => 'settings',
             'coverArt' => $coverArtWithId,
             'cardNames' => $cardNames,
+            'archetypes' => $archetypes,
         ]);
     }
 

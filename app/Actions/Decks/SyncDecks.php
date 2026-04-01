@@ -2,6 +2,7 @@
 
 namespace App\Actions\Decks;
 
+use App\Actions\DetermineDeckArchetype;
 use App\Actions\Matches\DetermineMatchDeck;
 use App\Models\Account;
 use App\Models\Deck;
@@ -81,6 +82,7 @@ class SyncDecks
             ]);
 
             ComputeDeckIdentity::run($deck);
+            static::prefillArchetype($deck);
 
             $deckIds[] = $deck->id;
         }
@@ -105,5 +107,41 @@ class SyncDecks
                 ->whereNull('deck_version_id')
                 ->each(fn (MtgoMatch $match) => DetermineMatchDeck::run($match));
         });
+    }
+
+    /**
+     * Attempt to auto-detect and set the archetype for a deck
+     * using the estimate API. Only runs when archetype_id is null.
+     */
+    public static function prefillArchetype(Deck $deck): void
+    {
+        if ($deck->archetype_id !== null) {
+            return;
+        }
+
+        $latestVersion = $deck->latestVersion;
+
+        if (! $latestVersion) {
+            return;
+        }
+
+        $cards = collect($latestVersion->cards)->map(fn ($card) => [
+            'mtgo_id' => $card['oracle_id'] ?? $card['mtgo_id'] ?? null,
+            'quantity' => (int) ($card['quantity'] ?? 1),
+        ])->filter(fn ($card) => $card['mtgo_id'] !== null);
+
+        if ($cards->isEmpty()) {
+            return;
+        }
+
+        try {
+            $result = DetermineDeckArchetype::run($cards, $deck->format);
+
+            if ($result) {
+                $deck->update(['archetype_id' => $result['archetype_id']]);
+            }
+        } catch (\Throwable $e) {
+            \Log::warning('Failed to prefill deck archetype: '.$e->getMessage());
+        }
     }
 }

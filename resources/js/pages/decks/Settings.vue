@@ -7,6 +7,9 @@ import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import CoverArtOptionsController from '@/actions/App/Http/Controllers/Decks/CoverArtOptionsController';
 import UpdateCoverArtController from '@/actions/App/Http/Controllers/Decks/UpdateCoverArtController';
+import UpdateDeckArchetypeController from '@/actions/App/Http/Controllers/Decks/UpdateDeckArchetypeController';
+import ManaSymbols from '@/components/ManaSymbols.vue';
+import { Input } from '@/components/ui/input';
 import type { VersionStats } from '@/types/decks';
 import { computed, ref, watch } from 'vue';
 import { router } from '@inertiajs/vue3';
@@ -21,6 +24,7 @@ const props = defineProps<{
     currentPage: string;
     coverArt: (App.Data.Front.CardData & { id: number }) | null;
     cardNames: string[];
+    archetypes: App.Data.Front.ArchetypeData[];
 }>();
 
 type ArtOption = {
@@ -111,11 +115,96 @@ function clear() {
 }
 
 const selectedArt = computed(() => artOptions.value.find(o => o.id === selectedCoverId.value));
+
+const archetypeSearch = ref('');
+const showArchetypeSelect = ref(false);
+const savingArchetype = ref(false);
+
+const filteredArchetypes = computed(() => {
+    if (!archetypeSearch.value) return props.archetypes;
+    const q = archetypeSearch.value.toLowerCase();
+    return props.archetypes.filter((a) => a.name.toLowerCase().includes(q));
+});
+
+function selectArchetype(archetypeId: number) {
+    savingArchetype.value = true;
+    router.patch(
+        UpdateDeckArchetypeController.url({ deck: props.deck.id }),
+        { archetype_id: archetypeId },
+        {
+            preserveScroll: true,
+            onFinish: () => {
+                savingArchetype.value = false;
+                showArchetypeSelect.value = false;
+                archetypeSearch.value = '';
+            },
+        },
+    );
+}
+
+function clearArchetype() {
+    savingArchetype.value = true;
+    router.patch(
+        UpdateDeckArchetypeController.url({ deck: props.deck.id }),
+        { archetype_id: null },
+        {
+            preserveScroll: true,
+            onFinish: () => { savingArchetype.value = false; },
+        },
+    );
+}
 </script>
 
 <template>
     <div class="p-3 lg:p-4">
         <div class="max-w-2xl">
+            <Card class="mb-4">
+                <CardHeader>
+                    <CardTitle>Archetype</CardTitle>
+                    <CardDescription>Set the archetype for this deck. This is used when reporting matches.</CardDescription>
+                </CardHeader>
+                <CardContent class="flex flex-col gap-4">
+                    <div v-if="deck.archetype" class="flex items-center justify-between rounded-md border border-border bg-muted/30 px-4 py-3">
+                        <div class="flex items-center gap-3">
+                            <span class="font-medium">{{ deck.archetype.name }}</span>
+                            <ManaSymbols v-if="deck.archetype.colorIdentity" :symbols="deck.archetype.colorIdentity" />
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <Button variant="outline" size="sm" @click="showArchetypeSelect = !showArchetypeSelect">
+                                Change
+                            </Button>
+                            <Button variant="ghost" size="sm" :disabled="savingArchetype" @click="clearArchetype">
+                                Remove
+                            </Button>
+                        </div>
+                    </div>
+                    <div v-else>
+                        <Button variant="outline" @click="showArchetypeSelect = !showArchetypeSelect">
+                            {{ showArchetypeSelect ? 'Cancel' : 'Set Archetype' }}
+                        </Button>
+                    </div>
+
+                    <div v-if="showArchetypeSelect" class="flex flex-col gap-2">
+                        <Input v-model="archetypeSearch" placeholder="Search archetypes..." />
+                        <div class="max-h-60 overflow-y-auto space-y-0.5 rounded-md border border-border p-1">
+                            <Button
+                                v-for="archetype in filteredArchetypes"
+                                :key="archetype.id"
+                                variant="ghost"
+                                class="w-full justify-between"
+                                :disabled="savingArchetype"
+                                @click="selectArchetype(archetype.id)"
+                            >
+                                <span class="flex-1 text-left">{{ archetype.name }}</span>
+                                <ManaSymbols v-if="archetype.colorIdentity" :symbols="archetype.colorIdentity" />
+                            </Button>
+                            <p v-if="filteredArchetypes.length === 0" class="py-4 text-center text-sm text-muted-foreground">
+                                No archetypes found.
+                            </p>
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
             <Card>
                 <CardHeader>
                     <CardTitle>Cover Art</CardTitle>
