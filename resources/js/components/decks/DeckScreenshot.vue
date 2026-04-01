@@ -257,7 +257,7 @@ const sideboardCount = props.sideboardCards.reduce((s, c) => s + c.quantity, 0);
                 >
                     Sideboard
                 </div>
-                <div :style="{ display: 'flex', flexWrap: 'wrap', gap: '6px', maxWidth: `${cardWidth * 2 + 6}px` }">
+                <div :style="{ display: 'flex', flexWrap: 'wrap', gap: '6px', maxWidth: `${cardWidth * 3 + 12}px` }">
                     <div
                         v-for="(stack, i) in sideboardStacks"
                         :key="`sb-${i}-${stack.name}`"
