@@ -17,12 +17,12 @@ class ExtractCardsFromGameLog
     public static function run(array $entries): array
     {
         $players = ExtractGameResults::detectPlayers($entries);
-        $games = self::splitIntoGames($entries);
+        $games = ExtractGameResults::splitIntoGames($entries);
 
         // Per-game extraction
         $cardsByGame = [];
         // Match-level aggregate (union of all games)
-        $matchSeen = [];
+        $matchIndex = [];
         $cardsByPlayer = [];
 
         foreach ($players as $player) {
@@ -33,21 +33,15 @@ class ExtractCardsFromGameLog
             $gameCards = self::extractFromEntries($gameEntries, $players);
             $cardsByGame[$gameIndex] = $gameCards;
 
-            // Merge into match-level aggregate
             foreach ($players as $player) {
                 foreach ($gameCards[$player] ?? [] as $card) {
-                    if (isset($matchSeen[$player][$card['mtgo_id']])) {
-                        // Sum cast count from this game into existing match-level entry
-                        $matchSeen[$player][$card['mtgo_id']] += $card['cast'];
-                        $idx = array_search($card['mtgo_id'], array_column($cardsByPlayer[$player], 'mtgo_id'));
-                        if ($idx !== false) {
-                            $cardsByPlayer[$player][$idx]['cast'] += $card['cast'];
-                        }
+                    if (isset($matchIndex[$player][$card['mtgo_id']])) {
+                        $cardsByPlayer[$player][$matchIndex[$player][$card['mtgo_id']]]['cast'] += $card['cast'];
 
                         continue;
                     }
 
-                    $matchSeen[$player][$card['mtgo_id']] = $card['cast'];
+                    $matchIndex[$player][$card['mtgo_id']] = count($cardsByPlayer[$player]);
                     $cardsByPlayer[$player][] = $card;
                 }
             }
@@ -124,41 +118,5 @@ class ExtractCardsFromGameLog
         }
 
         return $cardsByPlayer;
-    }
-
-    /**
-     * Split entries into per-game groups using game boundary detection.
-     *
-     * Mirrors ExtractGameResults::splitIntoGames logic.
-     *
-     * @return array<int, array<int, array{timestamp: string, message: string}>>
-     */
-    private static function splitIntoGames(array $entries): array
-    {
-        $games = [];
-        $current = [];
-        $gameEndSeen = false;
-
-        foreach ($entries as $entry) {
-            $msg = $entry['message'];
-
-            if (preg_match('/wins the game|has conceded from the game|has lost connection to the game/', $msg)) {
-                $gameEndSeen = true;
-            }
-
-            if ($gameEndSeen && (preg_match('/^@P\w+ rolled a \d/', $msg) || preg_match('/^@P@P\w+ joined the game/', $msg))) {
-                $games[] = $current;
-                $current = [];
-                $gameEndSeen = false;
-            }
-
-            $current[] = $entry;
-        }
-
-        if (! empty($current)) {
-            $games[] = $current;
-        }
-
-        return $games;
     }
 }
