@@ -12,7 +12,7 @@ class ScreenshotDataController extends Controller
 {
     public function __invoke(Deck $deck): JsonResponse
     {
-        $deck->loadCount(['wonMatches', 'lostMatches', 'matches']);
+        $deck->loadCount(['wonMatches', 'lostMatches']);
 
         $deckVersion = $deck->latestVersion;
 

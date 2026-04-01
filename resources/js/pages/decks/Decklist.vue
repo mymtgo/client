@@ -6,6 +6,7 @@ import ManaSymbols from '@/components/ManaSymbols.vue';
 import DeckScreenshot from '@/components/decks/DeckScreenshot.vue';
 import ScreenshotDataController from '@/actions/App/Http/Controllers/Decks/ScreenshotDataController';
 import { useScreenshot } from '@/composables/useScreenshot';
+import { useToast } from '@/composables/useToast';
 import type { VersionStats, VersionDecklist } from '@/types/decks';
 import { computed, nextTick, ref } from 'vue';
 import { Camera } from 'lucide-vue-next';
@@ -107,12 +108,17 @@ const screenshotRef = ref<InstanceType<typeof DeckScreenshot> | null>(null);
 const showScreenshot = ref(false);
 const screenshotData = ref<Record<string, any> | null>(null);
 const { capture, capturing } = useScreenshot();
+const { add: addToast } = useToast();
 
 async function copyDeckScreenshot() {
     if (capturing.value) return;
 
     try {
         const response = await fetch(ScreenshotDataController.url(props.deck.id));
+        if (!response.ok) {
+            addToast({ type: 'error', title: 'Screenshot failed', message: 'Could not load deck data' });
+            return;
+        }
         screenshotData.value = await response.json();
         showScreenshot.value = true;
         await nextTick();
