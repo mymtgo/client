@@ -134,8 +134,14 @@ const sideboardCount = props.sideboardCards.reduce((s, c) => s + c.quantity, 0);
                 <div :style="{ fontSize: '13px', color: colors.muted, marginTop: '2px' }">{{ format }}</div>
             </div>
 
-            <!-- Stats: Mana Curve + Type Distribution -->
-            <div :style="{ flex: '1', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }">
+            <!-- Stats: Type Distribution + Mana Curve -->
+            <div :style="{ flex: '1', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '16px' }">
+                <div :style="{ display: 'flex', gap: '10px', fontSize: '11px', color: colors.muted, flexWrap: 'wrap' }">
+                    <span v-for="t in typeDistribution" :key="t.type">
+                        {{ t.type }}
+                        <strong :style="{ color: colors.text }">{{ t.count }}</strong>
+                    </span>
+                </div>
                 <div :style="{ display: 'flex', alignItems: 'flex-end', gap: '3px', height: '50px' }">
                     <div
                         v-for="bucket in cmcDistribution"
@@ -158,12 +164,6 @@ const sideboardCount = props.sideboardCards.reduce((s, c) => s + c.quantity, 0);
                         />
                         <span :style="{ fontSize: '9px', color: colors.muted }">{{ bucket.cmc }}</span>
                     </div>
-                </div>
-                <div :style="{ display: 'flex', gap: '10px', fontSize: '11px', color: colors.muted, flexWrap: 'wrap' }">
-                    <span v-for="t in typeDistribution" :key="t.type">
-                        {{ t.type }}
-                        <strong :style="{ color: colors.text }">{{ t.count }}</strong>
-                    </span>
                 </div>
             </div>
 
