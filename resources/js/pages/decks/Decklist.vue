@@ -9,7 +9,7 @@ import { useScreenshot } from '@/composables/useScreenshot';
 import { useToast } from '@/composables/useToast';
 import type { VersionStats, VersionDecklist } from '@/types/decks';
 import { computed, nextTick, ref } from 'vue';
-import { Camera } from 'lucide-vue-next';
+import { Camera, Loader2 } from 'lucide-vue-next';
 
 defineOptions({ layout: [AppLayout, DeckViewLayout] });
 
@@ -107,11 +107,13 @@ const decklistOrgUrl = computed(() => {
 const screenshotRef = ref<InstanceType<typeof DeckScreenshot> | null>(null);
 const showScreenshot = ref(false);
 const screenshotData = ref<Record<string, any> | null>(null);
-const { capture, capturing } = useScreenshot();
+const screenshotLoading = ref(false);
+const { capture } = useScreenshot();
 const { add: addToast } = useToast();
 
 async function copyDeckScreenshot() {
-    if (capturing.value) return;
+    if (screenshotLoading.value) return;
+    screenshotLoading.value = true;
 
     try {
         const response = await fetch(ScreenshotDataController.url(props.deck.id));
@@ -130,6 +132,7 @@ async function copyDeckScreenshot() {
     } finally {
         showScreenshot.value = false;
         screenshotData.value = null;
+        screenshotLoading.value = false;
     }
 }
 </script>
@@ -138,12 +141,13 @@ async function copyDeckScreenshot() {
     <div class="p-3 lg:p-4">
         <div class="mb-4 flex items-center justify-end gap-2">
             <button
-                :disabled="capturing"
+                :disabled="screenshotLoading"
                 class="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
                 @click="copyDeckScreenshot"
             >
-                <Camera class="size-4" />
-                {{ capturing ? 'Capturing...' : 'Share Deck' }}
+                <Loader2 v-if="screenshotLoading" class="size-4 animate-spin" />
+                <Camera v-else class="size-4" />
+                {{ screenshotLoading ? 'Generating...' : 'Share Deck' }}
             </button>
             <a :href="decklistOrgUrl" target="_blank" class="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground">
                 Deck Registration
