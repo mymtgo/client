@@ -23,6 +23,7 @@ const props = defineProps<{
     };
     filters: { search: string; status: string };
     missingCount: number;
+    missingArtCount: number;
     totalCount: number;
 }>();
 
@@ -76,6 +77,7 @@ const columns = [
     { key: 'oracle_id', label: 'Oracle ID' },
     { key: 'scryfall_id', label: 'Scryfall ID' },
     { key: 'image', label: 'Image' },
+    { key: 'art_crop', label: 'Artwork' },
 ];
 </script>
 
@@ -89,6 +91,10 @@ const columns = [
                     {{ totalCount }} cards &middot;
                     <span :class="missingCount > 0 ? 'text-amber-400' : 'text-success'">
                         {{ missingCount }} missing data
+                    </span>
+                    &middot;
+                    <span :class="missingArtCount > 0 ? 'text-amber-400' : 'text-success'">
+                        {{ missingArtCount }} missing artwork
                     </span>
                 </span>
 
@@ -108,6 +114,7 @@ const columns = [
                     <SelectContent>
                         <SelectItem value="__all__">All cards</SelectItem>
                         <SelectItem value="missing">Missing data</SelectItem>
+                        <SelectItem value="missing_art">Missing artwork</SelectItem>
                         <SelectItem value="complete">Complete</SelectItem>
                     </SelectContent>
                 </Select>
@@ -115,9 +122,9 @@ const columns = [
                 <Button size="sm" variant="outline" class="h-8" @click="applyFilters">Filter</Button>
                 <Button size="sm" variant="outline" class="h-8" @click="clearFilters">Clear</Button>
 
-                <Button size="sm" class="h-8" :disabled="populating || missingCount === 0" @click="populateNow">
+                <Button size="sm" class="h-8" :disabled="populating || (missingCount === 0 && missingArtCount === 0)" @click="populateNow">
                     <Download class="mr-1.5 h-3.5 w-3.5" :class="{ 'animate-bounce': populating }" />
-                    Fetch Missing ({{ missingCount }})
+                    Fetch Missing ({{ missingCount + missingArtCount }})
                 </Button>
 
                 <Button size="sm" variant="outline" class="h-8" @click="refresh">
@@ -143,8 +150,8 @@ const columns = [
                             :class="{ 'bg-amber-500/5': isMissing(card) }"
                         >
                             <TableCell v-for="col in columns" :key="col.key" class="whitespace-nowrap px-2 py-1.5 text-xs">
-                                <template v-if="col.key === 'image'">
-                                    <span v-if="card.image" class="text-success">Yes</span>
+                                <template v-if="col.key === 'art_crop' || col.key === 'image'">
+                                    <span v-if="card[col.key]" class="text-success">Yes</span>
                                     <span v-else class="text-destructive">No</span>
                                 </template>
                                 <template v-else-if="col.key === 'scryfall_id' || col.key === 'oracle_id'">

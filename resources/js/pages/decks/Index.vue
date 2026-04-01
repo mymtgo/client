@@ -166,7 +166,7 @@ function updatePage(page: number) {
                         <CardContent class="relative flex flex-col gap-3" :class="deck.coverArt ? '[text-shadow:_0_1px_4px_rgb(0_0_0_/_80%)]' : ''">
                             <!-- Name + meta -->
                             <div class="flex justify-between gap-1">
-                                <div class="flex items-center gap-1.5">
+                                <div class="flex min-w-0 items-center gap-1.5">
                                     <span class="truncate leading-tight font-semibold">{{ deck.name }}</span>
                                     <ManaSymbols v-if="deck.colorIdentity" :symbols="deck.colorIdentity" class="shrink-0" />
                                 </div>

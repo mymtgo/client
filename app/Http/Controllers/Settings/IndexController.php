@@ -18,7 +18,8 @@ class IndexController extends Controller
     private function getLocalImagesSize(): string
     {
         $files = Storage::disk('cards')->allFiles();
-        $bytes = array_sum(array_map(fn (string $file) => Storage::disk('cards')->size($file), $files));
+        $disk = Storage::disk('cards');
+        $bytes = array_sum(array_map(fn (string $file) => $disk->exists($file) ? $disk->size($file) : 0, $files));
 
         return match (true) {
             $bytes >= 1073741824 => number_format($bytes / 1073741824, 1).' GB',
