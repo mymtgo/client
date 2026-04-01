@@ -32,7 +32,7 @@ class GetStandoutCards
             ->first();
 
         $mostSeen = $stats
-            ->filter(fn ($c) => ! $c['isSideboard'] && $c['totalSeen'] > 0)
+            ->filter(fn ($c) => ! $c['isSideboard'] && ! str_contains($c['type'] ?? '', 'Land') && $c['totalSeen'] > 0)
             ->sortByDesc('totalSeen')
             ->first();
 
