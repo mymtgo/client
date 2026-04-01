@@ -81,3 +81,46 @@ it('returns per-game cards split by game boundaries', function () {
         }
     }
 });
+
+it('includes cast count on each card entry', function () {
+    $raw = file_get_contents(base_path('tests/fixtures/gamelogs/clean_2_0_win.dat'));
+    $parsed = ParseGameLogBinary::run($raw);
+    $entries = $parsed['entries'];
+
+    $result = ExtractCardsFromGameLog::run($entries);
+
+    $firstPlayer = $result['players'][0];
+    $firstCard = $result['cards_by_player'][$firstPlayer][0];
+    expect($firstCard)->toHaveKeys(['mtgo_id', 'name', 'cast']);
+    expect($firstCard['cast'])->toBeInt();
+});
+
+it('counts casts and plays as cast actions', function () {
+    $raw = file_get_contents(base_path('tests/fixtures/gamelogs/clean_2_0_win.dat'));
+    $parsed = ParseGameLogBinary::run($raw);
+    $entries = $parsed['entries'];
+
+    $result = ExtractCardsFromGameLog::run($entries);
+
+    $firstPlayer = $result['players'][0];
+    $allCards = $result['cards_by_player'][$firstPlayer];
+    $castCards = array_filter($allCards, fn ($c) => $c['cast'] > 0);
+
+    expect($castCards)->not->toBeEmpty();
+});
+
+it('includes cast counts in per-game card breakdowns', function () {
+    $raw = file_get_contents(base_path('tests/fixtures/gamelogs/clean_2_0_win.dat'));
+    $parsed = ParseGameLogBinary::run($raw);
+    $entries = $parsed['entries'];
+
+    $result = ExtractCardsFromGameLog::run($entries);
+
+    foreach ($result['cards_by_game'] as $gameCards) {
+        foreach ($gameCards as $cards) {
+            foreach ($cards as $card) {
+                expect($card)->toHaveKeys(['mtgo_id', 'name', 'cast']);
+            }
+        }
+    }
+});

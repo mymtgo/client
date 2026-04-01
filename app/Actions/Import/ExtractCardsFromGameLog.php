@@ -12,7 +12,7 @@ class ExtractCardsFromGameLog
      * Returns match-level aggregates (cards_by_player) and per-game breakdowns (cards_by_game).
      *
      * @param  array<int, array{timestamp: string, message: string}>  $entries
-     * @return array{players: string[], cards_by_player: array<string, array<int, array{mtgo_id: int, name: string}>>, cards_by_game: array<int, array<string, array<int, array{mtgo_id: int, name: string}>>>}
+     * @return array{players: string[], cards_by_player: array<string, array<int, array{mtgo_id: int, name: string, cast: int}>>, cards_by_game: array<int, array<string, array<int, array{mtgo_id: int, name: string, cast: int}>>>}
      */
     public static function run(array $entries): array
     {
@@ -37,10 +37,17 @@ class ExtractCardsFromGameLog
             foreach ($players as $player) {
                 foreach ($gameCards[$player] ?? [] as $card) {
                     if (isset($matchSeen[$player][$card['mtgo_id']])) {
+                        // Sum cast count from this game into existing match-level entry
+                        $matchSeen[$player][$card['mtgo_id']] += $card['cast'];
+                        $idx = array_search($card['mtgo_id'], array_column($cardsByPlayer[$player], 'mtgo_id'));
+                        if ($idx !== false) {
+                            $cardsByPlayer[$player][$idx]['cast'] += $card['cast'];
+                        }
+
                         continue;
                     }
 
-                    $matchSeen[$player][$card['mtgo_id']] = true;
+                    $matchSeen[$player][$card['mtgo_id']] = $card['cast'];
                     $cardsByPlayer[$player][] = $card;
                 }
             }
@@ -58,15 +65,18 @@ class ExtractCardsFromGameLog
      *
      * @param  array<int, array{timestamp: string, message: string}>  $entries
      * @param  array<int, string>  $players
-     * @return array<string, array<int, array{mtgo_id: int, name: string}>>
+     * @return array<string, array<int, array{mtgo_id: int, name: string, cast: int}>>
      */
     private static function extractFromEntries(array $entries, array $players): array
     {
         $cardsByPlayer = [];
         $seen = [];
+        // Track cast counts per player per mtgo_id
+        $castCounts = [];
 
         foreach ($players as $player) {
             $cardsByPlayer[$player] = [];
+            $castCounts[$player] = [];
         }
 
         foreach ($entries as $entry) {
@@ -77,6 +87,9 @@ class ExtractCardsFromGameLog
                     continue;
                 }
 
+                $quotedPlayer = preg_quote($player, '/');
+                $isCast = (bool) preg_match('/@P'.$quotedPlayer.' (?:casts|plays) /', $msg);
+
                 preg_match_all('/@\[([^@]+)@:(\d+),(\d+):@\]/', $msg, $matches, PREG_SET_ORDER);
 
                 foreach ($matches as $m) {
@@ -84,6 +97,10 @@ class ExtractCardsFromGameLog
                     // Game log IDs are doubled CatalogIDs (front face = catId*2,
                     // back face = catId*2+1). Right-shift to get the real CatalogID.
                     $mtgoId = (int) $m[2] >> 1;
+
+                    if ($isCast) {
+                        $castCounts[$player][$mtgoId] = ($castCounts[$player][$mtgoId] ?? 0) + 1;
+                    }
 
                     if (isset($seen[$player][$mtgoId])) {
                         continue;
@@ -93,8 +110,16 @@ class ExtractCardsFromGameLog
                     $cardsByPlayer[$player][] = [
                         'mtgo_id' => $mtgoId,
                         'name' => $name,
+                        'cast' => 0,
                     ];
                 }
+            }
+        }
+
+        // Attach accumulated cast counts to each card entry
+        foreach ($players as $player) {
+            foreach ($cardsByPlayer[$player] as $idx => $card) {
+                $cardsByPlayer[$player][$idx]['cast'] = $castCounts[$player][$card['mtgo_id']] ?? 0;
             }
         }
 
