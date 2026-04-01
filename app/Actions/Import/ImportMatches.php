@@ -211,15 +211,13 @@ class ImportMatches
         $localPlayer = Player::firstOrCreate(['username' => $data['local_player']]);
         $opponent = Player::firstOrCreate(['username' => $data['opponent']]);
 
-        // Collect ALL card mtgo_ids (local + opponent) for seen tracking.
+        // Collect ALL cards (local + opponent) for stats tracking.
         // ComputeImportedCardGameStats filters against deck oracle_ids, so opponent
-        // cards that aren't in the deck are excluded naturally. Using all cards avoids
-        // the player attribution problem in game log messages where @P{player} can
-        // reference cards owned by either player.
+        // cards that aren't in the deck are excluded naturally.
         $allMatchCards = collect($data['local_cards'] ?? [])
             ->merge($data['opponent_cards'] ?? [])
-            ->pluck('mtgo_id')
-            ->unique()
+            ->unique('mtgo_id')
+            ->values()
             ->toArray();
 
         foreach ($data['games'] as $index => $gameData) {
@@ -228,9 +226,16 @@ class ImportMatches
             // Per-game: combine local + opponent cards for this game
             $gameLocalCards = $gameData['local_cards'] ?? [];
             $gameOpponentCards = $gameData['opponent_cards'] ?? [];
-            $seenMtgoIds = ! empty($gameLocalCards) || ! empty($gameOpponentCards)
-                ? collect($gameLocalCards)->merge($gameOpponentCards)->pluck('mtgo_id')->unique()->toArray()
-                : $allMatchCards;
+            $cardStats = ! empty($gameLocalCards) || ! empty($gameOpponentCards)
+                ? collect($gameLocalCards)->merge($gameOpponentCards)
+                    ->unique('mtgo_id')
+                    ->map(fn ($card) => ['mtgo_id' => $card['mtgo_id'], 'cast' => $card['cast'] ?? 0])
+                    ->values()
+                    ->toArray()
+                : collect($allMatchCards)
+                    ->map(fn ($card) => ['mtgo_id' => $card['mtgo_id'], 'cast' => $card['cast'] ?? 0])
+                    ->values()
+                    ->toArray();
 
             // Build opponent deck_json from per-game opponent cards
             $opponentDeckJson = null;
@@ -271,7 +276,7 @@ class ImportMatches
                 ComputeImportedCardGameStats::run(
                     $game,
                     $match->deck_version_id,
-                    $seenMtgoIds,
+                    $cardStats,
                     isPostboard: $index > 0
                 );
             }
