@@ -54,22 +54,26 @@ const clearArchetype = (matchId: number) => {
 const detectArchetype = (matchId: number) => {
     detectingMatchId.value = matchId;
 
-    router.post(DetectArchetypeController({ id: matchId }).url, {}, {
-        preserveScroll: true,
-        onSuccess: () => {
-            const match = props.matches.find(m => m.id === matchId);
-            if (!match?.opponentArchetypes?.[0]?.archetype) {
-                toast({
-                    type: 'error',
-                    title: 'Detection failed',
-                    message: 'Could not determine the opponent\'s archetype for this match.',
-                });
-            }
+    router.post(
+        DetectArchetypeController({ id: matchId }).url,
+        {},
+        {
+            preserveScroll: true,
+            onSuccess: () => {
+                const match = props.matches.find((m) => m.id === matchId);
+                if (!match?.opponentArchetypes?.[0]?.archetype) {
+                    toast({
+                        type: 'error',
+                        title: 'Detection failed',
+                        message: "Could not determine the opponent's archetype for this match.",
+                    });
+                }
+            },
+            onFinish: () => {
+                detectingMatchId.value = null;
+            },
         },
-        onFinish: () => {
-            detectingMatchId.value = null;
-        },
-    });
+    );
 };
 </script>
 
@@ -78,15 +82,15 @@ const detectArchetype = (matchId: number) => {
     <MatchNotesDialog ref="notesDialog" />
 
     <Table>
-        <TableHeader class="bg-muted">
+        <TableHeader class="sticky top-0 z-10 backdrop-blur-sm">
             <TableRow>
                 <TableHead>Result</TableHead>
-                <TableHead>Type</TableHead>
                 <TableHead>Opponent</TableHead>
                 <TableHead>Archetype</TableHead>
                 <TableHead></TableHead>
-                <TableHead>Games won</TableHead>
-                <TableHead>Games lost</TableHead>
+                <TableHead class="text-center">Game 1</TableHead>
+                <TableHead class="text-center">Game 2</TableHead>
+                <TableHead class="text-center">Game 3</TableHead>
                 <TableHead>Duration</TableHead>
                 <TableHead>Date</TableHead>
                 <TableHead></TableHead>
@@ -100,13 +104,9 @@ const detectArchetype = (matchId: number) => {
                             <TableCell>
                                 <ResultBadge :won="match.gamesWon > match.gamesLost" v-if="match.gamesWon !== match.gamesLost" :showText="true" />
                             </TableCell>
-                            <TableCell>
-                                <span v-if="match.leagueGame">League</span>
-                                <span v-if="!match.leagueGame">Casual</span>
-                            </TableCell>
                             <TableCell class="font-medium">
                                 <span v-if="match.opponentName">{{ match.opponentName }}</span>
-                                <span v-else class="text-muted-foreground text-xs">—</span>
+                                <span v-else class="text-xs text-muted-foreground">—</span>
                             </TableCell>
                             <TableCell>
                                 <div class="flex items-center gap-1" v-if="match.opponentArchetypes?.[0]?.archetype">
@@ -122,11 +122,16 @@ const detectArchetype = (matchId: number) => {
                                     <ManaSymbols :symbols="match.opponentArchetypes[0].archetype.colorIdentity" />
                                 </div>
                             </TableCell>
-                            <TableCell>
-                                {{ match.gamesWon }}
-                            </TableCell>
-                            <TableCell>
-                                {{ match.gamesLost }}
+                            <TableCell v-for="gameIdx in 3" :key="gameIdx" class="text-center text-sm">
+                                <template v-if="match.gameResults?.[gameIdx - 1]">
+                                    <span :class="match.gameResults[gameIdx - 1].result === 'W' ? 'text-success' : 'text-destructive'">
+                                        {{ match.gameResults[gameIdx - 1].result === 'W' ? 'Win' : 'Loss' }}
+                                    </span>
+                                    <span v-if="match.gameResults[gameIdx - 1].onPlay !== null" class="text-xs text-muted-foreground">
+                                        ({{ match.gameResults[gameIdx - 1].onPlay ? 'OTP' : 'OTD' }})
+                                    </span>
+                                </template>
+                                <span v-else class="text-muted-foreground">—</span>
                             </TableCell>
                             <TableCell>
                                 {{ match.matchTime }}
@@ -141,12 +146,11 @@ const detectArchetype = (matchId: number) => {
                                             <NotepadText :size="14" class="text-muted-foreground" />
                                         </TooltipTrigger>
                                         <TooltipContent side="left" class="max-w-xs">
-                                            <p class="whitespace-pre-wrap text-xs">{{ match.notes }}</p>
+                                            <p class="text-xs whitespace-pre-wrap">{{ match.notes }}</p>
                                         </TooltipContent>
                                     </Tooltip>
                                 </TooltipProvider>
                             </TableCell>
-
                         </TableRow>
                     </ContextMenuTrigger>
                     <ContextMenuContent>
@@ -155,10 +159,7 @@ const detectArchetype = (matchId: number) => {
                         </ContextMenuItem>
                         <ContextMenuItem @click="detectArchetype(match.id)">Detect archetype</ContextMenuItem>
                         <ContextMenuItem @click="archetypeDialog?.openForMatch(match.id, match.format)">Set manual archetype</ContextMenuItem>
-                        <ContextMenuItem
-                            v-if="match.opponentArchetypes?.[0]?.archetype"
-                            @click="clearArchetype(match.id)"
-                        >
+                        <ContextMenuItem v-if="match.opponentArchetypes?.[0]?.archetype" @click="clearArchetype(match.id)">
                             Clear archetype
                         </ContextMenuItem>
                         <ContextMenuItem @click="deleteMatch(match.id)">Remove from stats</ContextMenuItem>

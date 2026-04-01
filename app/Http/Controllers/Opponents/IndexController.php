@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Opponents;
 use App\Http\Controllers\Controller;
 use App\Models\Account;
 use App\Models\MtgoMatch;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -66,6 +67,7 @@ class IndexController extends Controller
                     'formats' => $formats,
                     'archetypes' => $archetypes,
                     'lastPlayedAt' => $rows->max('started_at'),
+                    'lastPlayedAtHuman' => Carbon::parse($rows->max('started_at'))->diffForHumans(),
                 ];
             })
             ->values()

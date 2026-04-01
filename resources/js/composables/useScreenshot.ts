@@ -2,7 +2,7 @@ import { toPng } from 'html-to-image';
 import { ref } from 'vue';
 import { useToast } from './useToast';
 
-export function useLeagueScreenshot() {
+export function useScreenshot() {
     const capturing = ref(false);
     const { add } = useToast();
 
@@ -24,12 +24,12 @@ export function useLeagueScreenshot() {
                 await navigator.clipboard.write([
                     new ClipboardItem({ 'image/png': blob }),
                 ]);
-                add({ type: 'success', title: 'Copied!', message: 'League screenshot copied to clipboard' });
+                add({ type: 'success', title: 'Copied!', message: 'Screenshot copied to clipboard' });
             } catch {
                 add({ type: 'error', title: 'Copy failed', message: 'Could not write to clipboard' });
             }
         } catch (error) {
-            console.error('[LeagueScreenshot] Capture failed:', error);
+            console.error('[Screenshot] Capture failed:', error);
             add({ type: 'error', title: 'Screenshot failed', message: 'Could not capture the element' });
         }
 

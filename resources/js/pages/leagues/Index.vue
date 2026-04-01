@@ -3,13 +3,9 @@ import LeagueTable from '@/components/leagues/LeagueTable.vue';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import dayjs from 'dayjs';
-import relativeTime from 'dayjs/plugin/relativeTime';
 import { ChevronDown, Ghost, Trophy } from 'lucide-vue-next';
 import type { LeagueRun } from '@/types/leagues';
 import { computed, ref } from 'vue';
-
-dayjs.extend(relativeTime);
 
 const props = defineProps<{
     leagues: LeagueRun[];
@@ -41,7 +37,7 @@ const filteredRuns = computed(() =>
             return true;
         })
         .slice()
-        .sort((a, b) => dayjs(b.startedAt).diff(dayjs(a.startedAt))),
+        .sort((a, b) => (b.startedAt ?? '').localeCompare(a.startedAt ?? '')),
 );
 
 const kpis = computed(() => {

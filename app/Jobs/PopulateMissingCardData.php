@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Actions\Cards\CreateMissingCardsFromTimelines;
+use App\Actions\Cards\DownloadCardImage;
 use App\Actions\Cards\PopulateTokensFromXml;
 use App\Actions\RegisterDevice;
 use App\Models\Card;
@@ -61,6 +62,8 @@ class PopulateMissingCardData implements ShouldQueue
 
             $cardsResponse = collect($response->json());
 
+            $downloadImages = (bool) Settings::get('local_images');
+
             foreach ($regularCards as $card) {
                 $cardData = $cardsResponse->first(
                     fn ($data) => ($data['value'] ?? null) == $card->mtgo_id
@@ -80,8 +83,17 @@ class PopulateMissingCardData implements ShouldQueue
                     'color_identity' => collect(explode(',', $cardData['color_identity']))->map(function ($color) {
                         return ! $color ? 'C' : $color;
                     })->join(','),
+                    'colors' => $cardData['colors'] ?? null,
+                    'cmc' => $cardData['cmc'] ?? null,
+                    'set_name' => $cardData['set_name'] ?? null,
+                    'set_code' => $cardData['set'] ?? null,
+                    'art_crop' => $cardData['art_crop'] ?? null,
                     'image' => $cardData['image'],
                 ]);
+
+                if ($downloadImages) {
+                    DownloadCardImage::run($card);
+                }
             }
 
             foreach ($tokenCards as $card) {
@@ -101,8 +113,17 @@ class PopulateMissingCardData implements ShouldQueue
                     'color_identity' => $cardData['color_identity']
                         ? collect(explode(',', $cardData['color_identity']))->map(fn ($c) => ! $c ? 'C' : $c)->join(',')
                         : $card->color_identity,
+                    'colors' => $cardData['colors'] ?? null,
+                    'cmc' => $cardData['cmc'] ?? null,
+                    'set_name' => $cardData['set_name'] ?? null,
+                    'set_code' => $cardData['set'] ?? null,
+                    'art_crop' => $cardData['art_crop'] ?? null,
                     'image' => $cardData['image'],
                 ]);
+
+                if ($downloadImages) {
+                    DownloadCardImage::run($card);
+                }
             }
         } catch (\Throwable $e) {
             report($e);

@@ -20,7 +20,10 @@ class DeckData extends Data
         public int $matchesLost,
         public int $winrate,
         public ?string $colorIdentity,
+        public ?string $coverArt,
+        public ?ArchetypeData $archetype,
         public ?Carbon $lastPlayedAt,
+        public ?string $lastPlayedAtHuman,
         public Lazy $matches,
         public Lazy $identity,
         public Lazy $cards,
@@ -43,7 +46,10 @@ class DeckData extends Data
             matchesLost: $deck->lost_matches_count ?: 0,
             winrate: (int) round($winrate * 100),
             colorIdentity: $deck->color_identity,
+            coverArt: $deck->cover?->art_crop_url,
+            archetype: $deck->archetype ? ArchetypeData::fromModel($deck->archetype) : null,
             lastPlayedAt: $deck->matches_max_started_at ? Carbon::parse($deck->matches_max_started_at) : null,
+            lastPlayedAtHuman: $deck->matches_max_started_at ? Carbon::parse($deck->matches_max_started_at)->diffForHumans() : null,
             matches: Lazy::whenLoaded('matches', $deck, fn () => MatchData::collect($deck->matches)),
             identity: Lazy::whenLoaded('cards', $deck, function () use ($deck) {
                 return $deck->cards->pluck('color_identity')->map(

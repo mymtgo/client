@@ -5,6 +5,7 @@ namespace App\Actions\Decks;
 use App\Actions\Util\Winrate;
 use App\Enums\MatchOutcome;
 use App\Models\Deck;
+use App\Models\DeckVersion;
 use App\Models\Game;
 use App\Models\League;
 use Carbon\Carbon;
@@ -17,10 +18,11 @@ class GetDeckStats
      *
      * @return array{wins: int, losses: int, gamesWon: int, gamesLost: int, matchWinrate: int, gameWinrate: int, otpWon: int, otpLost: int, otpRate: int, otdWon: int, otdLost: int, otdRate: int, trophies: int, allMatchIds: Collection}
      */
-    public static function run(Deck $deck, Carbon $from, Carbon $to): array
+    public static function run(Deck $deck, Carbon $from, Carbon $to, ?DeckVersion $deckVersion = null): array
     {
         $matchesQuery = $deck->matches()->select('matches.*')->where('state', 'complete')
-            ->whereBetween('started_at', [$from, $to]);
+            ->whereBetween('started_at', [$from, $to])
+            ->when($deckVersion, fn ($q) => $q->where('deck_version_id', $deckVersion->id));
 
         $wins = $matchesQuery->clone()->where('outcome', MatchOutcome::Win)->count();
         $losses = $matchesQuery->clone()->where('outcome', MatchOutcome::Loss)->count();
@@ -41,7 +43,9 @@ class GetDeckStats
         $totalMatches = $wins + $losses;
 
         // All match IDs for this deck (full history, not just date range)
-        $allMatchIds = $deck->matches()->select('matches.id')->where('state', 'complete')->pluck('matches.id');
+        $allMatchIds = $deck->matches()->select('matches.id')->where('state', 'complete')
+            ->when($deckVersion, fn ($q) => $q->where('deck_version_id', $deckVersion->id))
+            ->pluck('matches.id');
 
         // Trophies = completed real leagues where all 5 matches were won
         $trophies = League::whereHas('matches', fn ($q) => $q->whereIn('matches.id', $allMatchIds))

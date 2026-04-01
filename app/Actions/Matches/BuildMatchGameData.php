@@ -23,7 +23,7 @@ class BuildMatchGameData
         $opponentCardsSeen = collect($opponentPlayer?->pivot->deck_json ?? [])
             ->map(fn ($item) => [
                 'name' => $cardsByMtgoId->get($item['mtgo_id'])?->name ?? "Unknown ({$item['mtgo_id']})",
-                'image' => $cardsByMtgoId->get($item['mtgo_id'])?->image,
+                'image' => $cardsByMtgoId->get($item['mtgo_id'])?->image_url,
             ])
             ->unique('name')
             ->values()
@@ -72,7 +72,7 @@ class BuildMatchGameData
 
         $toCard = fn ($catalogId, bool $bottomed = false) => [
             'name' => $cardsByMtgoId->get($catalogId)?->name ?? "Unknown ({$catalogId})",
-            'image' => $cardsByMtgoId->get($catalogId)?->image,
+            'image' => $cardsByMtgoId->get($catalogId)?->image_url,
             'bottomed' => $bottomed,
         ];
 
@@ -117,7 +117,7 @@ class BuildMatchGameData
             ->map(fn ($catalogId) => [
                 'id' => $catalogId,
                 'name' => $cardsByMtgoId->get($catalogId)?->name ?? "Unknown ({$catalogId})",
-                'image' => $cardsByMtgoId->get($catalogId)?->image,
+                'image' => $cardsByMtgoId->get($catalogId)?->image_url,
             ])
             ->unique('id')
             ->values()
@@ -180,7 +180,7 @@ class BuildMatchGameData
                     ?? $cardsByMtgoId->first(fn ($c) => $c->oracle_id === $oracleId);
                 $changes[] = [
                     'name' => $card->name ?? 'Unknown',
-                    'image' => $card?->image,
+                    'image' => $card?->image_url,
                     'quantity' => $gameQty - $registeredQty,
                     'type' => 'in',
                 ];
@@ -194,7 +194,7 @@ class BuildMatchGameData
                     ?? $cardsByMtgoId->first(fn ($c) => $c->oracle_id === $oracleId);
                 $changes[] = [
                     'name' => $card->name ?? 'Unknown',
-                    'image' => $card?->image,
+                    'image' => $card?->image_url,
                     'quantity' => $registeredQty - $gameQty,
                     'type' => 'out',
                 ];

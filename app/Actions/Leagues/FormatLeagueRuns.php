@@ -4,8 +4,10 @@ namespace App\Actions\Leagues;
 
 use App\Models\League;
 use App\Models\MtgoMatch;
+use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 class FormatLeagueRuns
 {
@@ -43,28 +45,38 @@ class FormatLeagueRuns
         return DB::table('matches as m')
             ->join('deck_versions as dv', 'dv.id', '=', 'm.deck_version_id')
             ->join('decks as d', 'd.id', '=', 'dv.deck_id')
+            ->leftJoin('cards as c', 'c.id', '=', 'd.cover_id')
             ->whereIn('m.league_id', $leagueIds)
             ->where('m.state', 'complete')
             ->when($accountId, fn ($q, $id) => $q->where('d.account_id', $id))
             ->when($deckId, fn ($q, $id) => $q->where('d.id', $id))
-            ->select('m.id', 'm.league_id', 'm.outcome', 'm.started_at', 'd.id as deck_id', 'd.name as deck_name', 'd.color_identity as deck_color_identity')
+            ->select('m.id', 'm.league_id', 'm.outcome', 'm.started_at', 'd.id as deck_id', 'd.name as deck_name', 'd.color_identity as deck_color_identity', 'c.art_crop as deck_cover_art', 'c.local_art_crop as deck_local_cover_art')
             ->orderBy('m.started_at')
             ->get();
     }
 
+    /**
+     * Get individual game results with on_play status, grouped by match.
+     *
+     * @return Collection<int, Collection> match_id => collection of game rows (ordered by started_at)
+     */
     private static function getGameRecords(Collection $matchIds): Collection
     {
         if ($matchIds->isEmpty()) {
             return collect();
         }
 
-        return DB::table('games')
-            ->whereIn('match_id', $matchIds)
-            ->whereNotNull('won')
-            ->selectRaw('match_id, SUM(CASE WHEN won = 1 THEN 1 ELSE 0 END) as games_won, SUM(CASE WHEN won = 0 THEN 1 ELSE 0 END) as games_lost')
-            ->groupBy('match_id')
+        return DB::table('games as g')
+            ->leftJoin('game_player as gp', function ($join) {
+                $join->on('gp.game_id', '=', 'g.id')
+                    ->where('gp.is_local', true);
+            })
+            ->whereIn('g.match_id', $matchIds)
+            ->whereNotNull('g.won')
+            ->select('g.match_id', 'g.won', 'g.started_at', 'gp.on_play')
+            ->orderBy('g.started_at')
             ->get()
-            ->keyBy('match_id');
+            ->groupBy('match_id');
     }
 
     private static function getOpponentsByMatch(Collection $matchIds): Collection
@@ -116,31 +128,49 @@ class FormatLeagueRuns
         // Prefer league's direct deck version; fall back to most common deck in matches
         if ($league->deck_version_id && $league->deckVersion?->deck) {
             $deckModel = $league->deckVersion->deck;
-            $deck = ['id' => $deckModel->id, 'name' => $deckModel->name, 'colorIdentity' => $deckModel->color_identity];
+            $coverArtUrl = $deckModel->cover?->art_crop_url;
+            $deck = ['id' => $deckModel->id, 'name' => $deckModel->name, 'colorIdentity' => $deckModel->color_identity, 'coverArt' => $coverArtUrl, 'coverArtBase64' => self::toBase64($deckModel->cover?->art_crop, $deckModel->cover?->local_art_crop)];
         } else {
+            $topRow = $matches->groupBy('deck_id')->map->count()->sortDesc()->keys()
+                ->map(fn ($deckId) => $matches->firstWhere('deck_id', $deckId))
+                ->first();
+
+            $coverArtUrl = $topRow ? self::resolveArtCrop($topRow->deck_cover_art, $topRow->deck_local_cover_art) : null;
+
             $deck = $matches->groupBy('deck_id')
                 ->map->count()
                 ->sortDesc()
                 ->keys()
                 ->map(fn ($deckId) => $matches->firstWhere('deck_id', $deckId))
-                ->map(fn ($row) => ['id' => $row->deck_id, 'name' => $row->deck_name, 'colorIdentity' => $row->deck_color_identity])
+                ->map(fn ($row) => [
+                    'id' => $row->deck_id,
+                    'name' => $row->deck_name,
+                    'colorIdentity' => $row->deck_color_identity,
+                    'coverArt' => self::resolveArtCrop($row->deck_cover_art, $row->deck_local_cover_art),
+                    'coverArtBase64' => self::toBase64($row->deck_cover_art, $row->deck_local_cover_art),
+                ])
                 ->first();
         }
 
         $matchData = $matches->map(function ($row) use ($opponentByMatch, $gameRecords) {
             $opp = $opponentByMatch[$row->id] ?? null;
             $won = $row->outcome === 'win';
-            $record = $gameRecords->get($row->id);
-            $gamesWon = (int) ($record->games_won ?? 0);
-            $gamesLost = (int) ($record->games_lost ?? 0);
+            $games = $gameRecords->get($row->id, collect());
+
+            // Build per-game results with on_play status
+            $gameResults = $games->values()->map(fn ($g) => [
+                'result' => (bool) $g->won ? 'W' : 'L',
+                'onPlay' => $g->on_play !== null ? (bool) $g->on_play : null,
+            ])->all();
 
             return [
                 'id' => $row->id,
                 'result' => $won ? 'W' : 'L',
                 'opponentName' => $opp?->username,
                 'opponentArchetype' => $opp?->archetype_name,
-                'games' => "{$gamesWon}-{$gamesLost}",
+                'gameResults' => $gameResults,
                 'startedAt' => $row->started_at,
+                'startedAtHuman' => Carbon::parse($row->started_at)->diffForHumans(),
             ];
         })->values()->all();
 
@@ -169,10 +199,51 @@ class FormatLeagueRuns
             'phantom' => (bool) $league->phantom,
             'state' => $league->state->value,
             'startedAt' => $league->started_at,
+            'startedAtHuman' => $league->started_at ? Carbon::parse($league->started_at)->diffForHumans() : null,
             'deck' => $deck,
             'versionLabel' => $versionLabel,
             'results' => $results,
             'matches' => $matchData,
         ];
+    }
+
+    private static function resolveArtCrop(?string $artCrop, ?string $localArtCrop): ?string
+    {
+        return $localArtCrop ? Storage::disk('cards')->url($localArtCrop) : $artCrop;
+    }
+
+    private static function toBase64(?string $url, ?string $localStoragePath = null): ?string
+    {
+        if (! $url && ! $localStoragePath) {
+            return null;
+        }
+
+        try {
+            if ($localStoragePath && Storage::disk('cards')->exists($localStoragePath)) {
+                $contents = Storage::disk('cards')->get($localStoragePath);
+            } else {
+                if (! $url) {
+                    return null;
+                }
+
+                $contents = file_get_contents($url);
+            }
+
+            if ($contents === false || $contents === null) {
+                return null;
+            }
+
+            $mime = 'image/jpeg';
+            $source = $localStoragePath ?? $url ?? '';
+            if (str_contains($source, '.png')) {
+                $mime = 'image/png';
+            } elseif (str_contains($source, '.webp')) {
+                $mime = 'image/webp';
+            }
+
+            return 'data:'.$mime.';base64,'.base64_encode($contents);
+        } catch (\Throwable) {
+            return null;
+        }
     }
 }

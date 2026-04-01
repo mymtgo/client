@@ -14,6 +14,7 @@ class IndexController
     public function __invoke(Request $request): Response
     {
         $query = Deck::forActiveAccount()
+            ->with('cover')
             ->withCount(['wonMatches', 'lostMatches', 'matches'])
             ->withMax('matches', 'started_at');
 

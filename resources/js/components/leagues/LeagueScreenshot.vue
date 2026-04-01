@@ -19,14 +19,34 @@ const colors = {
 <template>
     <div
         :style="{
-            width: '480px',
+            width: '520px',
             backgroundColor: colors.bg,
             color: colors.text,
             fontFamily: 'system-ui, -apple-system, sans-serif',
             padding: '20px 24px',
             borderRadius: '12px',
+            position: 'relative',
+            overflow: 'hidden',
         }"
     >
+        <!-- Cover art background (base64 from server for html-to-image compatibility) -->
+        <img
+            v-if="league.deck?.coverArtBase64"
+            :src="league.deck.coverArtBase64"
+            :style="{
+                position: 'absolute',
+                top: '0',
+                left: '0',
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+                objectPosition: 'top',
+                opacity: '0.25',
+                pointerEvents: 'none',
+            }"
+        />
+        <!-- Content (above background) -->
+        <div :style="{ position: 'relative' }">
         <!-- Header -->
         <div :style="{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }">
             <div>
@@ -58,19 +78,32 @@ const colors = {
                     backgroundColor: index % 2 === 0 ? 'rgba(255, 255, 255, 0.04)' : 'transparent',
                 }"
             >
-                <div :style="{ color: match.result === 'W' ? colors.win : colors.loss, fontWeight: '600', width: '70px', flexShrink: '0' }">
+                <div :style="{ color: match.result === 'W' ? colors.win : colors.loss, fontWeight: '600', width: '50px', flexShrink: '0' }">
                     ● {{ match.result === 'W' ? 'Win' : 'Loss' }}
                 </div>
-                <div :style="{ flex: '1', color: match.opponentArchetype ? colors.text : colors.muted }">
-                    {{ match.opponentArchetype ?? 'Unknown or rogue archetype' }}
+                <div :style="{ width: '100px', flexShrink: '0', fontWeight: '500' }">
+                    {{ match.opponentName ?? '—' }}
                 </div>
-                <div :style="{ fontVariantNumeric: 'tabular-nums', color: colors.muted, flexShrink: '0' }">
-                    {{ match.games }}
+                <div :style="{ flex: '1', color: match.opponentArchetype ? colors.text : colors.muted }">
+                    {{ match.opponentArchetype ?? 'Unknown' }}
+                </div>
+                <div :style="{ display: 'flex', gap: '4px', alignItems: 'center', flexShrink: '0' }">
+                    <div
+                        v-for="(game, i) in match.gameResults"
+                        :key="i"
+                        :style="{
+                            width: '8px',
+                            height: '8px',
+                            borderRadius: '50%',
+                            backgroundColor: game.result === 'W' ? colors.win : colors.loss,
+                        }"
+                    />
                 </div>
             </div>
         </div>
 
         <!-- Footer -->
         <div :style="{ marginTop: '12px', textAlign: 'right', fontSize: '10px', color: colors.muted }">mymtgo.com</div>
+        </div>
     </div>
 </template>

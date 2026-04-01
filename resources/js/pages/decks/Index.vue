@@ -11,12 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import ManaSymbols from '@/components/ManaSymbols.vue';
 import WinRateBar from '@/components/WinRateBar.vue';
 import { router } from '@inertiajs/vue3';
-import dayjs from 'dayjs';
-import relativeTime from 'dayjs/plugin/relativeTime';
 import { ArrowUpDown, Layers, Search } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
-
-dayjs.extend(relativeTime);
 
 type Paginator<T> = { data: T[]; total: number; per_page: number; current_page: number };
 
@@ -154,14 +150,20 @@ function updatePage(page: number) {
 
             <template v-else>
                 <!-- Deck cards grid -->
-                <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                     <Card
                         v-for="deck in decks.data"
                         :key="deck.id"
-                        class="cursor-pointer transition-colors hover:bg-black/20"
+                        class="relative cursor-pointer overflow-hidden transition-colors hover:bg-black/20"
                         @click="router.visit(ShowController({ deck: deck.id }).url)"
                     >
-                        <CardContent class="flex flex-col gap-3">
+                        <img
+                            v-if="deck.coverArt"
+                            :src="deck.coverArt"
+                            :alt="deck.name"
+                            class="pointer-events-none absolute inset-0 h-full w-full object-cover object-top opacity-50"
+                        />
+                        <CardContent class="relative flex flex-col gap-3" :class="deck.coverArt ? '[text-shadow:_0_1px_4px_rgb(0_0_0_/_80%)]' : ''">
                             <!-- Name + meta -->
                             <div class="flex justify-between gap-1">
                                 <div class="flex items-center gap-1.5">
@@ -171,7 +173,7 @@ function updatePage(page: number) {
                                 <div class="flex shrink-0 items-center gap-2 text-xs text-muted-foreground">
                                     <Badge variant="outline" class="py-0 text-xs">{{ deck.format }}</Badge>
                                     <span>·</span>
-                                    <span>Last played {{ deck.lastPlayedAt ? dayjs(deck.lastPlayedAt).fromNow() : 'never' }}</span>
+                                    <span>Last played {{ deck.lastPlayedAtHuman ?? 'never' }}</span>
                                 </div>
                             </div>
 
@@ -179,7 +181,7 @@ function updatePage(page: number) {
                             <div class="flex items-end justify-between gap-4">
                                 <div class="flex flex-1 flex-col gap-1">
                                     <span class="text-xs text-muted-foreground">win rate</span>
-                                    <WinRateBar :winrate="deck.winrate" />
+                                    <WinRateBar :winrate="deck.winrate" :solid="!!deck.coverArt" />
                                 </div>
                                 <div class="text-right">
                                     <div class="text-sm font-medium tabular-nums">{{ deck.matchesCount }} matches</div>

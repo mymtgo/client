@@ -7,6 +7,7 @@ use App\Facades\Mtgo;
 use App\Http\Controllers\Controller;
 use App\Models\Account;
 use App\Models\MtgoMatch;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 use Native\Desktop\Facades\Settings;
@@ -14,6 +15,19 @@ use Native\Desktop\Facades\System;
 
 class IndexController extends Controller
 {
+    private function getLocalImagesSize(): string
+    {
+        $files = Storage::disk('cards')->allFiles();
+        $bytes = array_sum(array_map(fn (string $file) => Storage::disk('cards')->size($file), $files));
+
+        return match (true) {
+            $bytes >= 1073741824 => number_format($bytes / 1073741824, 1).' GB',
+            $bytes >= 1048576 => number_format($bytes / 1048576, 1).' MB',
+            $bytes >= 1024 => number_format($bytes / 1024, 0).' KB',
+            default => $bytes.' B',
+        };
+    }
+
     public function __invoke(): Response
     {
         $logPath = Mtgo::getLogPath();
@@ -38,6 +52,8 @@ class IndexController extends Controller
             'leagueWindowEnabled' => (bool) Settings::get('league_window'),
             'opponentWindowEnabled' => (bool) Settings::get('opponent_window'),
             'deckWindowEnabled' => (bool) Settings::get('deck_window'),
+            'localImages' => (bool) Settings::get('local_images'),
+            'localImagesSize' => $this->getLocalImagesSize(),
         ]);
     }
 }

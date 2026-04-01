@@ -8,6 +8,7 @@ import UpdateLogPathController from '@/actions/App/Http/Controllers/Settings/Upd
 import UpdateOverlaySettingsController from '@/actions/App/Http/Controllers/Settings/UpdateOverlaySettingsController';
 import UpdateShareStatsController from '@/actions/App/Http/Controllers/Settings/UpdateShareStatsController';
 import UpdateDebugModeController from '@/actions/App/Http/Controllers/Settings/UpdateDebugModeController';
+import UpdateLocalImagesController from '@/actions/App/Http/Controllers/Settings/UpdateLocalImagesController';
 import UpdateTimezoneController from '@/actions/App/Http/Controllers/Settings/UpdateTimezoneController';
 import UpdateWatcherController from '@/actions/App/Http/Controllers/Settings/UpdateWatcherController';
 import type { LeagueData } from '@/components/leagues/LeagueTracker.vue';
@@ -45,6 +46,8 @@ const props = defineProps<{
     opponentWindowEnabled: boolean;
     deckWindowEnabled: boolean;
     debugMode: boolean;
+    localImages: boolean;
+    localImagesSize: string;
     appVersion: string;
 }>();
 
@@ -131,6 +134,10 @@ function setDeckWindowEnabled(val: boolean) {
 
 function toggleDebugMode(val: boolean) {
     withProcessing('debugMode', 'patch', UpdateDebugModeController.url(), { enabled: val });
+}
+
+function toggleLocalImages(val: boolean) {
+    withProcessing('localImages', 'patch', UpdateLocalImagesController.url(), { enabled: val });
 }
 
 function updateTimezone(val: string) {
@@ -312,6 +319,30 @@ const sampleOpponent: OpponentData = {
                             :disabled="processing === 'hidePhantom'"
                         />
                     </div>
+                </CardContent>
+            </Card>
+
+            <!-- Storage -->
+            <Card>
+                <CardHeader>
+                    <CardTitle>Storage</CardTitle>
+                    <CardDescription>Manage how card imagery and data is stored on your machine.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <Label>Download card images locally</Label>
+                            <p class="text-sm text-muted-foreground">
+                                Save card imagery to your machine for speed and offline use. This will increase disk usage.
+                            </p>
+                        </div>
+                        <Switch
+                            :modelValue="props.localImages"
+                            @update:modelValue="toggleLocalImages"
+                            :disabled="processing === 'localImages'"
+                        />
+                    </div>
+                    <p class="text-sm text-muted-foreground">Current usage: {{ props.localImagesSize }}</p>
                 </CardContent>
             </Card>
 

@@ -36,6 +36,11 @@ class CardFactory extends Factory
             'sub_type' => null,
             'rarity' => null,
             'color_identity' => null,
+            'colors' => null,
+            'cmc' => null,
+            'set_name' => null,
+            'set_code' => null,
+            'art_crop' => null,
             'image' => null,
         ]);
     }

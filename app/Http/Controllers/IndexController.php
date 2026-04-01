@@ -11,21 +11,23 @@ use App\Actions\Dashboard\GetStreak;
 use App\Actions\Dashboard\GetWinrateDelta;
 use App\Actions\Leagues\GetActiveLeague;
 use App\Actions\Util\Winrate;
+use App\Concerns\HasTimeframeFilter;
 use App\Data\Front\DeckData;
 use App\Data\Front\MatchData;
 use App\Models\Account;
 use App\Models\Deck;
 use App\Models\Game;
 use App\Models\MtgoMatch;
-use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
 class IndexController extends Controller
 {
+    use HasTimeframeFilter;
+
     public function __invoke(Request $request)
     {
-        $timeframe = $request->input('timeframe', 'week');
+        $timeframe = $request->input('timeframe', 'alltime');
         $format = $request->input('format');
         [$start, $end] = $this->getTimeRange($timeframe);
         $accountId = Account::active()->value('id');
@@ -111,23 +113,5 @@ class IndexController extends Controller
                     ->get()
             )),
         ]);
-    }
-
-    /**
-     * @return array{0: Carbon, 1: Carbon}
-     */
-    private function getTimeRange(string $timeframe): array
-    {
-        $end = now()->endOfDay();
-
-        $start = match ($timeframe) {
-            'biweekly' => now()->subWeeks(2)->startOfDay(),
-            'monthly' => now()->subDays(30)->startOfDay(),
-            'year' => now()->startOfYear()->startOfDay(),
-            'alltime' => now()->startOfCentury()->startOfDay(),
-            default => now()->subDays(7)->startOfDay(),
-        };
-
-        return [$start, $end];
     }
 }

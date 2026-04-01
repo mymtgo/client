@@ -2,8 +2,10 @@
 import AppLayout from '@/AppLayout.vue';
 import DeckViewLayout from '@/Layouts/DeckViewLayout.vue';
 import DeckDashboard from '@/pages/decks/partials/DeckDashboard.vue';
+import TimeframeFilter from '@/components/TimeframeFilter.vue';
+import DashboardController from '@/actions/App/Http/Controllers/Decks/DashboardController';
+import { router } from '@inertiajs/vue3';
 import type { VersionStats } from '@/types/decks';
-import { computed } from 'vue';
 
 defineOptions({ layout: [AppLayout, DeckViewLayout] });
 
@@ -29,23 +31,38 @@ const props = defineProps<{
     chartData: { date: string; wins: number; losses: number; winrate: string | null }[];
     matchupSpread?: any[];
     leagueResults?: Record<string, number>;
+    standoutCards?: Record<string, any>;
+    latestLeague?: any;
 }>();
 
-const realVersions = computed(() => props.versions.filter((v) => v.id !== null));
-const activeVersion = computed((): VersionStats => {
-    return realVersions.value.find((v) => v.id === props.currentVersionId) ?? realVersions.value[realVersions.value.length - 1];
-});
+function setTimeframe(value: string) {
+    const query: Record<string, string> = {};
+    if (value !== 'alltime') query.timeframe = value;
+    router.get(DashboardController.url({ deck: props.deck.id }), query, { preserveScroll: true });
+}
 </script>
 
 <template>
-    <div class="p-3 lg:p-4">
+    <div class="space-y-4 p-3 lg:p-4">
+        <TimeframeFilter :model-value="timeframe" @update:model-value="setTimeframe" />
         <DeckDashboard
-            :active-version="activeVersion"
+            :matches-won="matchesWon"
+            :matches-lost="matchesLost"
+            :match-winrate="matchWinrate"
+            :games-won="gamesWon"
+            :games-lost="gamesLost"
+            :game-winrate="gameWinrate"
+            :games-otp-won="gamesOtpWon"
+            :games-otp-lost="gamesOtpLost"
+            :otp-rate="otpRate"
+            :games-otd-won="gamesOtdWon"
+            :games-otd-lost="gamesOtdLost"
+            :otd-rate="otdRate"
             :chart-data="chartData"
             :matchup-spread="matchupSpread"
             :league-results="leagueResults"
-            :deck-id="deck.id"
-            :timeframe="timeframe"
+            :standout-cards="standoutCards"
+            :latest-league="latestLeague"
         />
     </div>
 </template>
