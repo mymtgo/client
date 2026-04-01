@@ -43,23 +43,40 @@ const stackOffset = 22;
  * Group cards into stacks for grid rendering.
  * Each stack = one unique card with its quantity for vertical stacking.
  */
-const maxStack = 4;
-
 function groupIntoStacks(cards: ScreenshotCard[]) {
-    return cards.map((card) => {
-        const visualQty = Math.min(card.quantity, maxStack);
-        return {
-            name: card.name,
-            imageBase64: card.imageBase64,
-            quantity: visualQty,
-            height: cardHeight + (visualQty - 1) * stackOffset,
-        };
-    });
+    return cards.map((card) => ({
+        items: Array.from({ length: card.quantity }, () => ({ name: card.name, imageBase64: card.imageBase64 })),
+        height: cardHeight + (card.quantity - 1) * stackOffset,
+    }));
+}
+
+type StackItem = { name: string; imageBase64: string | null };
+
+/**
+ * Group sideboard cards into compact stacks of up to maxPerStack,
+ * stacking different cards together to save vertical space.
+ */
+function groupSideboardStacks(cards: ScreenshotCard[], maxPerStack = 4) {
+    // Flatten all cards into individual items (expanding by quantity)
+    const allItems: StackItem[] = cards.flatMap((card) =>
+        Array.from({ length: card.quantity }, () => ({ name: card.name, imageBase64: card.imageBase64 })),
+    );
+
+    // Chunk into groups of maxPerStack
+    const stacks: { items: StackItem[]; height: number }[] = [];
+    for (let i = 0; i < allItems.length; i += maxPerStack) {
+        const chunk = allItems.slice(i, i + maxPerStack);
+        stacks.push({
+            items: chunk,
+            height: cardHeight + (chunk.length - 1) * stackOffset,
+        });
+    }
+    return stacks;
 }
 
 const nonLandStacks = groupIntoStacks(props.nonLandCards);
 const landStacks = groupIntoStacks(props.landCards);
-const sideboardStacks = groupIntoStacks(props.sideboardCards);
+const sideboardStacks = groupSideboardStacks(props.sideboardCards);
 
 const cmcMax = Math.max(...props.cmcDistribution.map((d) => d.count), 1);
 
@@ -187,7 +204,7 @@ const sideboardCount = props.sideboardCards.reduce((s, c) => s + c.quantity, 0);
                 <div :style="{ display: 'flex', flexWrap: 'wrap', gap: '6px' }">
                     <div
                         v-for="(stack, i) in nonLandStacks"
-                        :key="`nl-${i}-${stack.name}`"
+                        :key="`nl-${i}`"
                         :style="{
                             position: 'relative',
                             width: `${cardWidth}px`,
@@ -195,16 +212,16 @@ const sideboardCount = props.sideboardCards.reduce((s, c) => s + c.quantity, 0);
                         }"
                     >
                         <img
-                            v-for="j in stack.quantity"
+                            v-for="(item, j) in stack.items"
                             :key="`nl-${i}-${j}`"
-                            :src="stack.imageBase64 ?? undefined"
-                            :alt="stack.name"
+                            :src="item.imageBase64 ?? undefined"
+                            :alt="item.name"
                             :style="{
                                 position: 'absolute',
                                 width: `${cardWidth}px`,
                                 borderRadius: '5px',
-                                top: `${(j - 1) * stackOffset}px`,
-                                zIndex: j,
+                                top: `${j * stackOffset}px`,
+                                zIndex: j + 1,
                             }"
                         />
                     </div>
@@ -217,7 +234,7 @@ const sideboardCount = props.sideboardCards.reduce((s, c) => s + c.quantity, 0);
                 <div :style="{ display: 'flex', flexWrap: 'wrap', gap: '6px' }">
                     <div
                         v-for="(stack, i) in landStacks"
-                        :key="`land-${i}-${stack.name}`"
+                        :key="`land-${i}`"
                         :style="{
                             position: 'relative',
                             width: `${cardWidth}px`,
@@ -225,16 +242,16 @@ const sideboardCount = props.sideboardCards.reduce((s, c) => s + c.quantity, 0);
                         }"
                     >
                         <img
-                            v-for="j in stack.quantity"
+                            v-for="(item, j) in stack.items"
                             :key="`land-${i}-${j}`"
-                            :src="stack.imageBase64 ?? undefined"
-                            :alt="stack.name"
+                            :src="item.imageBase64 ?? undefined"
+                            :alt="item.name"
                             :style="{
                                 position: 'absolute',
                                 width: `${cardWidth}px`,
                                 borderRadius: '5px',
-                                top: `${(j - 1) * stackOffset}px`,
-                                zIndex: j,
+                                top: `${j * stackOffset}px`,
+                                zIndex: j + 1,
                             }"
                         />
                     </div>
@@ -265,7 +282,7 @@ const sideboardCount = props.sideboardCards.reduce((s, c) => s + c.quantity, 0);
                 <div :style="{ display: 'flex', flexWrap: 'wrap', gap: '6px', maxWidth: `${cardWidth * 3 + 12}px` }">
                     <div
                         v-for="(stack, i) in sideboardStacks"
-                        :key="`sb-${i}-${stack.name}`"
+                        :key="`sb-${i}`"
                         :style="{
                             position: 'relative',
                             width: `${cardWidth}px`,
@@ -273,16 +290,16 @@ const sideboardCount = props.sideboardCards.reduce((s, c) => s + c.quantity, 0);
                         }"
                     >
                         <img
-                            v-for="j in stack.quantity"
+                            v-for="(item, j) in stack.items"
                             :key="`sb-${i}-${j}`"
-                            :src="stack.imageBase64 ?? undefined"
-                            :alt="stack.name"
+                            :src="item.imageBase64 ?? undefined"
+                            :alt="item.name"
                             :style="{
                                 position: 'absolute',
                                 width: `${cardWidth}px`,
                                 borderRadius: '5px',
-                                top: `${(j - 1) * stackOffset}px`,
-                                zIndex: j,
+                                top: `${j * stackOffset}px`,
+                                zIndex: j + 1,
                             }"
                         />
                     </div>
