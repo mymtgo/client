@@ -10,7 +10,7 @@ const props = defineProps<{
 }>();
 
 type SortKey = 'name' | 'matches' | 'record' | 'winrate';
-const sortBy = ref<SortKey>('winrate');
+const sortBy = ref<SortKey>('matches');
 const sortDesc = ref(true);
 
 function toggleSort(key: SortKey) {

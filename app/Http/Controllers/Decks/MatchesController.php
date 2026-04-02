@@ -59,12 +59,49 @@ class MatchesController extends Controller
             }
         }
         if ($archetype = $request->input('filter_archetype')) {
-            $query->whereHas('opponentArchetypes', fn ($q) => $q->where('archetype_id', $archetype));
+            if ($archetype === 'unknown') {
+                $query->whereDoesntHave('opponentArchetypes');
+            } else {
+                $query->whereHas('opponentArchetypes', fn ($q) => $q->where('archetype_id', $archetype));
+            }
+        }
+
+        $sortColumn = $request->input('sort', 'started_at');
+        $sortDir = $request->input('sort_dir', 'desc') === 'asc' ? 'asc' : 'desc';
+        $directSorts = ['started_at', 'outcome', 'games_won', 'games_lost'];
+
+        if ($sortColumn === 'archetype') {
+            $query->leftJoin('match_archetypes as ma_sort', function ($join) {
+                $join->on('ma_sort.mtgo_match_id', '=', 'matches.id')
+                    ->whereIn('ma_sort.player_id', function ($sub) {
+                        $sub->select('gp.player_id')
+                            ->from('game_player as gp')
+                            ->join('games as g', 'g.id', '=', 'gp.game_id')
+                            ->whereColumn('g.match_id', 'matches.id')
+                            ->where('gp.is_local', false)
+                            ->distinct();
+                    });
+            })
+                ->leftJoin('archetypes as a_sort', 'a_sort.id', '=', 'ma_sort.archetype_id')
+                ->orderBy('a_sort.name', $sortDir);
+        } elseif ($sortColumn === 'duration') {
+            $query->orderByRaw("(julianday(ended_at) - julianday(started_at)) {$sortDir}");
+        } elseif (preg_match('/^game_([123])$/', $sortColumn, $m)) {
+            $gameIndex = (int) $m[1] - 1;
+            $query->orderByRaw("(
+                SELECT g_sort.won FROM games g_sort
+                WHERE g_sort.match_id = matches.id
+                ORDER BY g_sort.started_at
+                LIMIT 1 OFFSET {$gameIndex}
+            ) {$sortDir}");
+        } elseif (in_array($sortColumn, $directSorts)) {
+            $query->orderBy($sortColumn, $sortDir);
+        } else {
+            $query->orderByDesc('started_at');
         }
 
         $matches = MatchData::collect(
             $query->with(['games.players', 'opponentArchetypes.archetype', 'opponentArchetypes.player', 'league'])
-                ->orderByDesc('started_at')
                 ->paginate(50)
         );
 
@@ -80,7 +117,17 @@ class MatchesController extends Controller
 
         $archetypes = Archetype::query()
             ->where('format', $archetypeFormat)
-            ->withCount(['matchArchetypes' => fn ($q) => $q->whereIn('mtgo_match_id', $allMatchIds)])
+            ->withCount(['matchArchetypes' => fn ($q) => $q
+                ->whereIn('mtgo_match_id', $allMatchIds)
+                ->whereIn('player_id', function ($sub) {
+                    $sub->select('gp.player_id')
+                        ->from('game_player as gp')
+                        ->join('games as g', 'g.id', '=', 'gp.game_id')
+                        ->whereColumn('g.match_id', 'match_archetypes.mtgo_match_id')
+                        ->where('gp.is_local', false)
+                        ->distinct();
+                }),
+            ])
             ->orderByDesc('match_archetypes_count')
             ->orderBy('name')
             ->get()
@@ -89,6 +136,13 @@ class MatchesController extends Controller
                 'matchCount' => $a->match_archetypes_count,
             ]);
 
+        $unknownArchetypeCount = $deck->matches()
+            ->select('matches.*')
+            ->where('state', 'complete')
+            ->whereIn('matches.id', $allMatchIds)
+            ->whereDoesntHave('opponentArchetypes')
+            ->count();
+
         return Inertia::render('decks/Matches', [
             ...$shared,
             'currentVersionId' => $deckVersion?->id,
@@ -96,6 +150,7 @@ class MatchesController extends Controller
             'timeframe' => $timeframe,
             'matches' => $matches,
             'archetypes' => $archetypes,
+            'unknownArchetypeCount' => $unknownArchetypeCount,
         ]);
     }
 }

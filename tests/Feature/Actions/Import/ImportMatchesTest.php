@@ -9,6 +9,7 @@ use App\Models\Deck;
 use App\Models\DeckVersion;
 use App\Models\MtgoMatch;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 
 uses(RefreshDatabase::class);
 
@@ -245,4 +246,25 @@ it('populates opponent deck_json from per-game opponent cards', function () {
     expect($opponent->pivot->deck_json)->toHaveCount(2);
     expect($opponent->pivot->deck_json[0]['mtgo_id'])->toBe(300);
     expect($opponent->pivot->deck_json[0]['quantity'])->toBe(1);
+});
+
+it('hydrateCards creates stubs and resolves oracle_ids by name', function () {
+    Card::factory()->create([
+        'mtgo_id' => 99999,
+        'name' => 'Lightning Bolt',
+        'oracle_id' => 'fake-oracle-bolt',
+    ]);
+
+    Http::fake([
+        '*/api/cards/by-mtgo-id' => Http::response([], 200),
+    ]);
+
+    ImportMatches::hydrateCards([
+        ['mtgo_id' => 11111, 'name' => 'Lightning Bolt'],
+    ]);
+
+    $card = Card::where('mtgo_id', 11111)->first();
+    expect($card)->not->toBeNull();
+    expect($card->name)->toBe('Lightning Bolt');
+    expect($card->oracle_id)->toBe('fake-oracle-bolt');
 });

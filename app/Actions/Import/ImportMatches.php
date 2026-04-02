@@ -156,6 +156,18 @@ class ImportMatches
                 }
             }
 
+            // Hydrate card stubs so oracle_ids are available for archetype detection
+            $cardsToHydrate = collect($localCards)
+                ->merge($opponentCards)
+                ->map(fn ($c) => ['mtgo_id' => $c['mtgo_id'], 'name' => $c['name']])
+                ->unique('mtgo_id')
+                ->values()
+                ->toArray();
+
+            if (! empty($cardsToHydrate)) {
+                self::hydrateCards($cardsToHydrate);
+            }
+
             $lastGameEnd = null;
             if (! empty($games)) {
                 $lastGameEnd = collect($games)->pluck('ended_at')->filter()->last();
@@ -284,32 +296,20 @@ class ImportMatches
     }
 
     /**
-     * Ensure all card mtgo_ids referenced by these matches have oracle_ids.
+     * Create card stubs and resolve oracle_ids for the given cards.
      *
      * 1. Creates stubs for unknown mtgo_ids
      * 2. Tries the API to populate them
      * 3. Falls back to name-based oracle_id resolution for any the API doesn't know
+     *
+     * @param  array<int, array{mtgo_id: int, name: string}>  $cards
      */
-    private static function ensureCardsPopulated(array $matches): void
+    public static function hydrateCards(array $cards): void
     {
-        // Collect mtgo_id => name from all card references
+        // Build mtgo_id => name map from the input
         $cardNames = [];
-
-        foreach ($matches as $data) {
-            foreach ($data['local_cards'] ?? [] as $card) {
-                $cardNames[$card['mtgo_id']] = $card['name'];
-            }
-            foreach ($data['opponent_cards'] ?? [] as $card) {
-                $cardNames[$card['mtgo_id']] = $card['name'];
-            }
-            foreach ($data['games'] ?? [] as $game) {
-                foreach ($game['local_cards'] ?? [] as $card) {
-                    $cardNames[$card['mtgo_id']] = $card['name'];
-                }
-                foreach ($game['opponent_cards'] ?? [] as $card) {
-                    $cardNames[$card['mtgo_id']] = $card['name'];
-                }
-            }
+        foreach ($cards as $card) {
+            $cardNames[$card['mtgo_id']] = $card['name'];
         }
 
         if (empty($cardNames)) {
@@ -370,6 +370,33 @@ class ImportMatches
                 ]));
             }
         }
+    }
+
+    /**
+     * Ensure all card mtgo_ids referenced by these matches have oracle_ids.
+     */
+    private static function ensureCardsPopulated(array $matches): void
+    {
+        $cards = [];
+
+        foreach ($matches as $data) {
+            foreach ($data['local_cards'] ?? [] as $card) {
+                $cards[$card['mtgo_id']] = ['mtgo_id' => $card['mtgo_id'], 'name' => $card['name']];
+            }
+            foreach ($data['opponent_cards'] ?? [] as $card) {
+                $cards[$card['mtgo_id']] = ['mtgo_id' => $card['mtgo_id'], 'name' => $card['name']];
+            }
+            foreach ($data['games'] ?? [] as $game) {
+                foreach ($game['local_cards'] ?? [] as $card) {
+                    $cards[$card['mtgo_id']] = ['mtgo_id' => $card['mtgo_id'], 'name' => $card['name']];
+                }
+                foreach ($game['opponent_cards'] ?? [] as $card) {
+                    $cards[$card['mtgo_id']] = ['mtgo_id' => $card['mtgo_id'], 'name' => $card['name']];
+                }
+            }
+        }
+
+        self::hydrateCards(array_values($cards));
     }
 
     private static function createGameLog(MtgoMatch $match, string $gameLogToken, string $dataPath): void

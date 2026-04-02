@@ -194,27 +194,8 @@ class ExtractCardsFromGameLog
             return [self::card($m[1], $m[2])];
         }
 
-        // "@PPlayer removes N counters from @[Card]." (loyalty, +1/+1, etc.)
-        if (preg_match('/@P'.$qp.' removes .+ from @\[([^@]+)@:(\d+),\d+:@\]/', $msg, $m)) {
-            return [self::card($m[1], $m[2])];
-        }
-
         // "@PPlayer names X for @[Card]." (Pithing Needle, Disruptor Flute, etc.)
         if (preg_match('/@P'.$qp.' names .+ for @\[([^@]+)@:(\d+),\d+:@\]/', $msg, $m)) {
-            return [self::card($m[1], $m[2])];
-        }
-
-        // "@PPlayer exiles @[Card1] with @[Card2]'s ability."
-        // Card2 (ability source) belongs to the player. Card1 might be the opponent's
-        // permanent (e.g. Solitude exiling opponent's creature), so only take Card2.
-        if (preg_match('/@P'.$qp.' exiles .+ with @\[([^@]+)@:(\d+),\d+:@\]/', $msg, $m)) {
-            return [self::card($m[1], $m[2])];
-        }
-
-        // "@PPlayer returns @[Card1] ... with @[Card2]."
-        // Card2 (the spell doing the returning) belongs to the player.
-        // Card1 may be the opponent's permanent. Only take Card2.
-        if (preg_match('/@P'.$qp.' returns .+ with @\[([^@]+)@:(\d+),\d+:@\]/', $msg, $m)) {
             return [self::card($m[1], $m[2])];
         }
 
@@ -223,6 +204,12 @@ class ExtractCardsFromGameLog
         // or ownership is ambiguous. We return nothing.
         // ---------------------------------------------------------------
 
+        // "@PPlayer removes N counters from @[Card]" — combat damage to planeswalkers
+        //   logs the attacker as removing loyalty from the defender's planeswalker
+        // "@PPlayer exiles @[Card1] with @[Card2]" — opponent ability resolution
+        //   (e.g. Subtlety ETB) logs the affected player with the opponent's ability source;
+        //   also wrong under Mindslaver where the controller uses the opponent's cards
+        // "@PPlayer returns @[Card1] with @[Card2]" — same as exiles-with
         // "@PPlayer draws a card with @[Card]" — ability source often opponent's
         // "@PPlayer is being attacked by @[Card]" — attacker is opponent's
         // "@PPlayer chooses to use @[Card]'s ability" — ambiguous ownership

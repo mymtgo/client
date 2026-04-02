@@ -124,3 +124,54 @@ it('includes cast counts in per-game card breakdowns', function () {
         }
     }
 });
+
+it('does not attribute a planeswalker to the player removing loyalty counters via combat', function () {
+    $entries = [
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@PAlpha joined the game.'],
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@PBravo joined the game.'],
+        ['timestamp' => '2026-01-01T00:00:01+00:00', 'message' => '@PBravo casts @[Karn, the Great Creator@:155958,100:@].'],
+        ['timestamp' => '2026-01-01T00:00:02+00:00', 'message' => '@PAlpha removes a loyalty counter from @[Karn, the Great Creator@:155958,100:@].'],
+    ];
+
+    $result = \App\Actions\Import\ExtractCardsFromGameLog::run($entries);
+
+    $alphaIds = collect($result['cards_by_player']['Alpha'])->pluck('mtgo_id')->toArray();
+    $bravoIds = collect($result['cards_by_player']['Bravo'])->pluck('mtgo_id')->toArray();
+
+    expect($alphaIds)->not->toContain(77979);
+    expect($bravoIds)->toContain(77979);
+});
+
+it('does not attribute the ability source to the affected player in exiles-with messages', function () {
+    $entries = [
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@PAlpha joined the game.'],
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@PBravo joined the game.'],
+        ['timestamp' => '2026-01-01T00:00:01+00:00', 'message' => '@PBravo casts @[Subtlety@:181014,200:@] by exiling a blue card from your hand with evoke.'],
+        ['timestamp' => '2026-01-01T00:00:02+00:00', 'message' => '@PAlpha exiles @[Sowing Mycospawn@:251694,201:@] with @[Subtlety@:181014,200:@]\'s ability.'],
+    ];
+
+    $result = \App\Actions\Import\ExtractCardsFromGameLog::run($entries);
+
+    $alphaIds = collect($result['cards_by_player']['Alpha'])->pluck('mtgo_id')->toArray();
+    $bravoIds = collect($result['cards_by_player']['Bravo'])->pluck('mtgo_id')->toArray();
+
+    expect($alphaIds)->not->toContain(90507);
+    expect($bravoIds)->toContain(90507);
+});
+
+it('does not attribute the ability source to the affected player in returns-with messages', function () {
+    $entries = [
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@PAlpha joined the game.'],
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@PBravo joined the game.'],
+        ['timestamp' => '2026-01-01T00:00:01+00:00', 'message' => '@PBravo casts @[Teferi, Time Raveler@:143200,300:@].'],
+        ['timestamp' => '2026-01-01T00:00:02+00:00', 'message' => '@PAlpha returns @[Sowing Mycospawn@:251694,301:@] to its owner\'s hand with @[Teferi, Time Raveler@:143200,300:@]\'s ability.'],
+    ];
+
+    $result = \App\Actions\Import\ExtractCardsFromGameLog::run($entries);
+
+    $alphaIds = collect($result['cards_by_player']['Alpha'])->pluck('mtgo_id')->toArray();
+    $bravoIds = collect($result['cards_by_player']['Bravo'])->pluck('mtgo_id')->toArray();
+
+    expect($alphaIds)->not->toContain(71600);
+    expect($bravoIds)->toContain(71600);
+});

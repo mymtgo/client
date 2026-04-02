@@ -14,11 +14,18 @@ import DetectArchetypeController from '@/actions/App/Http/Controllers/Matches/De
 import ShowController from '@/actions/App/Http/Controllers/Matches/ShowController';
 import SetArchetypeDialog from '@/components/matches/SetArchetypeDialog.vue';
 import { useToast } from '@/composables/useToast';
-import { NotepadText, RefreshCw } from 'lucide-vue-next';
+import { ArrowDown, ArrowUp, ArrowUpDown, NotepadText, RefreshCw } from 'lucide-vue-next';
+import SortableHeader from '@/components/SortableHeader.vue';
 
 const props = defineProps<{
     matches: App.Data.Front.MatchData[];
     archetypes?: App.Data.Front.ArchetypeData[];
+    sortBy?: string | null;
+    sortDir?: 'asc' | 'desc';
+}>();
+
+const emit = defineEmits<{
+    sort: [column: string];
 }>();
 
 const archetypeDialog = ref<InstanceType<typeof SetArchetypeDialog> | null>(null);
@@ -84,15 +91,29 @@ const detectArchetype = (matchId: number) => {
     <Table>
         <TableHeader class="sticky top-0 z-10 backdrop-blur-sm">
             <TableRow>
-                <TableHead>Result</TableHead>
+                <TableHead class="cursor-pointer select-none" @click="emit('sort', 'outcome')">
+                    <SortableHeader label="Result" column="outcome" :sort-by="sortBy" :sort-dir="sortDir" />
+                </TableHead>
                 <TableHead>Opponent</TableHead>
-                <TableHead>Archetype</TableHead>
+                <TableHead class="cursor-pointer select-none" @click="emit('sort', 'archetype')">
+                    <SortableHeader label="Archetype" column="archetype" :sort-by="sortBy" :sort-dir="sortDir" />
+                </TableHead>
                 <TableHead></TableHead>
-                <TableHead class="text-center">Game 1</TableHead>
-                <TableHead class="text-center">Game 2</TableHead>
-                <TableHead class="text-center">Game 3</TableHead>
-                <TableHead>Duration</TableHead>
-                <TableHead>Date</TableHead>
+                <TableHead class="cursor-pointer select-none" @click="emit('sort', 'game_1')">
+                    <SortableHeader label="Game 1" column="game_1" :sort-by="sortBy" :sort-dir="sortDir" />
+                </TableHead>
+                <TableHead class="cursor-pointer select-none" @click="emit('sort', 'game_2')">
+                    <SortableHeader label="Game 2" column="game_2" :sort-by="sortBy" :sort-dir="sortDir" />
+                </TableHead>
+                <TableHead class="cursor-pointer select-none" @click="emit('sort', 'game_3')">
+                    <SortableHeader label="Game 3" column="game_3" :sort-by="sortBy" :sort-dir="sortDir" />
+                </TableHead>
+                <TableHead class="cursor-pointer select-none" @click="emit('sort', 'duration')">
+                    <SortableHeader label="Duration" column="duration" :sort-by="sortBy" :sort-dir="sortDir" />
+                </TableHead>
+                <TableHead class="cursor-pointer select-none" @click="emit('sort', 'started_at')">
+                    <SortableHeader label="Date" column="started_at" :sort-by="sortBy" :sort-dir="sortDir" />
+                </TableHead>
                 <TableHead></TableHead>
             </TableRow>
         </TableHeader>
@@ -122,7 +143,7 @@ const detectArchetype = (matchId: number) => {
                                     <ManaSymbols :symbols="match.opponentArchetypes[0].archetype.colorIdentity" />
                                 </div>
                             </TableCell>
-                            <TableCell v-for="gameIdx in 3" :key="gameIdx" class="text-center text-sm">
+                            <TableCell v-for="gameIdx in 3" :key="gameIdx" class="text-sm">
                                 <template v-if="match.gameResults?.[gameIdx - 1]">
                                     <span :class="match.gameResults[gameIdx - 1].result === 'W' ? 'text-success' : 'text-destructive'">
                                         {{ match.gameResults[gameIdx - 1].result === 'W' ? 'Win' : 'Loss' }}
