@@ -3,6 +3,7 @@
 namespace App\Actions\Archetypes;
 
 use App\Models\Archetype;
+use App\Models\Card;
 use Illuminate\Support\Collection;
 
 class EstimateArchetypeLocally
@@ -28,28 +29,54 @@ class EstimateArchetypeLocally
     /**
      * Attempt to match a deck against locally-downloaded archetype decklists.
      *
+     * Comparison uses oracle_id (printing-agnostic) so that different MTGO
+     * printings of the same card are treated as equal.
+     *
      * @param  Collection<int, array{mtgo_id: int, quantity: int}>  $cards
      * @return array{archetype_id: int, confidence: float}|null
      */
     public static function run(Collection $cards, string $format): ?array
     {
-        $inputCards = $cards->groupBy('mtgo_id')->map(fn ($group) => [
-            'mtgo_id' => (string) $group->first()['mtgo_id'],
-            'quantity' => $group->sum('quantity'),
-        ])->keyBy('mtgo_id');
+        // Capture full input size BEFORE filtering — unresolved cards still
+        // dilute confidence so partial card lists don't produce false matches.
+        $allInput = $cards->groupBy('mtgo_id')->map(fn ($group) => [
+            'mtgo_id' => $group->first()['mtgo_id'],
+            'quantity' => $group->sum(fn ($c) => $c['quantity'] ?? 1),
+        ]);
+
+        $inputDistinct = $allInput->count();
+        $inputTotalQty = $allInput->sum('quantity');
+
+        if ($inputDistinct === 0) {
+            return null;
+        }
+
+        // Resolve mtgo_ids → oracle_ids for printing-agnostic matching
+        $mtgoIds = $allInput->pluck('mtgo_id')->values()->toArray();
+        $oracleMap = Card::whereIn('mtgo_id', $mtgoIds)
+            ->whereNotNull('oracle_id')
+            ->pluck('oracle_id', 'mtgo_id');
+
+        $inputCards = $allInput->map(fn ($card) => [
+            'oracle_id' => $oracleMap->get($card['mtgo_id']),
+            'quantity' => $card['quantity'],
+        ])->filter(fn ($card) => $card['oracle_id'] !== null)
+            ->groupBy('oracle_id')
+            ->map(fn ($group) => [
+                'oracle_id' => $group->first()['oracle_id'],
+                'quantity' => $group->sum('quantity'),
+            ])->keyBy('oracle_id');
 
         if ($inputCards->isEmpty()) {
             return null;
         }
 
         $normalizedFormat = self::normalizeFormat($format);
-        $inputDistinct = $inputCards->count();
-        $inputTotalQty = $inputCards->sum('quantity');
 
         $candidates = Archetype::query()
             ->where('format', $normalizedFormat)
             ->whereNotNull('decklist_downloaded_at')
-            ->with(['cards' => fn ($q) => $q->select('cards.id', 'cards.mtgo_id')])
+            ->with(['cards' => fn ($q) => $q->select('cards.id', 'cards.mtgo_id', 'cards.oracle_id')])
             ->get();
 
         if ($candidates->isEmpty()) {
@@ -59,7 +86,9 @@ class EstimateArchetypeLocally
         $scores = [];
 
         foreach ($candidates as $archetype) {
-            $deckCards = $archetype->cards->keyBy('mtgo_id');
+            $deckCards = $archetype->cards
+                ->filter(fn ($c) => $c->oracle_id !== null)
+                ->keyBy('oracle_id');
             $deckDistinct = $deckCards->count();
 
             if ($deckDistinct === 0) {
@@ -69,8 +98,8 @@ class EstimateArchetypeLocally
             $matchedQty = 0;
             $matchedDistinct = 0;
 
-            foreach ($inputCards as $mtgoId => $inputCard) {
-                $deckCard = $deckCards->get($mtgoId);
+            foreach ($inputCards as $oracleId => $inputCard) {
+                $deckCard = $deckCards->get($oracleId);
 
                 if (! $deckCard) {
                     continue;
