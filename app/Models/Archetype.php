@@ -20,6 +20,7 @@ class Archetype extends Model
 
     protected $casts = [
         'decklist_downloaded_at' => 'datetime',
+        'manual' => 'boolean',
     ];
 
     public function matchArchetypes(): HasMany
@@ -30,6 +31,7 @@ class Archetype extends Model
     public function cards(): BelongsToMany
     {
         return $this->belongsToMany(Card::class, 'archetype_cards')
+            ->using(ArchetypeCard::class)
             ->withPivot('quantity', 'sideboard')
             ->withTimestamps();
     }

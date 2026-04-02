@@ -16,6 +16,7 @@ class ArchetypeData extends Data
         public ?string $colorIdentity,
         public ?Carbon $decklistDownloadedAt,
         public bool $hasDecklist,
+        public bool $manual,
     ) {}
 
     public static function fromModel(Archetype $archetype): self
@@ -27,6 +28,7 @@ class ArchetypeData extends Data
             colorIdentity: $archetype->color_identity,
             decklistDownloadedAt: $archetype->decklist_downloaded_at,
             hasDecklist: $archetype->decklist_downloaded_at !== null,
+            manual: $archetype->manual,
         );
     }
 }

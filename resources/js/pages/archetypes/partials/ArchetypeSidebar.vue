@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import ShowController from '@/actions/App/Http/Controllers/Archetypes/ShowController';
+import CreateController from '@/actions/App/Http/Controllers/Archetypes/CreateController';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import ManaSymbols from '@/components/ManaSymbols.vue';
 import { Link, router, usePage } from '@inertiajs/vue3';
-import { ChevronLeft, ChevronRight } from 'lucide-vue-next';
+import { ChevronLeft, ChevronRight, Plus } from 'lucide-vue-next';
 import { ref, watch } from 'vue';
 
 const props = defineProps<{
@@ -54,9 +55,9 @@ function goToPage(page: number) {
 <template>
     <aside class="flex h-full w-full flex-col border-r border-black/60">
         <div class="flex gap-2 border-b border-black/60 p-3">
-            <Input v-model="search" placeholder="Search..." class="h-8 basis-2/3 text-sm" />
+            <Input v-model="search" placeholder="Search..." class="basis-2/3 text-sm" />
             <Select :modelValue="format || '__all__'" @update:modelValue="(val: string) => { format = val === '__all__' ? '' : val; onFormatChange(); }">
-                <SelectTrigger class="h-8 basis-1/3 text-sm">
+                <SelectTrigger class="basis-1/3">
                     <SelectValue placeholder="All" />
                 </SelectTrigger>
                 <SelectContent>
@@ -66,6 +67,16 @@ function goToPage(page: number) {
                     </SelectItem>
                 </SelectContent>
             </Select>
+        </div>
+
+        <div class="border-b border-black/40 px-3 py-2">
+            <Link
+                :href="CreateController.url()"
+                class="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium text-purple-400 transition-colors hover:bg-accent/50"
+            >
+                <Plus class="size-4" />
+                Create New
+            </Link>
         </div>
 
         <div class="flex-1 overflow-y-auto">

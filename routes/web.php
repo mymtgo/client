@@ -1,7 +1,10 @@
 <?php
 
+use App\Http\Controllers\Archetypes\CreateController;
 use App\Http\Controllers\Archetypes\DownloadDecklistController;
+use App\Http\Controllers\Archetypes\EditController;
 use App\Http\Controllers\Archetypes\ExportDekController;
+use App\Http\Controllers\Archetypes\UploadDekController;
 use App\Http\Controllers\Debug\Cards\PopulateController;
 use App\Http\Controllers\Debug\Decks\SyncController;
 use App\Http\Controllers\Debug\LogEvents\IngestController;
@@ -120,7 +123,13 @@ Route::group([], function (Router $router) {
         'prefix' => 'archetypes',
     ], function (Router $group) {
         $group->get('/', App\Http\Controllers\Archetypes\IndexController::class)->name('archetypes.index');
+        $group->get('create', CreateController::class)->name('archetypes.create');
+        $group->post('/', App\Http\Controllers\Archetypes\StoreController::class)->name('archetypes.store');
+        $group->post('upload-dek', UploadDekController::class)->name('archetypes.upload-dek');
         $group->get('{archetype}', App\Http\Controllers\Archetypes\ShowController::class)->name('archetypes.show');
+        $group->get('{archetype}/edit', EditController::class)->name('archetypes.edit');
+        $group->put('{archetype}', App\Http\Controllers\Archetypes\UpdateController::class)->name('archetypes.update');
+        $group->delete('{archetype}', App\Http\Controllers\Archetypes\DestroyController::class)->name('archetypes.destroy');
         $group->post('{archetype}/download', DownloadDecklistController::class)->name('archetypes.download');
         $group->post('{archetype}/export', ExportDekController::class)->name('archetypes.export');
     });

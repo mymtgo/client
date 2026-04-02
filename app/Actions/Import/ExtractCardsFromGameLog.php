@@ -47,6 +47,8 @@ class ExtractCardsFromGameLog
             }
         }
 
+        dd($cardsByPlayer);
+
         return [
             'players' => $players,
             'cards_by_player' => $cardsByPlayer,

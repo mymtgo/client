@@ -26,6 +26,12 @@ class DownloadArchetypes implements ShouldQueue
         }
 
         foreach ($response->json() as $archetype) {
+            $existing = Archetype::where('uuid', $archetype['uuid'])->first();
+
+            if ($existing?->manual) {
+                continue;
+            }
+
             Archetype::updateOrCreate(
                 ['uuid' => $archetype['uuid']],
                 [

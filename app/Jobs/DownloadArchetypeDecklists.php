@@ -21,6 +21,7 @@ class DownloadArchetypeDecklists implements ShouldQueue
     public function handle(): void
     {
         $archetype = Archetype::where('id', $this->archetypeId)
+            ->where('manual', false)
             ->where(fn ($q) => $q->whereNull('decklist_downloaded_at')->orWhere('decklist_downloaded_at', '<', now()->subWeek()))
             ->first();
 
