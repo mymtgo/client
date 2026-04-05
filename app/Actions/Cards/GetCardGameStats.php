@@ -93,7 +93,13 @@ class GetCardGameStats
                 SUM(CASE WHEN cgs.cast > 0 AND NOT cgs.won THEN 1 ELSE 0 END) as cast_lost,
                 SUM(CASE WHEN cgs.is_postboard THEN 1 ELSE 0 END) as postboard_games,
                 SUM(CASE WHEN cgs.sided_out THEN 1 ELSE 0 END) as sided_out_games,
-                SUM(CASE WHEN cgs.sided_in THEN 1 ELSE 0 END) as sided_in_games
+                SUM(CASE WHEN cgs.sided_in THEN 1 ELSE 0 END) as sided_in_games,
+                SUM(cgs.played) as total_played,
+                SUM(cgs.kicked) as total_kicked,
+                SUM(cgs.activated) as total_activated,
+                SUM(cgs.flashback) as total_flashback,
+                SUM(cgs.madness) as total_madness,
+                SUM(cgs.evoked) as total_evoked
             ')
             ->orderBy('c.type')
             ->orderBy('c.name')
@@ -119,6 +125,12 @@ class GetCardGameStats
                 'postboardGames' => (int) $row->postboard_games,
                 'sidedOutGames' => (int) $row->sided_out_games,
                 'sidedInGames' => (int) $row->sided_in_games,
+                'totalPlayed' => (int) $row->total_played,
+                'totalKicked' => (int) $row->total_kicked,
+                'totalActivated' => (int) $row->total_activated,
+                'totalFlashback' => (int) $row->total_flashback,
+                'totalMadness' => (int) $row->total_madness,
+                'totalEvoked' => (int) $row->total_evoked,
             ]);
     }
 

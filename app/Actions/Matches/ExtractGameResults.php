@@ -7,6 +7,12 @@ use Illuminate\Support\Facades\Log;
 class ExtractGameResults
 {
     /**
+     * Regex fragment matching an MTGO username.
+     * MTGO allows: English letters, digits, underscores, hyphens (3-20 chars).
+     */
+    public const PLAYER_PATTERN = '[A-Za-z0-9_-]+';
+
+    /**
      * Word-to-number mapping for starting hand sizes.
      */
     private const HAND_SIZE_MAP = [
@@ -109,7 +115,7 @@ class ExtractGameResults
 
             // Detect new game boundary: roll events or join events after a game end
             // Game 1 starts with rolls; games 2+ may start directly with @P@P joins
-            if ($gameEndSeen && (preg_match('/^@P\w+ rolled a \d/', $msg) || preg_match('/^@P@P\w+ joined the game/', $msg))) {
+            if ($gameEndSeen && (preg_match('/^@P'.self::PLAYER_PATTERN.' rolled a \d/', $msg) || preg_match('/^@P@P'.self::PLAYER_PATTERN.' joined the game/', $msg))) {
                 $games[] = $current;
                 $current = [];
                 $gameEndSeen = false;
@@ -135,9 +141,9 @@ class ExtractGameResults
         $players = [];
 
         foreach ($entries as $entry) {
-            if (preg_match('/^@P@P(\w+) joined the game/', $entry['message'], $m)) {
+            if (preg_match('/^@P@P('.self::PLAYER_PATTERN.') joined the game/', $entry['message'], $m)) {
                 $players[$m[1]] = true;
-            } elseif (preg_match('/^@P(\w+) rolled a \d/', $entry['message'], $m)) {
+            } elseif (preg_match('/^@P('.self::PLAYER_PATTERN.') rolled a \d/', $entry['message'], $m)) {
                 $players[$m[1]] = true;
             }
         }
@@ -170,14 +176,14 @@ class ExtractGameResults
             $endedAt = $ts;
 
             // On play: "@P{player} chooses to play first/second."
-            if (preg_match('/^@P(\w+) chooses to play first/', $msg, $m)) {
+            if (preg_match('/^@P('.self::PLAYER_PATTERN.') chooses to play first/', $msg, $m)) {
                 $onPlay = $m[1];
-            } elseif (preg_match('/^@P(\w+) chooses to play second/', $msg, $m)) {
+            } elseif (preg_match('/^@P('.self::PLAYER_PATTERN.') chooses to play second/', $msg, $m)) {
                 $onPlay = self::otherPlayer($m[1], $players);
             }
 
             // Starting hand: "@P{player} begins the game with {N} cards in hand."
-            if (preg_match('/^@P(\w+) begins the game with (\w+) cards? in hand/', $msg, $m)) {
+            if (preg_match('/^@P('.self::PLAYER_PATTERN.') begins the game with (\w+) cards? in hand/', $msg, $m)) {
                 $handRaw = strtolower($m[2]);
                 $handSize = ctype_digit($handRaw)
                     ? (int) $handRaw
@@ -189,14 +195,14 @@ class ExtractGameResults
             }
 
             // Win: "@P{player} wins the game."
-            if (preg_match('/^@P(\w+) wins the game/', $msg, $m)) {
+            if (preg_match('/^@P('.self::PLAYER_PATTERN.') wins the game/', $msg, $m)) {
                 $winner = $m[1];
                 $loser = self::otherPlayer($m[1], $players);
                 $endReason = 'win';
             }
 
             // Concede: "@P{player} has conceded from the game."
-            if (preg_match('/^@P(\w+) has conceded from the game/', $msg, $m)) {
+            if (preg_match('/^@P('.self::PLAYER_PATTERN.') has conceded from the game/', $msg, $m)) {
                 if ($winner === null) {
                     $loser = $m[1];
                     $winner = self::otherPlayer($m[1], $players);
@@ -205,7 +211,7 @@ class ExtractGameResults
             }
 
             // Disconnect: "@P{player} has lost connection to the game."
-            if (preg_match('/^@P(\w+) has lost connection to the game/', $msg, $m)) {
+            if (preg_match('/^@P('.self::PLAYER_PATTERN.') has lost connection to the game/', $msg, $m)) {
                 if ($winner === null) {
                     $loser = $m[1];
                     $winner = self::otherPlayer($m[1], $players);
@@ -247,7 +253,7 @@ class ExtractGameResults
     private static function hasMatchWinLine(array $entries): bool
     {
         foreach ($entries as $entry) {
-            if (preg_match('/^@P\w+ wins the match \d+-\d+/', $entry['message'])) {
+            if (preg_match('/^@P'.self::PLAYER_PATTERN.' wins the match \d+-\d+/', $entry['message'])) {
                 return true;
             }
         }
@@ -266,7 +272,7 @@ class ExtractGameResults
         $lastScore = null;
 
         foreach ($entries as $entry) {
-            if (preg_match('/^@P(\w+) (?:leads|wins) the match (\d+)-(\d+)/', $entry['message'], $m)) {
+            if (preg_match('/^@P('.self::PLAYER_PATTERN.') (?:leads|wins) the match (\d+)-(\d+)/', $entry['message'], $m)) {
                 $scorer = $m[1];
                 $scorerWins = (int) $m[2];
                 $scorerLosses = (int) $m[3];

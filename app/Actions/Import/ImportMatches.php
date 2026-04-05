@@ -137,9 +137,11 @@ class ImportMatches
 
                     $gameResults = ExtractGameResults::run($gameLog->decoded_entries, $localPlayer);
                     $cardsByGame = $cardData['cards_by_game'] ?? [];
+                    $gameMeta = $cardData['game_meta'] ?? [];
 
-                    $games = collect($gameResults['games'])->map(function ($g) use ($localPlayer, $opponent, $cardsByGame) {
+                    $games = collect($gameResults['games'])->map(function ($g) use ($localPlayer, $opponent, $cardsByGame, $gameMeta) {
                         $gameCards = $cardsByGame[$g['game_index']] ?? [];
+                        $meta = $gameMeta[$g['game_index']] ?? [];
 
                         return [
                             'game_index' => $g['game_index'],
@@ -151,6 +153,11 @@ class ImportMatches
                             'ended_at' => $g['ended_at'],
                             'local_cards' => $gameCards[$localPlayer] ?? [],
                             'opponent_cards' => $gameCards[$opponent] ?? [],
+                            'local_dice_roll' => $meta['dice_rolls'][$localPlayer] ?? null,
+                            'opponent_dice_roll' => $meta['dice_rolls'][$opponent] ?? null,
+                            'local_mulligan_count' => $meta['mulligans'][$localPlayer] ?? 0,
+                            'opponent_mulligan_count' => $meta['mulligans'][$opponent] ?? 0,
+                            'turn_count' => $meta['turn_count'] ?? null,
                         ];
                     })->toArray();
                 }
@@ -240,11 +247,9 @@ class ImportMatches
             $cardStats = ! empty($gameLocalCards) || ! empty($gameOpponentCards)
                 ? collect($gameLocalCards)->merge($gameOpponentCards)
                     ->unique('mtgo_id')
-                    ->map(fn ($card) => ['mtgo_id' => $card['mtgo_id'], 'cast' => $card['cast'] ?? 0])
                     ->values()
                     ->toArray()
                 : collect($allMatchCards)
-                    ->map(fn ($card) => ['mtgo_id' => $card['mtgo_id'], 'cast' => $card['cast'] ?? 0])
                     ->values()
                     ->toArray();
 
@@ -266,6 +271,7 @@ class ImportMatches
                 'won' => $gameData['won'] ?? null,
                 'started_at' => $gameData['started_at'],
                 'ended_at' => $gameData['ended_at'],
+                'turn_count' => $gameData['turn_count'] ?? null,
             ]);
 
             $game->players()->attach($localPlayer->id, [
@@ -274,6 +280,8 @@ class ImportMatches
                 'starting_hand_size' => $gameData['starting_hand_size'] ?? 7,
                 'instance_id' => 0,
                 'deck_json' => $localDeckJson,
+                'dice_roll' => $gameData['local_dice_roll'] ?? null,
+                'mulligan_count' => $gameData['local_mulligan_count'] ?? 0,
             ]);
 
             $game->players()->attach($opponent->id, [
@@ -282,6 +290,8 @@ class ImportMatches
                 'starting_hand_size' => $gameData['opponent_hand_size'] ?? 7,
                 'instance_id' => 0,
                 'deck_json' => $opponentDeckJson,
+                'dice_roll' => $gameData['opponent_dice_roll'] ?? null,
+                'mulligan_count' => $gameData['opponent_mulligan_count'] ?? 0,
             ]);
 
             if ($match->deck_version_id && $game->won !== null) {

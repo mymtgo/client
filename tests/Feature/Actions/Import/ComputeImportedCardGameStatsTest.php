@@ -89,6 +89,80 @@ it('handles capitalized sideboard values from SyncDecks XML', function () {
     expect($statA->seen)->toBe(1);
 });
 
+it('does not cap cast count at deck quantity', function () {
+    $card = Card::factory()->create(['mtgo_id' => '100', 'oracle_id' => 'oracle-a', 'name' => 'Card A']);
+
+    $deck = Deck::factory()->create();
+    $signature = base64_encode('oracle-a:2:false');
+    $version = DeckVersion::factory()->create([
+        'deck_id' => $deck->id,
+        'signature' => $signature,
+    ]);
+
+    $match = MtgoMatch::factory()->create([
+        'deck_version_id' => $version->id,
+        'imported' => true,
+    ]);
+
+    $game = Game::factory()->create([
+        'match_id' => $match->id,
+        'won' => true,
+    ]);
+
+    // Card was cast 5 times in one game (bounced/flickered/recast)
+    // but only 2 copies in deck — cast count should NOT be capped
+    $cardStats = [['mtgo_id' => 100, 'cast' => 5]];
+
+    ComputeImportedCardGameStats::run($game, $version->id, $cardStats, isPostboard: false);
+
+    $stat = CardGameStat::where('game_id', $game->id)->where('oracle_id', 'oracle-a')->first();
+    expect($stat->cast)->toBe(5);
+});
+
+it('writes played kicked flashback madness evoked activated columns', function () {
+    $card = Card::factory()->create(['mtgo_id' => '100', 'oracle_id' => 'oracle-a', 'name' => 'Card A']);
+
+    $deck = Deck::factory()->create();
+    $signature = base64_encode('oracle-a:4:false');
+    $version = DeckVersion::factory()->create([
+        'deck_id' => $deck->id,
+        'signature' => $signature,
+    ]);
+
+    $match = MtgoMatch::factory()->create([
+        'deck_version_id' => $version->id,
+        'imported' => true,
+    ]);
+
+    $game = Game::factory()->create([
+        'match_id' => $match->id,
+        'won' => true,
+    ]);
+
+    $cardStats = [[
+        'mtgo_id' => 100,
+        'cast' => 2,
+        'played' => 0,
+        'kicked' => 1,
+        'flashback' => 0,
+        'madness' => 0,
+        'evoked' => 0,
+        'activated' => 3,
+    ]];
+
+    ComputeImportedCardGameStats::run($game, $version->id, $cardStats, isPostboard: false);
+
+    $stat = CardGameStat::where('game_id', $game->id)->where('oracle_id', 'oracle-a')->first();
+
+    expect($stat->cast)->toBe(2);
+    expect($stat->played)->toBe(0);
+    expect($stat->kicked)->toBe(1);
+    expect($stat->flashback)->toBe(0);
+    expect($stat->madness)->toBe(0);
+    expect($stat->evoked)->toBe(0);
+    expect($stat->activated)->toBe(3);
+});
+
 it('skips stats when game result is null', function () {
     $match = MtgoMatch::factory()->create(['imported' => true]);
     $game = Game::factory()->create([

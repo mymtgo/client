@@ -96,6 +96,7 @@ class ReprocessImportedCardData
             : null;
 
         $cardsByGame = $cardData['cards_by_game'] ?? [];
+        $gameMeta = $cardData['game_meta'] ?? [];
 
         foreach ($match->games as $index => $game) {
             $gameCards = $cardsByGame[$index] ?? [];
@@ -111,6 +112,29 @@ class ReprocessImportedCardData
                 ->where('game_id', $game->id)
                 ->where('player_id', $opponentPlayer->id)
                 ->update(['deck_json' => json_encode($opponentDeckJson)]);
+
+            $meta = $gameMeta[$index] ?? [];
+            if (! empty($meta['turn_count'])) {
+                $game->update(['turn_count' => $meta['turn_count']]);
+            }
+
+            if (! empty($meta['dice_rolls'])) {
+                DB::table('game_player')
+                    ->where('game_id', $game->id)
+                    ->where('player_id', $localPlayer->id)
+                    ->update([
+                        'dice_roll' => $meta['dice_rolls'][$localName] ?? null,
+                        'mulligan_count' => $meta['mulligans'][$localName] ?? 0,
+                    ]);
+
+                DB::table('game_player')
+                    ->where('game_id', $game->id)
+                    ->where('player_id', $opponentPlayer->id)
+                    ->update([
+                        'dice_roll' => $meta['dice_rolls'][$opponentName] ?? null,
+                        'mulligan_count' => $meta['mulligans'][$opponentName] ?? 0,
+                    ]);
+            }
         }
 
         DetermineMatchArchetypesJob::dispatch($match->id)->onQueue('match_archetypes');

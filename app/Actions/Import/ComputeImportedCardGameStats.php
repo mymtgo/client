@@ -35,14 +35,32 @@ class ComputeImportedCardGameStats
         // Extract mtgo_ids and cast counts from card stats
         $seenMtgoIds = [];
         $castByMtgoId = [];
+        $playedByMtgoId = [];
+        $kickedByMtgoId = [];
+        $flashbackByMtgoId = [];
+        $madnessByMtgoId = [];
+        $evokedByMtgoId = [];
+        $activatedByMtgoId = [];
         foreach ($cardStats as $stat) {
             $seenMtgoIds[] = $stat['mtgo_id'];
-            $castByMtgoId[$stat['mtgo_id']] = $stat['cast'];
+            $castByMtgoId[$stat['mtgo_id']] = $stat['cast'] ?? 0;
+            $playedByMtgoId[$stat['mtgo_id']] = $stat['played'] ?? 0;
+            $kickedByMtgoId[$stat['mtgo_id']] = $stat['kicked'] ?? 0;
+            $flashbackByMtgoId[$stat['mtgo_id']] = $stat['flashback'] ?? 0;
+            $madnessByMtgoId[$stat['mtgo_id']] = $stat['madness'] ?? 0;
+            $evokedByMtgoId[$stat['mtgo_id']] = $stat['evoked'] ?? 0;
+            $activatedByMtgoId[$stat['mtgo_id']] = $stat['activated'] ?? 0;
         }
 
         // Map seen mtgo_ids to oracle_ids and build cast-by-oracle lookup
         $seenOracleIds = [];
         $castByOracle = [];
+        $playedByOracle = [];
+        $kickedByOracle = [];
+        $flashbackByOracle = [];
+        $madnessByOracle = [];
+        $evokedByOracle = [];
+        $activatedByOracle = [];
         if (! empty($seenMtgoIds)) {
             $mtgoToOracle = Card::whereIn('mtgo_id', $seenMtgoIds)
                 ->whereNotNull('oracle_id')
@@ -52,6 +70,12 @@ class ComputeImportedCardGameStats
 
             foreach ($mtgoToOracle as $mtgoId => $oracleId) {
                 $castByOracle[$oracleId] = ($castByOracle[$oracleId] ?? 0) + ($castByMtgoId[$mtgoId] ?? 0);
+                $playedByOracle[$oracleId] = ($playedByOracle[$oracleId] ?? 0) + ($playedByMtgoId[$mtgoId] ?? 0);
+                $kickedByOracle[$oracleId] = ($kickedByOracle[$oracleId] ?? 0) + ($kickedByMtgoId[$mtgoId] ?? 0);
+                $flashbackByOracle[$oracleId] = ($flashbackByOracle[$oracleId] ?? 0) + ($flashbackByMtgoId[$mtgoId] ?? 0);
+                $madnessByOracle[$oracleId] = ($madnessByOracle[$oracleId] ?? 0) + ($madnessByMtgoId[$mtgoId] ?? 0);
+                $evokedByOracle[$oracleId] = ($evokedByOracle[$oracleId] ?? 0) + ($evokedByMtgoId[$mtgoId] ?? 0);
+                $activatedByOracle[$oracleId] = ($activatedByOracle[$oracleId] ?? 0) + ($activatedByMtgoId[$mtgoId] ?? 0);
             }
         }
 
@@ -75,7 +99,13 @@ class ComputeImportedCardGameStats
                 'quantity' => $quantity,
                 'kept' => 0,
                 'seen' => in_array($oracleId, $seenOracleIds) ? 1 : 0,
-                'cast' => min($castByOracle[$oracleId] ?? 0, $quantity),
+                'cast' => $castByOracle[$oracleId] ?? 0,
+                'played' => $playedByOracle[$oracleId] ?? 0,
+                'kicked' => $kickedByOracle[$oracleId] ?? 0,
+                'flashback' => $flashbackByOracle[$oracleId] ?? 0,
+                'madness' => $madnessByOracle[$oracleId] ?? 0,
+                'evoked' => $evokedByOracle[$oracleId] ?? 0,
+                'activated' => $activatedByOracle[$oracleId] ?? 0,
                 'won' => $game->won,
                 'is_postboard' => $isPostboard,
                 'sided_out' => false,

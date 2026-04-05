@@ -19,12 +19,13 @@ class Game extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['match_id', 'mtgo_id', 'started_at', 'ended_at', 'won'];
+    protected $fillable = ['match_id', 'mtgo_id', 'started_at', 'ended_at', 'won', 'turn_count'];
 
     protected $casts = [
         'won' => 'boolean',
         'started_at' => 'datetime',
         'ended_at' => 'datetime',
+        'turn_count' => 'integer',
     ];
 
     /** @return BelongsTo<MtgoMatch, $this> */

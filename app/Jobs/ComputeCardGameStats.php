@@ -2,13 +2,16 @@
 
 namespace App\Jobs;
 
+use App\Actions\Import\ExtractCardsFromGameLog;
 use App\Actions\Matches\ExtractGameHandData;
 use App\Models\Card;
 use App\Models\CardGameStat;
 use App\Models\Game;
+use App\Models\GameLog;
 use App\Models\MtgoMatch;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class ComputeCardGameStats implements ShouldQueue
@@ -35,18 +38,27 @@ class ComputeCardGameStats implements ShouldQueue
         // Clear existing stats so reprocessing works (insertOrIgnore won't update stale rows)
         CardGameStat::whereIn('game_id', $gameIds)->delete();
 
+        $gameLog = GameLog::where('match_token', $match->token)
+            ->whereNotNull('decoded_entries')
+            ->first();
+
+        $gameLogStats = null;
+        if ($gameLog?->decoded_entries) {
+            $gameLogStats = ExtractCardsFromGameLog::run($gameLog->decoded_entries);
+        }
+
         $game1Quantities = null;
 
         foreach ($games as $index => $game) {
             $isPostboard = $index > 0;
-            $game1Quantities = $this->processGame($game, $match->deck_version_id, $isPostboard, $game1Quantities);
+            $game1Quantities = $this->processGame($game, $match->deck_version_id, $isPostboard, $game1Quantities, $gameLogStats, $index);
         }
     }
 
     /**
      * @return array<string, int>|null The oracle_id => quantity map for game 1 (passed forward for sideboard comparison)
      */
-    private function processGame(Game $game, int $deckVersionId, bool $isPostboard, ?array $game1Quantities): ?array
+    private function processGame(Game $game, int $deckVersionId, bool $isPostboard, ?array $game1Quantities, ?array $gameLogStats, int $gameIndex): ?array
     {
         if ($game->won === null) {
             return null;
@@ -118,7 +130,35 @@ class ComputeCardGameStats implements ShouldQueue
         }
 
         // Count seen copies per oracle_id from timeline
-        [$seenByOracle, $castByOracle] = $this->computeSeenAndCastCards($game, $localInstanceId, $catalogToOracle);
+        $seenByOracle = $this->computeSeenCards($game, $localInstanceId, $catalogToOracle);
+
+        $castByOracle = [];
+        $playedByOracle = [];
+        $kickedByOracle = [];
+        $flashbackByOracle = [];
+        $madnessByOracle = [];
+        $evokedByOracle = [];
+        $activatedByOracle = [];
+
+        if ($gameLogStats) {
+            $localName = $game->players->first(fn ($p) => $p->pivot->is_local)?->username;
+            if ($localName) {
+                $gameCards = $gameLogStats['cards_by_game'][$gameIndex][$localName] ?? [];
+                foreach ($gameCards as $card) {
+                    $oracleId = $catalogToOracle[(string) $card['mtgo_id']] ?? null;
+                    if (! $oracleId) {
+                        continue;
+                    }
+                    $castByOracle[$oracleId] = ($castByOracle[$oracleId] ?? 0) + $card['cast'];
+                    $playedByOracle[$oracleId] = ($playedByOracle[$oracleId] ?? 0) + $card['played'];
+                    $kickedByOracle[$oracleId] = ($kickedByOracle[$oracleId] ?? 0) + $card['kicked'];
+                    $flashbackByOracle[$oracleId] = ($flashbackByOracle[$oracleId] ?? 0) + $card['flashback'];
+                    $madnessByOracle[$oracleId] = ($madnessByOracle[$oracleId] ?? 0) + $card['madness'];
+                    $evokedByOracle[$oracleId] = ($evokedByOracle[$oracleId] ?? 0) + $card['evoked'];
+                    $activatedByOracle[$oracleId] = ($activatedByOracle[$oracleId] ?? 0) + $card['activated'];
+                }
+            }
+        }
 
         // Insert rows
         $rows = [];
@@ -140,7 +180,13 @@ class ComputeCardGameStats implements ShouldQueue
                 'quantity' => $quantity,
                 'kept' => min($keptByOracle[$oracleId] ?? 0, $quantity),
                 'seen' => min($seenByOracle[$oracleId] ?? 0, $quantity),
-                'cast' => min($castByOracle[$oracleId] ?? 0, $quantity),
+                'cast' => $castByOracle[$oracleId] ?? 0,
+                'played' => $playedByOracle[$oracleId] ?? 0,
+                'kicked' => $kickedByOracle[$oracleId] ?? 0,
+                'flashback' => $flashbackByOracle[$oracleId] ?? 0,
+                'madness' => $madnessByOracle[$oracleId] ?? 0,
+                'evoked' => $evokedByOracle[$oracleId] ?? 0,
+                'activated' => $activatedByOracle[$oracleId] ?? 0,
                 'won' => $game->won,
                 'is_postboard' => $isPostboard,
                 'sided_out' => $sidedOut,
@@ -162,6 +208,12 @@ class ComputeCardGameStats implements ShouldQueue
                         'kept' => 0,
                         'seen' => 0,
                         'cast' => 0,
+                        'played' => 0,
+                        'kicked' => 0,
+                        'flashback' => 0,
+                        'madness' => 0,
+                        'evoked' => 0,
+                        'activated' => 0,
                         'won' => $game->won,
                         'is_postboard' => true,
                         'sided_out' => true,
@@ -177,24 +229,51 @@ class ComputeCardGameStats implements ShouldQueue
             CardGameStat::insertOrIgnore($rows);
         }
 
+        if ($gameLogStats) {
+            $meta = $gameLogStats['game_meta'][$gameIndex] ?? [];
+
+            if (! empty($meta['turn_count'])) {
+                $game->update(['turn_count' => $meta['turn_count']]);
+            }
+
+            $localName = $game->players->first(fn ($p) => $p->pivot->is_local)?->username;
+            $opponentName = $game->players->first(fn ($p) => ! $p->pivot->is_local)?->username;
+
+            if ($localName && ! empty($meta['dice_rolls'])) {
+                DB::table('game_player')
+                    ->where('game_id', $game->id)
+                    ->where('is_local', true)
+                    ->update([
+                        'dice_roll' => $meta['dice_rolls'][$localName] ?? null,
+                        'mulligan_count' => $meta['mulligans'][$localName] ?? 0,
+                    ]);
+
+                DB::table('game_player')
+                    ->where('game_id', $game->id)
+                    ->where('is_local', false)
+                    ->update([
+                        'dice_roll' => $meta['dice_rolls'][$opponentName] ?? null,
+                        'mulligan_count' => $meta['mulligans'][$opponentName] ?? 0,
+                    ]);
+            }
+        }
+
         // Return game 1 quantities for sideboard comparison in later games
         return $isPostboard ? $game1Quantities : $oracleQuantities;
     }
 
     /**
-     * Count distinct card instances seen in visible zones and cast/played per oracle_id.
+     * Count distinct card instances seen in visible zones per oracle_id.
      *
-     * "Seen" = appeared in Hand, Battlefield, Graveyard, Exile, or Stack.
-     * "Cast/Played" = appeared on Stack (spells) or Battlefield (lands/permanents).
+     * "Seen" = unique card instances that appeared in Hand, Battlefield, Graveyard, Exile, or Stack.
      *
-     * @return array{0: array<string, int>, 1: array<string, int>} [seenByOracle, castByOracle]
+     * @return array<string, int> seenByOracle
      */
-    private function computeSeenAndCastCards(Game $game, int $localInstanceId, array $catalogToOracle): array
+    private function computeSeenCards(Game $game, int $localInstanceId, array $catalogToOracle): array
     {
         $seenInstances = []; // [oracle_id => [instanceId => true]]
-        $castInstances = []; // [oracle_id => [instanceId => true]]
 
-        foreach ($game->timeline as $snapshot) {
+        foreach ($game->timeline->sortBy('timestamp') as $snapshot) {
             $cards = $snapshot->content['Cards'] ?? [];
 
             foreach ($cards as $card) {
@@ -214,16 +293,9 @@ class ComputeCardGameStats implements ShouldQueue
                 if (in_array($zone, ['Hand', 'Battlefield', 'Graveyard', 'Exile', 'Stack'])) {
                     $seenInstances[$oracleId][$instanceId] = true;
                 }
-
-                if (in_array($zone, ['Stack', 'Battlefield'])) {
-                    $castInstances[$oracleId][$instanceId] = true;
-                }
             }
         }
 
-        return [
-            array_map('count', $seenInstances),
-            array_map('count', $castInstances),
-        ];
+        return array_map('count', $seenInstances);
     }
 }

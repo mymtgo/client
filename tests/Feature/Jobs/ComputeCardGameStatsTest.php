@@ -4,6 +4,7 @@ use App\Jobs\ComputeCardGameStats;
 use App\Models\Card;
 use App\Models\DeckVersion;
 use App\Models\Game;
+use App\Models\GameLog;
 use App\Models\GameTimeline;
 use App\Models\MtgoMatch;
 use App\Models\Player;
@@ -127,6 +128,134 @@ it('detects sided out cards by comparing maindeck quantities between games', fun
     expect((bool) $g2CardB->sided_in)->toBeTrue(); // sided IN from sideboard
 });
 
+it('counts multiple casts of the same card instance via zone transitions', function () {
+    [$match, $deckVersion, $local, $opponent] = createMatchWithGames();
+
+    $card = Card::factory()->create(['oracle_id' => 'oracle-a', 'mtgo_id' => 1001, 'name' => 'Card A']);
+
+    $game = Game::factory()->for($match, 'match')->create([
+        'won' => true,
+        'started_at' => now(),
+    ]);
+    attachPlayers($game, $local, $opponent, deckJson: [
+        ['mtgo_id' => 1001, 'quantity' => 1, 'sideboard' => false],
+    ]);
+
+    // Snapshot 1: Card in Hand
+    GameTimeline::create([
+        'game_id' => $game->id,
+        'timestamp' => '09:00:00',
+        'content' => [
+            'Players' => [
+                ['Id' => 0, 'Name' => 'testplayer', 'LibraryCount' => 59, 'HandCount' => 1, 'Life' => 20],
+                ['Id' => 1, 'Name' => 'opponent', 'LibraryCount' => 60, 'HandCount' => 0, 'Life' => 20],
+            ],
+            'Cards' => [
+                ['Id' => 101, 'CatalogID' => 1001, 'Owner' => 0, 'Zone' => 'Hand'],
+            ],
+        ],
+    ]);
+
+    // Snapshot 2: Card cast (on Stack) — cast #1
+    GameTimeline::create([
+        'game_id' => $game->id,
+        'timestamp' => '09:01:00',
+        'content' => [
+            'Players' => [
+                ['Id' => 0, 'Name' => 'testplayer', 'LibraryCount' => 59, 'HandCount' => 0, 'Life' => 20],
+                ['Id' => 1, 'Name' => 'opponent', 'LibraryCount' => 60, 'HandCount' => 0, 'Life' => 20],
+            ],
+            'Cards' => [
+                ['Id' => 101, 'CatalogID' => 1001, 'Owner' => 0, 'Zone' => 'Stack'],
+            ],
+        ],
+    ]);
+
+    // Snapshot 3: Card resolves to Battlefield
+    GameTimeline::create([
+        'game_id' => $game->id,
+        'timestamp' => '09:02:00',
+        'content' => [
+            'Players' => [
+                ['Id' => 0, 'Name' => 'testplayer', 'LibraryCount' => 59, 'HandCount' => 0, 'Life' => 20],
+                ['Id' => 1, 'Name' => 'opponent', 'LibraryCount' => 60, 'HandCount' => 0, 'Life' => 20],
+            ],
+            'Cards' => [
+                ['Id' => 101, 'CatalogID' => 1001, 'Owner' => 0, 'Zone' => 'Battlefield'],
+            ],
+        ],
+    ]);
+
+    // Snapshot 4: Card bounced back to Hand
+    GameTimeline::create([
+        'game_id' => $game->id,
+        'timestamp' => '09:03:00',
+        'content' => [
+            'Players' => [
+                ['Id' => 0, 'Name' => 'testplayer', 'LibraryCount' => 59, 'HandCount' => 1, 'Life' => 20],
+                ['Id' => 1, 'Name' => 'opponent', 'LibraryCount' => 60, 'HandCount' => 0, 'Life' => 20],
+            ],
+            'Cards' => [
+                ['Id' => 101, 'CatalogID' => 1001, 'Owner' => 0, 'Zone' => 'Hand'],
+            ],
+        ],
+    ]);
+
+    // Snapshot 5: Card cast again (on Stack) — cast #2
+    GameTimeline::create([
+        'game_id' => $game->id,
+        'timestamp' => '09:04:00',
+        'content' => [
+            'Players' => [
+                ['Id' => 0, 'Name' => 'testplayer', 'LibraryCount' => 59, 'HandCount' => 0, 'Life' => 20],
+                ['Id' => 1, 'Name' => 'opponent', 'LibraryCount' => 60, 'HandCount' => 0, 'Life' => 20],
+            ],
+            'Cards' => [
+                ['Id' => 101, 'CatalogID' => 1001, 'Owner' => 0, 'Zone' => 'Stack'],
+            ],
+        ],
+    ]);
+
+    // Snapshot 6: Resolves to Battlefield again
+    GameTimeline::create([
+        'game_id' => $game->id,
+        'timestamp' => '09:05:00',
+        'content' => [
+            'Players' => [
+                ['Id' => 0, 'Name' => 'testplayer', 'LibraryCount' => 59, 'HandCount' => 0, 'Life' => 20],
+                ['Id' => 1, 'Name' => 'opponent', 'LibraryCount' => 60, 'HandCount' => 0, 'Life' => 20],
+            ],
+            'Cards' => [
+                ['Id' => 101, 'CatalogID' => 1001, 'Owner' => 0, 'Zone' => 'Battlefield'],
+            ],
+        ],
+    ]);
+
+    GameLog::create([
+        'match_token' => $match->token,
+        'file_path' => '/fake/path.dat',
+        'decoded_entries' => [
+            ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@Ptestplayer joined the game.'],
+            ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@Popponent joined the game.'],
+            ['timestamp' => '2026-01-01T09:01:00+00:00', 'message' => '@Ptestplayer casts @[Card A@:2002,101:@].'],
+            ['timestamp' => '2026-01-01T09:04:00+00:00', 'message' => '@Ptestplayer casts @[Card A@:2002,101:@].'],
+            ['timestamp' => '2026-01-01T09:05:00+00:00', 'message' => '@Ptestplayer wins the game.'],
+        ],
+    ]);
+
+    (new ComputeCardGameStats($match->id))->handle();
+
+    $stat = DB::table('card_game_stats')
+        ->where('oracle_id', 'oracle-a')
+        ->where('game_id', $game->id)
+        ->first();
+
+    // Card was cast twice (Hand→Stack twice), should count 2 not 1
+    expect($stat->cast)->toBe(2);
+    // Card was seen in Hand, Stack, Battlefield — still 1 unique instance
+    expect($stat->seen)->toBe(1);
+});
+
 it('does not mark cards as sided out when deck is unchanged between games', function () {
     [$match, $deckVersion, $local, $opponent] = createMatchWithGames();
 
@@ -211,4 +340,83 @@ it('creates a sided_out row for cards completely moved to sideboard in postboard
     expect((bool) $g2Stat->is_postboard)->toBeTrue();
     expect((bool) $g2Stat->sided_out)->toBeTrue();
     expect((bool) $g2Stat->sided_in)->toBeFalse();
+});
+
+it('reads cast data from game log instead of timeline zone transitions', function () {
+    [$match, $deckVersion, $local, $opponent] = createMatchWithGames();
+
+    $card = Card::factory()->create(['oracle_id' => 'oracle-a', 'mtgo_id' => 1001, 'name' => 'Card A']);
+
+    $game = Game::factory()->for($match, 'match')->create([
+        'won' => true,
+        'started_at' => now(),
+    ]);
+    attachPlayers($game, $local, $opponent, deckJson: [
+        ['mtgo_id' => 1001, 'quantity' => 4, 'sideboard' => false],
+    ]);
+
+    createTimeline($game, [
+        ['Id' => 10, 'CatalogID' => 1001, 'Zone' => 'Hand', 'Owner' => 0, 'Controller' => 0],
+    ]);
+
+    GameLog::create([
+        'match_token' => $match->token,
+        'file_path' => '/fake/path.dat',
+        'decoded_entries' => [
+            ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@Ptestplayer joined the game.'],
+            ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@Popponent joined the game.'],
+            ['timestamp' => '2026-01-01T00:00:01+00:00', 'message' => '@Ptestplayer casts @[Card A@:2002,100:@] with kicker.'],
+            ['timestamp' => '2026-01-01T00:00:02+00:00', 'message' => '@Ptestplayer wins the game.'],
+        ],
+    ]);
+
+    (new ComputeCardGameStats($match->id))->handle();
+
+    $stat = DB::table('card_game_stats')
+        ->where('oracle_id', 'oracle-a')
+        ->where('game_id', $game->id)
+        ->first();
+
+    expect($stat->cast)->toBe(1);
+    expect($stat->kicked)->toBe(1);
+    expect($stat->seen)->toBe(1);
+});
+
+it('tracks land plays separately from casts in live pipeline', function () {
+    [$match, $deckVersion, $local, $opponent] = createMatchWithGames();
+
+    $land = Card::factory()->create(['oracle_id' => 'oracle-land', 'mtgo_id' => 2001, 'name' => 'Forest']);
+
+    $game = Game::factory()->for($match, 'match')->create([
+        'won' => true,
+        'started_at' => now(),
+    ]);
+    attachPlayers($game, $local, $opponent, deckJson: [
+        ['mtgo_id' => 2001, 'quantity' => 4, 'sideboard' => false],
+    ]);
+
+    createTimeline($game, [
+        ['Id' => 10, 'CatalogID' => 2001, 'Zone' => 'Battlefield', 'Owner' => 0, 'Controller' => 0],
+    ]);
+
+    GameLog::create([
+        'match_token' => $match->token,
+        'file_path' => '/fake/path.dat',
+        'decoded_entries' => [
+            ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@Ptestplayer joined the game.'],
+            ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@Popponent joined the game.'],
+            ['timestamp' => '2026-01-01T00:00:01+00:00', 'message' => '@Ptestplayer plays @[Forest@:4002,100:@].'],
+            ['timestamp' => '2026-01-01T00:00:02+00:00', 'message' => '@Ptestplayer wins the game.'],
+        ],
+    ]);
+
+    (new ComputeCardGameStats($match->id))->handle();
+
+    $stat = DB::table('card_game_stats')
+        ->where('oracle_id', 'oracle-land')
+        ->where('game_id', $game->id)
+        ->first();
+
+    expect($stat->cast)->toBe(0);
+    expect($stat->played)->toBe(1);
 });

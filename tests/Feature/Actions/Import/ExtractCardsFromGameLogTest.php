@@ -133,7 +133,7 @@ it('does not attribute a planeswalker to the player removing loyalty counters vi
         ['timestamp' => '2026-01-01T00:00:02+00:00', 'message' => '@PAlpha removes a loyalty counter from @[Karn, the Great Creator@:155958,100:@].'],
     ];
 
-    $result = \App\Actions\Import\ExtractCardsFromGameLog::run($entries);
+    $result = ExtractCardsFromGameLog::run($entries);
 
     $alphaIds = collect($result['cards_by_player']['Alpha'])->pluck('mtgo_id')->toArray();
     $bravoIds = collect($result['cards_by_player']['Bravo'])->pluck('mtgo_id')->toArray();
@@ -150,7 +150,7 @@ it('does not attribute the ability source to the affected player in exiles-with 
         ['timestamp' => '2026-01-01T00:00:02+00:00', 'message' => '@PAlpha exiles @[Sowing Mycospawn@:251694,201:@] with @[Subtlety@:181014,200:@]\'s ability.'],
     ];
 
-    $result = \App\Actions\Import\ExtractCardsFromGameLog::run($entries);
+    $result = ExtractCardsFromGameLog::run($entries);
 
     $alphaIds = collect($result['cards_by_player']['Alpha'])->pluck('mtgo_id')->toArray();
     $bravoIds = collect($result['cards_by_player']['Bravo'])->pluck('mtgo_id')->toArray();
@@ -167,11 +167,134 @@ it('does not attribute the ability source to the affected player in returns-with
         ['timestamp' => '2026-01-01T00:00:02+00:00', 'message' => '@PAlpha returns @[Sowing Mycospawn@:251694,301:@] to its owner\'s hand with @[Teferi, Time Raveler@:143200,300:@]\'s ability.'],
     ];
 
-    $result = \App\Actions\Import\ExtractCardsFromGameLog::run($entries);
+    $result = ExtractCardsFromGameLog::run($entries);
 
     $alphaIds = collect($result['cards_by_player']['Alpha'])->pluck('mtgo_id')->toArray();
     $bravoIds = collect($result['cards_by_player']['Bravo'])->pluck('mtgo_id')->toArray();
 
     expect($alphaIds)->not->toContain(71600);
     expect($bravoIds)->toContain(71600);
+});
+
+it('separates land plays from spell casts', function () {
+    $entries = [
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@PAlpha joined the game.'],
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@PBravo joined the game.'],
+        ['timestamp' => '2026-01-01T00:00:01+00:00', 'message' => '@PAlpha plays @[Forest@:281774,100:@].'],
+        ['timestamp' => '2026-01-01T00:00:02+00:00', 'message' => '@PAlpha casts @[Llanowar Elves@:1000,101:@].'],
+    ];
+    $result = ExtractCardsFromGameLog::run($entries);
+    $alphaCards = collect($result['cards_by_player']['Alpha']);
+    $forest = $alphaCards->firstWhere('name', 'Forest');
+    expect($forest['cast'])->toBe(0);
+    expect($forest['played'])->toBe(1);
+    $elves = $alphaCards->firstWhere('name', 'Llanowar Elves');
+    expect($elves['cast'])->toBe(1);
+    expect($elves['played'])->toBe(0);
+});
+
+it('tracks kicked casts', function () {
+    $entries = [
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@PAlpha joined the game.'],
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@PBravo joined the game.'],
+        ['timestamp' => '2026-01-01T00:00:01+00:00', 'message' => '@PAlpha casts @[Sowing Mycospawn@:251694,100:@] with kicker.'],
+        ['timestamp' => '2026-01-01T00:00:02+00:00', 'message' => '@PAlpha casts @[Sowing Mycospawn@:251694,101:@].'],
+    ];
+    $result = ExtractCardsFromGameLog::run($entries);
+    $card = collect($result['cards_by_player']['Alpha'])->firstWhere('name', 'Sowing Mycospawn');
+    expect($card['cast'])->toBe(2);
+    expect($card['kicked'])->toBe(1);
+});
+
+it('tracks flashback casts', function () {
+    $entries = [
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@PAlpha joined the game.'],
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@PBravo joined the game.'],
+        ['timestamp' => '2026-01-01T00:00:01+00:00', 'message' => '@PAlpha casts @[Eviscerator\'s Insight@:252406,100:@] with Flashback {4B} from the graveyard.'],
+    ];
+    $result = ExtractCardsFromGameLog::run($entries);
+    $card = collect($result['cards_by_player']['Alpha'])->firstWhere('name', "Eviscerator's Insight");
+    expect($card['cast'])->toBe(1);
+    expect($card['flashback'])->toBe(1);
+});
+
+it('tracks madness casts', function () {
+    $entries = [
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@PAlpha joined the game.'],
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@PBravo joined the game.'],
+        ['timestamp' => '2026-01-01T00:00:01+00:00', 'message' => '@PAlpha casts @[Fiery Temper@:119868,100:@] by paying {R} with Madness {R} targeting Bravo.'],
+    ];
+    $result = ExtractCardsFromGameLog::run($entries);
+    $card = collect($result['cards_by_player']['Alpha'])->firstWhere('name', 'Fiery Temper');
+    expect($card['cast'])->toBe(1);
+    expect($card['madness'])->toBe(1);
+});
+
+it('tracks evoke casts', function () {
+    $entries = [
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@PAlpha joined the game.'],
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@PBravo joined the game.'],
+        ['timestamp' => '2026-01-01T00:00:01+00:00', 'message' => '@PAlpha casts @[Solitude@:182406,100:@] by exiling a white card from your hand with evoke.'],
+    ];
+    $result = ExtractCardsFromGameLog::run($entries);
+    $card = collect($result['cards_by_player']['Alpha'])->firstWhere('name', 'Solitude');
+    expect($card['cast'])->toBe(1);
+    expect($card['evoked'])->toBe(1);
+});
+
+it('tracks activated ability count', function () {
+    $entries = [
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@PAlpha joined the game.'],
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@PBravo joined the game.'],
+        ['timestamp' => '2026-01-01T00:00:01+00:00', 'message' => '@PAlpha casts @[Karn, the Great Creator@:155958,100:@].'],
+        ['timestamp' => '2026-01-01T00:00:02+00:00', 'message' => '@PAlpha activates an ability of @[Karn, the Great Creator@:155958,100:@] (You may reveal an artifact card...).'],
+        ['timestamp' => '2026-01-01T00:00:03+00:00', 'message' => '@PAlpha activates an ability of @[Karn, the Great Creator@:155958,100:@] (You may reveal an artifact card...).'],
+    ];
+    $result = ExtractCardsFromGameLog::run($entries);
+    $card = collect($result['cards_by_player']['Alpha'])->firstWhere('name', 'Karn, the Great Creator');
+    expect($card['cast'])->toBe(1);
+    expect($card['activated'])->toBe(2);
+});
+
+it('extracts dice rolls per player per game', function () {
+    $entries = [
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@PAlpha rolled a 5.'],
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@PBravo rolled a 3.'],
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@PAlpha joined the game.'],
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@PBravo joined the game.'],
+        ['timestamp' => '2026-01-01T00:00:01+00:00', 'message' => '@PAlpha begins the game with seven cards in hand.'],
+        ['timestamp' => '2026-01-01T00:00:01+00:00', 'message' => '@PBravo begins the game with seven cards in hand.'],
+        ['timestamp' => '2026-01-01T00:00:02+00:00', 'message' => '@PAlpha wins the game.'],
+    ];
+    $result = ExtractCardsFromGameLog::run($entries);
+    expect($result['game_meta'])->toHaveKey(0);
+    expect($result['game_meta'][0]['dice_rolls'])->toBe(['Alpha' => 5, 'Bravo' => 3]);
+});
+
+it('extracts mulligan count per player', function () {
+    $entries = [
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@PAlpha joined the game.'],
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@PBravo joined the game.'],
+        ['timestamp' => '2026-01-01T00:00:01+00:00', 'message' => '@PAlpha mulligans to six cards.'],
+        ['timestamp' => '2026-01-01T00:00:02+00:00', 'message' => '@PAlpha begins the game with six cards in hand.'],
+        ['timestamp' => '2026-01-01T00:00:02+00:00', 'message' => '@PBravo begins the game with seven cards in hand.'],
+        ['timestamp' => '2026-01-01T00:00:03+00:00', 'message' => '@PAlpha wins the game.'],
+    ];
+    $result = ExtractCardsFromGameLog::run($entries);
+    expect($result['game_meta'][0]['mulligans'])->toBe(['Alpha' => 1, 'Bravo' => 0]);
+});
+
+it('extracts turn count from turn markers', function () {
+    $entries = [
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@PAlpha joined the game.'],
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@PBravo joined the game.'],
+        ['timestamp' => '2026-01-01T00:00:01+00:00', 'message' => '@PTurn 1: Alpha'],
+        ['timestamp' => '2026-01-01T00:00:02+00:00', 'message' => '@PTurn 1: Bravo'],
+        ['timestamp' => '2026-01-01T00:00:03+00:00', 'message' => '@PTurn 2: Alpha'],
+        ['timestamp' => '2026-01-01T00:00:04+00:00', 'message' => '@PTurn 2: Bravo'],
+        ['timestamp' => '2026-01-01T00:00:05+00:00', 'message' => '@PTurn 3: Alpha'],
+        ['timestamp' => '2026-01-01T00:00:06+00:00', 'message' => '@PAlpha wins the game.'],
+    ];
+    $result = ExtractCardsFromGameLog::run($entries);
+    expect($result['game_meta'][0]['turn_count'])->toBe(3);
 });

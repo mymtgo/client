@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Deferred, router } from '@inertiajs/vue3';
 import {
@@ -57,6 +58,12 @@ type CardStat = {
     postboardGames: number;
     sidedOutGames: number;
     sidedInGames: number;
+    totalPlayed: number;
+    totalKicked: number;
+    totalActivated: number;
+    totalFlashback: number;
+    totalMadness: number;
+    totalEvoked: number;
 };
 
 const props = defineProps<{
@@ -206,7 +213,7 @@ function passesFilter(stat: CardStat): boolean {
 
 // ── Sorting ──────────────────────────────────────────────────────────────────
 
-type SortKey = 'name' | 'keptPct' | 'keptWinPct' | 'seenPct' | 'seenWinPct' | 'castPct' | 'castWinPct' | 'sbOutPct' | 'sbInPct' | 'games';
+type SortKey = 'name' | 'keptPct' | 'keptWinPct' | 'seenPct' | 'seenWinPct' | 'castPct' | 'castWinPct' | 'playedPct' | 'kicked' | 'activated' | 'sbOutPct' | 'sbInPct' | 'games';
 const sortBy = ref<SortKey>('name');
 const sortDesc = ref(false);
 
@@ -244,6 +251,12 @@ function sortValue(stat: CardStat, key: SortKey): number | string {
             return pctWithTiebreak(stat.totalCast, stat.totalPossible);
         case 'castWinPct':
             return pctWithTiebreak(stat.castWon, stat.castWon + stat.castLost);
+        case 'playedPct':
+            return pctWithTiebreak(stat.totalPlayed, stat.totalPossible);
+        case 'kicked':
+            return stat.totalKicked;
+        case 'activated':
+            return stat.totalActivated;
         case 'sbOutPct':
             return pctWithTiebreak(stat.sidedOutGames, stat.postboardGames);
         case 'sbInPct':
@@ -427,6 +440,9 @@ function winRateClass(pctVal: number | null): string {
                                         <span class="font-medium">Example:</span> <span class="font-mono">27% (14)</span> means you cast the card in
                                         14 games. A low Cast % on a mainboard card may indicate it's hard to cast or frequently sided out.
                                     </div>
+                                    <p class="mt-1 text-sm text-muted-foreground">
+                                        If a card was cast via an alternative cost (flashback, madness, evoke), the breakdown appears below the cast count.
+                                    </p>
                                 </section>
 
                                 <section>
@@ -440,6 +456,27 @@ function winRateClass(pctVal: number | null): string {
                                         <span class="font-medium">Example:</span> <span class="font-mono">75% (4)</span> means you won 3 out of 4
                                         games where the card was cast. Look for cards with decent sample sizes (5+) to draw meaningful conclusions.
                                     </div>
+                                </section>
+
+                                <section>
+                                    <h3 class="mb-1 text-sm font-semibold">Played %</h3>
+                                    <p class="text-sm text-muted-foreground">
+                                        The percentage of games where a land card was played (put onto the battlefield from hand). This is the land equivalent of Cast % &mdash; lands are "played", not "cast". The number in brackets is the raw count.
+                                    </p>
+                                </section>
+
+                                <section>
+                                    <h3 class="mb-1 text-sm font-semibold">Kicked</h3>
+                                    <p class="text-sm text-muted-foreground">
+                                        The total number of times this card was cast with kicker across all games. Compare with total casts to see how often you have enough mana to kick it.
+                                    </p>
+                                </section>
+
+                                <section>
+                                    <h3 class="mb-1 text-sm font-semibold">Activated</h3>
+                                    <p class="text-sm text-muted-foreground">
+                                        The total number of times this card's activated ability was used across all games. High activation counts indicate the card is sticking on the battlefield and generating value.
+                                    </p>
                                 </section>
 
                                 <section>
@@ -560,6 +597,21 @@ function winRateClass(pctVal: number | null): string {
                                     >Cast Win % <component :is="sortIcon('castWinPct')" class="size-3"
                                 /></span>
                             </TableHead>
+                            <TableHead class="cursor-pointer text-right select-none" @click="toggleSort('playedPct')">
+                                <span class="inline-flex items-center justify-end gap-1"
+                                    >Played % <component :is="sortIcon('playedPct')" class="size-3"
+                                /></span>
+                            </TableHead>
+                            <TableHead class="cursor-pointer text-right select-none" @click="toggleSort('kicked')">
+                                <span class="inline-flex items-center justify-end gap-1"
+                                    >Kicked <component :is="sortIcon('kicked')" class="size-3"
+                                /></span>
+                            </TableHead>
+                            <TableHead class="cursor-pointer text-right select-none" @click="toggleSort('activated')">
+                                <span class="inline-flex items-center justify-end gap-1"
+                                    >Activated <component :is="sortIcon('activated')" class="size-3"
+                                /></span>
+                            </TableHead>
                             <TableHead class="cursor-pointer text-right select-none" @click="toggleSort('seenPct')">
                                 <span class="inline-flex items-center justify-end gap-1"
                                     >Seen % <component :is="sortIcon('seenPct')" class="size-3"
@@ -601,7 +653,7 @@ function winRateClass(pctVal: number | null): string {
                                     {{ stat.name ?? 'Unknown' }}
                                 </span>
                             </TableCell>
-                            <TableCell class="text-muted-foreground">{{ stat.type ?? '—' }}</TableCell>
+                            <TableCell class="text-muted-foreground">{{ stat.type ?? '-' }}</TableCell>
                             <TableCell class="text-center">
                                 <Check v-if="stat.isSideboard" class="mx-auto size-3.5 text-muted-foreground" />
                             </TableCell>
@@ -610,7 +662,7 @@ function winRateClass(pctVal: number | null): string {
                                     {{ pct(stat.totalKept, stat.totalPossible) }}%
                                     <span class="text-[10px] text-muted-foreground">({{ stat.totalKept }})</span>
                                 </template>
-                                <span v-else class="text-muted-foreground">—</span>
+                                <span v-else class="text-muted-foreground">-</span>
                             </TableCell>
                             <TableCell class="text-right tabular-nums">
                                 <template v-if="pct(stat.keptWon, stat.keptWon + stat.keptLost) !== null">
@@ -619,14 +671,31 @@ function winRateClass(pctVal: number | null): string {
                                     </span>
                                     <span class="text-[10px] text-muted-foreground">({{ stat.keptWon + stat.keptLost }})</span>
                                 </template>
-                                <span v-else class="text-muted-foreground">—</span>
+                                <span v-else class="text-muted-foreground">-</span>
                             </TableCell>
                             <TableCell class="text-right tabular-nums">
                                 <template v-if="pct(stat.totalCast, stat.totalPossible) !== null">
-                                    {{ pct(stat.totalCast, stat.totalPossible) }}%
-                                    <span class="text-[10px] text-muted-foreground">({{ stat.totalCast }})</span>
+                                    <TooltipProvider v-if="stat.totalFlashback > 0 || stat.totalMadness > 0 || stat.totalEvoked > 0">
+                                        <Tooltip>
+                                            <TooltipTrigger as-child>
+                                                <span class="cursor-default border-b border-dotted border-muted-foreground">
+                                                    {{ pct(stat.totalCast, stat.totalPossible) }}%
+                                                    <span class="text-[10px] text-muted-foreground">({{ stat.totalCast }})</span>
+                                                </span>
+                                            </TooltipTrigger>
+                                            <TooltipContent side="top" class="text-xs">
+                                                <span v-if="stat.totalFlashback > 0">{{ stat.totalFlashback }} flashback</span>
+                                                <span v-if="stat.totalMadness > 0">{{ stat.totalFlashback > 0 ? ', ' : '' }}{{ stat.totalMadness }} madness</span>
+                                                <span v-if="stat.totalEvoked > 0">{{ (stat.totalFlashback > 0 || stat.totalMadness > 0) ? ', ' : '' }}{{ stat.totalEvoked }} evoke</span>
+                                            </TooltipContent>
+                                        </Tooltip>
+                                    </TooltipProvider>
+                                    <template v-else>
+                                        {{ pct(stat.totalCast, stat.totalPossible) }}%
+                                        <span class="text-[10px] text-muted-foreground">({{ stat.totalCast }})</span>
+                                    </template>
                                 </template>
-                                <span v-else class="text-muted-foreground">—</span>
+                                <span v-else class="text-muted-foreground">-</span>
                             </TableCell>
                             <TableCell class="text-right tabular-nums">
                                 <template v-if="pct(stat.castWon, stat.castWon + stat.castLost) !== null">
@@ -635,14 +704,33 @@ function winRateClass(pctVal: number | null): string {
                                     </span>
                                     <span class="text-[10px] text-muted-foreground">({{ stat.castWon + stat.castLost }})</span>
                                 </template>
-                                <span v-else class="text-muted-foreground">—</span>
+                                <span v-else class="text-muted-foreground">-</span>
+                            </TableCell>
+                            <TableCell class="text-right tabular-nums">
+                                <template v-if="pct(stat.totalPlayed, stat.totalPossible) !== null">
+                                    {{ pct(stat.totalPlayed, stat.totalPossible) }}%
+                                    <span class="text-[10px] text-muted-foreground">({{ stat.totalPlayed }})</span>
+                                </template>
+                                <span v-else class="text-muted-foreground">-</span>
+                            </TableCell>
+                            <TableCell class="text-right tabular-nums">
+                                <template v-if="stat.totalKicked > 0">
+                                    {{ stat.totalKicked }}
+                                </template>
+                                <span v-else class="text-muted-foreground">-</span>
+                            </TableCell>
+                            <TableCell class="text-right tabular-nums">
+                                <template v-if="stat.totalActivated > 0">
+                                    {{ stat.totalActivated }}
+                                </template>
+                                <span v-else class="text-muted-foreground">-</span>
                             </TableCell>
                             <TableCell class="text-right tabular-nums">
                                 <template v-if="pct(stat.totalSeen, stat.totalPossible) !== null">
                                     {{ pct(stat.totalSeen, stat.totalPossible) }}%
                                     <span class="text-[10px] text-muted-foreground">({{ stat.totalSeen }})</span>
                                 </template>
-                                <span v-else class="text-muted-foreground">—</span>
+                                <span v-else class="text-muted-foreground">-</span>
                             </TableCell>
                             <TableCell class="text-right tabular-nums">
                                 <template v-if="pct(stat.seenWon, stat.seenWon + stat.seenLost) !== null">
@@ -651,21 +739,21 @@ function winRateClass(pctVal: number | null): string {
                                     </span>
                                     <span class="text-[10px] text-muted-foreground">({{ stat.seenWon + stat.seenLost }})</span>
                                 </template>
-                                <span v-else class="text-muted-foreground">—</span>
+                                <span v-else class="text-muted-foreground">-</span>
                             </TableCell>
                             <TableCell class="text-right tabular-nums">
                                 <template v-if="pct(stat.sidedOutGames, stat.postboardGames) !== null">
                                     {{ pct(stat.sidedOutGames, stat.postboardGames) }}%
                                     <span class="text-[10px] text-muted-foreground">({{ stat.sidedOutGames }})</span>
                                 </template>
-                                <span v-else class="text-muted-foreground">—</span>
+                                <span v-else class="text-muted-foreground">-</span>
                             </TableCell>
                             <TableCell class="text-right tabular-nums">
                                 <template v-if="pct(stat.sidedInGames, stat.postboardGames) !== null">
                                     {{ pct(stat.sidedInGames, stat.postboardGames) }}%
                                     <span class="text-[10px] text-muted-foreground">({{ stat.sidedInGames }})</span>
                                 </template>
-                                <span v-else class="text-muted-foreground">—</span>
+                                <span v-else class="text-muted-foreground">-</span>
                             </TableCell>
                             <TableCell class="text-right text-muted-foreground tabular-nums">
                                 {{ stat.totalGames }}

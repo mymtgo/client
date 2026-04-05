@@ -9,18 +9,22 @@ class ExtractCardsFromGameLog
     /**
      * Extract unique card names and CatalogIDs per player from parsed game log entries.
      *
-     * Returns match-level aggregates (cards_by_player) and per-game breakdowns (cards_by_game).
+     * Returns match-level aggregates (cards_by_player), per-game breakdowns (cards_by_game),
+     * and per-game metadata (game_meta).
      *
      * @param  array<int, array{timestamp: string, message: string}>  $entries
-     * @return array{players: string[], cards_by_player: array<string, array<int, array{mtgo_id: int, name: string, cast: int}>>, cards_by_game: array<int, array<string, array<int, array{mtgo_id: int, name: string, cast: int}>>>}
+     * @return array{players: string[], cards_by_player: array<string, array<int, array{mtgo_id: int, name: string, cast: int, played: int, kicked: int, flashback: int, madness: int, evoked: int, activated: int}>>, cards_by_game: array<int, array<string, array<int, array{mtgo_id: int, name: string, cast: int, played: int, kicked: int, flashback: int, madness: int, evoked: int, activated: int}>>>, game_meta: array<int, array{dice_rolls: array<string, int>, mulligans: array<string, int>, turn_count: int|null}>}
      */
     public static function run(array $entries): array
     {
         $players = ExtractGameResults::detectPlayers($entries);
         $games = ExtractGameResults::splitIntoGames($entries);
 
+        $aggregateFields = ['cast', 'played', 'kicked', 'flashback', 'madness', 'evoked', 'activated'];
+
         // Per-game extraction
         $cardsByGame = [];
+        $gameMeta = [];
         // Match-level aggregate (union of all games)
         $matchIndex = [];
         $cardsByPlayer = [];
@@ -32,11 +36,15 @@ class ExtractCardsFromGameLog
         foreach ($games as $gameIndex => $gameEntries) {
             $gameCards = self::extractFromEntries($gameEntries, $players);
             $cardsByGame[$gameIndex] = $gameCards;
+            $gameMeta[$gameIndex] = self::extractGameMeta($gameEntries, $players);
 
             foreach ($players as $player) {
                 foreach ($gameCards[$player] ?? [] as $card) {
                     if (isset($matchIndex[$player][$card['mtgo_id']])) {
-                        $cardsByPlayer[$player][$matchIndex[$player][$card['mtgo_id']]]['cast'] += $card['cast'];
+                        $idx = $matchIndex[$player][$card['mtgo_id']];
+                        foreach ($aggregateFields as $field) {
+                            $cardsByPlayer[$player][$idx][$field] += $card[$field];
+                        }
 
                         continue;
                     }
@@ -51,6 +59,7 @@ class ExtractCardsFromGameLog
             'players' => $players,
             'cards_by_player' => $cardsByPlayer,
             'cards_by_game' => $cardsByGame,
+            'game_meta' => $gameMeta,
         ];
     }
 
@@ -69,11 +78,12 @@ class ExtractCardsFromGameLog
     {
         $cardsByPlayer = [];
         $seen = [];
-        $castCounts = [];
+        $counterFields = ['cast', 'played', 'kicked', 'flashback', 'madness', 'evoked', 'activated'];
+        $counts = [];
 
         foreach ($players as $player) {
             $cardsByPlayer[$player] = [];
-            $castCounts[$player] = [];
+            $counts[$player] = [];
         }
 
         foreach ($entries as $entry) {
@@ -87,8 +97,10 @@ class ExtractCardsFromGameLog
                 $owned = self::extractOwnedCards($msg, $player);
 
                 foreach ($owned as $card) {
-                    if ($card['cast']) {
-                        $castCounts[$player][$card['mtgo_id']] = ($castCounts[$player][$card['mtgo_id']] ?? 0) + 1;
+                    foreach ($counterFields as $field) {
+                        if ($card[$field]) {
+                            $counts[$player][$card['mtgo_id']][$field] = ($counts[$player][$card['mtgo_id']][$field] ?? 0) + 1;
+                        }
                     }
 
                     if (isset($seen[$player][$card['mtgo_id']])) {
@@ -100,15 +112,23 @@ class ExtractCardsFromGameLog
                         'mtgo_id' => $card['mtgo_id'],
                         'name' => $card['name'],
                         'cast' => 0,
+                        'played' => 0,
+                        'kicked' => 0,
+                        'flashback' => 0,
+                        'madness' => 0,
+                        'evoked' => 0,
+                        'activated' => 0,
                     ];
                 }
             }
         }
 
-        // Attach accumulated cast counts to each card entry
+        // Attach accumulated counts to each card entry
         foreach ($players as $player) {
             foreach ($cardsByPlayer[$player] as $idx => $card) {
-                $cardsByPlayer[$player][$idx]['cast'] = $castCounts[$player][$card['mtgo_id']] ?? 0;
+                foreach ($counterFields as $field) {
+                    $cardsByPlayer[$player][$idx][$field] = $counts[$player][$card['mtgo_id']][$field] ?? 0;
+                }
             }
         }
 
@@ -131,19 +151,27 @@ class ExtractCardsFromGameLog
         // ---------------------------------------------------------------
 
         // "@PPlayer casts @[Card]..."
-        // The cast card is the player's. Ignore anything after "targeting".
-        if (preg_match('/@P'.$qp.' casts @\[([^@]+)@:(\d+),\d+:@\]/', $msg, $m)) {
-            return [self::card($m[1], $m[2], cast: true)];
+        // The cast card is the player's. Capture rest of line for alternative cost detection.
+        if (preg_match('/@P'.$qp.' casts @\[([^@]+)@:(\d+),\d+:@\](.*)/', $msg, $m)) {
+            $suffix = $m[3];
+
+            return [self::card($m[1], $m[2],
+                cast: true,
+                kicked: str_contains($suffix, 'with kicker'),
+                flashback: str_contains($suffix, 'Flashback'),
+                madness: str_contains($suffix, 'Madness'),
+                evoked: str_contains($suffix, 'evoke'),
+            )];
         }
 
         // "@PPlayer plays @[Card]."
         if (preg_match('/@P'.$qp.' plays @\[([^@]+)@:(\d+),\d+:@\]/', $msg, $m)) {
-            return [self::card($m[1], $m[2], cast: true)];
+            return [self::card($m[1], $m[2], played: true)];
         }
 
         // "@PPlayer activates an ability of @[Card]..."
         if (preg_match('/@P'.$qp.' activates an ability of @\[([^@]+)@:(\d+),\d+:@\]/', $msg, $m)) {
-            return [self::card($m[1], $m[2])];
+            return [self::card($m[1], $m[2], activated: true)];
         }
 
         // "@PPlayer puts a triggered ability from @[Card] onto the stack..."
@@ -220,11 +248,55 @@ class ExtractCardsFromGameLog
     }
 
     /**
+     * Extract per-game metadata: dice rolls, mulligan counts, and turn count.
+     *
+     * @param  array<int, array{timestamp: string, message: string}>  $gameEntries
+     * @param  array<int, string>  $players
+     * @return array{dice_rolls: array<string, int>, mulligans: array<string, int>, turn_count: int|null}
+     */
+    private static function extractGameMeta(array $gameEntries, array $players): array
+    {
+        $p = ExtractGameResults::PLAYER_PATTERN;
+        $diceRolls = [];
+        $mulliganCounts = [];
+        $turnCount = null;
+
+        foreach ($players as $player) {
+            $mulliganCounts[$player] = 0;
+        }
+
+        foreach ($gameEntries as $entry) {
+            $msg = $entry['message'];
+
+            if (preg_match('/^@P('.$p.') rolled a (\d)/', $msg, $m)) {
+                $diceRolls[$m[1]] = (int) $m[2];
+            }
+
+            if (preg_match('/^@P('.$p.') mulligans to/', $msg, $m)) {
+                $mulliganCounts[$m[1]] = ($mulliganCounts[$m[1]] ?? 0) + 1;
+            }
+
+            if (preg_match('/^@PTurn (\d+):/', $msg, $m)) {
+                $turn = (int) $m[1];
+                if ($turnCount === null || $turn > $turnCount) {
+                    $turnCount = $turn;
+                }
+            }
+        }
+
+        return [
+            'dice_rolls' => $diceRolls,
+            'mulligans' => $mulliganCounts,
+            'turn_count' => $turnCount,
+        ];
+    }
+
+    /**
      * Build a card entry from a regex match.
      *
-     * @return array{mtgo_id: int, name: string, cast: bool}
+     * @return array{mtgo_id: int, name: string, cast: bool, played: bool, kicked: bool, flashback: bool, madness: bool, evoked: bool, activated: bool}
      */
-    private static function card(string $name, string $rawId, bool $cast = false): array
+    private static function card(string $name, string $rawId, bool $cast = false, bool $played = false, bool $kicked = false, bool $flashback = false, bool $madness = false, bool $evoked = false, bool $activated = false): array
     {
         // Game log IDs are doubled CatalogIDs (front face = catId*2,
         // back face = catId*2+1). Right-shift to get the real CatalogID.
@@ -232,6 +304,12 @@ class ExtractCardsFromGameLog
             'mtgo_id' => (int) $rawId >> 1,
             'name' => $name,
             'cast' => $cast,
+            'played' => $played,
+            'kicked' => $kicked,
+            'flashback' => $flashback,
+            'madness' => $madness,
+            'evoked' => $evoked,
+            'activated' => $activated,
         ];
     }
 }
