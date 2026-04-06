@@ -12,6 +12,7 @@ class ScanStatusController extends Controller
     {
         $data = [
             'status' => $scan->status,
+            'stage' => $scan->stage,
             'progress' => $scan->progress,
             'total' => $scan->total,
             'error' => $scan->error,

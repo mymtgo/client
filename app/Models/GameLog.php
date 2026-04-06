@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * @property array<int, array{timestamp: string, message: string}>|null $decoded_entries
+ * @property string[]|null $players
  */
 class GameLog extends Model
 {
@@ -17,6 +18,8 @@ class GameLog extends Model
         return [
             'decoded_entries' => 'array',
             'decoded_at' => 'datetime',
+            'first_timestamp' => 'datetime',
+            'players' => 'array',
         ];
     }
 

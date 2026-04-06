@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Import;
 
 use App\Http\Controllers\Controller;
-use App\Jobs\ProcessImportScan;
+use App\Jobs\DiscoverGameLogsJob;
 use App\Models\ImportScan;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -25,9 +25,10 @@ class ScanController extends Controller
         $scan = ImportScan::create([
             'deck_version_id' => $validated['deck_version_id'],
             'status' => 'processing',
+            'stage' => 'discovering',
         ]);
 
-        ProcessImportScan::dispatch($scan->id);
+        DiscoverGameLogsJob::dispatch($scan->id);
 
         return response()->json(['scan_id' => $scan->id]);
     }

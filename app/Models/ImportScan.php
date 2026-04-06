@@ -28,6 +28,23 @@ class ImportScan extends Model
         return $this->hasMany(ImportScanMatch::class);
     }
 
+    public function markStage(string $stage, int $total = 0): void
+    {
+        $this->update([
+            'stage' => $stage,
+            'progress' => 0,
+            'total' => $total,
+        ]);
+    }
+
+    public function markFailed(string $error): void
+    {
+        $this->update([
+            'status' => 'failed',
+            'error' => $error,
+        ]);
+    }
+
     public function isProcessing(): bool
     {
         return $this->status === 'processing';

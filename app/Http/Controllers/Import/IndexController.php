@@ -36,6 +36,7 @@ class IndexController extends Controller
                 'deck_version_id' => $existingScan->deck_version_id,
                 'deck_name' => $existingScan->deckVersion?->deck?->name ?? 'Unknown',
                 'status' => $existingScan->status,
+                'stage' => $existingScan->stage,
                 'progress' => $existingScan->progress,
                 'total' => $existingScan->total,
                 'match_count' => $existingScan->isComplete() ? $existingScan->matches()->count() : 0,

@@ -47,6 +47,7 @@ interface ExistingScan {
     deck_version_id: number;
     deck_name: string;
     status: string;
+    stage: string;
     progress: number;
     total: number;
     match_count: number;
@@ -92,6 +93,7 @@ const scanId = ref<number | null>(props.existingScan?.id ?? null);
 const scanDeckName = ref<string>(props.existingScan?.deck_name ?? '');
 const scanProgress = ref(props.existingScan?.progress ?? 0);
 const scanTotal = ref(props.existingScan?.total ?? 0);
+const scanStage = ref(props.existingScan?.stage ?? 'discovering');
 const scanError = ref<string | null>(null);
 
 const matches = ref<ScanMatch[]>([]);
@@ -169,6 +171,7 @@ async function pollStatus() {
         const data = await response.json();
         scanProgress.value = data.progress;
         scanTotal.value = data.total;
+        scanStage.value = data.stage ?? 'discovering';
 
         if (data.status === 'complete') {
             stopPolling();
@@ -485,6 +488,15 @@ const progressPercent = computed(() => {
     if (scanTotal.value === 0) return 0;
     return Math.round((scanProgress.value / scanTotal.value) * 100);
 });
+
+const stageLabels: Record<string, string> = {
+    discovering: 'Discovering game logs...',
+    decoding: 'Decoding game logs...',
+    parsing: 'Parsing match history...',
+    scoring: 'Scoring matches...',
+};
+
+const stageLabel = computed(() => stageLabels[scanStage.value] ?? 'Processing...');
 </script>
 
 <template>
@@ -579,7 +591,7 @@ const progressPercent = computed(() => {
                 <CardContent class="space-y-4 p-6 text-center">
                     <Spinner class="mx-auto size-8" />
                     <div>
-                        <p class="text-sm font-medium">Scanning match history for {{ scanDeckName }}...</p>
+                        <p class="text-sm font-medium">{{ stageLabel }}</p>
                         <p class="mt-1 text-xs text-muted-foreground">
                             This may take a moment for large histories.
                         </p>

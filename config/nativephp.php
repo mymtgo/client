@@ -159,7 +159,7 @@ return [
         'importer' => [
             'queues' => ['importer'],
             'memory_limit' => 512,
-            'timeout' => 60,
+            'timeout' => 300,
             'sleep' => 3,
         ],
         'match_archetypes' => [
