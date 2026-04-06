@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Storage;
 
 /**
+ * @property ArchetypeCard|null $pivot
  * @property int|null $quantity
  * @property bool|null $sideboard
  * @property string|null $local_image

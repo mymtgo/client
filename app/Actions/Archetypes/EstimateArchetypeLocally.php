@@ -41,7 +41,7 @@ class EstimateArchetypeLocally
         // dilute confidence so partial card lists don't produce false matches.
         $allInput = $cards->groupBy('mtgo_id')->map(fn ($group) => [
             'mtgo_id' => $group->first()['mtgo_id'],
-            'quantity' => $group->sum(fn ($c) => $c['quantity'] ?? 1),
+            'quantity' => $group->sum(fn ($c) => $c['quantity']),
         ]);
 
         $inputDistinct = $allInput->count();

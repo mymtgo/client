@@ -38,7 +38,7 @@ class EncodeDeckScreenshotData
         $nonLandCards = [];
         $landCards = [];
         $sideboardCards = [];
-        $cmcBuckets = [];
+        $cmcBuckets = ['0' => 0, '1' => 0, '2' => 0, '3' => 0, '4' => 0, '5' => 0, '6' => 0, '7+' => 0];
         $typeCounts = [];
 
         foreach ($cardRefs as $ref) {
@@ -67,7 +67,7 @@ class EncodeDeckScreenshotData
                 $nonLandCards[] = $entry;
                 $cmc = min((int) ($card->cmc ?? 0), 7);
                 $cmcKey = $cmc >= 7 ? '7+' : (string) $cmc;
-                $cmcBuckets[$cmcKey] = ($cmcBuckets[$cmcKey] ?? 0) + $quantity;
+                $cmcBuckets[$cmcKey] = $cmcBuckets[$cmcKey] + $quantity;
                 $typeCounts[$normalizedType] = ($typeCounts[$normalizedType] ?? 0) + $quantity;
             }
         }
@@ -87,9 +87,9 @@ class EncodeDeckScreenshotData
         $cmcDistribution = [];
         for ($i = 0; $i <= 6; $i++) {
             $key = (string) $i;
-            $cmcDistribution[] = ['cmc' => $key, 'count' => $cmcBuckets[$key] ?? 0];
+            $cmcDistribution[] = ['cmc' => $key, 'count' => $cmcBuckets[$key]];
         }
-        $cmcDistribution[] = ['cmc' => '7+', 'count' => $cmcBuckets['7+'] ?? 0];
+        $cmcDistribution[] = ['cmc' => '7+', 'count' => $cmcBuckets['7+']];
 
         $typeDistribution = [];
         foreach (array_merge(self::CANONICAL_TYPES, ['Land']) as $type) {

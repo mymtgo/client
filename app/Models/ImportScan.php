@@ -18,11 +18,13 @@ class ImportScan extends Model
         ];
     }
 
+    /** @return BelongsTo<DeckVersion, $this> */
     public function deckVersion(): BelongsTo
     {
         return $this->belongsTo(DeckVersion::class);
     }
 
+    /** @return HasMany<ImportScanMatch, $this> */
     public function matches(): HasMany
     {
         return $this->hasMany(ImportScanMatch::class);

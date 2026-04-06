@@ -13,7 +13,7 @@ class ExtractCardsFromGameLog
      * and per-game metadata (game_meta).
      *
      * @param  array<int, array{timestamp: string, message: string}>  $entries
-     * @return array{players: string[], cards_by_player: array<string, array<int, array{mtgo_id: int, name: string, cast: int, played: int, kicked: int, flashback: int, madness: int, evoked: int, activated: int}>>, cards_by_game: array<int, array<string, array<int, array{mtgo_id: int, name: string, cast: int, played: int, kicked: int, flashback: int, madness: int, evoked: int, activated: int}>>>, game_meta: array<int, array{dice_rolls: array<string, int>, mulligans: array<string, int>, turn_count: int|null}>}
+     * @return array{players: array<int, string>, cards_by_player: array<string, list<array<string, mixed>>>, cards_by_game: array<int, array<string, list<array<string, mixed>>>>, game_meta: array<int, array{dice_rolls: array<string, int>, mulligans: array<string, int>, turn_count: int|null}>}
      */
     public static function run(array $entries): array
     {

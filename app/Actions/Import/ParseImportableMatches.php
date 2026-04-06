@@ -127,7 +127,7 @@ class ParseImportableMatches
             }
 
             // Attempt deck matching
-            $deckSuggestion = ($localCards && ! empty($localCards))
+            $deckSuggestion = (! empty($localCards))
                 ? SuggestDeckForMatch::run($localCards)
                 : null;
 

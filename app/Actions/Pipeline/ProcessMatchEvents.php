@@ -52,7 +52,7 @@ class ProcessMatchEvents
             });
 
         foreach ($tokenToMatchId as $matchToken => $matchId) {
-            static::processMatch($matchToken, $matchId);
+            self::processMatch($matchToken, $matchId);
             $processedTokens[] = $matchToken;
         }
 
@@ -72,7 +72,7 @@ class ProcessMatchEvents
             ->value('username');
 
         if (! $username) {
-            static::handleMissingUsername($matchToken);
+            self::handleMissingUsername($matchToken);
 
             return;
         }
@@ -80,7 +80,7 @@ class ProcessMatchEvents
         $account = Account::where('username', $username)->first();
 
         if ($account && ! $account->tracked) {
-            static::markEventsProcessed($matchToken);
+            self::markEventsProcessed($matchToken);
 
             return;
         }
@@ -92,7 +92,7 @@ class ProcessMatchEvents
                 $match = AdvanceMatchState::run($matchToken, $matchId);
 
                 if (! $match) {
-                    static::markStaleEventsProcessed($matchToken);
+                    self::markStaleEventsProcessed($matchToken);
 
                     return;
                 }
@@ -109,13 +109,13 @@ class ProcessMatchEvents
                 }
 
                 // Mark all events for this match token as processed
-                static::markEventsProcessed($matchToken);
+                self::markEventsProcessed($matchToken);
             });
         } catch (\Throwable $e) {
             $match = $existingMatch ?? MtgoMatch::where('token', $matchToken)->first();
 
             if ($match) {
-                static::handleMatchFailure($match, $e);
+                self::handleMatchFailure($match, $e);
             } else {
                 Log::channel('pipeline')->error("ProcessMatches: exception for token={$matchToken} (no match record)", [
                     'error' => $e->getMessage(),
@@ -166,7 +166,7 @@ class ProcessMatchEvents
             ->exists();
 
         if ($stale) {
-            static::markEventsProcessed($matchToken);
+            self::markEventsProcessed($matchToken);
             Log::channel('pipeline')->info("ProcessMatches: marked stale events processed for token={$matchToken} (no username after 2 min)");
         }
     }
@@ -179,7 +179,7 @@ class ProcessMatchEvents
             ->exists();
 
         if ($stale) {
-            static::markEventsProcessed($matchToken);
+            self::markEventsProcessed($matchToken);
             Log::channel('pipeline')->info("ProcessMatches: marked stale events processed for token={$matchToken} (no join event after 2 min)");
         }
     }

@@ -59,9 +59,9 @@ class SuggestDeckForMatch
 
         return [
             'deck_version_id' => $bestMatch->id,
-            'deck_name' => $bestMatch->deck?->name ?? 'Unknown Deck',
+            'deck_name' => $bestMatch->deck->name ?? 'Unknown Deck',
             'confidence' => round($bestScore, 2),
-            'deck_deleted' => $bestMatch->deck?->trashed() ?? false,
+            'deck_deleted' => $bestMatch->deck->trashed() ?? false,
         ];
     }
 }

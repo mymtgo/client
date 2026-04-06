@@ -27,7 +27,7 @@ class IndexController extends Controller
                 ->get(['id', 'token', 'started_at'])
                 ->map(function (MtgoMatch $m) {
                     $opponent = $m->games()->first()?->opponents()->first()?->username;
-                    $date = $m->started_at?->format('d/m');
+                    $date = $m->started_at->format('d/m');
                     $label = "#{$m->id}";
                     if ($opponent) {
                         $label .= " — vs {$opponent}";

@@ -374,10 +374,10 @@ class ImportMatches
             $oracleId = $knownOracles->get($name);
 
             if ($oracleId) {
-                $card->update(array_filter([
+                $card->update([
                     'name' => $card->name ?: $name,
                     'oracle_id' => $oracleId,
-                ]));
+                ]);
             }
         }
     }

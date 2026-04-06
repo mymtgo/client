@@ -61,7 +61,7 @@ class ResolveGameResults
         $extracted = ExtractGameResults::run($entries, $username);
 
         // Sync game results progressively
-        static::syncGameResults($match, $extracted['results'], $extracted['games']);
+        self::syncGameResults($match, $extracted['results'], $extracted['games']);
 
         // Check if decisive
         $stateChanges = LogEvent::where('match_token', $match->token)

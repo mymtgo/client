@@ -34,6 +34,7 @@ class Game extends Model
         return $this->belongsTo(MtgoMatch::class, 'match_id');
     }
 
+    /** @return BelongsToMany<Player, $this, GamePlayer, 'pivot'> */
     public function players(): BelongsToMany
     {
         return $this->belongsToMany(Player::class)
@@ -41,11 +42,13 @@ class Game extends Model
             ->withPivot(['on_play', 'instance_id', 'starting_hand_size', 'deck_json', 'is_local']);
     }
 
+    /** @return BelongsToMany<Player, $this, GamePlayer, 'pivot'> */
     public function localPlayers(): BelongsToMany
     {
         return $this->players()->wherePivot('is_local', 1);
     }
 
+    /** @return BelongsToMany<Player, $this, GamePlayer, 'pivot'> */
     public function opponents(): BelongsToMany
     {
         return $this->players()->wherePivot('is_local', 0);

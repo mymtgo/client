@@ -18,10 +18,10 @@ class IndexController extends Controller
             ->get()
             ->map(fn (DeckVersion $v) => [
                 'id' => $v->id,
-                'deck_name' => $v->deck?->name ?? 'Unknown',
+                'deck_name' => $v->deck->name ?? 'Unknown',
                 'deck_deleted' => $v->deck?->trashed() ?? false,
                 'modified_at' => $v->modified_at->format('d/m/Y'),
-                'format' => $v->deck?->format ?? '',
+                'format' => $v->deck->format ?? '',
             ]);
 
         $importedCount = MtgoMatch::where('imported', true)->count();
@@ -34,7 +34,7 @@ class IndexController extends Controller
             'existingScan' => $existingScan ? [
                 'id' => $existingScan->id,
                 'deck_version_id' => $existingScan->deck_version_id,
-                'deck_name' => $existingScan->deckVersion?->deck?->name ?? 'Unknown',
+                'deck_name' => $existingScan->deckVersion?->deck->name ?? 'Unknown',
                 'status' => $existingScan->status,
                 'stage' => $existingScan->stage,
                 'progress' => $existingScan->progress,

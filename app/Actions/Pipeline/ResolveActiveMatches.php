@@ -27,7 +27,7 @@ class ResolveActiveMatches
             try {
                 ResolveGameResults::run($match);
             } catch (\Throwable $e) {
-                static::handleMatchFailure($match, $e);
+                self::handleMatchFailure($match, $e);
             }
         }
     }

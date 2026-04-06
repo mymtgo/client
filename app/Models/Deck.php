@@ -40,6 +40,7 @@ class Deck extends Model
         return $this->hasOne(DeckVersion::class, 'deck_id')->latestOfMany('modified_at');
     }
 
+    /** @return HasManyThrough<MtgoMatch, DeckVersion, $this> */
     public function matches(): HasManyThrough
     {
         return $this->hasManyThrough(MtgoMatch::class, DeckVersion::class, 'deck_id', 'deck_version_id')->where('state', MatchState::Complete);

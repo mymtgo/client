@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Import;
 
 use App\Http\Controllers\Controller;
 use App\Models\ImportScan;
+use App\Models\ImportScanMatch;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -42,7 +43,7 @@ class ScanMatchesController extends Controller
 
         $matches = $query
             ->paginate($perPage)
-            ->through(fn ($m) => [
+            ->through(fn (ImportScanMatch $m) => [
                 'id' => $m->id,
                 'history_id' => $m->history_id,
                 'started_at' => $m->started_at->toIso8601String(),

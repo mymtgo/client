@@ -29,11 +29,13 @@ class GetDeckViewSharedProps
         $currentVersion = collect($realVersions)->firstWhere('isCurrent', true)
             ?? end($realVersions) ?: null;
 
-        $trophies = $deck->matches()
+        $leagueMatches = $deck->matches()
             ->select('matches.*')
             ->whereNotNull('league_id')
             ->whereHas('league', fn ($q) => $q->where('phantom', false)->where('state', 'complete'))
-            ->get()
+            ->get();
+
+        $trophies = $leagueMatches
             ->groupBy('league_id')
             ->filter(fn ($matches) => $matches->every(fn ($m) => $m->outcome === MatchOutcome::Win))
             ->count();

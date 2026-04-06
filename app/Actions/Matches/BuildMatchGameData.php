@@ -21,10 +21,14 @@ class BuildMatchGameData
         $handData = self::parseHandData($game, $localInstanceId, $opponentInstanceId, $cardsByMtgoId);
 
         $opponentCardsSeen = collect($opponentPlayer?->pivot->deck_json ?? [])
-            ->map(fn ($item) => [
-                'name' => $cardsByMtgoId->get($item['mtgo_id'])?->name ?? "Unknown ({$item['mtgo_id']})",
-                'image' => $cardsByMtgoId->get($item['mtgo_id'])?->image_url,
-            ])
+            ->map(function ($item) use ($cardsByMtgoId) {
+                $card = $cardsByMtgoId->get($item['mtgo_id']);
+
+                return [
+                    'name' => $card->name ?? "Unknown ({$item['mtgo_id']})",
+                    'image' => $card->image_url ?? null,
+                ];
+            })
             ->unique('name')
             ->values()
             ->toArray();
@@ -70,11 +74,15 @@ class BuildMatchGameData
     {
         $parsed = ParseOpeningHand::run($game, $localInstanceId, $opponentInstanceId);
 
-        $toCard = fn ($catalogId, bool $bottomed = false) => [
-            'name' => $cardsByMtgoId->get($catalogId)?->name ?? "Unknown ({$catalogId})",
-            'image' => $cardsByMtgoId->get($catalogId)?->image_url,
-            'bottomed' => $bottomed,
-        ];
+        $toCard = function ($catalogId, bool $bottomed = false) use ($cardsByMtgoId) {
+            $card = $cardsByMtgoId->get($catalogId);
+
+            return [
+                'name' => $card->name ?? "Unknown ({$catalogId})",
+                'image' => $card->image_url ?? null,
+                'bottomed' => $bottomed,
+            ];
+        };
 
         // For display: show the full hand including bottomed cards (marked)
         $displayHand = ! empty($parsed['bottomed_instance_ids']) ? $parsed['hand_before_bottoming'] : $parsed['kept_hand'];
@@ -114,11 +122,15 @@ class BuildMatchGameData
         }
 
         return collect(array_keys($seenCatalogIds))
-            ->map(fn ($catalogId) => [
-                'id' => $catalogId,
-                'name' => $cardsByMtgoId->get($catalogId)?->name ?? "Unknown ({$catalogId})",
-                'image' => $cardsByMtgoId->get($catalogId)?->image_url,
-            ])
+            ->map(function ($catalogId) use ($cardsByMtgoId) {
+                $card = $cardsByMtgoId->get($catalogId);
+
+                return [
+                    'id' => $catalogId,
+                    'name' => $card->name ?? "Unknown ({$catalogId})",
+                    'image' => $card->image_url ?? null,
+                ];
+            })
             ->unique('id')
             ->values()
             ->toArray();
@@ -138,9 +150,9 @@ class BuildMatchGameData
         $landCount = collect($lastSnapshot->content['Cards'] ?? [])
             ->filter(fn ($card) => $card['Zone'] === 'Battlefield')
             ->filter(function ($card) use ($cardsByMtgoId) {
-                $type = $cardsByMtgoId->get((int) $card['CatalogID'])?->type ?? '';
+                $resolved = $cardsByMtgoId->get((int) $card['CatalogID']);
 
-                return str_contains($type, 'Land');
+                return str_contains($resolved->type ?? '', 'Land');
             })
             ->count();
 
@@ -159,7 +171,8 @@ class BuildMatchGameData
         $gameMains = [];
         foreach ($gameDeckJson as $item) {
             if (! ($item['sideboard'] ?? false)) {
-                $oracleId = $cardsByMtgoId->get($item['mtgo_id'])?->oracle_id ?? "mtgo_{$item['mtgo_id']}";
+                $resolved = $cardsByMtgoId->get($item['mtgo_id']);
+                $oracleId = $resolved->oracle_id ?? "mtgo_{$item['mtgo_id']}";
                 $gameMains[$oracleId] = ($gameMains[$oracleId] ?? 0) + (int) ($item['quantity'] ?? 1);
             }
         }
@@ -176,11 +189,10 @@ class BuildMatchGameData
         foreach ($gameMains as $oracleId => $gameQty) {
             $registeredQty = $registeredMains[$oracleId] ?? 0;
             if ($gameQty > $registeredQty) {
-                $card = $cardsByOracleId->get($oracleId)
-                    ?? $cardsByMtgoId->first(fn ($c) => $c->oracle_id === $oracleId);
+                $card = self::resolveCardByOracleId($oracleId, $cardsByMtgoId, $cardsByOracleId);
                 $changes[] = [
                     'name' => $card->name ?? 'Unknown',
-                    'image' => $card?->image_url,
+                    'image' => $card->image_url ?? null,
                     'quantity' => $gameQty - $registeredQty,
                     'type' => 'in',
                 ];
@@ -190,11 +202,10 @@ class BuildMatchGameData
         foreach ($registeredMains as $oracleId => $registeredQty) {
             $gameQty = $gameMains[$oracleId] ?? 0;
             if ($registeredQty > $gameQty) {
-                $card = $cardsByOracleId->get($oracleId)
-                    ?? $cardsByMtgoId->first(fn ($c) => $c->oracle_id === $oracleId);
+                $card = self::resolveCardByOracleId($oracleId, $cardsByMtgoId, $cardsByOracleId);
                 $changes[] = [
                     'name' => $card->name ?? 'Unknown',
-                    'image' => $card?->image_url,
+                    'image' => $card->image_url ?? null,
                     'quantity' => $registeredQty - $gameQty,
                     'type' => 'out',
                 ];
@@ -202,5 +213,17 @@ class BuildMatchGameData
         }
 
         return $changes;
+    }
+
+    /**
+     * Resolve a card by oracle_id from the available collections.
+     *
+     * Returns a stub object with name/image_url when not found.
+     */
+    private static function resolveCardByOracleId(string $oracleId, Collection $cardsByMtgoId, Collection $cardsByOracleId): object
+    {
+        return $cardsByOracleId->get($oracleId)
+            ?? $cardsByMtgoId->first(fn ($c) => $c->oracle_id === $oracleId)
+            ?? (object) ['name' => null, 'image_url' => null];
     }
 }
