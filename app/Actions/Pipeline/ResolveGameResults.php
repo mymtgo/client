@@ -19,6 +19,10 @@ class ResolveGameResults
      */
     public static function run(MtgoMatch $match): void
     {
+        if (! $match->hasValidPlayers()) {
+            return;
+        }
+
         $gameLog = GameLog::where('match_token', $match->token)->first();
 
         if (! $gameLog) {

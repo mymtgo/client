@@ -39,6 +39,7 @@ use App\Http\Controllers\IndexController;
 use App\Http\Controllers\Leagues\AbandonController;
 use App\Http\Controllers\Leagues\OpponentScoutWindowController;
 use App\Http\Controllers\Leagues\OverlayController;
+use App\Http\Controllers\Matches\BulkUpdateArchetypeController;
 use App\Http\Controllers\Matches\DeleteController;
 use App\Http\Controllers\Matches\DetectArchetypeController;
 use App\Http\Controllers\Matches\ShowController;
@@ -73,6 +74,7 @@ Route::group([], function (Router $router) {
     ], function (Router $group) {
         $group->get('{id}', ShowController::class)->name('matches.show');
         $group->patch('{id}/archetype', UpdateArchetypeController::class)->name('matches.update-archetype');
+        $group->patch('bulk-archetype', BulkUpdateArchetypeController::class)->name('matches.bulk-update-archetype');
         $group->post('{id}/detect-archetype', DetectArchetypeController::class)->name('matches.detect-archetype');
         $group->patch('{id}/notes', UpdateNotesController::class)->name('matches.update-notes');
         $group->delete('{id}', DeleteController::class)->name('matches.delete');

@@ -55,6 +55,18 @@ class MtgoMatch extends Model
         return $this->hasMany(Game::class, 'match_id', 'id');
     }
 
+    /**
+     * Check that at least one game has both a local player and an opponent.
+     * Matches without this are phantom matches from other players' games.
+     */
+    public function hasValidPlayers(): bool
+    {
+        return $this->games()
+            ->whereHas('localPlayers')
+            ->whereHas('opponents')
+            ->exists();
+    }
+
     public function deck(): HasOneThrough
     {
         return $this->hasOneThrough(

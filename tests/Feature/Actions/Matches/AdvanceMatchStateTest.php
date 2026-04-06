@@ -5,6 +5,7 @@ use App\Enums\LogEventType;
 use App\Enums\MatchState;
 use App\Models\LogEvent;
 use App\Models\MtgoMatch;
+use App\Models\Player;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -190,4 +191,172 @@ it('treats ended as the terminal state — does not advance further', function (
     $result = AdvanceMatchState::run($matchToken, $matchId);
 
     expect($result->state)->toBe(MatchState::Ended);
+});
+
+it('does not create a match when game state has no local player', function () {
+    $matchId = '10010';
+    $matchToken = 'token-phantom';
+
+    // Join event (first gate passes)
+    createLogEvent([
+        'match_id' => $matchId,
+        'match_token' => $matchToken,
+        'event_type' => LogEventType::MATCH_STATE_CHANGED->value,
+        'context' => 'MatchJoinedEventUnderwayState',
+        'raw_text' => buildJoinRawText(),
+    ]);
+
+    // Game state with two players, but neither is the local user
+    $stateJson = json_encode(['Players' => [
+        ['Id' => 1, 'Name' => 'Stranger1'],
+        ['Id' => 2, 'Name' => 'Stranger2'],
+    ], 'Cards' => []]);
+
+    createLogEvent([
+        'match_id' => $matchId,
+        'match_token' => $matchToken,
+        'event_type' => LogEventType::GAME_STATE_UPDATE->value,
+        'game_id' => 50001,
+        'username' => 'LocalPlayer',
+        'raw_text' => "12:00:01 [INF] (GameState|Update) Game ID: 50001, Match ID: {$matchId}\n{$stateJson}",
+    ]);
+
+    $result = AdvanceMatchState::run($matchToken, $matchId);
+
+    expect($result)->toBeNull();
+    expect(MtgoMatch::where('mtgo_id', $matchId)->exists())->toBeFalse();
+});
+
+it('does not create a match when game state has only one player', function () {
+    $matchId = '10011';
+    $matchToken = 'token-solitaire';
+
+    createLogEvent([
+        'match_id' => $matchId,
+        'match_token' => $matchToken,
+        'event_type' => LogEventType::MATCH_STATE_CHANGED->value,
+        'context' => 'MatchJoinedEventUnderwayState',
+        'raw_text' => buildJoinRawText(),
+    ]);
+
+    $stateJson = json_encode(['Players' => [
+        ['Id' => 1, 'Name' => 'LocalPlayer'],
+    ], 'Cards' => []]);
+
+    createLogEvent([
+        'match_id' => $matchId,
+        'match_token' => $matchToken,
+        'event_type' => LogEventType::GAME_STATE_UPDATE->value,
+        'game_id' => 50002,
+        'username' => 'LocalPlayer',
+        'raw_text' => "12:00:01 [INF] (GameState|Update) Game ID: 50002, Match ID: {$matchId}\n{$stateJson}",
+    ]);
+
+    $result = AdvanceMatchState::run($matchToken, $matchId);
+
+    expect($result)->toBeNull();
+    expect(MtgoMatch::where('mtgo_id', $matchId)->exists())->toBeFalse();
+});
+
+it('does not create a match when game state has no parseable players', function () {
+    $matchId = '10012';
+    $matchToken = 'token-no-players';
+
+    createLogEvent([
+        'match_id' => $matchId,
+        'match_token' => $matchToken,
+        'event_type' => LogEventType::MATCH_STATE_CHANGED->value,
+        'context' => 'MatchJoinedEventUnderwayState',
+        'raw_text' => buildJoinRawText(),
+    ]);
+
+    // Game state update with empty JSON (no Players array)
+    createLogEvent([
+        'match_id' => $matchId,
+        'match_token' => $matchToken,
+        'event_type' => LogEventType::GAME_STATE_UPDATE->value,
+        'game_id' => 50003,
+        'username' => 'LocalPlayer',
+        'raw_text' => "12:00:01 [INF] (GameState|Update) Game ID: 50003, Match ID: {$matchId}\n{}",
+    ]);
+
+    $result = AdvanceMatchState::run($matchToken, $matchId);
+
+    expect($result)->toBeNull();
+    expect(MtgoMatch::where('mtgo_id', $matchId)->exists())->toBeFalse();
+});
+
+it('reports invalid players when match has no games with both local and opponent', function () {
+    $match = MtgoMatch::create([
+        'mtgo_id' => '20001',
+        'token' => 'token-no-valid-players',
+        'format' => 'Pmodern',
+        'match_type' => 'Constructed',
+        'state' => MatchState::InProgress,
+        'started_at' => now(),
+    ]);
+
+    // Game with only one player (solitaire)
+    $game = $match->games()->create(['mtgo_id' => 30001, 'started_at' => now()]);
+    $player = Player::create(['username' => 'SoloPlayer']);
+    $game->players()->attach($player, [
+        'instance_id' => 1,
+        'is_local' => true,
+        'on_play' => true,
+        'deck_json' => [],
+    ]);
+
+    expect($match->hasValidPlayers())->toBeFalse();
+});
+
+it('reports valid players when game has local player and opponent', function () {
+    $match = MtgoMatch::create([
+        'mtgo_id' => '20002',
+        'token' => 'token-valid-players',
+        'format' => 'Pmodern',
+        'match_type' => 'Constructed',
+        'state' => MatchState::InProgress,
+        'started_at' => now(),
+    ]);
+
+    $game = $match->games()->create(['mtgo_id' => 30002, 'started_at' => now()]);
+    $local = Player::create(['username' => 'LocalPlayer']);
+    $opponent = Player::create(['username' => 'Opponent']);
+    $game->players()->attach($local, ['instance_id' => 1, 'is_local' => true, 'on_play' => true, 'deck_json' => []]);
+    $game->players()->attach($opponent, ['instance_id' => 2, 'is_local' => false, 'on_play' => false, 'deck_json' => []]);
+
+    expect($match->hasValidPlayers())->toBeTrue();
+});
+
+it('creates a match when game state confirms local player with opponent', function () {
+    $matchId = '10013';
+    $matchToken = 'token-legit';
+
+    createLogEvent([
+        'match_id' => $matchId,
+        'match_token' => $matchToken,
+        'event_type' => LogEventType::MATCH_STATE_CHANGED->value,
+        'context' => 'MatchJoinedEventUnderwayState',
+        'raw_text' => buildJoinRawText(),
+    ]);
+
+    $stateJson = json_encode(['Players' => [
+        ['Id' => 1, 'Name' => 'LocalPlayer'],
+        ['Id' => 2, 'Name' => 'Opponent'],
+    ], 'Cards' => []]);
+
+    createLogEvent([
+        'match_id' => $matchId,
+        'match_token' => $matchToken,
+        'event_type' => LogEventType::GAME_STATE_UPDATE->value,
+        'game_id' => 50004,
+        'username' => 'LocalPlayer',
+        'raw_text' => "12:00:01 [INF] (GameState|Update) Game ID: 50004, Match ID: {$matchId}\n{$stateJson}",
+    ]);
+
+    $result = AdvanceMatchState::run($matchToken, $matchId);
+
+    expect($result)->not->toBeNull();
+    expect($result->mtgo_id)->toBe($matchId);
+    expect(MtgoMatch::where('mtgo_id', $matchId)->exists())->toBeTrue();
 });

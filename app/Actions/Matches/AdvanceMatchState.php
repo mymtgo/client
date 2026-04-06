@@ -2,6 +2,7 @@
 
 namespace App\Actions\Matches;
 
+use App\Actions\Util\ExtractJson;
 use App\Actions\Util\ExtractKeyValueBlock;
 use App\Enums\LogEventType;
 use App\Enums\MatchState;
@@ -60,6 +61,33 @@ class AdvanceMatchState
             $match = MtgoMatch::where('mtgo_id', $matchId)->first();
 
             if (! $match) {
+                // ── Gate: require local player in game state ───────────
+                // Game state events contain a Players array with Name
+                // fields. Verify the local user is a participant and
+                // there are 2+ players before creating anything. This
+                // prevents phantom matches from other players' league
+                // games leaking into the database.
+                $gameStateEvents = $events->filter(
+                    fn (LogEvent $e) => $e->event_type === LogEventType::GAME_STATE_UPDATE->value
+                );
+
+                if ($gameStateEvents->isNotEmpty()) {
+                    $firstState = ExtractJson::run($gameStateEvents->first()->raw_text)->first();
+                    $players = $firstState['Players'] ?? [];
+                    $playerNames = array_column($players, 'Name');
+                    $username = $events->first(fn (LogEvent $e) => $e->username !== null)?->username;
+
+                    if (count($players) < 2 || ($username && ! in_array($username, $playerNames))) {
+                        Log::channel('pipeline')->info("AdvanceMatchState: skipping phantom match token={$matchToken} id={$matchId}", [
+                            'player_count' => count($players),
+                            'player_names' => $playerNames,
+                            'local_username' => $username,
+                        ]);
+
+                        return null;
+                    }
+                }
+
                 $gameMeta = ExtractKeyValueBlock::run($joinedState->raw_text);
 
                 $started = now()->parse($joinedState->logged_at)

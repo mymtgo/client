@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { ref } from 'vue';
-import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from '@/components/ui/context-menu';
-import { Badge } from '@/components/ui/badge';
+import { ref, computed } from 'vue';
+import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from '@/components/ui/context-menu';import { Checkbox } from '@/components/ui/checkbox';
 import ManaSymbols from '@/components/ManaSymbols.vue';
 import ResultBadge from '@/components/matches/ResultBadge.vue';
 import MatchNotesDialog from '@/components/matches/MatchNotesDialog.vue';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Button } from '@/components/ui/button';
 import { useForm, router } from '@inertiajs/vue3';
 import DeleteController from '@/actions/App/Http/Controllers/Matches/DeleteController';
 import UpdateArchetypeController from '@/actions/App/Http/Controllers/Matches/UpdateArchetypeController';
@@ -14,7 +14,7 @@ import DetectArchetypeController from '@/actions/App/Http/Controllers/Matches/De
 import ShowController from '@/actions/App/Http/Controllers/Matches/ShowController';
 import SetArchetypeDialog from '@/components/matches/SetArchetypeDialog.vue';
 import { useToast } from '@/composables/useToast';
-import { ArrowDown, ArrowUp, ArrowUpDown, NotepadText, RefreshCw } from 'lucide-vue-next';
+import { NotepadText, RefreshCw, Tags, X } from 'lucide-vue-next';
 import SortableHeader from '@/components/SortableHeader.vue';
 
 const props = defineProps<{
@@ -32,6 +32,42 @@ const archetypeDialog = ref<InstanceType<typeof SetArchetypeDialog> | null>(null
 const notesDialog = ref<InstanceType<typeof MatchNotesDialog> | null>(null);
 const detectingMatchId = ref<number | null>(null);
 const { add: toast } = useToast();
+
+const selectedIds = ref<number[]>([]);
+
+const allSelected = computed(() => {
+    return props.matches.length > 0 && selectedIds.value.length === props.matches.length;
+});
+
+const someSelected = computed(() => {
+    return selectedIds.value.length > 0 && selectedIds.value.length < props.matches.length;
+});
+
+const toggleAll = (checked: boolean | 'indeterminate') => {
+    if (checked === true) {
+        selectedIds.value = props.matches.map((m) => m.id);
+    } else {
+        selectedIds.value = [];
+    }
+};
+
+const toggleMatch = (matchId: number, checked: boolean | 'indeterminate') => {
+    if (checked === true) {
+        selectedIds.value = [...selectedIds.value, matchId];
+    } else {
+        selectedIds.value = selectedIds.value.filter((id) => id !== matchId);
+    }
+};
+
+const clearSelection = () => {
+    selectedIds.value = [];
+};
+
+const openBulkSetArchetype = () => {
+    const formats = new Set(props.matches.filter((m) => selectedIds.value.includes(m.id)).map((m) => m.format));
+    const format = formats.size === 1 ? [...formats][0] : null;
+    archetypeDialog.value?.openForMatches([...selectedIds.value], format);
+};
 
 const deleteForm = useForm<{
     id: string | number;
@@ -85,12 +121,32 @@ const detectArchetype = (matchId: number) => {
 </script>
 
 <template>
-    <SetArchetypeDialog ref="archetypeDialog" :archetypes="archetypes ?? []" />
+    <SetArchetypeDialog ref="archetypeDialog" :archetypes="archetypes ?? []" @archetype-set="clearSelection" />
     <MatchNotesDialog ref="notesDialog" />
+
+    <div v-if="selectedIds.length > 0" class="flex items-center gap-3 border-b bg-muted/50 px-4 py-2">
+        <span class="text-sm font-medium">{{ selectedIds.length }} selected</span>
+
+        <Button variant="outline" size="sm" class="gap-1.5" @click="openBulkSetArchetype">
+            <Tags class="size-3.5" />
+            Set archetype
+        </Button>
+
+        <Button variant="ghost" size="sm" class="ml-auto gap-1.5 text-muted-foreground" @click="clearSelection">
+            <X class="size-3.5" />
+            Clear
+        </Button>
+    </div>
 
     <Table>
         <TableHeader class="sticky top-0 z-10 backdrop-blur-sm">
             <TableRow>
+                <TableHead class="w-10">
+                    <Checkbox
+                        :model-value="allSelected ? true : someSelected ? 'indeterminate' : false"
+                        @update:model-value="toggleAll"
+                    />
+                </TableHead>
                 <TableHead class="cursor-pointer select-none" @click="emit('sort', 'outcome')">
                     <SortableHeader label="Result" column="outcome" :sort-by="sortBy" :sort-dir="sortDir" />
                 </TableHead>
@@ -121,13 +177,23 @@ const detectArchetype = (matchId: number) => {
             <template v-for="match in matches" :key="match.id">
                 <ContextMenu>
                     <ContextMenuTrigger asChild>
-                        <TableRow class="cursor-pointer" @click="router.visit(ShowController({ id: match.id }).url)">
+                        <TableRow
+                            class="cursor-pointer"
+                            :data-state="selectedIds.includes(match.id) ? 'selected' : undefined"
+                            @click="router.visit(ShowController({ id: match.id }).url)"
+                        >
+                            <TableCell @click.stop>
+                                <Checkbox
+                                    :model-value="selectedIds.includes(match.id)"
+                                    @update:model-value="(val) => toggleMatch(match.id, val)"
+                                />
+                            </TableCell>
                             <TableCell>
                                 <ResultBadge :won="match.gamesWon > match.gamesLost" v-if="match.gamesWon !== match.gamesLost" :showText="true" />
                             </TableCell>
                             <TableCell class="font-medium">
                                 <span v-if="match.opponentName">{{ match.opponentName }}</span>
-                                <span v-else class="text-xs text-muted-foreground">—</span>
+                                <span v-else class="text-xs text-muted-foreground">&mdash;</span>
                             </TableCell>
                             <TableCell>
                                 <div class="flex items-center gap-1" v-if="match.opponentArchetypes?.[0]?.archetype">
@@ -152,7 +218,7 @@ const detectArchetype = (matchId: number) => {
                                         ({{ match.gameResults[gameIdx - 1].onPlay ? 'OTP' : 'OTD' }})
                                     </span>
                                 </template>
-                                <span v-else class="text-muted-foreground">—</span>
+                                <span v-else class="text-muted-foreground">&mdash;</span>
                             </TableCell>
                             <TableCell>
                                 {{ match.matchTime }}
