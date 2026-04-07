@@ -8,7 +8,6 @@ use App\Models\AppSetting;
 use App\Models\LogCursor;
 use App\Observers\LogCursorObserver;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\ServiceProvider;
 use Native\Desktop\Facades\Settings;
 
@@ -47,11 +46,11 @@ class AppServiceProvider extends ServiceProvider
 
     private function configureTimezone(): void
     {
-        if (! Schema::hasTable('app_settings')) {
+        try {
+            $timezone = AppSetting::resolve()->timezone;
+        } catch (\Throwable) {
             return;
         }
-
-        $timezone = AppSetting::resolve()->timezone;
 
         if ($timezone) {
             date_default_timezone_set($timezone);
