@@ -33,6 +33,7 @@ class LeaguesController extends Controller
 
         $leagues = League::whereHas('matches', fn ($q) => $q->whereIn('matches.id', $allMatchIds))
             ->with(['deckVersion.deck.cover'])
+            ->whereBetween('started_at', [$from, $to])
             ->orderByDesc('started_at')
             ->get();
 

@@ -26,6 +26,7 @@ const props = defineProps<{
     };
     gameLog: Array<{ timestamp: string; message: string }>;
     opponentName: string;
+    imported?: boolean;
 }>();
 
 const handOpen = ref(true);
@@ -68,14 +69,14 @@ const sideboardOpen = ref(false);
                         </div>
                     </DialogContent>
                 </Dialog>
-                <Button variant="ghost" size="sm" class="h-6 px-2 text-xs" @click="router.post(OpenReplayController.url({ id: game.id }))">
+                <Button v-if="!imported" variant="ghost" size="sm" class="h-6 px-2 text-xs" @click="router.post(OpenReplayController.url({ id: game.id }))">
                     <Play :size="11" />
                     Replay
                 </Button>
             </div>
         </CardHeader>
 
-        <CardContent class="flex flex-col gap-1.5 px-3 py-2">
+        <CardContent v-if="!imported" class="flex flex-col gap-1.5 px-3 py-2">
             <!-- Kept hand (open by default) -->
             <Collapsible v-model:open="handOpen">
                 <CollapsibleTrigger class="flex w-full items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium tracking-wide text-muted-foreground uppercase transition-colors hover:bg-muted">

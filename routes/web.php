@@ -18,6 +18,7 @@ use App\Http\Controllers\Decks\DashboardController;
 use App\Http\Controllers\Decks\DecklistController;
 use App\Http\Controllers\Decks\LeaguesController;
 use App\Http\Controllers\Decks\MatchesController;
+use App\Http\Controllers\Decks\MatchupDetailController;
 use App\Http\Controllers\Decks\MatchupsController;
 use App\Http\Controllers\Decks\OpenPopoutController;
 use App\Http\Controllers\Decks\PopoutController;
@@ -111,6 +112,7 @@ Route::group([], function (Router $router) {
         $group->get('{deck:id}/matches', MatchesController::class)->name('decks.matches');
         $group->get('{deck:id}/leagues', LeaguesController::class)->name('decks.leagues');
         $group->get('{deck:id}/matchups', MatchupsController::class)->name('decks.matchups');
+        $group->get('{deck:id}/matchups/{archetype}', MatchupDetailController::class)->name('decks.matchup-detail');
         $group->get('{deck:id}/decklist', DecklistController::class)->name('decks.decklist');
         $group->get('{deck:id}/screenshot-data', ScreenshotDataController::class)->name('decks.screenshot-data');
         $group->get('{deck:id}/popout', PopoutController::class)->name('decks.popout');

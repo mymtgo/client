@@ -8,9 +8,10 @@ import ManaSymbols from '@/components/ManaSymbols.vue';
 import SetArchetypeDialog from '@/components/matches/SetArchetypeDialog.vue';
 import MatchGame from '@/pages/matches/partials/MatchGame.vue';
 import UpdateNotesController from '@/actions/App/Http/Controllers/Matches/UpdateNotesController';
+import MatchesController from '@/actions/App/Http/Controllers/Decks/MatchesController';
 import { Card, CardContent } from '@/components/ui/card';
-import { AlertTriangle, PencilIcon, NotepadText } from 'lucide-vue-next';
-import { useForm } from '@inertiajs/vue3';
+import { AlertTriangle, ChevronLeft, PencilIcon, NotepadText } from 'lucide-vue-next';
+import { useForm, router } from '@inertiajs/vue3';
 import type { VersionStats } from '@/types/decks';
 
 defineOptions({ layout: [AppLayout, DeckViewLayout] });
@@ -64,6 +65,14 @@ function saveNotes() {
 }
 
 const isWin = computed(() => props.match.gamesWon > props.match.gamesLost);
+
+function goBack() {
+    if (window.history.length > 1) {
+        window.history.back();
+    } else {
+        router.visit(MatchesController.url(props.deck));
+    }
+}
 const opponentArchetype = computed(() => {
     const archetypes = props.match.opponentArchetypes as App.Data.Front.MatchArchetypeData[] | null;
     return archetypes?.[0] ?? null;
@@ -74,6 +83,15 @@ const opponentArchetype = computed(() => {
     <SetArchetypeDialog ref="archetypeDialog" :archetypes="archetypes" />
 
     <div class="flex flex-col gap-4 p-3 lg:p-4">
+            <!-- Back to matches -->
+            <button
+                @click="goBack"
+                class="inline-flex items-center gap-1 self-start text-sm text-muted-foreground transition-colors hover:text-foreground"
+            >
+                <ChevronLeft class="size-4" />
+                Back to matches
+            </button>
+
             <!-- Imported match banner -->
             <Card v-if="imported" class="border-yellow-500/30 bg-yellow-500/5 py-0">
                 <CardContent class="flex items-center gap-2 p-3 text-sm text-yellow-600 dark:text-yellow-400">
@@ -153,6 +171,7 @@ const opponentArchetype = computed(() => {
                     :game="game"
                     :game-log="gameLogs[game.id] ?? []"
                     :opponent-name="(match.opponentName as string) ?? 'Opponent'"
+                    :imported="imported"
                 />
             </div>
     </div>

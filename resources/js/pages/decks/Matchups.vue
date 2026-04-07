@@ -5,7 +5,7 @@ import DeckMatchups from '@/pages/decks/partials/DeckMatchups.vue';
 import TimeframeFilter from '@/components/TimeframeFilter.vue';
 import MatchupsController from '@/actions/App/Http/Controllers/Decks/MatchupsController';
 import { router } from '@inertiajs/vue3';
-import type { VersionStats } from '@/types/decks';
+import type { VersionStats, MatchupSpread } from '@/types/decks';
 
 defineOptions({ layout: [AppLayout, DeckViewLayout] });
 
@@ -16,7 +16,7 @@ const props = defineProps<{
     trophies: number;
     currentPage: string;
     timeframe: string;
-    matchupSpread: any[];
+    matchupSpread: MatchupSpread[];
 }>();
 
 function setTimeframe(value: string) {
@@ -29,6 +29,11 @@ function setTimeframe(value: string) {
 <template>
     <div class="space-y-4 p-3 lg:p-4">
         <TimeframeFilter :model-value="timeframe" @update:model-value="setTimeframe" />
-        <DeckMatchups :matchup-spread="matchupSpread" />
+        <DeckMatchups
+            :matchup-spread="matchupSpread"
+            :deck-id="deck.id"
+            :timeframe="timeframe"
+            :version="currentVersionId"
+        />
     </div>
 </template>

@@ -36,7 +36,8 @@ class MatchesController extends Controller
 
         // Build filtered match query
         $query = $deck->matches()->select('matches.*')->where('state', 'complete')
-            ->when($deckVersion, fn ($q) => $q->where('deck_version_id', $deckVersion->id));
+            ->when($deckVersion, fn ($q) => $q->where('deck_version_id', $deckVersion->id))
+            ->whereBetween('started_at', [$from, $to]);
 
         if ($filterFrom = $request->input('filter_from')) {
             $query->where('started_at', '>=', Carbon::parse($filterFrom)->startOfDay());
