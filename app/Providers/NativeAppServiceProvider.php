@@ -7,6 +7,7 @@ use App\Actions\Leagues\OpenOpponentScoutWindow;
 use App\Actions\Leagues\OpenOverlayWindow;
 use App\Actions\Updates\RunAppUpdates;
 use App\Facades\Mtgo;
+use App\Models\AppSetting;
 use Native\Desktop\Contracts\ProvidesPhpIni;
 use Native\Desktop\Facades\Menu;
 use Native\Desktop\Facades\Settings;
@@ -56,9 +57,16 @@ class NativeAppServiceProvider implements ProvidesPhpIni
 
     private function configureTimezone(): void
     {
-        $timezone = Settings::get('timezone') ?: System::timezone();
+        $settings = AppSetting::resolve();
+
+        // Prefer the user's explicit choice, fall back to NativePHP detection
+        $timezone = $settings->timezone
+            ?? Settings::get('timezone')
+            ?: System::timezone();
 
         if ($timezone) {
+            $settings->updateQuietly(['timezone' => $timezone]);
+
             date_default_timezone_set($timezone);
             config(['app.timezone' => $timezone]);
         }
