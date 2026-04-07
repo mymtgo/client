@@ -2,11 +2,12 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * @property \Carbon\Carbon $started_at
+ * @property Carbon $started_at
  */
 class ImportScanMatch extends Model
 {

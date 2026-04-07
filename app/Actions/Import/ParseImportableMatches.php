@@ -5,7 +5,6 @@ namespace App\Actions\Import;
 use App\Actions\Matches\ExtractGameResults;
 use App\Actions\Matches\ParseGameHistory;
 use App\Actions\RegisterDevice;
-use App\Facades\Mtgo;
 use App\Models\Card;
 use App\Models\MtgoMatch;
 use Illuminate\Support\Facades\Http;
@@ -21,9 +20,7 @@ class ParseImportableMatches
      */
     public static function run(): array
     {
-        $dataPath = Mtgo::getLogDataPath();
-        $historyPath = ParseGameHistory::findFile() ?? $dataPath.'/mtgo_game_history';
-        $historyRecords = ParseGameHistory::parse($historyPath);
+        $historyRecords = ParseGameHistory::parse();
 
         if (empty($historyRecords)) {
             return [];

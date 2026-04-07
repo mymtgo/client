@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use App\Models\Account;
 use App\Models\LogCursor;
 use App\Models\MtgoMatch;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Inertia\Middleware;
@@ -29,7 +30,7 @@ class HandleInertiaRequests extends Middleware
             'status' => fn () => [
                 'watcherRunning' => (bool) Settings::get('watcher_active', true),
                 'lastIngestAt' => LogCursor::max('updated_at'),
-                'lastIngestAtHuman' => ($ts = LogCursor::max('updated_at')) ? \Carbon\Carbon::parse($ts)->diffForHumans() : null,
+                'lastIngestAtHuman' => ($ts = LogCursor::max('updated_at')) ? Carbon::parse($ts)->diffForHumans() : null,
                 'pendingMatchCount' => MtgoMatch::submittable()->count(),
             ],
             'debugMode' => fn () => (bool) Settings::get('debug_mode'),

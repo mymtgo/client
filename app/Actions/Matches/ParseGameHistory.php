@@ -142,14 +142,51 @@ class ParseGameHistory
     /**
      * Parse without caching.
      *
+     * When a specific path is given, only that file is parsed.
+     * Otherwise all discovered mtgo_game_history files are parsed
+     * and merged (deduplicated by match Id).
+     *
      * @return array<int, array>
      */
     public static function parse(?string $path = null): array
     {
-        try {
-            $path ??= static::findFile();
+        if ($path !== null) {
+            return static::parseFile($path);
+        }
 
-            if ($path === null || ! file_exists($path)) {
+        $paths = static::findFiles();
+
+        if (empty($paths)) {
+            Log::warning('ParseGameHistory: no game history files found');
+
+            return [];
+        }
+
+        $allMatches = [];
+
+        foreach ($paths as $filePath) {
+            $matches = static::parseFile($filePath);
+
+            foreach ($matches as $match) {
+                $id = $match['Id'] ?? null;
+                if ($id !== null) {
+                    $allMatches[$id] = $match;
+                }
+            }
+        }
+
+        return array_values($allMatches);
+    }
+
+    /**
+     * Parse a single mtgo_game_history file.
+     *
+     * @return array<int, array>
+     */
+    private static function parseFile(string $path): array
+    {
+        try {
+            if (! file_exists($path)) {
                 Log::warning('ParseGameHistory: game history file not found', ['path' => $path]);
 
                 return [];
@@ -162,7 +199,7 @@ class ParseGameHistory
             Log::warning('ParseGameHistory: failed to parse game history', [
                 'exception' => get_class($e),
                 'error' => $e->getMessage(),
-                'path' => $path ?? 'auto-discover',
+                'path' => $path,
                 'trace' => array_slice($e->getTrace(), 0, 3),
             ]);
 
@@ -171,15 +208,21 @@ class ParseGameHistory
     }
 
     /**
-     * Discover the mtgo_game_history file using Symfony Finder.
+     * Discover all mtgo_game_history files.
+     *
+     * MTGO's ClickOnce deployment creates multiple copies across
+     * hashed subdirectories — one per installation/update. We parse
+     * all of them and merge results to get the complete history.
+     *
+     * @return array<string>
      */
-    public static function findFile(): ?string
+    public static function findFiles(): array
     {
         try {
             $dataPath = Mtgo::getLogDataPath();
 
             if (! is_dir($dataPath)) {
-                return null;
+                return [];
             }
 
             $finder = Finder::create()
@@ -189,16 +232,24 @@ class ParseGameHistory
                 ->ignoreUnreadableDirs()
                 ->depth('< 10');
 
+            $paths = [];
+
             foreach ($finder as $file) {
-                return $file->getRealPath();
+                $paths[] = $file->getRealPath();
             }
+
+            Log::channel('pipeline')->debug('ParseGameHistory: discovered game history files', [
+                'count' => count($paths),
+            ]);
+
+            return $paths;
         } catch (\Throwable $e) {
-            Log::warning('ParseGameHistory: could not discover game history file', [
+            Log::warning('ParseGameHistory: could not discover game history files', [
                 'error' => $e->getMessage(),
             ]);
         }
 
-        return null;
+        return [];
     }
 
     private function __construct(string $data)
