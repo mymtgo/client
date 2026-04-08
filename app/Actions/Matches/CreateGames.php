@@ -3,6 +3,7 @@
 namespace App\Actions\Matches;
 
 use App\Actions\Cards\CreateMissingCards;
+use App\Actions\Logs\ConvertMtgoTimestamp;
 use App\Actions\Util\ExtractJson;
 use App\Facades\Mtgo;
 use App\Models\Game;
@@ -46,7 +47,7 @@ class CreateGames
         ], [
             'won' => $gameLog['results'][$gameIndex] ?? null,
             'started_at' => $firstStateEvent
-                ? now()->parse($firstStateEvent->logged_at)->setTimeFromTimeString($firstStateEvent->timestamp)
+                ? ConvertMtgoTimestamp::run($firstStateEvent->logged_at, $firstStateEvent->timestamp)
                 : null,
             'ended_at' => null,
         ]);
