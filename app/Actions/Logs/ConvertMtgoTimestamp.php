@@ -25,4 +25,19 @@ class ConvertMtgoTimestamp
 
         return Carbon::parse($localDate.' '.$mtgoTime, $systemTz)->utc();
     }
+
+    /**
+     * Convert a decoded_entries timestamp from local-as-UTC to real UTC.
+     *
+     * ParseGameLogBinary stores .NET DateTime ticks (local wall-clock time)
+     * with a +00:00 UTC label. This method strips the false UTC label,
+     * re-interprets the wall-clock time in the user's timezone, and converts to real UTC.
+     */
+    public static function fromDecodedEntry(string $timestamp, ?string $userTz = null): Carbon
+    {
+        $userTz ??= AppSetting::displayTimezone();
+        $wallClock = Carbon::parse($timestamp)->format('Y-m-d H:i:s');
+
+        return Carbon::parse($wallClock, $userTz)->utc();
+    }
 }

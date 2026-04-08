@@ -2,6 +2,7 @@
 
 namespace App\Actions\Pipeline;
 
+use App\Actions\Logs\ConvertMtgoTimestamp;
 use App\Actions\Matches\DetermineMatchResult;
 use App\Actions\Matches\ExtractGameResults;
 use App\Actions\Matches\ParseGameLogBinary;
@@ -82,12 +83,18 @@ class ResolveGameResults
             $previousState = $match->state;
             $outcome = MtgoMatch::determineOutcome($result['wins'], $result['losses']);
 
+            $endedAt = $match->ended_at;
+            if ($match->state === MatchState::InProgress) {
+                $lastTs = end($entries)['timestamp'] ?? null;
+                $endedAt = $lastTs
+                    ? ConvertMtgoTimestamp::fromDecodedEntry($lastTs)
+                    : now();
+            }
+
             $match->update([
                 'outcome' => $outcome,
                 'state' => MatchState::Complete,
-                'ended_at' => $match->state === MatchState::InProgress
-                    ? now()
-                    : $match->ended_at,
+                'ended_at' => $endedAt,
             ]);
 
             Log::channel('pipeline')->info("Match {$match->mtgo_id}: {$previousState->value} → Complete", [
@@ -120,7 +127,7 @@ class ResolveGameResults
             }
 
             if ($game->ended_at === null && ! empty($gameData[$index]['ended_at'])) {
-                $updates['ended_at'] = $gameData[$index]['ended_at'];
+                $updates['ended_at'] = ConvertMtgoTimestamp::fromDecodedEntry($gameData[$index]['ended_at']);
             }
 
             if (! empty($updates)) {

@@ -2,10 +2,10 @@
 
 namespace App\Actions\Matches;
 
+use App\Actions\Logs\ConvertMtgoTimestamp;
 use App\Models\AppSetting;
 use App\Models\Game;
 use App\Models\GameLog;
-use Carbon\Carbon;
 
 class GetGameLogEntries
 {
@@ -39,17 +39,18 @@ class GetGameLogEntries
             return [];
         }
 
+        $userTz = AppSetting::displayTimezone();
         $gameStart = $game->started_at->timestamp;
         $gameEnd = $game->ended_at->timestamp;
 
         return collect($entries)
-            ->filter(function ($entry) use ($gameStart, $gameEnd) {
-                $ts = Carbon::parse($entry['timestamp'])->timestamp;
+            ->filter(function ($entry) use ($gameStart, $gameEnd, $userTz) {
+                $ts = ConvertMtgoTimestamp::fromDecodedEntry($entry['timestamp'], $userTz)->timestamp;
 
                 return $ts >= $gameStart - 5 && $ts <= $gameEnd + 5;
             })
             ->map(fn ($entry) => [
-                'timestamp' => Carbon::parse($entry['timestamp'])->setTimezone(AppSetting::displayTimezone())->format('H:i:s'),
+                'timestamp' => ConvertMtgoTimestamp::fromDecodedEntry($entry['timestamp'], $userTz)->setTimezone($userTz)->format('H:i:s'),
                 'message' => self::cleanMessage($entry['message']),
             ])
             ->values()

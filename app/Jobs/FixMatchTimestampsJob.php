@@ -2,11 +2,11 @@
 
 namespace App\Jobs;
 
+use App\Actions\Logs\ConvertMtgoTimestamp;
 use App\Actions\Matches\ExtractGameResults;
 use App\Models\AppSetting;
 use App\Models\GameLog;
 use App\Models\MtgoMatch;
-use Carbon\Carbon;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Log;
@@ -41,8 +41,8 @@ class FixMatchTimestampsJob implements ShouldQueue
                         continue;
                     }
 
-                    $matchStarted = self::localToUtc($entries[0]['timestamp'], $userTz);
-                    $matchEnded = self::localToUtc(end($entries)['timestamp'], $userTz);
+                    $matchStarted = ConvertMtgoTimestamp::fromDecodedEntry($entries[0]['timestamp'], $userTz);
+                    $matchEnded = ConvertMtgoTimestamp::fromDecodedEntry(end($entries)['timestamp'], $userTz);
 
                     $match->update([
                         'started_at' => $matchStarted,
@@ -56,17 +56,6 @@ class FixMatchTimestampsJob implements ShouldQueue
             });
 
         Log::info("FixMatchTimestampsJob: corrected {$fixed} matches, skipped {$skipped}");
-    }
-
-    /**
-     * Re-interpret a decoded_entries timestamp (local time stored as ISO 8601)
-     * as the user's local timezone and convert to UTC.
-     */
-    private static function localToUtc(string $timestamp, string $userTz): Carbon
-    {
-        $wallClock = Carbon::parse($timestamp)->format('Y-m-d H:i:s');
-
-        return Carbon::parse($wallClock, $userTz)->utc();
     }
 
     private function fixGameTimestamps(MtgoMatch $match, array $entries, string $userTz): void
@@ -85,8 +74,8 @@ class FixMatchTimestampsJob implements ShouldQueue
                 continue;
             }
 
-            $gameStarted = self::localToUtc($gameEntries[0]['timestamp'], $userTz);
-            $gameEnded = self::localToUtc(end($gameEntries)['timestamp'], $userTz);
+            $gameStarted = ConvertMtgoTimestamp::fromDecodedEntry($gameEntries[0]['timestamp'], $userTz);
+            $gameEnded = ConvertMtgoTimestamp::fromDecodedEntry(end($gameEntries)['timestamp'], $userTz);
 
             $game->update([
                 'started_at' => $gameStarted,
