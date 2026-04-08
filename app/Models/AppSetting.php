@@ -25,4 +25,12 @@ class AppSetting extends Model
     {
         return static::resolve()->timezone ?? 'UTC';
     }
+
+    /**
+     * Clear the singleton cache (useful in tests).
+     */
+    public static function clearCache(): void
+    {
+        static::$cached = null;
+    }
 }

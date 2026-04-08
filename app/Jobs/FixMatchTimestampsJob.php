@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Actions\Matches\ExtractGameResults;
+use App\Models\AppSetting;
 use App\Models\GameLog;
 use App\Models\MtgoMatch;
 use Carbon\Carbon;
@@ -18,10 +19,11 @@ class FixMatchTimestampsJob implements ShouldQueue
     {
         $fixed = 0;
         $skipped = 0;
+        $userTz = AppSetting::displayTimezone();
 
         GameLog::whereNotNull('decoded_entries')
             ->whereNotNull('first_timestamp')
-            ->chunkById(100, function ($gameLogs) use (&$fixed, &$skipped) {
+            ->chunkById(100, function ($gameLogs) use (&$fixed, &$skipped, $userTz) {
                 foreach ($gameLogs as $gameLog) {
                     $match = MtgoMatch::where('token', $gameLog->match_token)->first();
 
@@ -39,15 +41,15 @@ class FixMatchTimestampsJob implements ShouldQueue
                         continue;
                     }
 
-                    $matchStarted = Carbon::parse($entries[0]['timestamp']);
-                    $matchEnded = Carbon::parse(end($entries)['timestamp']);
+                    $matchStarted = self::localToUtc($entries[0]['timestamp'], $userTz);
+                    $matchEnded = self::localToUtc(end($entries)['timestamp'], $userTz);
 
                     $match->update([
                         'started_at' => $matchStarted,
                         'ended_at' => $match->ended_at ? $matchEnded : null,
                     ]);
 
-                    $this->fixGameTimestamps($match, $entries);
+                    $this->fixGameTimestamps($match, $entries, $userTz);
 
                     $fixed++;
                 }
@@ -56,7 +58,18 @@ class FixMatchTimestampsJob implements ShouldQueue
         Log::info("FixMatchTimestampsJob: corrected {$fixed} matches, skipped {$skipped}");
     }
 
-    private function fixGameTimestamps(MtgoMatch $match, array $entries): void
+    /**
+     * Re-interpret a decoded_entries timestamp (local time stored as ISO 8601)
+     * as the user's local timezone and convert to UTC.
+     */
+    private static function localToUtc(string $timestamp, string $userTz): Carbon
+    {
+        $wallClock = Carbon::parse($timestamp)->format('Y-m-d H:i:s');
+
+        return Carbon::parse($wallClock, $userTz)->utc();
+    }
+
+    private function fixGameTimestamps(MtgoMatch $match, array $entries, string $userTz): void
     {
         $gameGroups = ExtractGameResults::splitIntoGames($entries);
         $games = $match->games()->orderBy('started_at')->orderBy('id')->get();
@@ -72,8 +85,8 @@ class FixMatchTimestampsJob implements ShouldQueue
                 continue;
             }
 
-            $gameStarted = Carbon::parse($gameEntries[0]['timestamp']);
-            $gameEnded = Carbon::parse(end($gameEntries)['timestamp']);
+            $gameStarted = self::localToUtc($gameEntries[0]['timestamp'], $userTz);
+            $gameEnded = self::localToUtc(end($gameEntries)['timestamp'], $userTz);
 
             $game->update([
                 'started_at' => $gameStarted,
