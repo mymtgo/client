@@ -8,12 +8,14 @@ class AppSetting extends Model
 {
     protected $guarded = [];
 
+    protected static ?self $cached = null;
+
     /**
      * Get the singleton settings row, creating it if needed.
      */
     public static function resolve(): self
     {
-        return self::firstOrCreate(['id' => 1]);
+        return static::$cached ??= self::firstOrCreate(['id' => 1]);
     }
 
     /**

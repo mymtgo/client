@@ -22,9 +22,9 @@ class NativeAppServiceProvider implements ProvidesPhpIni
      */
     public function boot(): void
     {
-        RunAppUpdates::run();
-
         $this->seedDisplayTimezone();
+
+        RunAppUpdates::run();
 
         if (app()->isProduction()) {
             Menu::create();

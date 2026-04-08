@@ -183,7 +183,7 @@ class ParseGameHistory
      *
      * @return array<int, array>
      */
-    private static function parseFile(string $path): array
+    protected static function parseFile(string $path): array
     {
         try {
             if (! file_exists($path)) {
