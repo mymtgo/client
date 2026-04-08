@@ -2,6 +2,7 @@
 
 namespace App\Actions\Matches;
 
+use App\Models\AppSetting;
 use App\Models\Game;
 use App\Models\GameLog;
 use Carbon\Carbon;
@@ -48,7 +49,7 @@ class GetGameLogEntries
                 return $ts >= $gameStart - 5 && $ts <= $gameEnd + 5;
             })
             ->map(fn ($entry) => [
-                'timestamp' => Carbon::parse($entry['timestamp'])->format('H:i:s'),
+                'timestamp' => Carbon::parse($entry['timestamp'])->setTimezone(AppSetting::displayTimezone())->format('H:i:s'),
                 'message' => self::cleanMessage($entry['message']),
             ])
             ->values()

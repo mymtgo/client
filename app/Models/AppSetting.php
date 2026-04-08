@@ -15,4 +15,12 @@ class AppSetting extends Model
     {
         return self::firstOrCreate(['id' => 1]);
     }
+
+    /**
+     * Get the user's display timezone (for formatting dates in the UI).
+     */
+    public static function displayTimezone(): string
+    {
+        return static::resolve()->timezone ?? 'UTC';
+    }
 }

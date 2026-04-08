@@ -12,6 +12,7 @@ import DeleteController from '@/actions/App/Http/Controllers/Matches/DeleteContr
 import UpdateArchetypeController from '@/actions/App/Http/Controllers/Matches/UpdateArchetypeController';
 import DetectArchetypeController from '@/actions/App/Http/Controllers/Matches/DetectArchetypeController';
 import ShowController from '@/actions/App/Http/Controllers/Matches/ShowController';
+import DeckDashboardController from '@/actions/App/Http/Controllers/Decks/DashboardController';
 import SetArchetypeDialog from '@/components/matches/SetArchetypeDialog.vue';
 import { useToast } from '@/composables/useToast';
 import { NotepadText, RefreshCw, Tags, X } from 'lucide-vue-next';
@@ -22,6 +23,7 @@ const props = defineProps<{
     archetypes?: App.Data.Front.ArchetypeData[];
     sortBy?: string | null;
     sortDir?: 'asc' | 'desc';
+    showDeck?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -150,6 +152,7 @@ const detectArchetype = (matchId: number) => {
                 <TableHead class="cursor-pointer select-none" @click="emit('sort', 'outcome')">
                     <SortableHeader label="Result" column="outcome" :sort-by="sortBy" :sort-dir="sortDir" />
                 </TableHead>
+                <TableHead v-if="showDeck">Deck</TableHead>
                 <TableHead>Opponent</TableHead>
                 <TableHead class="cursor-pointer select-none" @click="emit('sort', 'archetype')">
                     <SortableHeader label="Archetype" column="archetype" :sort-by="sortBy" :sort-dir="sortDir" />
@@ -190,6 +193,16 @@ const detectArchetype = (matchId: number) => {
                             </TableCell>
                             <TableCell>
                                 <ResultBadge :won="match.gamesWon > match.gamesLost" v-if="match.gamesWon !== match.gamesLost" :showText="true" />
+                            </TableCell>
+                            <TableCell v-if="showDeck">
+                                <span
+                                    v-if="match.deck"
+                                    class="text-primary hover:underline"
+                                    @click.stop="router.visit(DeckDashboardController({ deck: match.deck.id }).url)"
+                                >
+                                    {{ match.deck.name }}
+                                </span>
+                                <span v-else class="text-muted-foreground">Unknown</span>
                             </TableCell>
                             <TableCell class="font-medium">
                                 <span v-if="match.opponentName">{{ match.opponentName }}</span>

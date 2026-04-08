@@ -2,6 +2,7 @@
 
 namespace App\Actions\Matches;
 
+use App\Actions\Logs\ConvertMtgoTimestamp;
 use App\Actions\Util\ExtractJson;
 use App\Actions\Util\ExtractKeyValueBlock;
 use App\Enums\LogEventType;
@@ -90,8 +91,7 @@ class AdvanceMatchState
 
                 $gameMeta = ExtractKeyValueBlock::run($joinedState->raw_text);
 
-                $started = now()->parse($joinedState->logged_at)
-                    ->setTimeFromTimeString($joinedState->timestamp);
+                $started = ConvertMtgoTimestamp::run($joinedState->logged_at, $joinedState->timestamp);
 
                 $match = MtgoMatch::create([
                     'mtgo_id' => $matchId,
@@ -240,8 +240,7 @@ class AdvanceMatchState
         }
 
         $lastEvent = $events->last();
-        $ended = now()->parse($lastEvent->logged_at)
-            ->setTimeFromTimeString($lastEvent->timestamp);
+        $ended = ConvertMtgoTimestamp::run($lastEvent->logged_at, $lastEvent->timestamp);
 
         $match->update([
             'ended_at' => $ended,

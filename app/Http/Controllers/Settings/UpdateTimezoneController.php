@@ -21,9 +21,6 @@ class UpdateTimezoneController extends Controller
         Settings::set('timezone', $timezone);
         AppSetting::resolve()->update(['timezone' => $timezone]);
 
-        date_default_timezone_set($timezone);
-        config(['app.timezone' => $timezone]);
-
         return back();
     }
 }

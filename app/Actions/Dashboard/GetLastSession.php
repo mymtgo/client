@@ -3,6 +3,7 @@
 namespace App\Actions\Dashboard;
 
 use App\Enums\MatchOutcome;
+use App\Models\AppSetting;
 use App\Models\MtgoMatch;
 
 class GetLastSession
@@ -63,8 +64,8 @@ class GetLastSession
         $duration = $hours > 0 ? "{$hours}h {$minutes}m" : "{$minutes}m";
 
         return [
-            'startedAt' => $startedAt->format('M j, Y'),
-            'endedAt' => $endedAt->toIso8601String(),
+            'startedAt' => $startedAt->setTimezone(AppSetting::displayTimezone())->format('M j, Y'),
+            'endedAt' => $endedAt->setTimezone(AppSetting::displayTimezone())->toIso8601String(),
             'matches' => $session->map(fn ($m) => [
                 'id' => $m->id,
                 'outcome' => $m->outcome->value,

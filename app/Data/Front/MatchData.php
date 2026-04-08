@@ -2,6 +2,7 @@
 
 namespace App\Data\Front;
 
+use App\Models\AppSetting;
 use App\Models\MtgoMatch;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
@@ -44,8 +45,8 @@ class MatchData extends Data
             gamesLost: $match->gamesLost(),
             result: $match->isWin() ? 'won' : 'lost',
             startedAt: $match->started_at,
-            since: $match->started_at->diffForHumans(),
-            startedAtFormatted: $match->started_at->format('d/m/Y g:ia'),
+            since: $match->started_at->setTimezone(AppSetting::displayTimezone())->diffForHumans(),
+            startedAtFormatted: $match->started_at->setTimezone(AppSetting::displayTimezone())->format('d/m/Y g:ia'),
             matchTime: $match->matchTime,
             notes: $match->notes,
             deck: Lazy::whenLoaded('deck', $match, fn () => DeckData::from($match->deck)),

@@ -24,7 +24,7 @@ class NativeAppServiceProvider implements ProvidesPhpIni
     {
         RunAppUpdates::run();
 
-        $this->configureTimezone();
+        $this->seedDisplayTimezone();
 
         if (app()->isProduction()) {
             Menu::create();
@@ -55,20 +55,18 @@ class NativeAppServiceProvider implements ProvidesPhpIni
         }
     }
 
-    private function configureTimezone(): void
+    private function seedDisplayTimezone(): void
     {
         $settings = AppSetting::resolve();
 
-        // Prefer the user's explicit choice, fall back to NativePHP detection
-        $timezone = $settings->timezone
-            ?? Settings::get('timezone')
-            ?: System::timezone();
+        if ($settings->timezone) {
+            return;
+        }
+
+        $timezone = Settings::get('timezone') ?: System::timezone();
 
         if ($timezone) {
             $settings->updateQuietly(['timezone' => $timezone]);
-
-            date_default_timezone_set($timezone);
-            config(['app.timezone' => $timezone]);
         }
     }
 
