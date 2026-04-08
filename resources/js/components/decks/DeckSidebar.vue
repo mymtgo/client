@@ -80,9 +80,11 @@ const navItems = computed(() => [
                     </span>
                 </div>
             </div>
+        </div>
 
-            <!-- Version selector -->
-            <Select v-if="selectableVersions.length > 2" v-model="selectedVersionKey">
+        <!-- Version selector -->
+        <div class="border-b border-black/80 px-2 pb-1" v-if="selectableVersions.length > 2">
+            <Select v-model="selectedVersionKey">
                 <SelectTrigger class="mt-1 h-8 w-full text-xs">
                     <SelectValue />
                 </SelectTrigger>
