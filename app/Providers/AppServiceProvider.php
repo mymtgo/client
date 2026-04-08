@@ -4,7 +4,6 @@ namespace App\Providers;
 
 use App\Actions\RegisterDevice;
 use App\Managers\MtgoManager;
-use App\Models\AppSetting;
 use App\Models\LogCursor;
 use App\Observers\LogCursorObserver;
 use Illuminate\Support\Facades\Http;
@@ -28,8 +27,6 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        $this->configureTimezone();
-
         LogCursor::observe(LogCursorObserver::class);
 
         if (! config('mymtgo_api.verify_ssl')) {
@@ -42,19 +39,5 @@ class AppServiceProvider extends ServiceProvider
             'X-Device-Id' => Settings::get('device_id'),
             'X-Api-Key' => RegisterDevice::retrieveKey(),
         ])->baseUrl(config('mymtgo_api.url')));
-    }
-
-    private function configureTimezone(): void
-    {
-        try {
-            $timezone = AppSetting::resolve()->timezone;
-        } catch (\Throwable) {
-            return;
-        }
-
-        if ($timezone) {
-            date_default_timezone_set($timezone);
-            config(['app.timezone' => $timezone]);
-        }
     }
 }
