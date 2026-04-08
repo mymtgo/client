@@ -2,6 +2,7 @@
 
 namespace App\Actions\Leagues;
 
+use App\Models\AppSetting;
 use App\Models\League;
 use App\Models\MtgoMatch;
 use Carbon\Carbon;
@@ -170,7 +171,7 @@ class FormatLeagueRuns
                 'opponentArchetype' => $opp?->archetype_name,
                 'gameResults' => $gameResults,
                 'startedAt' => $row->started_at,
-                'startedAtHuman' => Carbon::parse($row->started_at)->diffForHumans(),
+                'startedAtHuman' => Carbon::parse($row->started_at)->setTimezone(AppSetting::displayTimezone())->diffForHumans(),
             ];
         })->values()->all();
 
@@ -199,7 +200,7 @@ class FormatLeagueRuns
             'phantom' => (bool) $league->phantom,
             'state' => $league->state->value,
             'startedAt' => $league->started_at,
-            'startedAtHuman' => $league->started_at ? Carbon::parse($league->started_at)->diffForHumans() : null,
+            'startedAtHuman' => $league->started_at ? Carbon::parse($league->started_at)->setTimezone(AppSetting::displayTimezone())->diffForHumans() : null,
             'deck' => $deck,
             'versionLabel' => $versionLabel,
             'results' => $results,
