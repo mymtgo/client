@@ -2,6 +2,7 @@
 
 use App\Actions\Matches\ParseGameLogBinary;
 use Carbon\Carbon;
+use Native\Desktop\Facades\Settings;
 
 function fixturePath(string $name): string
 {
@@ -99,4 +100,29 @@ it('handles messages longer than 127 bytes with varint length', function () {
     foreach ($longMessages as $entry) {
         expect($entry['message'])->toMatch('/[\.\)\]!]$/');
     }
+});
+
+it('converts local wall-clock ticks to UTC when timezone is provided', function () {
+    $raw = file_get_contents(fixturePath('clean_2_0_win.dat'));
+
+    $resultUtc = ParseGameLogBinary::run($raw, timezone: 'UTC');
+    $resultLa = ParseGameLogBinary::run($raw, timezone: 'America/Los_Angeles');
+
+    $tsUtc = Carbon::parse($resultUtc['entries'][0]['timestamp']);
+    $tsLa = Carbon::parse($resultLa['entries'][0]['timestamp']);
+
+    // America/Los_Angeles is either UTC-7 (PDT) or UTC-8 (PST) depending on the fixture date
+    $diffHours = (int) $tsUtc->diffInHours($tsLa);
+    expect($diffHours)->toBeIn([7, 8]);
+});
+
+it('defaults to Settings system_tz when no timezone parameter is provided', function () {
+    Settings::set('system_tz', 'America/New_York');
+
+    $raw = file_get_contents(fixturePath('clean_2_0_win.dat'));
+
+    $withParam = ParseGameLogBinary::run($raw, timezone: 'America/New_York');
+    $withDefault = ParseGameLogBinary::run($raw);
+
+    expect($withDefault['entries'][0]['timestamp'])->toBe($withParam['entries'][0]['timestamp']);
 });

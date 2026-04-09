@@ -3,8 +3,10 @@
 namespace App\Actions\Matches;
 
 use App\Facades\Mtgo;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use Native\Desktop\Facades\Settings;
 use Symfony\Component\Finder\Finder;
 
 /**
@@ -430,9 +432,10 @@ class ParseGameHistory
         }
 
         try {
-            $dt = new \DateTimeImmutable('@'.(int) $unixSeconds);
+            $tz = Settings::get('system_tz', 'UTC');
+            $wallClock = gmdate('Y-m-d H:i:s', (int) $unixSeconds);
 
-            return $dt->format('Y-m-d\TH:i:s\Z');
+            return Carbon::parse($wallClock, $tz)->utc()->format('Y-m-d\TH:i:s\Z');
         } catch (\Exception) {
             return null;
         }

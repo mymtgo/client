@@ -6,9 +6,11 @@ use App\Actions\RegisterDevice;
 use App\Managers\MtgoManager;
 use App\Models\LogCursor;
 use App\Observers\LogCursorObserver;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\ServiceProvider;
 use Native\Desktop\Facades\Settings;
+use Native\Desktop\Facades\System;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -39,5 +41,17 @@ class AppServiceProvider extends ServiceProvider
             'X-Device-Id' => Settings::get('device_id'),
             'X-Api-Key' => RegisterDevice::retrieveKey(),
         ])->baseUrl(config('mymtgo_api.url')));
+
+        Carbon::macro('toLocal', function () {
+            /** @var Carbon $this */
+            return $this->copy()->setTimezone(Settings::get('system_tz', 'UTC'));
+        });
+
+        try {
+            $detected = System::timezone();
+            Settings::set('system_tz', $detected ?? Settings::get('system_tz', 'UTC'));
+        } catch (\Throwable) {
+            // NativePHP not available (e.g. testing) — Settings mock handles this
+        }
     }
 }

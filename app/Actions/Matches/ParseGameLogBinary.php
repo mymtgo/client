@@ -3,6 +3,7 @@
 namespace App\Actions\Matches;
 
 use Carbon\Carbon;
+use Native\Desktop\Facades\Settings;
 
 class ParseGameLogBinary
 {
@@ -15,16 +16,17 @@ class ParseGameLogBinary
      * Current parser version. Increment when parsing logic changes
      * to trigger re-parsing of previously decoded entries.
      */
-    public const VERSION = 1;
+    public const VERSION = 2;
 
     /**
      * Parse a binary GameLog .dat file into structured entries.
      *
      * @param  string  $raw  Raw file contents
      * @param  int|null  $byteOffset  Resume parsing from this byte position (skip header)
+     * @param  string|null  $timezone  Windows system timezone to interpret ticks as (defaults to Settings system_tz)
      * @return array{match_uuid: ?string, game_uuid: ?string, version: ?int, type: ?int, entries: array, byte_offset: int}|null
      */
-    public static function run(string $raw, ?int $byteOffset = null): ?array
+    public static function run(string $raw, ?int $byteOffset = null, ?string $timezone = null): ?array
     {
         $length = strlen($raw);
 
@@ -99,9 +101,11 @@ class ParseGameLogBinary
             $message = substr($raw, $pos, $msgLen);
             $pos += $msgLen;
 
-            // Convert .NET ticks to ISO 8601 with milliseconds
+            // Convert .NET ticks to UTC via local wall-clock interpretation
             $unixSeconds = ($ticks - self::DOTNET_EPOCH_OFFSET) / 10_000_000;
-            $timestamp = Carbon::createFromTimestamp($unixSeconds, 'UTC')->toIso8601String();
+            $tz = $timezone ?? Settings::get('system_tz', 'UTC');
+            $wallClock = gmdate('Y-m-d H:i:s', (int) $unixSeconds);
+            $timestamp = Carbon::parse($wallClock, $tz)->utc()->toIso8601String();
 
             $entries[] = [
                 'timestamp' => $timestamp,

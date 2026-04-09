@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Import;
 
 use App\Http\Controllers\Controller;
-use App\Models\AppSetting;
 use App\Models\DeckVersion;
 use App\Models\ImportScan;
 use App\Models\MtgoMatch;
@@ -21,7 +20,7 @@ class IndexController extends Controller
                 'id' => $v->id,
                 'deck_name' => $v->deck->name ?? 'Unknown',
                 'deck_deleted' => $v->deck?->trashed() ?? false,
-                'modified_at' => $v->modified_at->setTimezone(AppSetting::displayTimezone())->format('d/m/Y'),
+                'modified_at' => $v->modified_at->toLocal()->format('d/m/Y'),
                 'format' => $v->deck->format ?? '',
             ]);
 

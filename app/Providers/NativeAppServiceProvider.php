@@ -7,11 +7,9 @@ use App\Actions\Leagues\OpenOpponentScoutWindow;
 use App\Actions\Leagues\OpenOverlayWindow;
 use App\Actions\Updates\RunAppUpdates;
 use App\Facades\Mtgo;
-use App\Models\AppSetting;
 use Native\Desktop\Contracts\ProvidesPhpIni;
 use Native\Desktop\Facades\Menu;
 use Native\Desktop\Facades\Settings;
-use Native\Desktop\Facades\System;
 use Native\Desktop\Facades\Window;
 
 class NativeAppServiceProvider implements ProvidesPhpIni
@@ -22,8 +20,6 @@ class NativeAppServiceProvider implements ProvidesPhpIni
      */
     public function boot(): void
     {
-        $this->seedDisplayTimezone();
-
         RunAppUpdates::run();
 
         if (app()->isProduction()) {
@@ -52,21 +48,6 @@ class NativeAppServiceProvider implements ProvidesPhpIni
 
         if (Settings::get('deck_window')) {
             OpenMostRecentDeckPopout::run();
-        }
-    }
-
-    private function seedDisplayTimezone(): void
-    {
-        $settings = AppSetting::resolve();
-
-        if ($settings->timezone) {
-            return;
-        }
-
-        $timezone = Settings::get('timezone') ?: System::timezone();
-
-        if ($timezone) {
-            $settings->updateQuietly(['timezone' => $timezone]);
         }
     }
 

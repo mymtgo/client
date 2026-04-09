@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Settings;
 
 use App\Http\Controllers\Controller;
-use App\Models\AppSetting;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Native\Desktop\Facades\Settings;
@@ -16,10 +15,7 @@ class UpdateTimezoneController extends Controller
             'timezone' => 'required|timezone',
         ]);
 
-        $timezone = $request->input('timezone');
-
-        Settings::set('timezone', $timezone);
-        AppSetting::resolve()->update(['timezone' => $timezone]);
+        Settings::set('system_tz', $request->input('timezone'));
 
         return back();
     }
