@@ -10,7 +10,6 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\ServiceProvider;
 use Native\Desktop\Facades\Settings;
-use Native\Desktop\Facades\System;
 
 class AppServiceProvider extends ServiceProvider
 {
