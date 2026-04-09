@@ -433,7 +433,7 @@ class ParseGameHistory
 
         try {
             $tz = Settings::get('system_tz', 'UTC');
-            $wallClock = Carbon::createFromTimestamp((int) $unixSeconds, 'UTC')->format('Y-m-d H:i:s');
+            $wallClock = gmdate('Y-m-d H:i:s', (int) $unixSeconds);
 
             return Carbon::parse($wallClock, $tz)->utc()->format('Y-m-d\TH:i:s\Z');
         } catch (\Exception) {

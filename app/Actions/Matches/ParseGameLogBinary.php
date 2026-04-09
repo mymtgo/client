@@ -104,7 +104,7 @@ class ParseGameLogBinary
             // Convert .NET ticks to UTC via local wall-clock interpretation
             $unixSeconds = ($ticks - self::DOTNET_EPOCH_OFFSET) / 10_000_000;
             $tz = $timezone ?? Settings::get('system_tz', 'UTC');
-            $wallClock = Carbon::createFromTimestamp($unixSeconds, 'UTC')->format('Y-m-d H:i:s');
+            $wallClock = gmdate('Y-m-d H:i:s', (int) $unixSeconds);
             $timestamp = Carbon::parse($wallClock, $tz)->utc()->toIso8601String();
 
             $entries[] = [
