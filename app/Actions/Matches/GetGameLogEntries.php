@@ -42,13 +42,14 @@ class GetGameLogEntries
         $gameEnd = $game->ended_at->timestamp;
 
         return collect($entries)
-            ->filter(function ($entry) use ($gameStart, $gameEnd) {
-                $ts = Carbon::parse($entry['timestamp'])->timestamp;
-
-                return $ts >= $gameStart - 5 && $ts <= $gameEnd + 5;
-            })
             ->map(fn ($entry) => [
-                'timestamp' => Carbon::parse($entry['timestamp'])->toLocal()->format('H:i:s'),
+                'carbon' => Carbon::parse($entry['timestamp']),
+                'message' => $entry['message'],
+            ])
+            ->filter(fn ($entry) => $entry['carbon']->timestamp >= $gameStart - 5
+                && $entry['carbon']->timestamp <= $gameEnd + 5)
+            ->map(fn ($entry) => [
+                'timestamp' => $entry['carbon']->toLocal()->format('H:i:s'),
                 'message' => self::cleanMessage($entry['message']),
             ])
             ->values()
