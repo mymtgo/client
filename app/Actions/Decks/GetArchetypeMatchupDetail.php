@@ -3,7 +3,6 @@
 namespace App\Actions\Decks;
 
 use App\Actions\Util\Winrate;
-use App\Models\AppSetting;
 use App\Models\Archetype;
 use App\Models\Deck;
 use App\Models\DeckVersion;
@@ -191,8 +190,8 @@ class GetArchetypeMatchupDetail
             ->get()
             ->map(fn (MtgoMatch $match) => [
                 'id' => $match->id,
-                'date' => $match->started_at->setTimezone(AppSetting::displayTimezone())->toISOString(),
-                'dateFormatted' => $match->started_at->setTimezone(AppSetting::displayTimezone())->format('M j'),
+                'date' => $match->started_at->toLocal()->toISOString(),
+                'dateFormatted' => $match->started_at->toLocal()->format('M j'),
                 'isLeague' => $match->league_id !== null,
                 'leagueName' => null,
                 'opponentName' => $match->games->first()?->players->first(fn ($p) => ! $p->pivot->is_local)?->username,

@@ -3,7 +3,6 @@
 namespace App\Actions\Matches;
 
 use App\Enums\LeagueState;
-use App\Models\AppSetting;
 use App\Models\DeckVersion;
 use App\Models\League;
 use App\Models\MtgoMatch;
@@ -57,7 +56,7 @@ class AssignLeague
                     'format' => $gameMeta['PlayFormatCd'],
                     'deck_version_id' => $match->deck_version_id,
                     'started_at' => now(),
-                    'name' => trim(($gameMeta['GameStructureCd'] ?? '').' League '.now()->setTimezone(AppSetting::displayTimezone())->format('d-m-Y h:ma')),
+                    'name' => trim(($gameMeta['GameStructureCd'] ?? '').' League '.now()->toLocal()->format('d-m-Y h:ma')),
                 ]);
                 $isNew = true;
             }
@@ -134,7 +133,7 @@ class AssignLeague
             'phantom' => true,
             'deck_version_id' => $deckVersionId,
             'started_at' => now(),
-            'name' => 'Phantom '.trim(($gameMeta['GameStructureCd'] ?? '').' League '.now()->setTimezone(AppSetting::displayTimezone())->format('d-m-Y h:ma')),
+            'name' => 'Phantom '.trim(($gameMeta['GameStructureCd'] ?? '').' League '.now()->toLocal()->format('d-m-Y h:ma')),
         ]);
     }
 }

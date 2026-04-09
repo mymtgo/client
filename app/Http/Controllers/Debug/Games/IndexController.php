@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Debug\Games;
 
 use App\Http\Controllers\Controller;
-use App\Models\AppSetting;
 use App\Models\Game;
 use App\Models\MtgoMatch;
 use Illuminate\Http\Request;
@@ -28,7 +27,7 @@ class IndexController extends Controller
                 ->get(['id', 'token', 'started_at'])
                 ->map(function (MtgoMatch $m) {
                     $opponent = $m->games()->first()?->opponents()->first()?->username;
-                    $date = $m->started_at->setTimezone(AppSetting::displayTimezone())->format('d/m');
+                    $date = $m->started_at->toLocal()->format('d/m');
                     $label = "#{$m->id}";
                     if ($opponent) {
                         $label .= " — vs {$opponent}";

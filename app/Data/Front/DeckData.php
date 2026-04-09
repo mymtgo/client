@@ -2,7 +2,6 @@
 
 namespace App\Data\Front;
 
-use App\Models\AppSetting;
 use App\Models\Deck;
 use App\Models\MtgoMatch;
 use Carbon\Carbon;
@@ -50,7 +49,7 @@ class DeckData extends Data
             coverArt: $deck->cover?->art_crop_url,
             archetype: $deck->archetype ? ArchetypeData::fromModel($deck->archetype) : null,
             lastPlayedAt: $deck->matches_max_started_at ? Carbon::parse($deck->matches_max_started_at) : null,
-            lastPlayedAtHuman: $deck->matches_max_started_at ? Carbon::parse($deck->matches_max_started_at)->setTimezone(AppSetting::displayTimezone())->diffForHumans() : null,
+            lastPlayedAtHuman: $deck->matches_max_started_at ? Carbon::parse($deck->matches_max_started_at)->toLocal()->diffForHumans() : null,
             matches: Lazy::whenLoaded('matches', $deck, fn () => MatchData::collect($deck->matches)),
             identity: Lazy::whenLoaded('cards', $deck, function () use ($deck) {
                 return $deck->cards->pluck('color_identity')->map(

@@ -3,7 +3,6 @@
 namespace App\Actions\Decks;
 
 use App\Actions\Util\Winrate;
-use App\Models\AppSetting;
 use App\Models\Deck;
 use App\Models\Game;
 use Carbon\Carbon;
@@ -90,10 +89,9 @@ class GetDeckVersionStats
             $vOtd = $otpStats->get($version->id, collect())->first(fn ($r) => (int) $r->on_play === 0);
 
             $nextVersion = $versions[$i + 1] ?? null;
-            $tz = AppSetting::displayTimezone();
-            $dateLabel = $version->modified_at->setTimezone($tz)->format('M d')
+            $dateLabel = $version->modified_at->toLocal()->format('M d')
                 .' - '
-                .($nextVersion ? $nextVersion->modified_at->setTimezone($tz)->format('M d') : 'now');
+                .($nextVersion ? $nextVersion->modified_at->toLocal()->format('M d') : 'now');
 
             $result[] = self::buildRow(
                 id: $version->id,
