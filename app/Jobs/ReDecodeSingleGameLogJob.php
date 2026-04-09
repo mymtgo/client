@@ -17,6 +17,7 @@ class ReDecodeSingleGameLogJob implements ShouldQueue
 
     public function __construct(
         public int $gameLogId,
+        public string $timezone,
     ) {
         $this->onQueue('updates');
     }
@@ -35,7 +36,7 @@ class ReDecodeSingleGameLogJob implements ShouldQueue
 
         try {
             $raw = file_get_contents($gameLog->file_path);
-            $parsed = ParseGameLogBinary::run($raw);
+            $parsed = ParseGameLogBinary::run($raw, timezone: $this->timezone);
 
             if (! $parsed || empty($parsed['entries'])) {
                 return;
