@@ -2,7 +2,6 @@
 
 namespace App\Actions\Pipeline;
 
-use App\Actions\Logs\ConvertMtgoTimestamp;
 use App\Actions\Matches\DetermineMatchResult;
 use App\Actions\Matches\ExtractGameResults;
 use App\Actions\Matches\ParseGameLogBinary;
@@ -11,6 +10,7 @@ use App\Facades\Mtgo;
 use App\Models\GameLog;
 use App\Models\LogEvent;
 use App\Models\MtgoMatch;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 
 class ResolveGameResults
@@ -87,7 +87,7 @@ class ResolveGameResults
             if ($match->state === MatchState::InProgress) {
                 $lastTs = end($entries)['timestamp'] ?? null;
                 $endedAt = $lastTs
-                    ? ConvertMtgoTimestamp::fromDecodedEntry($lastTs)
+                    ? Carbon::parse($lastTs)
                     : now();
             }
 
@@ -127,7 +127,7 @@ class ResolveGameResults
             }
 
             if ($game->ended_at === null && ! empty($gameData[$index]['ended_at'])) {
-                $updates['ended_at'] = ConvertMtgoTimestamp::fromDecodedEntry($gameData[$index]['ended_at']);
+                $updates['ended_at'] = Carbon::parse($gameData[$index]['ended_at']);
             }
 
             if (! empty($updates)) {

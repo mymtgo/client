@@ -2,7 +2,6 @@
 
 namespace App\Actions\Import;
 
-use App\Actions\Logs\ConvertMtgoTimestamp;
 use App\Actions\Matches\ExtractGameResults;
 use App\Actions\Matches\ParseGameLogBinary;
 use App\Enums\MatchOutcome;
@@ -15,6 +14,7 @@ use App\Models\GameLog;
 use App\Models\ImportScan;
 use App\Models\MtgoMatch;
 use App\Models\Player;
+use Carbon\Carbon;
 use Illuminate\Support\Str;
 
 class ImportMatches
@@ -52,7 +52,7 @@ class ImportMatches
             $lastGameEnd = null;
             if (! empty($data['games'])) {
                 $rawEnd = collect($data['games'])->pluck('ended_at')->filter()->last();
-                $lastGameEnd = $rawEnd ? ConvertMtgoTimestamp::fromDecodedEntry($rawEnd) : null;
+                $lastGameEnd = $rawEnd ? Carbon::parse($rawEnd) : null;
             }
 
             $match = MtgoMatch::create([
@@ -63,7 +63,7 @@ class ImportMatches
                 'match_type' => $data['round'] > 0 ? 'League' : 'Constructed',
                 'games_won' => $data['games_won'],
                 'games_lost' => $data['games_lost'],
-                'started_at' => ConvertMtgoTimestamp::fromDecodedEntry($data['started_at']),
+                'started_at' => Carbon::parse($data['started_at']),
                 'ended_at' => $lastGameEnd,
                 'state' => MatchState::Complete,
                 'outcome' => $outcome,
@@ -180,7 +180,7 @@ class ImportMatches
             $lastGameEnd = null;
             if (! empty($games)) {
                 $rawEnd = collect($games)->pluck('ended_at')->filter()->last();
-                $lastGameEnd = $rawEnd ? ConvertMtgoTimestamp::fromDecodedEntry($rawEnd) : null;
+                $lastGameEnd = $rawEnd ? Carbon::parse($rawEnd) : null;
             }
 
             $match = MtgoMatch::create([
@@ -191,7 +191,7 @@ class ImportMatches
                 'match_type' => $scanMatch->round > 0 ? 'League' : 'Constructed',
                 'games_won' => $scanMatch->games_won,
                 'games_lost' => $scanMatch->games_lost,
-                'started_at' => ConvertMtgoTimestamp::fromDecodedEntry($scanMatch->started_at),
+                'started_at' => Carbon::parse($scanMatch->started_at),
                 'ended_at' => $lastGameEnd,
                 'state' => MatchState::Complete,
                 'outcome' => $outcome,
@@ -272,8 +272,8 @@ class ImportMatches
                 'match_id' => $match->id,
                 'mtgo_id' => $gameId ? (string) $gameId : Str::uuid()->toString(),
                 'won' => $gameData['won'] ?? null,
-                'started_at' => isset($gameData['started_at']) ? ConvertMtgoTimestamp::fromDecodedEntry($gameData['started_at']) : null,
-                'ended_at' => isset($gameData['ended_at']) ? ConvertMtgoTimestamp::fromDecodedEntry($gameData['ended_at']) : null,
+                'started_at' => isset($gameData['started_at']) ? Carbon::parse($gameData['started_at']) : null,
+                'ended_at' => isset($gameData['ended_at']) ? Carbon::parse($gameData['ended_at']) : null,
                 'turn_count' => $gameData['turn_count'] ?? null,
             ]);
 
