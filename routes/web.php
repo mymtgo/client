@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Archetypes\CreateController;
+use App\Http\Controllers\Archetypes\DownloadController;
 use App\Http\Controllers\Archetypes\DownloadDecklistController;
 use App\Http\Controllers\Archetypes\EditController;
 use App\Http\Controllers\Archetypes\ExportDekController;
@@ -130,6 +131,7 @@ Route::group([], function (Router $router) {
         $group->get('create', CreateController::class)->name('archetypes.create');
         $group->post('/', App\Http\Controllers\Archetypes\StoreController::class)->name('archetypes.store');
         $group->post('upload-dek', UploadDekController::class)->name('archetypes.upload-dek');
+        $group->post('download', DownloadController::class)->name('archetypes.download-all');
         $group->get('{archetype}', App\Http\Controllers\Archetypes\ShowController::class)->name('archetypes.show');
         $group->get('{archetype}/edit', EditController::class)->name('archetypes.edit');
         $group->put('{archetype}', App\Http\Controllers\Archetypes\UpdateController::class)->name('archetypes.update');
