@@ -6,7 +6,7 @@ use App\Actions\Matches\ParseGameLogBinary;
 use App\Models\GameLog;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
-use Illuminate\Support\Facades\Log;
+
 
 class ReDecodeGameLogsJob implements ShouldQueue
 {
@@ -19,17 +19,12 @@ class ReDecodeGameLogsJob implements ShouldQueue
 
     public function handle(): void
     {
-        $dispatched = 0;
-
         GameLog::where('decoded_version', '<', ParseGameLogBinary::VERSION)
             ->whereNotNull('file_path')
-            ->chunkById(100, function ($gameLogs) use (&$dispatched) {
+            ->chunkById(100, function ($gameLogs) {
                 foreach ($gameLogs as $gameLog) {
                     ReDecodeSingleGameLogJob::dispatch($gameLog->id);
-                    $dispatched++;
                 }
             });
-
-        Log::info("ReDecodeGameLogsJob: dispatched {$dispatched} game logs for re-decoding");
     }
 }
