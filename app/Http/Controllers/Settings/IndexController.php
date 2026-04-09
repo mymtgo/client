@@ -11,7 +11,6 @@ use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 use Native\Desktop\Facades\Settings;
-use Native\Desktop\Facades\System;
 
 class IndexController extends Controller
 {
@@ -48,8 +47,6 @@ class IndexController extends Controller
             'accounts' => Account::orderBy('username')->get(['id', 'username', 'tracked', 'active']),
             'debugMode' => (bool) Settings::get('debug_mode'),
             'appVersion' => config('nativephp.version'),
-            'timezone' => Settings::get('timezone') ?: System::timezone() ?: 'UTC',
-            'detectedTimezone' => System::timezone() ?: 'UTC',
             'leagueWindowEnabled' => (bool) Settings::get('league_window'),
             'opponentWindowEnabled' => (bool) Settings::get('opponent_window'),
             'deckWindowEnabled' => (bool) Settings::get('deck_window'),

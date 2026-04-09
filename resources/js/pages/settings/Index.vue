@@ -9,7 +9,6 @@ import UpdateOverlaySettingsController from '@/actions/App/Http/Controllers/Sett
 import UpdateShareStatsController from '@/actions/App/Http/Controllers/Settings/UpdateShareStatsController';
 import UpdateDebugModeController from '@/actions/App/Http/Controllers/Settings/UpdateDebugModeController';
 import UpdateLocalImagesController from '@/actions/App/Http/Controllers/Settings/UpdateLocalImagesController';
-import UpdateTimezoneController from '@/actions/App/Http/Controllers/Settings/UpdateTimezoneController';
 import UpdateWatcherController from '@/actions/App/Http/Controllers/Settings/UpdateWatcherController';
 import type { LeagueData } from '@/components/leagues/LeagueTracker.vue';
 import LeagueTracker from '@/components/leagues/LeagueTracker.vue';
@@ -20,15 +19,11 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Separator } from '@/components/ui/separator';
 import { Spinner } from '@/components/ui/spinner';
 import { Switch } from '@/components/ui/switch';
-import { ChevronsUpDown, Check } from 'lucide-vue-next';
 import { router, usePage } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
-import { cn } from '@/lib/utils';
 
 const props = defineProps<{
     logPath: string;
@@ -40,9 +35,7 @@ const props = defineProps<{
     hidePhantomLeagues: boolean;
     pendingMatches: Array<{ id: number; format: string; outcome: string | null; started_at: string }>;
     accounts: Array<{ id: number; username: string; tracked: boolean; active: boolean }>;
-    timezone: string;
-    detectedTimezone: string;
-    leagueWindowEnabled: boolean;
+leagueWindowEnabled: boolean;
     opponentWindowEnabled: boolean;
     deckWindowEnabled: boolean;
     debugMode: boolean;
@@ -140,16 +133,6 @@ function toggleLocalImages(val: boolean) {
     withProcessing('localImages', 'patch', UpdateLocalImagesController.url(), { enabled: val });
 }
 
-function updateTimezone(val: string) {
-    withProcessing('timezone', 'patch', UpdateTimezoneController.url(), { timezone: val });
-}
-
-const allTimezones = computed(() =>
-    Intl.supportedValuesOf('timeZone').map((tz) => ({ value: tz, label: tz.replace(/_/g, ' ') })),
-);
-
-const timezoneOpen = ref(false);
-
 const sampleLeague: LeagueData = {
     id: 0,
     name: 'Friendly League',
@@ -203,51 +186,6 @@ const sampleOpponent: OpponentData = {
                             :disabled="processing === `account-${account.username}`"
                         />
                     </div>
-                </CardContent>
-            </Card>
-
-            <!-- Timezone -->
-            <Card>
-                <CardHeader>
-                    <CardTitle>Timezone</CardTitle>
-                    <CardDescription>
-                        Set your timezone so match timestamps are accurate. Detected: {{ detectedTimezone }}.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <Popover v-model:open="timezoneOpen">
-                        <PopoverTrigger as-child>
-                            <Button
-                                variant="outline"
-                                role="combobox"
-                                :aria-expanded="timezoneOpen"
-                                class="w-full justify-between"
-                                :disabled="processing === 'timezone'"
-                            >
-                                {{ props.timezone.replace(/_/g, ' ') }}
-                                <ChevronsUpDown class="ml-2 size-4 shrink-0 opacity-50" />
-                            </Button>
-                        </PopoverTrigger>
-                        <PopoverContent class="w-[--reka-popover-trigger-width] p-0">
-                            <Command>
-                                <CommandInput placeholder="Search timezone..." />
-                                <CommandList>
-                                    <CommandEmpty>No timezone found.</CommandEmpty>
-                                    <CommandGroup>
-                                        <CommandItem
-                                            v-for="tz in allTimezones"
-                                            :key="tz.value"
-                                            :value="tz.label"
-                                            @select="() => { updateTimezone(tz.value); timezoneOpen = false; }"
-                                        >
-                                            <Check :class="cn('mr-2 size-4', props.timezone === tz.value ? 'opacity-100' : 'opacity-0')" />
-                                            {{ tz.label }}
-                                        </CommandItem>
-                                    </CommandGroup>
-                                </CommandList>
-                            </Command>
-                        </PopoverContent>
-                    </Popover>
                 </CardContent>
             </Card>
 

@@ -62,7 +62,6 @@ use App\Http\Controllers\Settings\UpdateLocalImagesController;
 use App\Http\Controllers\Settings\UpdateLogPathController;
 use App\Http\Controllers\Settings\UpdateOverlaySettingsController;
 use App\Http\Controllers\Settings\UpdateShareStatsController;
-use App\Http\Controllers\Settings\UpdateTimezoneController;
 use App\Http\Controllers\Settings\UpdateWatcherController;
 use App\Http\Controllers\Updates\InstallController;
 use Illuminate\Routing\Router;
@@ -160,7 +159,6 @@ Route::group([], function (Router $router) {
         $group->post('overlay', UpdateOverlaySettingsController::class)->name('settings.overlay');
         $group->patch('debug-mode', UpdateDebugModeController::class)->name('settings.debug-mode');
         $group->patch('local-images', UpdateLocalImagesController::class)->name('settings.local-images');
-        $group->patch('timezone', UpdateTimezoneController::class)->name('settings.timezone');
     });
 
     $router->group([
