@@ -10,6 +10,7 @@ use App\Facades\Mtgo;
 use Native\Desktop\Contracts\ProvidesPhpIni;
 use Native\Desktop\Facades\Menu;
 use Native\Desktop\Facades\Settings;
+use Native\Desktop\Facades\System;
 use Native\Desktop\Facades\Window;
 
 class NativeAppServiceProvider implements ProvidesPhpIni
@@ -20,6 +21,9 @@ class NativeAppServiceProvider implements ProvidesPhpIni
      */
     public function boot(): void
     {
+        $detected = System::timezone();
+        Settings::set('system_tz', $detected ?? Settings::get('system_tz', 'UTC'));
+
         RunAppUpdates::run();
 
         if (app()->isProduction()) {

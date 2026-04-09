@@ -47,11 +47,5 @@ class AppServiceProvider extends ServiceProvider
             return $this->copy()->setTimezone(Settings::get('system_tz', 'UTC'));
         });
 
-        try {
-            $detected = System::timezone();
-            Settings::set('system_tz', $detected ?? Settings::get('system_tz', 'UTC'));
-        } catch (\Throwable) {
-            // NativePHP not available (e.g. testing) — Settings mock handles this
-        }
     }
 }
