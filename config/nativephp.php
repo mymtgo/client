@@ -156,6 +156,12 @@ return [
             'timeout' => 60,
             'sleep' => 3,
         ],
+        'updates' => [
+            'queues' => ['updates'],
+            'memory_limit' => 512,
+            'timeout' => 60,
+            'sleep' => 3,
+        ],
         'importer' => [
             'queues' => ['importer'],
             'memory_limit' => 512,
