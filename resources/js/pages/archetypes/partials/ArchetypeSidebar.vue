@@ -5,9 +5,12 @@ import DownloadController from '@/actions/App/Http/Controllers/Archetypes/Downlo
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import ManaSymbols from '@/components/ManaSymbols.vue';
+import { useToast } from '@/composables/useToast';
 import { Link, router, usePage } from '@inertiajs/vue3';
 import { ChevronLeft, ChevronRight, Plus, RefreshCw } from 'lucide-vue-next';
 import { ref, watch } from 'vue';
+
+const { add: toast } = useToast();
 
 const props = defineProps<{
     archetypes: {
@@ -34,6 +37,12 @@ function syncArchetypes() {
     router.post(DownloadController.url(), {}, {
         preserveState: true,
         preserveScroll: true,
+        onSuccess: (page) => {
+            const flash = (page.props as { flash?: { error?: string } }).flash;
+            if (flash?.error) {
+                toast({ type: 'error', title: 'Sync Failed', message: flash.error });
+            }
+        },
         onFinish: () => {
             syncing.value = false;
         },

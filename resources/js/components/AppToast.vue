@@ -51,6 +51,8 @@ function onClose(e: Event) {
 }
 
 const accentColor: Record<string, string> = {
+    error: '#ef4444',
+    success: '#22c55e',
     match_win: '#22c55e',
     match_loss: '#ef4444',
     match_voided: '#6b7280',

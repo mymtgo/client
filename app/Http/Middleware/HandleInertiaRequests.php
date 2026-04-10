@@ -27,6 +27,9 @@ class HandleInertiaRequests extends Middleware
     {
         return [
             ...parent::share($request),
+            'flash' => fn () => [
+                'error' => $request->session()->get('error'),
+            ],
             'status' => fn () => [
                 'watcherRunning' => (bool) Settings::get('watcher_active', true),
                 'lastIngestAt' => LogCursor::max('updated_at'),
