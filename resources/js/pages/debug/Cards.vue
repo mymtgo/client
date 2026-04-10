@@ -12,7 +12,7 @@ import { ref } from 'vue';
 
 const { add: toast } = useToast();
 
-usePoll(1000);
+usePoll(10000);
 
 const props = defineProps<{
     cards: {

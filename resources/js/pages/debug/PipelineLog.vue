@@ -22,7 +22,7 @@ const selectedFile = ref(props.file);
 const filterInput = ref(props.filter);
 const [refreshing, startRefreshing] = useSpinGuard();
 
-usePoll(1000);
+usePoll(10000);
 
 function applyFilters() {
     router.get('/debug/pipeline-log', {

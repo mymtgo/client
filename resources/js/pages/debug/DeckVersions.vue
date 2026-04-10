@@ -11,7 +11,7 @@ import { reactive } from 'vue';
 
 const { add: toast } = useToast();
 
-usePoll(1000);
+usePoll(10000);
 
 type SelectOption = { label: string; value: string };
 

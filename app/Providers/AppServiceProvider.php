@@ -7,6 +7,7 @@ use App\Managers\MtgoManager;
 use App\Models\LogCursor;
 use App\Observers\LogCursorObserver;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\ServiceProvider;
 use Native\Desktop\Facades\Settings;
@@ -28,6 +29,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Model::preventLazyLoading(! app()->isProduction());
+
         LogCursor::observe(LogCursorObserver::class);
 
         if (! config('mymtgo_api.verify_ssl')) {
