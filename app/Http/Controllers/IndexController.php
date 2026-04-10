@@ -16,7 +16,6 @@ use App\Data\Front\DeckData;
 use App\Data\Front\MatchData;
 use App\Models\Account;
 use App\Models\Deck;
-use App\Models\Game;
 use App\Models\MtgoMatch;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -45,30 +44,29 @@ class IndexController extends Controller
             ])
             ->all();
 
-        // Overall match stats using outcome column
-        $matchStats = MtgoMatch::complete()
+        // Consolidated match + game stats (single joined query)
+        $stats = MtgoMatch::complete()
             ->when($accountId, fn ($q, $id) => $q->forAccount($id))
             ->when($format, fn ($q, $f) => $q->where('format', $f))
-            ->whereBetween('started_at', [$start, $end])
-            ->selectRaw("SUM(CASE WHEN outcome = 'win' THEN 1 ELSE 0 END) as wins")
-            ->selectRaw("SUM(CASE WHEN outcome = 'loss' THEN 1 ELSE 0 END) as losses")
+            ->whereBetween('matches.started_at', [$start, $end])
+            ->toBase()
+            ->join('games', 'games.match_id', '=', 'matches.id')
+            ->selectRaw("
+                COUNT(DISTINCT matches.id) as total_matches,
+                COUNT(DISTINCT CASE WHEN matches.outcome = 'win' THEN matches.id END) as wins,
+                COUNT(DISTINCT CASE WHEN matches.outcome = 'loss' THEN matches.id END) as losses,
+                SUM(CASE WHEN games.won = 1 THEN 1 ELSE 0 END) as games_won,
+                SUM(CASE WHEN games.won = 0 THEN 1 ELSE 0 END) as games_lost
+            ")
             ->first();
 
-        $wins = (int) $matchStats->wins;
-        $losses = (int) $matchStats->losses;
-
-        // Game-level stats from games table
-        $matchIds = MtgoMatch::complete()
-            ->when($accountId, fn ($q, $id) => $q->forAccount($id))
-            ->when($format, fn ($q, $f) => $q->where('format', $f))
-            ->whereBetween('started_at', [$start, $end])
-            ->pluck('id');
-
-        $gamesWon = Game::whereIn('match_id', $matchIds)->where('won', true)->count();
-        $gamesLost = Game::whereIn('match_id', $matchIds)->where('won', false)->count();
+        $wins = (int) ($stats->wins ?? 0);
+        $losses = (int) ($stats->losses ?? 0);
+        $gamesWon = (int) ($stats->games_won ?? 0);
+        $gamesLost = (int) ($stats->games_lost ?? 0);
 
         // Deck performance summary
-        $deckStats = Deck::forActiveAccount()->withCount([
+        $deckStats = Deck::forActiveAccount()->with(['cover', 'archetype'])->withCount([
             'wonMatches' => fn ($query) => $query->when($format, fn ($q, $f) => $q->where('format', $f))->whereBetween('started_at', [$start, $end]),
             'lostMatches' => fn ($query) => $query->when($format, fn ($q, $f) => $q->where('format', $f))->whereBetween('started_at', [$start, $end]),
             'matches' => fn ($query) => $query->when($format, fn ($q, $f) => $q->where('format', $f))->whereBetween('started_at', [$start, $end]),
@@ -107,7 +105,11 @@ class IndexController extends Controller
                     ->when($accountId, fn ($q, $id) => $q->forAccount($id))
                     ->when($format, fn ($q, $f) => $q->where('format', $f))
                     ->whereBetween('started_at', [$start, $end])
-                    ->with(['games.players', 'opponentArchetypes.archetype', 'opponentArchetypes.player', 'league', 'deck'])
+                    ->with(['games.players', 'opponentArchetypes.archetype', 'opponentArchetypes.player', 'league', 'deck.cover', 'deck.archetype'])
+                    ->withCount([
+                        'games as games_won_count' => fn ($q) => $q->where('won', true),
+                        'games as games_lost_count' => fn ($q) => $q->where('won', false),
+                    ])
                     ->orderByDesc('started_at')
                     ->limit(10)
                     ->get()

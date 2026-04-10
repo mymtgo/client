@@ -31,7 +31,7 @@ class GetActiveLeague
         }
 
         $matches = MtgoMatch::complete()->where('league_id', $league->id)
-            ->with(['deck'])
+            ->with(['deck.cover', 'deck.archetype'])
             ->latest('started_at')
             ->take(5)
             ->get()

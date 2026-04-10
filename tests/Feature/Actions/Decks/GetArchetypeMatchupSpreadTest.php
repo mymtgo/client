@@ -130,6 +130,29 @@ it('computes avg_turns across all games', function () {
     expect($matchup['avg_turns'])->toBe(8.0);
 });
 
+it('runs with bounded query count', function () {
+    $deck = Deck::factory()->create();
+    $deckVersion = DeckVersion::factory()->create(['deck_id' => $deck->id]);
+
+    // Create multiple archetypes to simulate a realistic spread
+    $archetypes = Archetype::factory()->count(5)->create();
+
+    foreach ($archetypes as $archetype) {
+        createMatchWithGamesForSpread($deckVersion, $archetype, 'win', [
+            ['won' => true, 'on_play' => true, 'turn_count' => 8],
+            ['won' => false, 'on_play' => false, 'turn_count' => 10],
+        ]);
+    }
+
+    DB::enableQueryLog();
+    $result = GetArchetypeMatchupSpread::run($deck, now()->subMonth(), now());
+    $queryCount = count(DB::getQueryLog());
+    DB::disableQueryLog();
+
+    expect($result)->toHaveCount(5)
+        ->and($queryCount)->toBeLessThan(6);
+});
+
 it('returns null avg_turns when no turn data exists', function () {
     $deck = Deck::factory()->create();
     $deckVersion = DeckVersion::factory()->create(['deck_id' => $deck->id]);

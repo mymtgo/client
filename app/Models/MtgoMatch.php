@@ -187,6 +187,19 @@ class MtgoMatch extends Model
         ]);
     }
 
+    public function scopeWithOpponentName(Builder $query): Builder
+    {
+        return $query->addSelect([
+            'opponent_name' => Player::query()
+                ->join('game_player', 'players.id', '=', 'game_player.player_id')
+                ->join('games', 'games.id', '=', 'game_player.game_id')
+                ->whereColumn('games.match_id', 'matches.id')
+                ->where('game_player.is_local', false)
+                ->select('players.username')
+                ->limit(1),
+        ]);
+    }
+
     public function isWin(): bool
     {
         return $this->outcome === MatchOutcome::Win;

@@ -6,10 +6,21 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenu
 import { ChevronDown, Ghost, Trophy } from 'lucide-vue-next';
 import type { LeagueRun } from '@/types/leagues';
 import { computed, ref } from 'vue';
+import { router } from '@inertiajs/vue3';
+
+type PaginatorLink = { url: string | null; label: string; active: boolean };
 
 const props = defineProps<{
-    leagues: LeagueRun[];
+    leagues: {
+        data: (LeagueRun | null)[];
+        links: PaginatorLink[];
+        current_page: number;
+        last_page: number;
+        total: number;
+    };
     hidePhantomLeagues: boolean;
+    allFormats: string[];
+    filters: { format: string };
 }>();
 
 type PhantomFilter = 'include' | 'exclude' | 'only';
@@ -20,28 +31,35 @@ const phantomFilterLabel: Record<PhantomFilter, string> = {
     only: 'Only phantom',
 };
 
-const allFormats = computed(() => [...new Set(props.leagues.map((r) => r.format))].sort());
-const activeFormat = ref('All');
+const activeFormat = ref(props.filters.format || 'All');
+
+function setFormat(f: string) {
+    activeFormat.value = f;
+    router.get(
+        '/leagues',
+        {
+            format: f === 'All' ? undefined : f,
+        },
+        { preserveState: true, preserveScroll: true },
+    );
+}
 
 const runWins = (r: LeagueRun) => r.results.filter((x) => x === 'W').length;
 const runLosses = (r: LeagueRun) => r.results.filter((x) => x === 'L').length;
 const isComplete = (r: LeagueRun) => r.state === 'complete';
 const isTrophy = (r: LeagueRun) => runWins(r) === 5 && isComplete(r) && !r.phantom;
 
-const filteredRuns = computed(() =>
-    props.leagues
-        .filter((r) => activeFormat.value === 'All' || r.format === activeFormat.value)
-        .filter((r) => {
-            if (phantomFilter.value === 'exclude') return !r.phantom;
-            if (phantomFilter.value === 'only') return r.phantom;
-            return true;
-        })
-        .slice()
-        .sort((a, b) => (b.startedAt ?? '').localeCompare(a.startedAt ?? '')),
-);
+const displayedLeagues = computed(() => {
+    let runs = props.leagues.data.filter(Boolean) as LeagueRun[];
+    if (!props.hidePhantomLeagues) {
+        if (phantomFilter.value === 'exclude') runs = runs.filter((r) => !r.phantom);
+        if (phantomFilter.value === 'only') runs = runs.filter((r) => r.phantom);
+    }
+    return runs;
+});
 
 const kpis = computed(() => {
-    const runs = filteredRuns.value.filter((r) => isComplete(r) && !r.phantom);
+    const runs = displayedLeagues.value.filter((r) => isComplete(r) && !r.phantom);
     const totalW = runs.reduce((s, r) => s + runWins(r), 0);
     const totalL = runs.reduce((s, r) => s + runLosses(r), 0);
     return {
@@ -89,7 +107,7 @@ const kpis = computed(() => {
                         :key="f"
                         size="sm"
                         :variant="activeFormat === f ? 'default' : 'outline'"
-                        @click="activeFormat = f"
+                        @click="setFormat(f)"
                     >
                         {{ f }}
                     </Button>
@@ -115,15 +133,28 @@ const kpis = computed(() => {
             </div>
 
             <!-- Empty state -->
-            <div v-if="filteredRuns.length === 0" class="flex flex-col items-center gap-2 py-16 text-center">
+            <div v-if="displayedLeagues.length === 0" class="flex flex-col items-center gap-2 py-16 text-center">
                 <Trophy class="size-10 text-muted-foreground/40" />
                 <p class="font-medium">No league runs yet</p>
                 <p class="text-sm text-muted-foreground">League runs will appear here once matches are ingested from MTGO.</p>
             </div>
 
             <!-- League run cards -->
-            <div v-if="filteredRuns.length" class="flex flex-col gap-4">
-                <LeagueTable :league="league" :key="`league_${league.id}`" v-for="league in filteredRuns" />
+            <div v-if="displayedLeagues.length" class="flex flex-col gap-4">
+                <LeagueTable :league="league" :key="`league_${league.id}`" v-for="league in displayedLeagues" />
+            </div>
+
+            <!-- Pagination -->
+            <div v-if="leagues.last_page > 1" class="flex justify-end gap-1 px-2 py-2">
+                <template v-for="link in leagues.links" :key="link.label">
+                    <Button
+                        v-if="link.url"
+                        size="sm"
+                        :variant="link.active ? 'default' : 'outline'"
+                        @click="router.get(link.url, {}, { preserveState: true, preserveScroll: true })"
+                        v-html="link.label"
+                    />
+                </template>
             </div>
     </div>
 </template>

@@ -24,8 +24,12 @@ class ShowController extends Controller
             'games.timeline',
             'opponentArchetypes.archetype',
             'opponentArchetypes.player',
-            'deck',
+            'deck.cover',
+            'deck.archetype',
             'league',
+        ])->withCount([
+            'games as games_won_count' => fn ($q) => $q->where('won', true),
+            'games as games_lost_count' => fn ($q) => $q->where('won', false),
         ])->find($id);
 
         if (! $match) {

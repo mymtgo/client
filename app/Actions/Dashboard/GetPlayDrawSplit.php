@@ -5,6 +5,7 @@ namespace App\Actions\Dashboard;
 use App\Actions\Util\Winrate;
 use App\Models\MtgoMatch;
 use Carbon\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 class GetPlayDrawSplit
@@ -12,17 +13,19 @@ class GetPlayDrawSplit
     /**
      * @return array{otpWinrate: int, otdWinrate: int}
      */
-    public static function run(?int $accountId, Carbon $from, Carbon $to, ?string $format = null): array
+    public static function run(?int $accountId, Carbon $from, Carbon $to, ?string $format = null, ?Collection $matchIds = null): array
     {
         if (! $accountId) {
             return ['otpWinrate' => 0, 'otdWinrate' => 0];
         }
 
-        $matchIds = MtgoMatch::complete()
-            ->forAccount($accountId)
-            ->when($format, fn ($q, $f) => $q->where('format', $f))
-            ->whereBetween('started_at', [$from, $to])
-            ->pluck('matches.id');
+        if ($matchIds === null) {
+            $matchIds = MtgoMatch::complete()
+                ->forAccount($accountId)
+                ->when($format, fn ($q, $f) => $q->where('format', $f))
+                ->whereBetween('started_at', [$from, $to])
+                ->pluck('matches.id');
+        }
 
         if ($matchIds->isEmpty()) {
             return ['otpWinrate' => 0, 'otdWinrate' => 0];

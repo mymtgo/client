@@ -15,9 +15,7 @@ class GetArchetypeMatchupSpread
             ? collect([$deckVersion->id])
             : $deck->versions()->pluck('id');
 
-        // Step 1: Get distinct (archetype_id, match_id) pairs.
-        // The match_archetypes table can have duplicate rows per match+archetype,
-        // so we deduplicate here to prevent game counts from being inflated.
+        // Step 1: Get distinct (archetype_id, match_id) pairs (unchanged)
         $pairsQuery = DB::table('matches as m')
             ->join('match_archetypes as ma', 'ma.mtgo_match_id', '=', 'm.id')
             ->join('archetypes as a', 'a.id', '=', 'ma.archetype_id')
@@ -37,18 +35,37 @@ class GetArchetypeMatchupSpread
             $pairsQuery->whereBetween('m.started_at', [$from, $to]);
         }
 
-        // Step 2: Aggregate from the deduplicated pairs.
+        // Step 2: Pre-compute game stats per match (replaces correlated subqueries)
+        $gameStatsQuery = DB::table('games as g')
+            ->leftJoin('game_player as gp', function ($join) {
+                $join->on('gp.game_id', '=', 'g.id')
+                    ->where('gp.is_local', true);
+            })
+            ->groupBy('g.match_id')
+            ->selectRaw('
+                g.match_id,
+                SUM(CASE WHEN g.won = 1 THEN 1 ELSE 0 END) as games_won,
+                SUM(CASE WHEN g.won = 0 THEN 1 ELSE 0 END) as games_lost,
+                SUM(CASE WHEN g.won IS NOT NULL THEN 1 ELSE 0 END) as total_games,
+                SUM(CASE WHEN gp.on_play = 1 AND g.won = 1 THEN 1 ELSE 0 END) as otp_won,
+                SUM(CASE WHEN gp.on_play = 1 AND g.won IS NOT NULL THEN 1 ELSE 0 END) as otp_total,
+                SUM(CASE WHEN g.turn_count IS NOT NULL THEN g.turn_count ELSE 0 END) as total_turns,
+                SUM(CASE WHEN g.turn_count IS NOT NULL THEN 1 ELSE 0 END) as games_with_turns
+            ');
+
+        // Step 3: Join pairs with pre-computed game stats and aggregate
         return DB::query()
             ->fromSub($pairsQuery, 'pairs')
+            ->joinSub($gameStatsQuery, 'gs', 'gs.match_id', '=', 'pairs.match_id')
             ->groupBy('pairs.archetype_id', 'pairs.archetype_name', 'pairs.color_identity')
             ->selectRaw("
                 pairs.archetype_id,
                 pairs.archetype_name,
                 pairs.color_identity,
 
-                SUM((SELECT COUNT(*) FROM games g WHERE g.match_id = pairs.match_id AND g.won = 1)) as games_won,
-                SUM((SELECT COUNT(*) FROM games g WHERE g.match_id = pairs.match_id AND g.won = 0)) as games_lost,
-                SUM((SELECT COUNT(*) FROM games g WHERE g.match_id = pairs.match_id AND g.won IS NOT NULL)) as total_games,
+                SUM(gs.games_won) as games_won,
+                SUM(gs.games_lost) as games_lost,
+                SUM(gs.total_games) as total_games,
 
                 SUM(CASE WHEN pairs.outcome = 'win' THEN 1 ELSE 0 END) as match_wins,
                 SUM(CASE WHEN pairs.outcome = 'loss' THEN 1 ELSE 0 END) as match_losses,
@@ -56,28 +73,21 @@ class GetArchetypeMatchupSpread
 
                 ROUND(
                     100.0 * SUM(CASE WHEN pairs.outcome = 'win' THEN 1 ELSE 0 END)
-                    / NULLIF(COUNT(*), 0),
-                    0
+                    / NULLIF(COUNT(*), 0), 0
                 ) as match_winrate_pct,
 
                 ROUND(
-                    100.0 * SUM((SELECT COUNT(*) FROM games g WHERE g.match_id = pairs.match_id AND g.won = 1))
-                    / NULLIF(SUM((SELECT COUNT(*) FROM games g WHERE g.match_id = pairs.match_id AND g.won IS NOT NULL)), 0),
-                    0
+                    100.0 * SUM(gs.games_won)
+                    / NULLIF(SUM(gs.total_games), 0), 0
                 ) as game_winrate_pct,
 
                 ROUND(
-                    100.0 * SUM((SELECT COUNT(*) FROM games g JOIN game_player gp ON gp.game_id = g.id AND gp.is_local = 1 AND gp.on_play = 1 WHERE g.match_id = pairs.match_id AND g.won = 1))
-                    / NULLIF(SUM((SELECT COUNT(*) FROM games g JOIN game_player gp ON gp.game_id = g.id AND gp.is_local = 1 AND gp.on_play = 1 WHERE g.match_id = pairs.match_id AND g.won IS NOT NULL)), 0),
-                    0
+                    100.0 * SUM(gs.otp_won)
+                    / NULLIF(SUM(gs.otp_total), 0), 0
                 ) as otp_winrate_pct,
 
-                CAST(
-                    SUM((SELECT COALESCE(SUM(g.turn_count), 0) FROM games g WHERE g.match_id = pairs.match_id AND g.turn_count IS NOT NULL))
-                    AS REAL
-                )
-                / NULLIF(SUM((SELECT COUNT(*) FROM games g WHERE g.match_id = pairs.match_id AND g.turn_count IS NOT NULL)), 0)
-                as avg_turns
+                CAST(SUM(gs.total_turns) AS REAL)
+                / NULLIF(SUM(gs.games_with_turns), 0) as avg_turns
             ")
             ->orderByDesc('game_winrate_pct')
             ->get()

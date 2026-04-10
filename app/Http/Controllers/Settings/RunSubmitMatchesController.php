@@ -15,7 +15,7 @@ class RunSubmitMatchesController extends Controller
         if (Settings::get('share_stats')) {
             MtgoMatch::submittable()
                 ->get()
-                ->each(fn (MtgoMatch $match) => SubmitMatch::dispatchSync($match->id));
+                ->each(fn (MtgoMatch $match) => SubmitMatch::dispatch($match->id));
         }
 
         return back();

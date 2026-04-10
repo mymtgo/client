@@ -103,6 +103,10 @@ class MatchesController extends Controller
 
         $matches = MatchData::collect(
             $query->with(['games.players', 'opponentArchetypes.archetype', 'opponentArchetypes.player', 'league'])
+                ->withCount([
+                    'games as games_won_count' => fn ($q) => $q->where('won', true),
+                    'games as games_lost_count' => fn ($q) => $q->where('won', false),
+                ])
                 ->paginate(50)
         );
 

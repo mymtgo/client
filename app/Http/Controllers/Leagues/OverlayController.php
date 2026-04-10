@@ -52,7 +52,7 @@ class OverlayController extends Controller
             /** @var Deck|null $deckModel */
             $deckModel = $league->matches()
                 ->whereNotNull('deck_version_id')
-                ->with('deck')
+                ->with(['deck.cover', 'deck.archetype'])
                 ->first()
                 ?->getRelation('deck');
         }

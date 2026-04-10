@@ -22,15 +22,15 @@ class IndexController extends Controller
         return Inertia::render('debug/Games', [
             'games' => $query->paginate(50),
             'matchOptions' => MtgoMatch::query()
+                ->withOpponentName()
                 ->orderByDesc('id')
-                ->limit(200)
-                ->get(['id', 'token', 'started_at'])
+                ->limit(50)
+                ->get()
                 ->map(function (MtgoMatch $m) {
-                    $opponent = $m->games()->first()?->opponents()->first()?->username;
                     $date = $m->started_at->toLocal()->format('d/m');
                     $label = "#{$m->id}";
-                    if ($opponent) {
-                        $label .= " — vs {$opponent}";
+                    if ($m->opponent_name) {
+                        $label .= " — vs {$m->opponent_name}";
                     }
                     if ($date) {
                         $label .= " ({$date})";

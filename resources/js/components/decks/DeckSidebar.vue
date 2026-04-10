@@ -104,6 +104,7 @@ const navItems = computed(() => [
                 v-for="item in navItems"
                 :key="item.key"
                 :href="item.href"
+                prefetch
                 preserve-state
                 class="flex items-center gap-3 rounded px-3 py-2 text-sm font-medium transition-colors"
                 :class="

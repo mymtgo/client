@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Actions\Matches\SubmitMatchToApi;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Support\Facades\Log;
 
 class SubmitMatch implements ShouldQueue
 {
@@ -21,5 +22,13 @@ class SubmitMatch implements ShouldQueue
     public function handle(): void
     {
         SubmitMatchToApi::run($this->matchId);
+    }
+
+    public function failed(?\Throwable $exception): void
+    {
+        Log::error('Match submission failed', [
+            'match_id' => $this->matchId,
+            'error' => $exception?->getMessage(),
+        ]);
     }
 }

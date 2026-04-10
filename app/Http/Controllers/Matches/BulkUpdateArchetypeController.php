@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\MatchArchetype;
 use App\Models\MtgoMatch;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class BulkUpdateArchetypeController extends Controller
 {
@@ -17,18 +18,31 @@ class BulkUpdateArchetypeController extends Controller
             'archetype_id' => ['required', 'exists:archetypes,id'],
         ]);
 
-        $matches = MtgoMatch::whereIn('id', $request->input('match_ids'))->get();
+        $matchIds = $request->input('match_ids');
+        $matches = MtgoMatch::whereIn('id', $matchIds)
+            ->with('opponentArchetypes')
+            ->get();
+
+        // Batch-load fallback opponent player IDs for matches without existing archetypes
+        $matchesWithoutArchetypes = $matches->filter(fn ($m) => $m->opponentArchetypes->isEmpty());
+        $fallbackOpponents = collect();
+
+        if ($matchesWithoutArchetypes->isNotEmpty()) {
+            $fallbackOpponents = DB::table('game_player as gp')
+                ->join('games as g', 'g.id', '=', 'gp.game_id')
+                ->whereIn('g.match_id', $matchesWithoutArchetypes->pluck('id'))
+                ->where('gp.is_local', false)
+                ->select('g.match_id', 'gp.player_id')
+                ->distinct()
+                ->get()
+                ->groupBy('match_id');
+        }
 
         foreach ($matches as $match) {
-            $opponentPlayerIds = $match->opponentArchetypes()->pluck('player_id');
+            $opponentPlayerIds = $match->opponentArchetypes->pluck('player_id');
 
             if ($opponentPlayerIds->isEmpty()) {
-                $opponentPlayerIds = \DB::table('game_player as gp')
-                    ->join('games as g', 'g.id', '=', 'gp.game_id')
-                    ->where('g.match_id', $match->id)
-                    ->where('gp.is_local', false)
-                    ->distinct()
-                    ->pluck('gp.player_id');
+                $opponentPlayerIds = ($fallbackOpponents[$match->id] ?? collect())->pluck('player_id');
             }
 
             if ($opponentPlayerIds->isEmpty()) {

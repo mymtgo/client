@@ -16,6 +16,7 @@ class GetDeckViewSharedProps
      */
     public static function run(Deck $deck, ?Carbon $from = null, ?Carbon $to = null): array
     {
+        $deck->loadMissing(['cover', 'archetype']);
         $deck->loadCount(['wonMatches', 'lostMatches', 'matches']);
         $deck->loadMax('matches', 'started_at');
 

@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, watch } from 'vue';
+import { router } from '@inertiajs/vue3';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Pagination, PaginationContent, PaginationItem, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 import ManaSymbols from '@/components/ManaSymbols.vue';
 import WinRateBar from '@/components/WinRateBar.vue';
 import { Skull, Swords } from 'lucide-vue-next';
@@ -22,12 +22,21 @@ type Opponent = {
     lastPlayedAtHuman: string;
 };
 
+type PaginatorLink = { url: string | null; label: string; active: boolean };
+
 const props = defineProps<{
-    opponents: Opponent[];
+    opponents: {
+        data: Opponent[];
+        links: PaginatorLink[];
+        current_page: number;
+        last_page: number;
+        total: number;
+    };
+    filters: { search: string; sort: string; format: string };
+    allFormats: string[];
 }>();
 
 const VISIBLE_ARCHETYPES = 3;
-const PER_PAGE = 25;
 
 const getTag = (opp: Opponent): 'nemesis' | 'rival' | null => {
     const total = opp.matchesWon + opp.matchesLost;
@@ -43,52 +52,33 @@ const winrate = (opp: Opponent) => {
     return total === 0 ? 0 : Math.round((opp.matchesWon / total) * 100);
 };
 
-const allFormats = computed(() => [...new Set(props.opponents.flatMap((o) => o.formats))].sort());
+const search = ref(props.filters.search);
+const sortBy = ref(props.filters.sort);
+const selectedFormat = ref(props.filters.format || null);
 
-const search = ref('');
-const sortBy = ref('winrate_desc');
-const selectedFormat = ref<string | null>(null);
-const currentPage = ref(1);
+let debounceTimer: ReturnType<typeof setTimeout>;
 
-const filtered = computed(() => {
-    let list = [...props.opponents];
+function reload() {
+    router.get(
+        '/opponents',
+        {
+            search: search.value || undefined,
+            sort: sortBy.value,
+            format: selectedFormat.value || undefined,
+        },
+        {
+            preserveState: true,
+            preserveScroll: true,
+        },
+    );
+}
 
-    if (search.value.trim()) {
-        const q = search.value.toLowerCase();
-        list = list.filter((o) => o.username.toLowerCase().includes(q));
-    }
-
-    if (selectedFormat.value) {
-        list = list.filter((o) => o.formats.includes(selectedFormat.value!));
-    }
-
-    list.sort((a, b) => {
-        switch (sortBy.value) {
-            case 'winrate_asc':
-                return winrate(a) - winrate(b);
-            case 'winrate_desc':
-                return winrate(b) - winrate(a);
-            case 'most_recent':
-                return (b.lastPlayedAt ?? '').localeCompare(a.lastPlayedAt ?? '');
-            default:
-                return b.matchesWon + b.matchesLost - (a.matchesWon + a.matchesLost);
-        }
-    });
-
-    return list;
+watch(search, () => {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(reload, 300);
 });
 
-const totalPages = computed(() => Math.ceil(filtered.value.length / PER_PAGE));
-const paginated = computed(() => {
-    const start = (currentPage.value - 1) * PER_PAGE;
-    return filtered.value.slice(start, start + PER_PAGE);
-});
-
-// Reset to page 1 when filters change
-import { watch } from 'vue';
-watch([search, sortBy, selectedFormat], () => {
-    currentPage.value = 1;
-});
+watch([sortBy, selectedFormat], reload);
 </script>
 
 <template>
@@ -135,7 +125,7 @@ watch([search, sortBy, selectedFormat], () => {
                     </TableRow>
                 </TableHeader>
                 <TableBody>
-                    <template v-if="filtered.length === 0">
+                    <template v-if="opponents.data.length === 0">
                         <TableRow>
                             <TableCell colspan="5" class="py-12 text-center">
                                 <div class="flex flex-col items-center gap-2">
@@ -146,7 +136,7 @@ watch([search, sortBy, selectedFormat], () => {
                             </TableCell>
                         </TableRow>
                     </template>
-                    <TableRow v-for="opp in paginated" :key="opp.playerId">
+                    <TableRow v-for="opp in opponents.data" :key="opp.playerId">
                         <TableCell>
                             <TooltipProvider v-if="getTag(opp)">
                                 <Tooltip>
@@ -215,24 +205,16 @@ watch([search, sortBy, selectedFormat], () => {
                 </TableBody>
             </Table>
 
-            <div v-if="totalPages > 1" class="justify-end py-2 text-right">
-                <Pagination
-                    @update:page="(p: number) => (currentPage = p)"
-                    v-slot="{ page }"
-                    :items-per-page="PER_PAGE"
-                    :total="filtered.length"
-                    :default-page="1"
-                >
-                    <PaginationContent v-slot="{ items }">
-                        <PaginationPrevious />
-                        <template v-for="(item, index) in items" :key="index">
-                            <PaginationItem v-if="item.type === 'page'" :value="item.value" :is-active="item.value === page">
-                                {{ item.value }}
-                            </PaginationItem>
-                        </template>
-                        <PaginationNext />
-                    </PaginationContent>
-                </Pagination>
+            <div v-if="opponents.last_page > 1" class="flex justify-end gap-1 px-2 py-2">
+                <template v-for="link in opponents.links" :key="link.label">
+                    <Button
+                        v-if="link.url"
+                        size="sm"
+                        :variant="link.active ? 'default' : 'outline'"
+                        @click="router.get(link.url, {}, { preserveState: true, preserveScroll: true })"
+                        v-html="link.label"
+                    />
+                </template>
             </div>
         </Card>
     </div>
