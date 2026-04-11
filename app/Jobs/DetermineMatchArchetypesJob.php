@@ -11,7 +11,10 @@ class DetermineMatchArchetypesJob implements ShouldQueue
 {
     use Queueable;
 
-    public int $tries = 2;
+    public int $tries = 3;
+
+    /** @var array<int> */
+    public array $backoff = [2, 5];
 
     public function __construct(
         public int $matchId,

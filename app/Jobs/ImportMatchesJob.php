@@ -12,6 +12,11 @@ class ImportMatchesJob implements ShouldQueue
 {
     use Queueable;
 
+    public int $tries = 3;
+
+    /** @var array<int> */
+    public array $backoff = [2, 5];
+
     /**
      * @param  array<int>|null  $historyIds  Specific matches to import, or null for all
      */
