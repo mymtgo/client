@@ -7,7 +7,6 @@ use App\Managers\MtgoManager;
 use App\Models\LogCursor;
 use App\Observers\LogCursorObserver;
 use Carbon\Carbon;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\ServiceProvider;
 use Native\Desktop\Facades\Settings;
