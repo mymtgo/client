@@ -29,8 +29,6 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        Model::preventLazyLoading(! app()->isProduction());
-
         LogCursor::observe(LogCursorObserver::class);
 
         if (! config('mymtgo_api.verify_ssl')) {
