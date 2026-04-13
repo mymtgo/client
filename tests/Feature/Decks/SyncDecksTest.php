@@ -9,7 +9,6 @@ use App\Models\Card;
 use App\Models\Deck;
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
@@ -82,9 +81,6 @@ class SyncDecksTest extends TestCase
         // Mark this as the active data directory via user_settings
         file_put_contents($activeDataPath.'/user_settings', '');
 
-        // Ensure Cache doesn't interfere
-        Cache::forget('mtgo.active_log_path');
-
         // Create the deck XML in the active Data path (common MTGO structure)
         $xmlContent = <<<XML
 <Grouping Name="Active Deck" NetDeckId="{$deckId}" GroupingType="Deck" Timestamp="2026-01-21T10:00:00" FormatCode="Standard">
@@ -130,9 +126,6 @@ XML;
 </Grouping>
 XML;
         file_put_contents($stalePath.'/grouping '.$deckId.'.xml', $xmlContent);
-
-        // Ensure Cache doesn't interfere
-        Cache::forget('mtgo.active_log_path');
 
         SyncDecks::run();
 

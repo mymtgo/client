@@ -66,10 +66,14 @@ class ProcessMatchEvents
             return;
         }
 
-        // Username resolution (from BuildMatches pattern)
+        // Username resolution (from BuildMatches pattern).
+        // Falls back to the registered active account (via Mtgo::resolveUsername)
+        // for the day-rotation case where MTGO writes no Login line in the new
+        // log file, leaving LogEvent.username null for every row of the match.
         $username = LogEvent::where('match_token', $matchToken)
             ->whereNotNull('username')
-            ->value('username');
+            ->value('username')
+            ?? Mtgo::resolveUsername();
 
         if (! $username) {
             self::handleMissingUsername($matchToken);

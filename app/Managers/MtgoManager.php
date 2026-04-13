@@ -185,9 +185,7 @@ class MtgoManager
             return;
         }
 
-        IngestLog::run(
-            FindMtgoLogPath::run()
-        );
+        FindMtgoLogPath::all()->each(fn (string $path) => IngestLog::run($path));
     }
 
     public function populateMissingCardData(bool $sync = false): void

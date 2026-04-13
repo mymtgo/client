@@ -9,18 +9,6 @@ use Symfony\Component\Finder\Finder;
 
 class FindMtgoLogPath
 {
-    public static function run(): ?string
-    {
-        return Cache::remember('mtgo.active_log_path', now()->addSeconds(60), function () {
-            return static::scan();
-        });
-    }
-
-    public static function scan(): ?string
-    {
-        return static::all()->last();
-    }
-
     /**
      * Return all mtgo.log paths sorted oldest-first by mtime.
      *
