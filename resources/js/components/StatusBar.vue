@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { usePage } from '@inertiajs/vue3';
 import { computed } from 'vue';
+import HelpPopover from '@/components/HelpPopover.vue';
 
 const page = usePage();
 
@@ -38,5 +39,12 @@ const status = computed(() => page.props.status as {
         <span v-if="status.pendingMatchCount > 0">
             {{ status.pendingMatchCount }} match{{ status.pendingMatchCount === 1 ? '' : 'es' }} pending
         </span>
+
+        <div
+            v-if="status.pendingMatchCount > 0"
+            class="h-3 w-px bg-border"
+        />
+
+        <HelpPopover />
     </footer>
 </template>

@@ -40,6 +40,9 @@ class HandleInertiaRequests extends Middleware
             'activeAccount' => fn () => Account::active()->first()?->username,
             'accounts' => fn () => Account::tracked()->orderBy('username')->get(['id', 'username', 'active']),
             'availableUpdate' => fn () => Cache::get('available_update'),
+            'support' => [
+                'discordInviteUrl' => config('support.discord_invite_url'),
+            ],
         ];
     }
 }
