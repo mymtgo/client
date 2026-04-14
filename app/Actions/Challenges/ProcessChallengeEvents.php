@@ -127,9 +127,9 @@ class ProcessChallengeEvents
                 'tournament_structure' => isset($tournamentData['TournamentStructureCd'])
                     ? TournamentStructure::fromMtgoCode($tournamentData['TournamentStructureCd'])
                     : null,
-                'max_rounds' => $tournamentData['NumberOfRounds'] ?? null,
-                'min_players' => $tournamentData['MinPlayers'] ?? null,
-                'max_players' => $tournamentData['MaxPlayers'] ?? null,
+                'max_rounds' => ($tournamentData['NumberOfRounds'] ?? 0) ?: null,
+                'min_players' => ($tournamentData['MinPlayers'] ?? 0) ?: null,
+                'max_players' => ($tournamentData['MaxPlayers'] ?? 0) ?: null,
                 'player_count' => count($json['Players'] ?? []),
             ], fn ($v) => $v !== null),
         );

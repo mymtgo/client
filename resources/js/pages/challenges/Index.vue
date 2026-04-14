@@ -101,7 +101,7 @@ function stateColor(state: string): string {
 }
 
 function relativeTime(dateStr: string | null): string {
-    if (!dateStr) return '—';
+    if (!dateStr) return '-';
     const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
     if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
     if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
@@ -192,22 +192,27 @@ function relativeTime(dateStr: string | null): string {
                             </span>
                         </TableCell>
                         <TableCell class="font-medium">
-                            {{ challenge.name ?? '—' }}
+                            {{ challenge.name ?? '-' }}
                         </TableCell>
                         <TableCell class="text-sm text-muted-foreground">
-                            {{ challenge.format ?? '—' }}
+                            {{ challenge.format ?? '-' }}
                         </TableCell>
                         <TableCell class="text-sm text-muted-foreground">
-                            {{ challenge.category ?? '—' }}
+                            {{ challenge.category ?? '-' }}
                         </TableCell>
                         <TableCell class="text-sm text-muted-foreground capitalize">
-                            {{ challenge.tournament_structure ?? '—' }}
+                            {{ challenge.tournament_structure ?? '-' }}
                         </TableCell>
                         <TableCell class="tabular-nums text-sm">
-                            <template v-if="challenge.current_round !== null && challenge.max_rounds !== null">
+                            <template v-if="challenge.current_round && challenge.max_rounds">
                                 {{ challenge.current_round }}/{{ challenge.max_rounds }}
                             </template>
-                            <template v-else>—</template>
+                            <template v-else-if="challenge.current_round">
+                                {{ challenge.current_round }}
+                            </template>
+                            <template v-else>
+                                <span class="text-muted-foreground">-</span>
+                            </template>
                         </TableCell>
                         <TableCell class="tabular-nums text-sm">
                             <template v-if="challenge.max_players !== null">
@@ -225,7 +230,7 @@ function relativeTime(dateStr: string | null): string {
                                 #{{ localStandings[challenge.id].rank }}
                             </template>
                             <template v-else>
-                                <span class="text-muted-foreground">—</span>
+                                <span class="text-muted-foreground">-</span>
                             </template>
                         </TableCell>
                         <TableCell>
