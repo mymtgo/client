@@ -83,12 +83,23 @@ class ProcessChallengeEvents
             return true;
         }
 
-        $tournamentData = $json['PremiereEventSyncData'] ?? [];
+        // Tournament details are nested: PremiereEventSyncData.TournamentSyncData
+        $tournamentData = $json['PremiereEventSyncData']['TournamentSyncData'] ?? [];
+
+        // Format from GameStructureCd — strip the 'C' prefix (e.g. CMODERN → Modern)
+        $format = null;
+        if (isset($json['GameStructureCd'])) {
+            $code = $json['GameStructureCd'];
+            $format = str_starts_with($code, 'C')
+                ? ucfirst(strtolower(substr($code, 1)))
+                : $code;
+        }
 
         $challenge = Challenge::updateOrCreate(
             ['token' => $token],
             array_filter([
                 'name' => $json['Description'] ?? null,
+                'format' => $format,
                 'description' => isset($json['FormatDescription']) ? StripBbCode::run($json['FormatDescription']) : null,
                 'tournament_structure' => isset($tournamentData['TournamentStructureCd'])
                     ? TournamentStructure::fromMtgoCode($tournamentData['TournamentStructureCd'])

@@ -11,6 +11,7 @@ type Challenge = {
     id: number;
     name: string | null;
     format: string | null;
+    tournament_structure: string | null;
     state: string;
     current_round: number | null;
     max_rounds: number | null;
@@ -130,9 +131,10 @@ function relativeTime(dateStr: string | null): string {
             <Table>
                 <TableHeader class="sticky top-0 z-10 backdrop-blur-sm">
                     <TableRow>
+                        <TableHead>Status</TableHead>
                         <TableHead>Name</TableHead>
                         <TableHead>Format</TableHead>
-                        <TableHead>Status</TableHead>
+                        <TableHead>Type</TableHead>
                         <TableHead>Round</TableHead>
                         <TableHead>Players</TableHead>
                         <TableHead>Started</TableHead>
@@ -143,7 +145,7 @@ function relativeTime(dateStr: string | null): string {
                 <TableBody>
                     <template v-if="challenges.data.length === 0">
                         <TableRow>
-                            <TableCell colspan="8" class="py-12 text-center">
+                            <TableCell colspan="9" class="py-12 text-center">
                                 <div class="flex flex-col items-center gap-2">
                                     <Medal class="size-10 text-muted-foreground/40" />
                                     <p class="font-medium">No challenges found</p>
@@ -153,16 +155,19 @@ function relativeTime(dateStr: string | null): string {
                         </TableRow>
                     </template>
                     <TableRow v-for="challenge in challenges.data" :key="challenge.id">
+                        <TableCell>
+                            <span class="text-sm font-medium" :class="stateColor(challenge.state)">
+                                {{ stateLabel(challenge.state) }}
+                            </span>
+                        </TableCell>
                         <TableCell class="font-medium">
                             {{ challenge.name ?? '—' }}
                         </TableCell>
                         <TableCell class="text-sm text-muted-foreground">
                             {{ challenge.format ?? '—' }}
                         </TableCell>
-                        <TableCell>
-                            <span class="text-sm font-medium" :class="stateColor(challenge.state)">
-                                {{ stateLabel(challenge.state) }}
-                            </span>
+                        <TableCell class="text-sm text-muted-foreground capitalize">
+                            {{ challenge.tournament_structure ?? '—' }}
                         </TableCell>
                         <TableCell class="tabular-nums text-sm">
                             <template v-if="challenge.current_round !== null && challenge.max_rounds !== null">

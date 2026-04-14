@@ -181,11 +181,14 @@ it('processes sync data and creates player mappings', function () {
             ['LoginID' => 111, 'PlayerName' => 'Alice', 'AvatarID' => 1, 'State' => 1, 'IsMatchConceded' => false],
             ['LoginID' => 222, 'PlayerName' => 'Bob', 'AvatarID' => 2, 'State' => 1, 'IsMatchConceded' => false],
         ],
+        'GameStructureCd' => 'CMODERN',
         'PremiereEventSyncData' => [
-            'TournamentStructureCd' => 'SWISS',
-            'NumberOfRounds' => 7,
-            'MinPlayers' => 32,
-            'MaxPlayers' => 256,
+            'TournamentSyncData' => [
+                'TournamentStructureCd' => 'SWISS',
+                'NumberOfRounds' => 7,
+                'MinPlayers' => 32,
+                'MaxPlayers' => 256,
+            ],
         ],
     ]);
 
