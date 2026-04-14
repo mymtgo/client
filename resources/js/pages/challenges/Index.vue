@@ -2,15 +2,18 @@
 import ShowController from '@/actions/App/Http/Controllers/Challenges/ShowController';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Link, router } from '@inertiajs/vue3';
-import { Medal } from 'lucide-vue-next';
-import { ref } from 'vue';
+import { Medal, Search } from 'lucide-vue-next';
+import { ref, watch } from 'vue';
 
 type Challenge = {
     id: number;
     name: string | null;
     format: string | null;
+    category: string | null;
     tournament_structure: string | null;
     state: string;
     current_round: number | null;
@@ -37,28 +40,32 @@ const props = defineProps<{
         format: string;
         state: string;
         participated: boolean;
+        search: string;
     };
 }>();
 
-const activeFormat = ref(props.filters.format || 'All');
+const activeFormat = ref(props.filters.format || '');
 const activeState = ref(props.filters.state || 'active');
 const showParticipated = ref(props.filters.participated);
+const searchQuery = ref(props.filters.search || '');
+let searchTimeout: ReturnType<typeof setTimeout> | null = null;
 
 function navigate(overrides: Record<string, unknown> = {}) {
     router.get(
         '/challenges',
         {
-            format: activeFormat.value !== 'All' ? activeFormat.value : undefined,
+            format: activeFormat.value || undefined,
             state: activeState.value !== 'all' ? activeState.value : undefined,
             participated: showParticipated.value || undefined,
+            search: searchQuery.value || undefined,
             ...overrides,
         },
         { preserveState: true, preserveScroll: true },
     );
 }
 
-function setFormat(f: string) {
-    activeFormat.value = f;
+function setFormat(value: string) {
+    activeFormat.value = value === 'all' ? '' : value;
     navigate();
 }
 
@@ -71,6 +78,11 @@ function toggleParticipated() {
     showParticipated.value = !showParticipated.value;
     navigate();
 }
+
+watch(searchQuery, () => {
+    if (searchTimeout) clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => navigate(), 300);
+});
 
 function stateLabel(state: string): string {
     return state
@@ -99,18 +111,16 @@ function relativeTime(dateStr: string | null): string {
     <div class="flex flex-col gap-4 p-3 lg:p-4">
         <!-- Toolbar -->
         <div class="flex flex-wrap items-center gap-2">
-            <!-- Format pills -->
-            <div class="flex flex-wrap items-center gap-1.5">
-                <Button
-                    v-for="f in ['All', ...allFormats]"
-                    :key="f"
-                    size="sm"
-                    :variant="activeFormat === f ? 'default' : 'outline'"
-                    @click="setFormat(f)"
-                >
-                    {{ f }}
-                </Button>
-            </div>
+            <!-- Format dropdown -->
+            <Select :model-value="activeFormat || 'all'" @update:model-value="setFormat">
+                <SelectTrigger class="w-40">
+                    <SelectValue placeholder="All Formats" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="all">All Formats</SelectItem>
+                    <SelectItem v-for="f in allFormats" :key="f" :value="f">{{ f }}</SelectItem>
+                </SelectContent>
+            </Select>
 
             <!-- State toggle -->
             <div class="flex items-center gap-1">
@@ -120,10 +130,20 @@ function relativeTime(dateStr: string | null): string {
             </div>
 
             <!-- Participated toggle -->
-            <Button size="sm" :variant="showParticipated ? 'default' : 'outline'" @click="toggleParticipated" class="ml-auto">
+            <Button size="sm" :variant="showParticipated ? 'default' : 'outline'" @click="toggleParticipated">
                 <Medal class="size-3.5" />
                 My Challenges
             </Button>
+
+            <!-- Search -->
+            <div class="relative ml-auto">
+                <Search class="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                    v-model="searchQuery"
+                    placeholder="Search challenges..."
+                    class="h-8 w-52 pl-8 text-sm"
+                />
+            </div>
         </div>
 
         <!-- Challenges table -->
@@ -134,6 +154,7 @@ function relativeTime(dateStr: string | null): string {
                         <TableHead>Status</TableHead>
                         <TableHead>Name</TableHead>
                         <TableHead>Format</TableHead>
+                        <TableHead>Category</TableHead>
                         <TableHead>Type</TableHead>
                         <TableHead>Round</TableHead>
                         <TableHead>Players</TableHead>
@@ -145,7 +166,7 @@ function relativeTime(dateStr: string | null): string {
                 <TableBody>
                     <template v-if="challenges.data.length === 0">
                         <TableRow>
-                            <TableCell colspan="9" class="py-12 text-center">
+                            <TableCell colspan="10" class="py-12 text-center">
                                 <div class="flex flex-col items-center gap-2">
                                     <Medal class="size-10 text-muted-foreground/40" />
                                     <p class="font-medium">No challenges found</p>
@@ -165,6 +186,9 @@ function relativeTime(dateStr: string | null): string {
                         </TableCell>
                         <TableCell class="text-sm text-muted-foreground">
                             {{ challenge.format ?? '—' }}
+                        </TableCell>
+                        <TableCell class="text-sm text-muted-foreground">
+                            {{ challenge.category ?? '—' }}
                         </TableCell>
                         <TableCell class="text-sm text-muted-foreground capitalize">
                             {{ challenge.tournament_structure ?? '—' }}

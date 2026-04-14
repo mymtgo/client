@@ -67,6 +67,25 @@ class ProcessChallengeEvents
         return str_starts_with($name, 'Limited ');
     }
 
+    /**
+     * Parse the challenge category from the MTGO event name.
+     * e.g. "Modern Challenge 32" → "Challenge", "Standard Preliminary" → "Preliminary"
+     */
+    private static function parseCategoryFromName(string $name): ?string
+    {
+        // Strip leading format name and trailing player count
+        $stripped = preg_replace('/^\S+\s+/', '', $name);
+        $stripped = preg_replace('/\s+\d+$/', '', $stripped);
+
+        // Handle "Duel Commander Trial 16" — two-word format prefix
+        if (str_starts_with($name, 'Duel Commander ')) {
+            $stripped = preg_replace('/^Duel Commander\s+/', '', $name);
+            $stripped = preg_replace('/\s+\d+$/', '', $stripped);
+        }
+
+        return $stripped ?: null;
+    }
+
     private static function processSync(LogEvent $event): bool
     {
         $json = ExtractJson::run($event->raw_text)->first();
@@ -95,10 +114,14 @@ class ProcessChallengeEvents
                 : $code;
         }
 
+        // Category from the event name (e.g. "Modern Challenge 32" → "Challenge")
+        $category = self::parseCategoryFromName($name);
+
         $challenge = Challenge::updateOrCreate(
             ['token' => $token],
             array_filter([
                 'name' => $json['Description'] ?? null,
+                'category' => $category,
                 'format' => $format,
                 'description' => isset($json['FormatDescription']) ? StripBbCode::run($json['FormatDescription']) : null,
                 'tournament_structure' => isset($tournamentData['TournamentStructureCd'])

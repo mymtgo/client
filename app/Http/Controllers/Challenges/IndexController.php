@@ -16,6 +16,7 @@ class IndexController extends Controller
         $format = $request->input('format');
         $state = $request->input('state', 'active');
         $participated = $request->boolean('participated', false);
+        $search = $request->input('search');
 
         $query = Challenge::query()
             ->orderByRaw("CASE WHEN state = 'completed' THEN 1 ELSE 0 END")
@@ -33,6 +34,10 @@ class IndexController extends Controller
 
         if ($participated) {
             $query->participated();
+        }
+
+        if ($search) {
+            $query->where('name', 'like', "%{$search}%");
         }
 
         $challenges = $query->paginate(20)->withQueryString();
@@ -56,6 +61,7 @@ class IndexController extends Controller
                 'format' => $format ?? '',
                 'state' => $state,
                 'participated' => $participated,
+                'search' => $search ?? '',
             ],
         ]);
     }
