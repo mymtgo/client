@@ -32,28 +32,57 @@ class ProcessChallengeEvents
             ->get();
 
         foreach ($events as $event) {
-            match ($event->event_type) {
+            $processed = match ($event->event_type) {
                 'challenge_sync' => self::processSync($event),
                 'challenge_state_changed' => self::processStateChanged($event),
                 'challenge_round_result' => self::processRoundResult($event),
                 'challenge_player_eliminated' => self::processElimination($event),
                 'challenge_ended' => self::processEnded($event),
                 'challenge_match_state_changed' => self::processMatchStateChanged($event),
-                default => null,
+                default => true,
             };
 
-            $event->update(['processed_at' => now()]);
+            // Only mark as processed if the handler succeeded.
+            // Events that couldn't find their challenge yet will be retried next cycle.
+            if ($processed) {
+                $event->update(['processed_at' => now()]);
+            }
         }
     }
 
-    private static function processSync(LogEvent $event): void
+    /**
+     * Limited events (Draft, Sealed, Cube, Queue) are handled by a separate domain.
+     * Don't create Challenge records for them.
+     */
+    private static function isLimitedEvent(string $name): bool
+    {
+        $patterns = ['Draft', 'Sealed', 'Cube', 'Queue'];
+
+        foreach ($patterns as $pattern) {
+            if (str_contains($name, $pattern)) {
+                return true;
+            }
+        }
+
+        return str_starts_with($name, 'Limited ');
+    }
+
+    private static function processSync(LogEvent $event): bool
     {
         $json = ExtractJson::run($event->raw_text)->first();
         if (! is_array($json) || ! isset($json['EventToken'])) {
-            return;
+            return true;
         }
 
         $token = $json['EventToken'];
+        $name = $json['Description'] ?? '';
+
+        // Limited events are handled by a separate domain — don't create Challenge records.
+        // Mark as processed so we don't retry.
+        if (self::isLimitedEvent($name)) {
+            return true;
+        }
+
         $tournamentData = $json['PremiereEventSyncData'] ?? [];
 
         $challenge = Challenge::updateOrCreate(
@@ -85,12 +114,21 @@ class ProcessChallengeEvents
             'name' => $challenge->name,
             'players' => count($json['Players'] ?? []),
         ]);
+
+        return true;
     }
 
-    private static function processStateChanged(LogEvent $event): void
+    private static function processStateChanged(LogEvent $event): bool
     {
         $token = $event->match_token;
         $text = $event->raw_text;
+
+        // Only update existing challenges — processSync is responsible for creation.
+        // If no challenge exists yet, leave unprocessed for retry next cycle.
+        $challenge = Challenge::where('token', $token)->first();
+        if (! $challenge) {
+            return false;
+        }
 
         $toState = null;
         if (preg_match('/to (\S+)\)/', $text, $m)) {
@@ -98,31 +136,24 @@ class ProcessChallengeEvents
         }
 
         if (! $toState) {
-            return;
+            return true;
         }
 
         $updates = ['state' => $toState];
 
         if ($toState === TournamentState::RoundInProgress) {
-            $existing = Challenge::where('token', $token)->first();
-            $updates['current_round'] = ($existing->current_round ?? 0) + 1;
+            $updates['current_round'] = ($challenge->current_round ?? 0) + 1;
         }
 
         if ($toState === TournamentState::Completed) {
             $updates['ended_at'] = $event->logged_at;
         }
 
-        if ($toState !== TournamentState::AwaitingPlayers) {
-            $existing = $existing ?? Challenge::where('token', $token)->first();
-            if ($existing && ! $existing->started_at) {
-                $updates['started_at'] = $event->logged_at;
-            }
+        if ($toState !== TournamentState::AwaitingPlayers && ! $challenge->started_at) {
+            $updates['started_at'] = $event->logged_at;
         }
 
-        $challenge = Challenge::updateOrCreate(
-            ['token' => $token],
-            $updates,
-        );
+        $challenge->update($updates);
 
         ChallengeTimelineEvent::create([
             'challenge_id' => $challenge->id,
@@ -130,18 +161,20 @@ class ProcessChallengeEvents
             'payload' => ['to_state' => $toState->value],
             'occurred_at' => $event->logged_at,
         ]);
+
+        return true;
     }
 
-    private static function processRoundResult(LogEvent $event): void
+    private static function processRoundResult(LogEvent $event): bool
     {
         $json = ExtractJson::run($event->raw_text)->first();
         if (! is_array($json) || ! isset($json['Token'], $json['Round'], $json['Results'])) {
-            return;
+            return true;
         }
 
         $challenge = Challenge::where('token', $json['Token'])->first();
         if (! $challenge) {
-            return;
+            return false;
         }
 
         $round = (int) $json['Round'];
@@ -195,18 +228,20 @@ class ProcessChallengeEvents
         Log::channel('pipeline')->info("ProcessChallengeEvents: round {$round} results for challenge #{$challenge->id}", [
             'players' => count($json['Results']),
         ]);
+
+        return true;
     }
 
-    private static function processElimination(LogEvent $event): void
+    private static function processElimination(LogEvent $event): bool
     {
         $json = ExtractJson::run($event->raw_text)->first();
         if (! is_array($json) || ! isset($json['Token'], $json['LoginID'])) {
-            return;
+            return true;
         }
 
         $challenge = Challenge::where('token', $json['Token'])->first();
         if (! $challenge) {
-            return;
+            return false;
         }
 
         $loginId = (int) $json['LoginID'];
@@ -221,18 +256,20 @@ class ProcessChallengeEvents
             'payload' => ['reason' => $json['Reason'] ?? null],
             'occurred_at' => $event->logged_at,
         ]);
+
+        return true;
     }
 
-    private static function processEnded(LogEvent $event): void
+    private static function processEnded(LogEvent $event): bool
     {
         $json = ExtractJson::run($event->raw_text)->first();
         if (! is_array($json) || ! isset($json['Token'])) {
-            return;
+            return true;
         }
 
         $challenge = Challenge::where('token', $json['Token'])->first();
         if (! $challenge) {
-            return;
+            return false;
         }
 
         $challenge->update([
@@ -246,11 +283,14 @@ class ProcessChallengeEvents
             'payload' => ['to_state' => TournamentState::Completed->value],
             'occurred_at' => $event->logged_at,
         ]);
+
+        return true;
     }
 
-    private static function processMatchStateChanged(LogEvent $event): void
+    private static function processMatchStateChanged(LogEvent $event): bool
     {
         // Tournament match events reference match tokens, not tournament tokens.
-        // Low-priority feed events — skip if no challenge mapping available.
+        // Low-priority feed events — mark as processed.
+        return true;
     }
 }

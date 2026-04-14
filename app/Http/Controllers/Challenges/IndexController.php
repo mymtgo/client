@@ -18,7 +18,6 @@ class IndexController extends Controller
         $participated = $request->boolean('participated', false);
 
         $query = Challenge::query()
-            ->constructedOnly()
             ->orderByRaw("CASE WHEN state = 'completed' THEN 1 ELSE 0 END")
             ->orderByDesc('started_at');
 
@@ -47,7 +46,7 @@ class IndexController extends Controller
             ->unique('challenge_id')
             ->keyBy('challenge_id');
 
-        $allFormats = Challenge::constructedOnly()->distinct()->whereNotNull('format')->pluck('format')->sort()->values()->all();
+        $allFormats = Challenge::distinct()->whereNotNull('format')->pluck('format')->sort()->values()->all();
 
         return Inertia::render('challenges/Index', [
             'challenges' => $challenges,

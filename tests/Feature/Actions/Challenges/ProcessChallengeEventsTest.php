@@ -29,7 +29,7 @@ function createChallengeLogEvent(array $overrides = []): LogEvent
     ], $overrides));
 }
 
-it('creates a challenge from a state changed event', function () {
+it('does not create a challenge from a state changed event alone', function () {
     createChallengeLogEvent([
         'raw_text' => '18:42:27 [INF] (Game Management|Tournament State Changed for aaa-bbb-ccc from TournamentUninitializedState to PremierNotJoinedAwaitingMinPlayersState)',
         'event_type' => 'challenge_state_changed',
@@ -40,9 +40,22 @@ it('creates a challenge from a state changed event', function () {
 
     ProcessChallengeEvents::run();
 
-    $challenge = Challenge::where('token', 'aaa-bbb-ccc')->first();
-    expect($challenge)->not->toBeNull()
-        ->and($challenge->state)->toBe(TournamentState::AwaitingPlayers);
+    expect(Challenge::where('token', 'aaa-bbb-ccc')->first())->toBeNull();
+});
+
+it('leaves state change events unprocessed when no challenge exists for retry', function () {
+    $event = createChallengeLogEvent([
+        'raw_text' => '18:42:27 [INF] (Game Management|Tournament State Changed for aaa-bbb-ccc from TournamentUninitializedState to PremierNotJoinedAwaitingMinPlayersState)',
+        'event_type' => 'challenge_state_changed',
+        'match_token' => 'aaa-bbb-ccc',
+        'timestamp' => '2026-03-18 18:42:27',
+        'logged_at' => '2026-03-18 18:42:27',
+    ]);
+
+    ProcessChallengeEvents::run();
+
+    $event->refresh();
+    expect($event->processed_at)->toBeNull();
 });
 
 it('updates challenge state on subsequent state changes', function () {
@@ -65,18 +78,23 @@ it('updates challenge state on subsequent state changes', function () {
     expect($challenge->state)->toBe(TournamentState::RoundInProgress);
 });
 
-it('creates timeline events for state changes', function () {
+it('creates timeline events for state changes on existing challenges', function () {
+    $challenge = Challenge::factory()->create([
+        'token' => 'aaa-bbb-ccc',
+        'state' => TournamentState::AwaitingPlayers,
+    ]);
+
     createChallengeLogEvent([
-        'raw_text' => '18:42:27 [INF] (Game Management|Tournament State Changed for aaa-bbb-ccc from TournamentUninitializedState to PremierNotJoinedAwaitingMinPlayersState)',
+        'raw_text' => '18:50:00 [INF] (Game Management|Tournament State Changed for aaa-bbb-ccc from PremierNotJoinedAwaitingMinPlayersState to TournamentNotJoinedRoundInProgressState)',
         'event_type' => 'challenge_state_changed',
         'match_token' => 'aaa-bbb-ccc',
-        'timestamp' => '2026-03-18 18:42:27',
-        'logged_at' => '2026-03-18 18:42:27',
+        'timestamp' => '2026-03-18 18:50:00',
+        'logged_at' => '2026-03-18 18:50:00',
     ]);
 
     ProcessChallengeEvents::run();
 
-    $challenge = Challenge::where('token', 'aaa-bbb-ccc')->first();
+    $challenge->refresh();
     expect($challenge->timelineEvents)->toHaveCount(1)
         ->and($challenge->timelineEvents->first()->event_type)->toBe(ChallengeTimelineEventType::StateChanged);
 });
@@ -193,12 +211,17 @@ it('processes sync data and creates player mappings', function () {
 });
 
 it('marks events as processed', function () {
+    $challenge = Challenge::factory()->create([
+        'token' => 'aaa-bbb-ccc',
+        'state' => TournamentState::AwaitingPlayers,
+    ]);
+
     $event = createChallengeLogEvent([
-        'raw_text' => '18:42:27 [INF] (Game Management|Tournament State Changed for aaa-bbb-ccc from TournamentUninitializedState to PremierNotJoinedAwaitingMinPlayersState)',
+        'raw_text' => '18:50:00 [INF] (Game Management|Tournament State Changed for aaa-bbb-ccc from PremierNotJoinedAwaitingMinPlayersState to TournamentNotJoinedRoundInProgressState)',
         'event_type' => 'challenge_state_changed',
         'match_token' => 'aaa-bbb-ccc',
-        'timestamp' => '2026-03-18 18:42:27',
-        'logged_at' => '2026-03-18 18:42:27',
+        'timestamp' => '2026-03-18 18:50:00',
+        'logged_at' => '2026-03-18 18:50:00',
     ]);
 
     ProcessChallengeEvents::run();
