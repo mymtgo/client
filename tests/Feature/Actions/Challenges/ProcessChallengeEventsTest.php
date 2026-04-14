@@ -134,7 +134,7 @@ it('processes round results into standings', function () {
         ->and($standing->login_id)->toBe(12345)
         ->and($standing->rank)->toBe(1)
         ->and($standing->points)->toBe(3)
-        ->and($standing->wins)->toBe(2)
+        ->and($standing->wins)->toBe(1)
         ->and($standing->losses)->toBe(0)
         ->and($standing->draws)->toBe(0);
 });

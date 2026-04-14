@@ -226,9 +226,9 @@ class ProcessChallengeEvents
             $loginId = (int) $result['LoginID'];
 
             $opponents = collect($result['OpponentResults'] ?? []);
-            $wins = $opponents->sum('Win');
-            $losses = $opponents->sum('Loss');
-            $draws = $opponents->sum('Draw');
+            $wins = $opponents->filter(fn ($r) => $r['Win'] > $r['Loss'])->count();
+            $losses = $opponents->filter(fn ($r) => $r['Loss'] > $r['Win'])->count();
+            $draws = $opponents->filter(fn ($r) => $r['Win'] === $r['Loss'])->count();
 
             ChallengeStanding::updateOrCreate(
                 [
