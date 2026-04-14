@@ -164,6 +164,12 @@ class MtgoMatch extends Model
         return $this->belongsTo(League::class);
     }
 
+    /** @return BelongsTo<Challenge, $this> */
+    public function challenge(): BelongsTo
+    {
+        return $this->belongsTo(Challenge::class);
+    }
+
     public function scopeForAccount(Builder $query, int $accountId): Builder
     {
         return $query->whereHas('deckVersion', fn ($q) => $q->whereHas('deck', fn ($q2) => $q2->where('account_id', $accountId)));

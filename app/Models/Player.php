@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 class Player extends Model
 {
-    protected $fillable = ['username'];
+    protected $fillable = ['username', 'login_id'];
 
     public function games(): BelongsToMany
     {
