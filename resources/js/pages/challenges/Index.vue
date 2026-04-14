@@ -76,8 +76,8 @@ function setState(s: string) {
     navigate();
 }
 
-function toggleParticipated() {
-    showParticipated.value = !showParticipated.value;
+function setParticipated(value: boolean) {
+    showParticipated.value = value;
     navigate();
 }
 
@@ -140,7 +140,7 @@ function relativeTime(dateStr: string | null): string {
             <div class="flex items-center gap-2">
                 <Switch
                     :checked="showParticipated"
-                    @update:checked="toggleParticipated"
+                    @update:checked="setParticipated"
                 />
                 <Label class="text-sm text-muted-foreground">Only participating</Label>
             </div>
