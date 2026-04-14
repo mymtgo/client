@@ -64,7 +64,10 @@
       "Read(//Volumes/Dev/mymtgo/api/**)",
       "Bash(vendor/bin/pint:*)",
       "Bash(npx vue-tsc:*)",
-      "mcp__sentry__get_sentry_resource"
+      "mcp__sentry__get_sentry_resource",
+      "Bash(mcp__laravel-boost__database-schema --summary --filter players)",
+      "Bash(git add:*)",
+      "Bash(git commit -m ':*)"
     ]
   },
   "enableAllProjectMcpServers": true,

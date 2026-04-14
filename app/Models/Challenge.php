@@ -61,6 +61,23 @@ class Challenge extends Model
         return $query->where('format', $format);
     }
 
+    /**
+     * Exclude limited events (Draft, Sealed, Cube, Queue) — these will have their own section.
+     */
+    public function scopeConstructedOnly($query)
+    {
+        return $query->where(function ($q) {
+            $q->whereNull('name')
+                ->orWhere(function ($q2) {
+                    $q2->where('name', 'not like', '%Draft%')
+                        ->where('name', 'not like', '%Sealed%')
+                        ->where('name', 'not like', '%Cube%')
+                        ->where('name', 'not like', '%Queue%')
+                        ->where('name', 'not like', 'Limited %');
+                });
+        });
+    }
+
     public function localStanding(): ?ChallengeStanding
     {
         return $this->standings()

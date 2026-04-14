@@ -117,12 +117,22 @@ const eliminatedSet = computed(() => new Set(props.eliminatedIds));
 
 const localStanding = computed(() => props.standings.find((s) => s.is_local) ?? null);
 
-const visibleStandings = computed(() => props.standings.slice(0, 15));
-
 const showPinnedLocal = computed(() => {
     if (!localStanding.value) return false;
     return localStanding.value.rank > 15;
 });
+
+function aggregateRecord(matchRecord: string): string {
+    let wins = 0;
+    let losses = 0;
+    for (const part of matchRecord.split(',')) {
+        const trimmed = part.trim();
+        const [w, l] = trimmed.split('-').map(Number);
+        if (!isNaN(w)) wins += w;
+        if (!isNaN(l)) losses += l;
+    }
+    return `${wins}-${losses}`;
+}
 
 const groupedTimeline = computed(() => {
     const groups: Record<string, TimelineEvent[]> = {};
@@ -151,7 +161,7 @@ function eventDotClass(eventType: string): string {
 
 function eventDescription(event: TimelineEvent): string {
     if (event.event_type === 'state_changed') {
-        const state = (event.payload?.state as string) ?? '';
+        const state = (event.payload?.to_state as string) ?? '';
         return `Challenge moved to ${stateLabel(state)}`;
     }
     if (event.event_type === 'player_eliminated') {
@@ -296,7 +306,7 @@ function eventTime(dateStr: string): string {
                                 </TableRow>
                             </template>
                             <TableRow
-                                v-for="standing in visibleStandings"
+                                v-for="standing in standings"
                                 :key="standing.id"
                                 :class="[
                                     standing.is_local ? 'bg-blue-500/10' : '',
@@ -316,7 +326,7 @@ function eventTime(dateStr: string): string {
                                     {{ standing.points }}
                                 </TableCell>
                                 <TableCell class="tabular-nums text-sm text-right">
-                                    {{ standing.match_record }}
+                                    {{ aggregateRecord(standing.match_record) }}
                                 </TableCell>
                                 <TableCell class="tabular-nums text-sm text-right text-zinc-400">
                                     {{ formatPct(standing.opponent_match_win_pct) }}
@@ -344,7 +354,7 @@ function eventTime(dateStr: string): string {
                                         {{ localStanding.points }}
                                     </TableCell>
                                     <TableCell class="tabular-nums text-sm text-right">
-                                        {{ localStanding.match_record }}
+                                        {{ aggregateRecord(localStanding.match_record) }}
                                     </TableCell>
                                     <TableCell class="tabular-nums text-sm text-right text-zinc-400">
                                         {{ formatPct(localStanding.opponent_match_win_pct) }}
