@@ -60,11 +60,17 @@
       "Bash(/c/Users/Alec/.config/herd/bin/php.bat artisan:*)",
       "Bash(\"/c/Users/Alec/.config/herd/bin/php.bat\" vendor/bin/pint --dirty)",
       "Bash(cmd:*)",
-      "Bash(\"C:\\\\Users\\\\Alec\\\\.config\\\\herd\\\\bin\\\\php.bat\" vendor/bin/pint --dirty)"
+      "Bash(\"C:\\\\Users\\\\Alec\\\\.config\\\\herd\\\\bin\\\\php.bat\" vendor/bin/pint --dirty)",
+      "Read(//Volumes/Dev/mymtgo/api/**)",
+      "Bash(vendor/bin/pint:*)",
+      "Bash(npx vue-tsc:*)",
+      "mcp__sentry__get_sentry_resource"
     ]
   },
+  "enableAllProjectMcpServers": true,
   "enabledMcpjsonServers": [
     "laravel-boost",
-    "herd"
+    "herd",
+    "shadcnVue"
   ]
 }
