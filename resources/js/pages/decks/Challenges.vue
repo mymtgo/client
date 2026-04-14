@@ -47,8 +47,6 @@ function stateColor(state: string): string {
 
 <template>
     <div class="flex flex-col gap-4 p-3 lg:p-4">
-        <h2 class="text-sm font-semibold">Challenges</h2>
-
         <div v-if="challenges.length === 0" class="py-8 text-center text-sm text-zinc-500">
             No challenges found for this deck. Challenges will appear here once you participate in a challenge with this deck.
         </div>
