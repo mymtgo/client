@@ -139,8 +139,8 @@ function relativeTime(dateStr: string | null): string {
             <!-- Participated toggle -->
             <div class="flex items-center gap-2">
                 <Switch
-                    :checked="showParticipated"
-                    @update:checked="setParticipated"
+                    :modelValue="showParticipated"
+                    @update:modelValue="setParticipated"
                 />
                 <Label class="text-sm text-muted-foreground">Only participating</Label>
             </div>
