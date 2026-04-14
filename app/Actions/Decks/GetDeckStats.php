@@ -2,47 +2,73 @@
 
 namespace App\Actions\Decks;
 
+use App\Actions\Util\Winrate;
 use App\Models\Deck;
-use App\Models\Game;
+use App\Models\DeckVersion;
+use App\Models\League;
 use Carbon\Carbon;
+use Illuminate\Support\Collection;
 
 class GetDeckStats
 {
     /**
      * Compute match, game, and OTP/OTD stats for a deck within a date range.
      *
-     * @return array{wins: int, losses: int, gamesWon: int, gamesLost: int, matchWinrate: int, gameWinrate: int, otpWon: int, otpLost: int, otpRate: int, otdWon: int, otdLost: int, otdRate: int, trophies: int, allMatchIds: \Illuminate\Support\Collection}
+     * @return array{wins: int, losses: int, gamesWon: int, gamesLost: int, matchWinrate: int, gameWinrate: int, otpWon: int, otpLost: int, otpRate: int, otdWon: int, otdLost: int, otdRate: int, trophies: int, allMatchIds: Collection}
      */
-    public static function run(Deck $deck, Carbon $from, Carbon $to): array
+    public static function run(Deck $deck, Carbon $from, Carbon $to, ?DeckVersion $deckVersion = null): array
     {
-        $matchesQuery = $deck->matches()->select('matches.*')->where('state', 'complete')
-            ->whereBetween('started_at', [$from, $to]);
+        $matchesQuery = $deck->matches()->select('matches.*')
+            ->whereBetween('matches.started_at', [$from, $to])
+            ->when($deckVersion, fn ($q) => $q->where('matches.deck_version_id', $deckVersion->id));
 
-        $wins = $matchesQuery->clone()->whereRaw('games_won > games_lost')->count();
-        $losses = $matchesQuery->clone()->whereRaw('games_won < games_lost')->count();
-        $gamesWon = (int) $matchesQuery->clone()->sum('games_won');
-        $gamesLost = (int) $matchesQuery->clone()->sum('games_lost');
+        // Query 1: Match + game outcomes in one joined query
+        $stats = $matchesQuery->clone()
+            ->toBase()
+            ->join('games', 'games.match_id', '=', 'matches.id')
+            ->selectRaw("
+                COUNT(DISTINCT CASE WHEN matches.outcome = 'win' THEN matches.id END) as wins,
+                COUNT(DISTINCT CASE WHEN matches.outcome = 'loss' THEN matches.id END) as losses,
+                SUM(CASE WHEN games.won = 1 THEN 1 ELSE 0 END) as games_won,
+                SUM(CASE WHEN games.won = 0 THEN 1 ELSE 0 END) as games_lost
+            ")
+            ->first();
 
-        $matchIds = $matchesQuery->clone()->select('matches.id')->pluck('matches.id');
-        $matchGamesQuery = Game::whereHas('match', fn ($q) => $q->whereIn('match_id', $matchIds));
+        $wins = (int) ($stats->wins ?? 0);
+        $losses = (int) ($stats->losses ?? 0);
+        $gamesWon = (int) ($stats->games_won ?? 0);
+        $gamesLost = (int) ($stats->games_lost ?? 0);
 
-        $gamesotp = $matchGamesQuery->clone()->whereHas('localPlayers', fn ($q) => $q->where('on_play', 1));
-        $gamesotd = $matchGamesQuery->clone()->whereHas('localPlayers', fn ($q) => $q->where('on_play', 0));
+        // Query 2: OTP/OTD stats
+        $otpStats = $matchesQuery->clone()
+            ->toBase()
+            ->join('games', 'games.match_id', '=', 'matches.id')
+            ->join('game_player', function ($join) {
+                $join->on('game_player.game_id', '=', 'games.id')
+                    ->where('game_player.is_local', true);
+            })
+            ->selectRaw('
+                SUM(CASE WHEN game_player.on_play = 1 AND games.won = 1 THEN 1 ELSE 0 END) as otp_won,
+                SUM(CASE WHEN game_player.on_play = 1 AND games.won = 0 THEN 1 ELSE 0 END) as otp_lost,
+                SUM(CASE WHEN game_player.on_play = 0 AND games.won = 1 THEN 1 ELSE 0 END) as otd_won,
+                SUM(CASE WHEN game_player.on_play = 0 AND games.won = 0 THEN 1 ELSE 0 END) as otd_lost
+            ')
+            ->first();
 
-        $otpWon = $gamesotp->clone()->where('won', 1)->count();
-        $otpLost = $gamesotp->clone()->where('won', 0)->count();
-        $otdWon = $gamesotd->clone()->where('won', 1)->count();
-        $otdLost = $gamesotd->clone()->where('won', 0)->count();
+        $otpWon = (int) ($otpStats->otp_won ?? 0);
+        $otpLost = (int) ($otpStats->otp_lost ?? 0);
+        $otdWon = (int) ($otpStats->otd_won ?? 0);
+        $otdLost = (int) ($otpStats->otd_lost ?? 0);
 
-        $totalMatches = $wins + $losses;
+        // All match IDs for full history (used by callers for league/archetype queries)
+        $allMatchIds = $deck->matches()->select('matches.id')->where('state', 'complete')
+            ->when($deckVersion, fn ($q) => $q->where('deck_version_id', $deckVersion->id))
+            ->pluck('matches.id');
 
-        // All match IDs for this deck (full history, not just date range)
-        $allMatchIds = $deck->matches()->select('matches.id')->where('state', 'complete')->pluck('matches.id');
-
-        // Trophies = completed real leagues where all 5 matches were won
-        $trophies = \App\Models\League::whereHas('matches', fn ($q) => $q->whereIn('matches.id', $allMatchIds))
+        // Query 3: Trophies
+        $trophies = League::whereHas('matches', fn ($q) => $q->whereIn('matches.id', $allMatchIds))
             ->withCount([
-                'matches as won_count' => fn ($q) => $q->whereIn('matches.id', $allMatchIds)->whereRaw('games_won > games_lost'),
+                'matches as won_count' => fn ($q) => $q->whereIn('matches.id', $allMatchIds)->where('outcome', 'win'),
                 'matches as total_count' => fn ($q) => $q->whereIn('matches.id', $allMatchIds),
             ])
             ->get()
@@ -54,14 +80,14 @@ class GetDeckStats
             'losses' => $losses,
             'gamesWon' => $gamesWon,
             'gamesLost' => $gamesLost,
-            'matchWinrate' => round(100 * ($wins / ($totalMatches ?: 1))),
-            'gameWinrate' => round(100 * ($gamesWon / (($gamesWon + $gamesLost) ?: 1))),
+            'matchWinrate' => Winrate::percentage($wins, $losses),
+            'gameWinrate' => Winrate::percentage($gamesWon, $gamesLost),
             'otpWon' => $otpWon,
             'otpLost' => $otpLost,
-            'otpRate' => round(100 * ($otpWon / (($otpWon + $otpLost) ?: 1))),
+            'otpRate' => Winrate::percentage($otpWon, $otpLost),
             'otdWon' => $otdWon,
             'otdLost' => $otdLost,
-            'otdRate' => round(100 * ($otdWon / (($otdWon + $otdLost) ?: 1))),
+            'otdRate' => Winrate::percentage($otdWon, $otdLost),
             'trophies' => $trophies,
             'allMatchIds' => $allMatchIds,
         ];

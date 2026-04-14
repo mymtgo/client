@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Debug\Matches;
 
-use App\Enums\MatchState;
 use App\Http\Controllers\Controller;
 use App\Models\MtgoMatch;
 use Illuminate\Http\RedirectResponse;
@@ -23,7 +22,7 @@ class ResetController extends Controller
             ->first();
 
         if ($match) {
-            $match->update(['state' => MatchState::Voided]);
+            $match->delete();
         }
 
         return back();

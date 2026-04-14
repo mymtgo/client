@@ -2,8 +2,8 @@
 
 namespace App\Actions\Decks;
 
+use App\Actions\DetermineDeckArchetype;
 use App\Actions\Matches\DetermineMatchDeck;
-use App\Facades\Mtgo;
 use App\Models\Account;
 use App\Models\Deck;
 use App\Models\MtgoMatch;
@@ -60,11 +60,13 @@ class SyncDecks
 
             $signature = GenerateDeckSignature::run($cards);
 
+            $accountId = Account::active()->value('id');
+
             $deck->fill([
                 'mtgo_id' => $attributes['NetDeckId'],
                 'name' => $attributes['Name'],
                 'format' => $attributes['FormatCode'],
-                'account_id' => Account::where('username', Mtgo::getUsername())->value('id'),
+                'account_id' => $deck->account_id ?? $accountId,
                 'updated_at' => $attributes['Timestamp'],
             ]);
 
@@ -80,20 +82,24 @@ class SyncDecks
             ]);
 
             ComputeDeckIdentity::run($deck);
+            static::prefillArchetype($deck);
 
             $deckIds[] = $deck->id;
         }
 
         // Batch cleanup and re-linking in a single transaction.
         DB::transaction(function () use ($deckIds) {
-            $accountId = Account::where('username', Mtgo::getUsername())->value('id');
+            $accountId = Account::active()->value('id');
             if ($accountId) {
                 Deck::where('account_id', $accountId)->whereNotIn('id', $deckIds)->delete();
 
                 // Backfill orphaned decks that were synced before the account existed
                 Deck::whereNull('account_id')->whereIn('id', $deckIds)->update(['account_id' => $accountId]);
             } else {
-                Deck::whereNotIn('id', $deckIds)->delete();
+                // No active account — only clean up unowned decks to avoid
+                // accidentally deleting decks belonging to a known account
+                // when the active account is temporarily unavailable.
+                Deck::whereNull('account_id')->whereNotIn('id', $deckIds)->delete();
             }
 
             // Re-link complete matches that lost their deck association
@@ -101,5 +107,41 @@ class SyncDecks
                 ->whereNull('deck_version_id')
                 ->each(fn (MtgoMatch $match) => DetermineMatchDeck::run($match));
         });
+    }
+
+    /**
+     * Attempt to auto-detect and set the archetype for a deck
+     * using the estimate API. Only runs when archetype_id is null.
+     */
+    public static function prefillArchetype(Deck $deck): void
+    {
+        if ($deck->archetype_id !== null) {
+            return;
+        }
+
+        $latestVersion = $deck->latestVersion;
+
+        if (! $latestVersion) {
+            return;
+        }
+
+        $cards = collect($latestVersion->cards)->map(fn ($card) => [
+            'mtgo_id' => $card['oracle_id'] ?? $card['mtgo_id'] ?? null,
+            'quantity' => (int) ($card['quantity'] ?? 1),
+        ])->filter(fn ($card) => $card['mtgo_id'] !== null);
+
+        if ($cards->isEmpty()) {
+            return;
+        }
+
+        try {
+            $result = DetermineDeckArchetype::run($cards, $deck->format);
+
+            if ($result) {
+                $deck->update(['archetype_id' => $result['archetype_id']]);
+            }
+        } catch (\Throwable $e) {
+            \Log::warning('Failed to prefill deck archetype: '.$e->getMessage());
+        }
     }
 }

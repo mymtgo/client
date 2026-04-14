@@ -25,7 +25,6 @@ Thumbs.db
 /storage/AppFiles
 /storage/app
 /.ai
-/.claude
 /.junie
 /.git-backup
 /.mcp.json
@@ -38,3 +37,4 @@ CLAUDE.md
 /resources/js/actions
 /resources/js/routes
 /resources/js/wayfinder
+.superpowers/

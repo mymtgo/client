@@ -1,20 +1,49 @@
 <?php
 
+use App\Http\Controllers\Archetypes\CreateController;
+use App\Http\Controllers\Archetypes\DownloadController;
 use App\Http\Controllers\Archetypes\DownloadDecklistController;
+use App\Http\Controllers\Archetypes\EditController;
 use App\Http\Controllers\Archetypes\ExportDekController;
+use App\Http\Controllers\Archetypes\UploadDekController;
+use App\Http\Controllers\Debug\Cards\PopulateController;
 use App\Http\Controllers\Debug\Decks\SyncController;
 use App\Http\Controllers\Debug\LogEvents\IngestController;
 use App\Http\Controllers\Debug\Matches\DestroyController;
 use App\Http\Controllers\Debug\Matches\ProcessController;
 use App\Http\Controllers\Debug\Matches\RestoreController;
 use App\Http\Controllers\Debug\Matches\UpdateController;
+use App\Http\Controllers\Decks\CardStatsController;
+use App\Http\Controllers\Decks\CoverArtOptionsController;
+use App\Http\Controllers\Decks\DashboardController;
+use App\Http\Controllers\Decks\DecklistController;
+use App\Http\Controllers\Decks\LeaguesController;
+use App\Http\Controllers\Decks\MatchesController;
+use App\Http\Controllers\Decks\MatchupDetailController;
+use App\Http\Controllers\Decks\MatchupsController;
 use App\Http\Controllers\Decks\OpenPopoutController;
 use App\Http\Controllers\Decks\PopoutController;
+use App\Http\Controllers\Decks\ScreenshotDataController;
+use App\Http\Controllers\Decks\SettingsController;
+use App\Http\Controllers\Decks\UpdateCoverArtController;
+use App\Http\Controllers\Decks\UpdateDeckArchetypeController;
+use App\Http\Controllers\Games\OpenReplayController;
+use App\Http\Controllers\Import\CancelScanController;
+use App\Http\Controllers\Import\DestroyController as ImportDestroyController;
+use App\Http\Controllers\Import\ImportAllController;
+use App\Http\Controllers\Import\IndexController as ImportIndexController;
+use App\Http\Controllers\Import\ScanController;
+use App\Http\Controllers\Import\ScanMatchCardsController;
+use App\Http\Controllers\Import\ScanMatchesController;
+use App\Http\Controllers\Import\ScanStatusController;
+use App\Http\Controllers\Import\StoreController;
 use App\Http\Controllers\IndexController;
 use App\Http\Controllers\Leagues\AbandonController;
 use App\Http\Controllers\Leagues\OpponentScoutWindowController;
 use App\Http\Controllers\Leagues\OverlayController;
+use App\Http\Controllers\Matches\BulkUpdateArchetypeController;
 use App\Http\Controllers\Matches\DeleteController;
+use App\Http\Controllers\Matches\DetectArchetypeController;
 use App\Http\Controllers\Matches\ShowController;
 use App\Http\Controllers\Matches\UpdateArchetypeController;
 use App\Http\Controllers\Matches\UpdateNotesController;
@@ -29,10 +58,12 @@ use App\Http\Controllers\Settings\UpdateAnonymousStatsController;
 use App\Http\Controllers\Settings\UpdateDataPathController;
 use App\Http\Controllers\Settings\UpdateDebugModeController;
 use App\Http\Controllers\Settings\UpdateHidePhantomController;
+use App\Http\Controllers\Settings\UpdateLocalImagesController;
 use App\Http\Controllers\Settings\UpdateLogPathController;
 use App\Http\Controllers\Settings\UpdateOverlaySettingsController;
 use App\Http\Controllers\Settings\UpdateShareStatsController;
 use App\Http\Controllers\Settings\UpdateWatcherController;
+use App\Http\Controllers\Support\DownloadReportBundleController;
 use App\Http\Controllers\Updates\InstallController;
 use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Route;
@@ -45,6 +76,8 @@ Route::group([], function (Router $router) {
     ], function (Router $group) {
         $group->get('{id}', ShowController::class)->name('matches.show');
         $group->patch('{id}/archetype', UpdateArchetypeController::class)->name('matches.update-archetype');
+        $group->patch('bulk-archetype', BulkUpdateArchetypeController::class)->name('matches.bulk-update-archetype');
+        $group->post('{id}/detect-archetype', DetectArchetypeController::class)->name('matches.detect-archetype');
         $group->patch('{id}/notes', UpdateNotesController::class)->name('matches.update-notes');
         $group->delete('{id}', DeleteController::class)->name('matches.delete');
     });
@@ -53,6 +86,7 @@ Route::group([], function (Router $router) {
         'prefix' => 'games',
     ], function (Router $group) {
         $group->get('{id}', App\Http\Controllers\Games\ShowController::class)->name('games.show');
+        $group->post('{id}/replay', OpenReplayController::class)->name('games.open-replay');
     });
 
     $router->group([
@@ -74,16 +108,34 @@ Route::group([], function (Router $router) {
         'prefix' => 'decks',
     ], function (Router $group) {
         $group->get('/', App\Http\Controllers\Decks\IndexController::class)->name('decks.index');
-        $group->get('{deck:id}', App\Http\Controllers\Decks\ShowController::class)->name('decks.show');
+        $group->get('{deck:id}', DashboardController::class)->name('decks.show');
+        $group->get('{deck:id}/card-stats', CardStatsController::class)->name('decks.card-stats');
+        $group->get('{deck:id}/matches', MatchesController::class)->name('decks.matches');
+        $group->get('{deck:id}/leagues', LeaguesController::class)->name('decks.leagues');
+        $group->get('{deck:id}/matchups', MatchupsController::class)->name('decks.matchups');
+        $group->get('{deck:id}/matchups/{archetype}', MatchupDetailController::class)->name('decks.matchup-detail');
+        $group->get('{deck:id}/decklist', DecklistController::class)->name('decks.decklist');
+        $group->get('{deck:id}/screenshot-data', ScreenshotDataController::class)->name('decks.screenshot-data');
         $group->get('{deck:id}/popout', PopoutController::class)->name('decks.popout');
         $group->post('{deck:id}/popout', OpenPopoutController::class)->name('decks.open-popout');
+        $group->get('{deck:id}/settings', SettingsController::class)->name('decks.settings');
+        $group->get('{deck:id}/cover-art-options', CoverArtOptionsController::class)->name('decks.cover-art-options');
+        $group->patch('{deck:id}/cover-art', UpdateCoverArtController::class)->name('decks.update-cover-art');
+        $group->patch('{deck:id}/archetype', UpdateDeckArchetypeController::class)->name('decks.update-archetype');
     });
 
     $router->group([
         'prefix' => 'archetypes',
     ], function (Router $group) {
         $group->get('/', App\Http\Controllers\Archetypes\IndexController::class)->name('archetypes.index');
+        $group->get('create', CreateController::class)->name('archetypes.create');
+        $group->post('/', App\Http\Controllers\Archetypes\StoreController::class)->name('archetypes.store');
+        $group->post('upload-dek', UploadDekController::class)->name('archetypes.upload-dek');
+        $group->post('download', DownloadController::class)->name('archetypes.download-all');
         $group->get('{archetype}', App\Http\Controllers\Archetypes\ShowController::class)->name('archetypes.show');
+        $group->get('{archetype}/edit', EditController::class)->name('archetypes.edit');
+        $group->put('{archetype}', App\Http\Controllers\Archetypes\UpdateController::class)->name('archetypes.update');
+        $group->delete('{archetype}', App\Http\Controllers\Archetypes\DestroyController::class)->name('archetypes.destroy');
         $group->post('{archetype}/download', DownloadDecklistController::class)->name('archetypes.download');
         $group->post('{archetype}/export', ExportDekController::class)->name('archetypes.export');
     });
@@ -107,9 +159,31 @@ Route::group([], function (Router $router) {
         $group->patch('account-tracking', UpdateAccountTrackingController::class)->name('settings.account-tracking');
         $group->post('overlay', UpdateOverlaySettingsController::class)->name('settings.overlay');
         $group->patch('debug-mode', UpdateDebugModeController::class)->name('settings.debug-mode');
+        $group->patch('local-images', UpdateLocalImagesController::class)->name('settings.local-images');
+    });
+
+    $router->group([
+        'prefix' => 'import',
+    ], function (Router $group) {
+        $group->get('/', ImportIndexController::class)->name('import.index');
+        $group->post('scan', ScanController::class)->name('import.scan');
+        $group->get('scan/{scan}', ScanStatusController::class)->name('import.scan.status');
+        $group->get('scan/{scan}/matches', ScanMatchesController::class)->name('import.scan.matches');
+        $group->get('scan/match/{match}/cards', ScanMatchCardsController::class)->name('import.scan.match.cards');
+        $group->post('scan/{scan}/import', StoreController::class)->name('import.store');
+        $group->post('scan/{scan}/import-all', ImportAllController::class)->name('import.import-all');
+        $group->delete('scan/{scan}', CancelScanController::class)->name('import.scan.cancel')
+            ->missing(fn () => response()->noContent());
+        $group->delete('/', ImportDestroyController::class)->name('import.destroy');
     });
 
     $router->get('updates/install', InstallController::class)->name('updates.install');
+
+    $router->group([
+        'prefix' => 'support',
+    ], function (Router $group) {
+        $group->get('report', DownloadReportBundleController::class)->name('support.report.download');
+    });
 
     $router->group([
         'prefix' => 'debug',
@@ -144,7 +218,13 @@ Route::group([], function (Router $router) {
 
         // Cards
         $group->get('cards', App\Http\Controllers\Debug\Cards\IndexController::class)->name('debug.cards.index');
-        $group->post('cards/populate', App\Http\Controllers\Debug\Cards\PopulateController::class)->name('debug.cards.populate');
+        $group->post('cards/populate', PopulateController::class)->name('debug.cards.populate');
+
+        // Leagues
+        $group->get('leagues', App\Http\Controllers\Debug\Leagues\IndexController::class)->name('debug.leagues.index');
+        $group->patch('leagues/{league}', App\Http\Controllers\Debug\Leagues\UpdateController::class)->name('debug.leagues.update');
+        $group->delete('leagues/{league}', App\Http\Controllers\Debug\Leagues\DestroyController::class)->name('debug.leagues.destroy');
+        $group->patch('leagues/{league}/restore', App\Http\Controllers\Debug\Leagues\RestoreController::class)->name('debug.leagues.restore');
 
         // Log Cursors
         $group->get('log-cursors', App\Http\Controllers\Debug\LogCursors\IndexController::class)->name('debug.log-cursors.index');

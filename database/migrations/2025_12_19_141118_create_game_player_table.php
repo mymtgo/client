@@ -1,5 +1,7 @@
 <?php
 
+use App\Models\Game;
+use App\Models\Player;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -13,8 +15,8 @@ return new class extends Migration
     {
         Schema::create('game_player', function (Blueprint $table) {
             $table->id();
-            $table->foreignIdFor(\App\Models\Game::class)->constrained();
-            $table->foreignIdFor(\App\Models\Player::class)->constrained();
+            $table->foreignIdFor(Game::class)->constrained();
+            $table->foreignIdFor(Player::class)->constrained();
             $table->unsignedInteger('instance_id')->index();
             $table->boolean('is_local')->default(false)->index();
             $table->boolean('on_play')->default(false)->index();

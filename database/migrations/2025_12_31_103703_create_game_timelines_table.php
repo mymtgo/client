@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Game;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -13,7 +14,7 @@ return new class extends Migration
     {
         Schema::create('game_timelines', function (Blueprint $table) {
             $table->id();
-            $table->foreignIdFor(\App\Models\Game::class)->constrained();
+            $table->foreignIdFor(Game::class)->constrained();
             $table->timestamp('timestamp');
             $table->json('content');
             $table->timestamps();

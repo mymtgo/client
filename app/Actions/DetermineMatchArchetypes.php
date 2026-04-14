@@ -21,15 +21,26 @@ class DetermineMatchArchetypes
         $player = $firstGame->localPlayers->first();
 
         if ($player) {
-            $playerDeck = $player->pivot->deck_json;
-            $archetype = DetermineDeckArchetype::run(collect($playerDeck), $match->format, $match->id, $player->id);
+            // Use deck-level archetype if available, skip estimate API
+            $deckArchetypeId = $match->deckVersion?->deck?->archetype_id;
 
-            if ($archetype) {
+            if ($deckArchetypeId) {
                 $matchArchetypes[] = [
-                    'archetype_id' => $archetype['archetype_id'],
-                    'confidence' => $archetype['confidence'],
+                    'archetype_id' => $deckArchetypeId,
+                    'confidence' => 1.0,
                     'player_id' => $player->id,
                 ];
+            } else {
+                $playerDeck = $player->pivot->deck_json;
+                $archetype = DetermineDeckArchetype::run(collect($playerDeck), $match->format, $match->id, $player->id);
+
+                if ($archetype) {
+                    $matchArchetypes[] = [
+                        'archetype_id' => $archetype['archetype_id'],
+                        'confidence' => $archetype['confidence'],
+                        'player_id' => $player->id,
+                    ];
+                }
             }
         }
 

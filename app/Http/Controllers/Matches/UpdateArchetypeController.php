@@ -15,9 +15,9 @@ class UpdateArchetypeController extends Controller
             'archetype_id' => 'nullable|exists:archetypes,id',
         ]);
 
-        $match = MtgoMatch::findOrFail($id);
+        $match = MtgoMatch::with('opponentArchetypes')->findOrFail($id);
 
-        $opponentPlayerIds = $match->opponentArchetypes()->pluck('player_id');
+        $opponentPlayerIds = $match->opponentArchetypes->pluck('player_id');
 
         if ($opponentPlayerIds->isEmpty()) {
             $opponentPlayerIds = \DB::table('game_player as gp')

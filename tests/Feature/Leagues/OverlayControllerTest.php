@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\MatchState;
+use App\Models\Game;
 use App\Models\League;
 use App\Models\MtgoMatch;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -32,8 +33,7 @@ it('renders overlay with active league data', function () {
         'format' => 'Modern',
         'match_type' => 'League',
         'state' => MatchState::Complete,
-        'games_won' => 2,
-        'games_lost' => 1,
+        'outcome' => 'win',
         'started_at' => now(),
         'ended_at' => now(),
     ]);
@@ -45,8 +45,7 @@ it('renders overlay with active league data', function () {
         'format' => 'Modern',
         'match_type' => 'League',
         'state' => MatchState::Complete,
-        'games_won' => 1,
-        'games_lost' => 2,
+        'outcome' => 'loss',
         'started_at' => now(),
         'ended_at' => now(),
     ]);
@@ -79,8 +78,6 @@ it('detects an active match in the league', function () {
         'format' => 'Modern',
         'match_type' => 'League',
         'state' => MatchState::InProgress,
-        'games_won' => 0,
-        'games_lost' => 0,
         'started_at' => now(),
         'ended_at' => now(),
     ]);
@@ -110,13 +107,11 @@ it('includes game results for the active match', function () {
         'format' => 'Modern',
         'match_type' => 'League',
         'state' => MatchState::InProgress,
-        'games_won' => 1,
-        'games_lost' => 0,
         'started_at' => now(),
         'ended_at' => now(),
     ]);
 
-    \App\Models\Game::create([
+    Game::create([
         'match_id' => $match->id,
         'mtgo_id' => '500001',
         'started_at' => now()->subMinutes(10),
@@ -124,7 +119,7 @@ it('includes game results for the active match', function () {
         'won' => true,
     ]);
 
-    \App\Models\Game::create([
+    Game::create([
         'match_id' => $match->id,
         'mtgo_id' => '500002',
         'started_at' => now()->subMinutes(4),
@@ -163,8 +158,7 @@ it('excludes completed leagues with 5 matches', function () {
             'format' => 'Modern',
             'match_type' => 'League',
             'state' => MatchState::Complete,
-            'games_won' => 2,
-            'games_lost' => 1,
+            'outcome' => 'win',
             'started_at' => now(),
             'ended_at' => now(),
         ]);

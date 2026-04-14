@@ -2,10 +2,10 @@
 
 namespace App\Jobs;
 
-use App\Enums\MatchState;
 use App\Models\MtgoMatch;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class BackfillCardGameStats implements ShouldQueue
@@ -14,21 +14,17 @@ class BackfillCardGameStats implements ShouldQueue
 
     public function handle(): void
     {
-        $matches = MtgoMatch::where('state', MatchState::Complete)
+        DB::table('card_game_stats')->delete();
+
+        $matchIds = MtgoMatch::query()
+            ->where('state', 'complete')
             ->whereNotNull('deck_version_id')
-            ->whereHas('games', fn ($q) => $q->whereNotNull('won'))
             ->pluck('id');
 
-        Log::channel('pipeline')->info("BackfillCardGameStats: processing {$matches->count()} completed matches");
-
-        foreach ($matches as $matchId) {
-            try {
-                (new ComputeCardGameStats($matchId))->handle();
-            } catch (\Throwable $e) {
-                Log::channel('pipeline')->warning("BackfillCardGameStats: failed for match {$matchId}: {$e->getMessage()}");
-            }
+        foreach ($matchIds as $matchId) {
+            ComputeCardGameStats::dispatch($matchId);
         }
 
-        Log::channel('pipeline')->info('BackfillCardGameStats: complete');
+        Log::info("BackfillCardGameStats: dispatched {$matchIds->count()} jobs");
     }
 }

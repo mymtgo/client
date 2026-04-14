@@ -4,7 +4,6 @@ namespace App\Actions\Matches;
 
 use App\Actions\Decks\GenerateDeckSignature;
 use App\Actions\Util\ExtractJson;
-use App\Facades\Mtgo;
 use App\Models\Account;
 use App\Models\DeckVersion;
 use App\Models\LogEvent;
@@ -49,7 +48,7 @@ class DetermineMatchDeck
 
         $signature = GenerateDeckSignature::run($firstGameDeckCards);
 
-        $accountId = Account::where('username', Mtgo::getUsername())->value('id');
+        $accountId = Account::active()->value('id');
 
         $deckVersion = DeckVersion::where('signature', $signature)
             ->when($accountId, fn ($q) => $q->whereHas('deck', fn ($q2) => $q2->where('account_id', $accountId)))

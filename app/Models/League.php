@@ -9,6 +9,13 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
+/**
+ * @property int $wins_count
+ * @property int $losses_count
+ * @property int $total_matches_count
+ * @property int $total_count
+ * @property int $won_count
+ */
 class League extends Model
 {
     use HasFactory, SoftDeletes;
@@ -21,11 +28,13 @@ class League extends Model
         'state' => LeagueState::class,
     ];
 
+    /** @return BelongsTo<DeckVersion, $this> */
     public function deckVersion(): BelongsTo
     {
         return $this->belongsTo(DeckVersion::class);
     }
 
+    /** @return HasMany<MtgoMatch, $this> */
     public function matches(): HasMany
     {
         return $this->hasMany(MtgoMatch::class);

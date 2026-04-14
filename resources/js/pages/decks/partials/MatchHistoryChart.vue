@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { ChartConfig } from '@/components/ui/chart';
 import { ChartContainer } from '@/components/ui/chart';
-import { VisAxis, VisCrosshair, VisLine, VisStackedBar, VisTooltip, VisXYContainer } from '@unovis/vue';
+import { VisAxis, VisCrosshair, VisStackedBar, VisTooltip, VisXYContainer } from '@unovis/vue';
 import { computed, onMounted, ref } from 'vue';
 
 const props = defineProps<{
@@ -10,10 +10,9 @@ const props = defineProps<{
 
 type DataPoint = { date: Date; wins: number; losses: number; rate: number | null };
 
-const lineColor = '#ffffff';
 const chartEl = ref<HTMLElement>();
-const winColor = ref('#22c55e');
-const lossColor = ref('#ef4444');
+const winColor = ref('oklch(0.696 0.17 162.48)');
+const lossColor = ref('oklch(0.645 0.246 16.439)');
 
 onMounted(() => {
     if (chartEl.value) {
@@ -37,15 +36,17 @@ const hasMatches = (d: DataPoint) => d.wins > 0 || d.losses > 0;
 const chartConfig = {
     wins: { label: 'Wins', color: 'var(--color-success)' },
     losses: { label: 'Losses', color: 'var(--color-destructive)' },
-    rate: { label: 'Winrate', color: lineColor },
 } satisfies ChartConfig;
 
+const GAP = 0.1;
+
 const barColorAccessor = (_d: DataPoint, i: number) => {
+    if (i === 1) return 'transparent';
     return i === 0 ? winColor.value : lossColor.value;
 };
 
 const crosshairColorAccessor = (_d: DataPoint, i: number) => {
-    return [winColor.value, lossColor.value, lineColor][i] ?? lineColor;
+    return [winColor.value, lossColor.value][i] ?? winColor.value;
 };
 
 const formatTick = (ms: number) => {
@@ -62,12 +63,27 @@ const tooltipTemplate = (d: DataPoint): string | null => {
     </div>`;
 };
 
-const maxTotal = computed(() => Math.max(...chartData.value.map((d) => d.wins + d.losses), 1));
+const maxTotal = computed(() => {
+    const max = Math.max(...chartData.value.map((d) => d.wins + d.losses + ((d.wins > 0 && d.losses > 0) ? GAP : 0)), 1);
+    return Math.ceil(max);
+});
 </script>
 
 <template>
     <div ref="chartEl" class="match-history-chart">
-        <h3 class="text-sm font-semibold tracking-tight">Performance History</h3>
+        <div class="flex items-center justify-between">
+            <h3 class="text-sm font-semibold tracking-tight">Performance History</h3>
+            <div class="flex items-center gap-4">
+                <span class="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <span class="inline-block h-2.5 w-2.5 rounded-sm bg-success" />
+                    Wins
+                </span>
+                <span class="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <span class="inline-block h-2.5 w-2.5 rounded-sm bg-destructive" />
+                    Losses
+                </span>
+            </div>
+        </div>
         <ChartContainer
             :config="chartConfig"
             class="mt-4 h-[400px] w-full"
@@ -75,24 +91,20 @@ const maxTotal = computed(() => Math.max(...chartData.value.map((d) => d.wins + 
             <VisXYContainer :data="chartData" :y-domain="[0, maxTotal]">
                 <VisStackedBar
                     :x="(d: DataPoint) => d.date"
-                    :y="[(d: DataPoint) => d.wins, (d: DataPoint) => d.losses]"
+                    :y="[
+                        (d: DataPoint) => d.wins,
+                        (d: DataPoint) => (d.wins > 0 && d.losses > 0) ? GAP : 0,
+                        (d: DataPoint) => d.losses,
+                    ]"
                     :color="barColorAccessor"
-                    :bar-padding="0.3"
-                    :rounded-corners="2"
-                />
-
-                <VisLine
-                    :x="(d: DataPoint) => d.date"
-                    :y="(d: DataPoint) => d.rate !== null ? (d.rate / 100) * maxTotal : 0"
-                    :defined="(d: DataPoint) => d.rate !== null"
-                    :color="lineColor"
-                    :line-width="2"
+                    :bar-padding="0.35"
+                    :rounded-corners="0"
                 />
 
                 <VisCrosshair :template="tooltipTemplate" :color="crosshairColorAccessor" />
                 <VisTooltip />
                 <VisAxis type="x" :tick-format="formatTick" />
-                <VisAxis type="y" label="W/L" />
+                <VisAxis type="y" :grid-line="true" />
             </VisXYContainer>
         </ChartContainer>
     </div>
@@ -104,5 +116,16 @@ const maxTotal = computed(() => Math.max(...chartData.value.map((d) => d.wins + 
     --vis-tooltip-text-color: hsl(var(--popover-foreground)) !important;
     --vis-tooltip-border-color: hsl(var(--border)) !important;
     --vis-tooltip-border-radius: 8px !important;
+}
+
+.match-history-chart .vis-axis-grid-line line {
+    stroke: var(--color-border);
+    stroke-dasharray: 4 4;
+    stroke-opacity: 0.5;
+}
+
+.match-history-chart .vis-axis .tick line {
+    stroke: var(--color-border);
+    stroke-opacity: 0.3;
 }
 </style>

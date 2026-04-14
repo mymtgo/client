@@ -5,9 +5,9 @@ namespace App\Actions\Archetypes;
 use App\Actions\RegisterDevice;
 use App\Models\Archetype;
 use App\Models\Card;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Native\Desktop\Facades\Settings;
 
 class DownloadArchetypeDecklist
 {
@@ -61,11 +61,8 @@ class DownloadArchetypeDecklist
         $archetype->update(['decklist_downloaded_at' => now()]);
     }
 
-    private static function fetchFromApi(string $uuid): \Illuminate\Http\Client\Response
+    private static function fetchFromApi(string $uuid): Response
     {
-        return Http::withHeaders([
-            'X-Device-Id' => Settings::get('device_id'),
-            'X-Api-Key' => RegisterDevice::retrieveKey(),
-        ])->get(config('mymtgo_api.url').'/api/archetypes/'.$uuid.'/decklist');
+        return Http::mymtgoApi()->get('/api/archetypes/'.$uuid.'/decklist');
     }
 }

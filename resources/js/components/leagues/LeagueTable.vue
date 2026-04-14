@@ -1,44 +1,22 @@
 <script lang="ts" setup>
 import AbandonController from '@/actions/App/Http/Controllers/Leagues/AbandonController';
-import DeckShowController from '@/actions/App/Http/Controllers/Decks/ShowController';
+import DeckShowController from '@/actions/App/Http/Controllers/Decks/DashboardController';
 import MatchShowController from '@/actions/App/Http/Controllers/Matches/ShowController';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { router } from '@inertiajs/vue3';
-import dayjs from 'dayjs';
-import { useLeagueScreenshot } from '@/composables/useLeagueScreenshot';
+import { useScreenshot } from '@/composables/useScreenshot';
 import { Camera, Ellipsis, Trash2, Trophy } from 'lucide-vue-next';
-import { ref } from 'vue';
+import { nextTick, ref } from 'vue';
 import LeagueScreenshot from './LeagueScreenshot.vue';
 import ResultBadge from '../matches/ResultBadge.vue';
 import { Badge } from '../ui/badge';
 import { Card } from '../ui/card';
+import type { LeagueRun } from '@/types/leagues';
 import PhantomBadge from './PhantomBadge.vue';
 
-type LeagueMatch = {
-    id: number;
-    result: 'W' | 'L';
-    opponentName: string | null;
-    opponentArchetype: string | null;
-    games: string;
-    startedAt: string;
-};
-
-type LeagueRun = {
-    id: number;
-    name: string;
-    format: string;
-    deck: { id: number; name: string } | null;
-    versionLabel: string | null;
-    startedAt: string;
-    results: ('W' | 'L' | null)[];
-    phantom: boolean;
-    state: 'active' | 'complete' | 'partial';
-    matches: LeagueMatch[];
-};
-
-defineProps<{
+const props = defineProps<{
     league: LeagueRun;
 }>();
 
@@ -54,13 +32,17 @@ function abandonLeague(league: LeagueRun) {
 }
 
 const screenshotRef = ref<InstanceType<typeof LeagueScreenshot> | null>(null);
-const { capture, capturing } = useLeagueScreenshot();
+const showScreenshot = ref(false);
+const { capture, capturing } = useScreenshot();
 
-function copyScreenshot() {
+async function copyScreenshot() {
+    showScreenshot.value = true;
+    await nextTick();
     const el = screenshotRef.value?.$el as HTMLElement | undefined;
     if (el) {
-        capture(el);
+        await capture(el);
     }
+    showScreenshot.value = false;
 }
 </script>
 
@@ -71,7 +53,7 @@ function copyScreenshot() {
             <!-- Left: date + format + deck -->
             <div class="flex min-w-0 items-center gap-2">
                 <span class="text-sm whitespace-nowrap text-muted-foreground">
-                    {{ dayjs(league.startedAt).fromNow() }}
+                    {{ league.startedAtHuman }}
                 </span>
                 <Badge variant="outline" class="shrink-0">{{ league.format }}</Badge>
                 <span
@@ -130,50 +112,52 @@ function copyScreenshot() {
         <!-- Matches table -->
         <div class="border-t">
             <Table>
-                    <TableHeader class="bg-muted/20">
-                        <TableRow>
-                            <TableHead>Result</TableHead>
-                            <TableHead>Opponent</TableHead>
-                            <TableHead>Archetype</TableHead>
-                            <TableHead>Games</TableHead>
-                            <TableHead>When</TableHead>
-                            <TableHead></TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        <TableRow
-                            v-for="match in league.matches"
-                            :key="match.id"
-                            class="cursor-pointer"
-                            @click="router.visit(MatchShowController({ id: match.id }).url)"
-                        >
-                            <TableCell>
-                                <ResultBadge :won="match.result === 'W'" :showText="true" />
-                            </TableCell>
-                            <TableCell class="font-medium">
-                                <span v-if="match.opponentName">{{ match.opponentName }}</span>
-                                <span v-else class="text-xs text-muted-foreground">—</span>
-                            </TableCell>
-                            <TableCell>
-                                <span v-if="match.opponentArchetype" class="text-sm">{{ match.opponentArchetype }}</span>
-                                <span v-else class="text-xs text-muted-foreground">Unknown</span>
-                            </TableCell>
-                            <TableCell class="text-sm tabular-nums">{{ match.games }}</TableCell>
-                            <TableCell class="text-xs whitespace-nowrap text-muted-foreground">
-                                {{ dayjs(match.startedAt).fromNow() }}
-                            </TableCell>
-                            <TableCell>
-                                <Button size="sm" variant="ghost" @click.stop="router.visit(MatchShowController({ id: match.id }).url)">
-                                    View
-                                </Button>
-                            </TableCell>
-                        </TableRow>
-                    </TableBody>
-                </Table>
+                <TableHeader class="bg-muted/20">
+                    <TableRow>
+                        <TableHead>Result</TableHead>
+                        <TableHead>Opponent</TableHead>
+                        <TableHead>Vs</TableHead>
+                        <TableHead class="text-center">Game 1</TableHead>
+                        <TableHead class="text-center">Game 2</TableHead>
+                        <TableHead class="text-center">Game 3</TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    <TableRow
+                        v-for="match in league.matches"
+                        :key="match.id"
+                        class="cursor-pointer"
+                        @click="router.visit(MatchShowController({ id: match.id }).url)"
+                    >
+                        <TableCell>
+                            <ResultBadge :won="match.result === 'W'" :showText="true" />
+                        </TableCell>
+                        <TableCell class="font-medium">
+                            <span v-if="match.opponentName">{{ match.opponentName }}</span>
+                            <span v-else class="text-muted-foreground">—</span>
+                        </TableCell>
+                        <TableCell>
+                            <span v-if="match.opponentArchetype" class="text-sm">{{ match.opponentArchetype }}</span>
+                            <span v-else class="text-xs text-muted-foreground">Unknown</span>
+                        </TableCell>
+                        <TableCell v-for="gameIdx in 3" :key="gameIdx" class="text-center text-sm">
+                            <template v-if="match.gameResults[gameIdx - 1]">
+                                <span :class="match.gameResults[gameIdx - 1].result === 'W' ? 'text-success' : 'text-destructive'">
+                                    {{ match.gameResults[gameIdx - 1].result === 'W' ? 'Win' : 'Loss' }}
+                                </span>
+                                <span v-if="match.gameResults[gameIdx - 1].onPlay !== null" class="text-xs text-muted-foreground">
+                                    ({{ match.gameResults[gameIdx - 1].onPlay ? 'OTP' : 'OTD' }})
+                                </span>
+                            </template>
+                            <span v-else class="text-muted-foreground">—</span>
+                        </TableCell>
+                    </TableRow>
+                </TableBody>
+            </Table>
         </div>
 
-        <div style="position: fixed; top: 0; left: 0; opacity: 0; pointer-events: none; z-index: -1;">
-            <LeagueScreenshot ref="screenshotRef" :league="league" />
-        </div>
     </Card>
+    <div v-if="showScreenshot" style="position: fixed; top: -9999px; left: -9999px; pointer-events: none;">
+        <LeagueScreenshot ref="screenshotRef" :league="league" />
+    </div>
 </template>

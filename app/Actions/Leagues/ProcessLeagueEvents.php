@@ -98,7 +98,7 @@ class ProcessLeagueEvents
             'state' => LeagueState::Active,
             'started_at' => $event->logged_at,
             'joined_at' => $event->logged_at,
-            'name' => 'League '.Carbon::parse($event->logged_at)->format('d-m-Y h:ma'),
+            'name' => 'League '.Carbon::parse($event->logged_at)->toLocal()->format('d-m-Y h:ma'),
         ]);
 
         Log::channel('pipeline')->info("ProcessLeagueEvents: created league #{$league->id}", [

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import { Link } from '@inertiajs/vue3';
+import { router } from '@inertiajs/vue3';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import ResultBadge from '@/components/matches/ResultBadge.vue';
@@ -8,7 +8,7 @@ import GameLogPanel from '@/components/matches/GameLogPanel.vue';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { SwordsIcon, ChevronRight, Play, ScrollText } from 'lucide-vue-next';
-import GameShowController from '@/actions/App/Http/Controllers/Games/ShowController';
+import OpenReplayController from '@/actions/App/Http/Controllers/Games/OpenReplayController';
 
 const props = defineProps<{
     game: {
@@ -26,6 +26,7 @@ const props = defineProps<{
     };
     gameLog: Array<{ timestamp: string; message: string }>;
     opponentName: string;
+    imported?: boolean;
 }>();
 
 const handOpen = ref(true);
@@ -68,16 +69,14 @@ const sideboardOpen = ref(false);
                         </div>
                     </DialogContent>
                 </Dialog>
-                <Button variant="ghost" size="sm" as-child class="h-6 px-2 text-xs">
-                    <Link :href="GameShowController(game.id).url" class="inline-flex items-center gap-1">
-                        <Play :size="11" />
-                        Replay
-                    </Link>
+                <Button v-if="!imported" variant="ghost" size="sm" class="h-6 px-2 text-xs" @click="router.post(OpenReplayController.url({ id: game.id }))">
+                    <Play :size="11" />
+                    Replay
                 </Button>
             </div>
         </CardHeader>
 
-        <CardContent class="flex flex-col gap-1.5 px-3 py-2">
+        <CardContent v-if="!imported" class="flex flex-col gap-1.5 px-3 py-2">
             <!-- Kept hand (open by default) -->
             <Collapsible v-model:open="handOpen">
                 <CollapsibleTrigger class="flex w-full items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium tracking-wide text-muted-foreground uppercase transition-colors hover:bg-muted">

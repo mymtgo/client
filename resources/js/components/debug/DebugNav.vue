@@ -9,6 +9,7 @@ const tabs = [
     { label: 'Log Events', href: '/debug/log-events' },
     { label: 'Decks', href: '/debug/decks' },
     { label: 'Deck Versions', href: '/debug/deck-versions' },
+    { label: 'Leagues', href: '/debug/leagues' },
     { label: 'Cards', href: '/debug/cards' },
     { label: 'Log Cursors', href: '/debug/log-cursors' },
     { label: 'Pipeline Log', href: '/debug/pipeline-log' },

@@ -5,20 +5,20 @@ import ManaSymbols from '@/components/ManaSymbols.vue';
 import WinRateBar from '@/components/WinRateBar.vue';
 
 defineProps<{
-    matchupSpread: any[]
-}>()
+    matchupSpread: any[];
+}>();
 </script>
 
 <template>
     <div>
         <Card class="gap-0 overflow-hidden p-0">
             <CardContent class="px-0">
-                <p v-if="!matchupSpread.length" class="text-muted-foreground py-8 text-center text-sm">
+                <p v-if="!matchupSpread.length" class="py-8 text-center text-sm text-muted-foreground">
                     Archetype matchup data will appear as you play matches.
                 </p>
 
                 <Table v-if="matchupSpread.length">
-                    <TableHeader class="bg-muted">
+                    <TableHeader class="sticky top-0 z-10 backdrop-blur-sm">
                         <TableRow>
                             <TableHead>Archetype</TableHead>
                             <TableHead></TableHead>

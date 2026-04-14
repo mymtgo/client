@@ -164,3 +164,40 @@ it('provides on_play entry for each game', function () {
     expect(count($result['on_play']))->toBeLessThanOrEqual(count($result['games']));
     expect(count($result['on_play']))->toBeGreaterThan(0);
 });
+
+/*
+|--------------------------------------------------------------------------
+| Hyphenated Usernames
+|--------------------------------------------------------------------------
+*/
+
+it('detects players with hyphens in usernames', function () {
+    $entries = [
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@PBruh-Ket rolled a 5.'],
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@Panticloser rolled a 3.'],
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@PBruh-Ket joined the game.'],
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@Panticloser joined the game.'],
+    ];
+
+    $players = ExtractGameResults::detectPlayers($entries);
+
+    expect($players)->toContain('Bruh-Ket');
+    expect($players)->toContain('anticloser');
+});
+
+it('extracts game results for players with hyphens', function () {
+    $entries = [
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@PBruh-Ket joined the game.'],
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@Panticloser joined the game.'],
+        ['timestamp' => '2026-01-01T00:00:01+00:00', 'message' => '@PBruh-Ket chooses to play first.'],
+        ['timestamp' => '2026-01-01T00:00:02+00:00', 'message' => '@PBruh-Ket begins the game with seven cards in hand.'],
+        ['timestamp' => '2026-01-01T00:00:02+00:00', 'message' => '@Panticloser begins the game with seven cards in hand.'],
+        ['timestamp' => '2026-01-01T00:00:03+00:00', 'message' => '@Panticloser wins the game.'],
+    ];
+
+    $result = ExtractGameResults::run($entries, 'anticloser');
+
+    expect($result['games'][0]['winner'])->toBe('anticloser');
+    expect($result['games'][0]['on_play'])->toBe('Bruh-Ket');
+    expect($result['games'][0]['starting_hands'])->toHaveKey('Bruh-Ket');
+});

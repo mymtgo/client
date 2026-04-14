@@ -4,6 +4,7 @@ namespace Tests\Feature\Decks;
 
 use App\Actions\Decks\GetDeckFiles;
 use App\Actions\Decks\SyncDecks;
+use App\Facades\Mtgo;
 use App\Models\Card;
 use App\Models\Deck;
 use Illuminate\Filesystem\Filesystem;
@@ -29,9 +30,9 @@ class SyncDecksTest extends TestCase
         (new Filesystem)->cleanDirectory(storage_path('framework/testing/disks/user_home'));
         mkdir($path, 0777, true);
 
-        \App\Facades\Mtgo::shouldReceive('getLogPath')->andReturn($path)->byDefault();
-        \App\Facades\Mtgo::shouldReceive('getLogDataPath')->andReturn($path.'/Data')->byDefault();
-        \App\Facades\Mtgo::shouldReceive('getUsername')->andReturn(null)->byDefault();
+        Mtgo::shouldReceive('getLogPath')->andReturn($path)->byDefault();
+        Mtgo::shouldReceive('getLogDataPath')->andReturn($path.'/Data')->byDefault();
+        Mtgo::shouldReceive('getUsername')->andReturn(null)->byDefault();
 
         Http::fake();
     }
@@ -80,9 +81,6 @@ class SyncDecksTest extends TestCase
         // Mark this as the active data directory via user_settings
         file_put_contents($activeDataPath.'/user_settings', '');
 
-        // Ensure Cache doesn't interfere
-        \Illuminate\Support\Facades\Cache::forget('mtgo.active_log_path');
-
         // Create the deck XML in the active Data path (common MTGO structure)
         $xmlContent = <<<XML
 <Grouping Name="Active Deck" NetDeckId="{$deckId}" GroupingType="Deck" Timestamp="2026-01-21T10:00:00" FormatCode="Standard">
@@ -128,9 +126,6 @@ XML;
 </Grouping>
 XML;
         file_put_contents($stalePath.'/grouping '.$deckId.'.xml', $xmlContent);
-
-        // Ensure Cache doesn't interfere
-        \Illuminate\Support\Facades\Cache::forget('mtgo.active_log_path');
 
         SyncDecks::run();
 

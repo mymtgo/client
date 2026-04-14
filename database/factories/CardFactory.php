@@ -2,10 +2,11 @@
 
 namespace Database\Factories;
 
+use App\Models\Card;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Card>
+ * @extends Factory<Card>
  */
 class CardFactory extends Factory
 {
@@ -35,6 +36,11 @@ class CardFactory extends Factory
             'sub_type' => null,
             'rarity' => null,
             'color_identity' => null,
+            'colors' => null,
+            'cmc' => null,
+            'set_name' => null,
+            'set_code' => null,
+            'art_crop' => null,
             'image' => null,
         ]);
     }

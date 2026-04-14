@@ -2,6 +2,8 @@
 
 namespace App\Actions\Logs;
 
+use Illuminate\Support\Facades\Log;
+
 class GetLogFilePaths
 {
     public static function run(string $path)
@@ -26,6 +28,7 @@ class GetLogFilePaths
                 }
             }
         } catch (\Throwable $e) {
+            Log::channel('pipeline')->warning("GetLogFilePaths: failed to scan {$path}: {$e->getMessage()}");
         }
 
         return $logPaths;

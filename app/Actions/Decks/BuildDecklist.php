@@ -5,13 +5,14 @@ namespace App\Actions\Decks;
 use App\Actions\Cards\GetCards;
 use App\Data\Front\CardData;
 use App\Models\DeckVersion;
+use Illuminate\Support\Collection;
 
 class BuildDecklist
 {
     /**
      * Build a formatted decklist from a deck version.
      *
-     * @return array{0: \Illuminate\Support\Collection, 1: \Illuminate\Support\Collection} [mainDeck grouped by type, sideboard]
+     * @return array{0: Collection, 1: Collection} [mainDeck grouped by type, sideboard]
      */
     public static function run(DeckVersion $deckVersion): array
     {

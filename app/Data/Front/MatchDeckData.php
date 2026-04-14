@@ -16,7 +16,7 @@ class MatchDeckData extends Data
     public static function fromModel(MtgoMatch $match): self
     {
         return new self(
-            deck: Lazy::whenLoaded('deck', $match)
+            deck: Lazy::whenLoaded('deck', $match, fn () => DeckData::from($match->deck))
         );
     }
 }

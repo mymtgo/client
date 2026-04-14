@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { DateTimePicker } from '@/components/ui/date-time-picker';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
@@ -6,7 +7,7 @@ import { ref, watch } from 'vue';
 
 const props = defineProps<{
     modelValue: string | number | boolean | null;
-    type?: 'text' | 'number' | 'select' | 'switch' | 'readonly';
+    type?: 'text' | 'number' | 'select' | 'switch' | 'datetime' | 'readonly';
     options?: Array<{ label: string; value: string }>;
     nullable?: boolean;
     flash?: 'success' | 'error' | null;
@@ -34,6 +35,12 @@ function onSelect(val: string) {
     const emitVal = val === '__null__' ? null : val;
     if (emitVal !== String(props.modelValue ?? '')) {
         emit('save', emitVal);
+    }
+}
+
+function onDateTimeChange(val: string | null) {
+    if (val !== props.modelValue) {
+        emit('save', val);
     }
 }
 </script>
@@ -64,6 +71,12 @@ function onSelect(val: string) {
             v-else-if="type === 'switch'"
             :modelValue="!!modelValue"
             @update:modelValue="(val: boolean) => emit('save', val)"
+        />
+
+        <DateTimePicker
+            v-else-if="type === 'datetime'"
+            :modelValue="String(modelValue ?? '')"
+            @update:modelValue="onDateTimeChange"
         />
 
         <Input

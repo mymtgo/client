@@ -8,6 +8,9 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * @property string|null $name
+ */
 class DeckVersion extends Model
 {
     use HasFactory;
@@ -20,26 +23,40 @@ class DeckVersion extends Model
 
     public function getCardsAttribute(): array
     {
-        $decoded = base64_decode($this->signature);
+        if (! $this->signature) {
+            return [];
+        }
+
+        $decoded = base64_decode($this->signature, true);
+
+        if ($decoded === false) {
+            return [];
+        }
 
         return collect(
             explode('|', $decoded)
-        )->map(function (string $cardSig) {
+        )->filter()->map(function (string $cardSig) {
             $parts = explode(':', $cardSig);
+
+            if (count($parts) < 3) {
+                return null;
+            }
 
             return [
                 'oracle_id' => $parts[0],
                 'quantity' => $parts[1],
                 'sideboard' => $parts[2],
             ];
-        })->toArray();
+        })->filter()->values()->toArray();
     }
 
+    /** @return BelongsTo<Deck, $this> */
     public function deck(): BelongsTo
     {
         return $this->belongsTo(Deck::class);
     }
 
+    /** @return HasMany<MtgoMatch, $this> */
     public function matches(): HasMany
     {
         return $this->hasMany(MtgoMatch::class, 'deck_version_id')->where('state', MatchState::Complete);

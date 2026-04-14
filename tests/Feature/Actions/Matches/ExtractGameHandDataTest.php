@@ -16,9 +16,7 @@ function createGameWithTimeline(array $overrides = [], array $pivotOverrides = [
         'mtgo_id' => '12345',
         'format' => 'modern',
         'match_type' => 'league',
-        'result' => 'win',
-        'games_won' => 2,
-        'games_lost' => 1,
+        'outcome' => 'win',
         'started_at' => now()->subMinutes(30),
         'ended_at' => now(),
     ]);

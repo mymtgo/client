@@ -56,7 +56,7 @@ class AssignLeague
                     'format' => $gameMeta['PlayFormatCd'],
                     'deck_version_id' => $match->deck_version_id,
                     'started_at' => now(),
-                    'name' => trim(($gameMeta['GameStructureCd'] ?? '').' League '.now()->format('d-m-Y h:ma')),
+                    'name' => trim(($gameMeta['GameStructureCd'] ?? '').' League '.now()->toLocal()->format('d-m-Y h:ma')),
                 ]);
                 $isNew = true;
             }
@@ -107,12 +107,18 @@ class AssignLeague
         if ($deckId) {
             $existing = League::where('format', $gameMeta['PlayFormatCd'])
                 ->where('phantom', true)
+                ->where('state', LeagueState::Active)
                 ->where('deck_change_detected', false)
                 ->has('matches', '<', 5)
-                ->whereHas('matches', fn ($q) => $q
-                    ->join('deck_versions as dv', 'dv.id', '=', 'matches.deck_version_id')
-                    ->where('dv.deck_id', $deckId)
-                )
+                ->where(function ($q) use ($deckId) {
+                    // Match by league's own deck version (covers leagues with 0 matches yet)
+                    $q->whereHas('deckVersion', fn ($dv) => $dv->where('deck_id', $deckId))
+                        // Or by matches' deck versions
+                        ->orWhereHas('matches', fn ($m) => $m
+                            ->join('deck_versions as dv', 'dv.id', '=', 'matches.deck_version_id')
+                            ->where('dv.deck_id', $deckId)
+                        );
+                })
                 ->latest('started_at')
                 ->first();
 
@@ -127,7 +133,7 @@ class AssignLeague
             'phantom' => true,
             'deck_version_id' => $deckVersionId,
             'started_at' => now(),
-            'name' => 'Phantom '.trim(($gameMeta['GameStructureCd'] ?? '').' League '.now()->format('d-m-Y h:ma')),
+            'name' => 'Phantom '.trim(($gameMeta['GameStructureCd'] ?? '').' League '.now()->toLocal()->format('d-m-Y h:ma')),
         ]);
     }
 }

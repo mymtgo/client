@@ -16,6 +16,12 @@ class CardGameStat extends Model
         'won' => 'boolean',
         'is_postboard' => 'boolean',
         'sided_out' => 'boolean',
+        'played' => 'integer',
+        'kicked' => 'integer',
+        'flashback' => 'integer',
+        'madness' => 'integer',
+        'evoked' => 'integer',
+        'activated' => 'integer',
     ];
 
     public function game(): BelongsTo

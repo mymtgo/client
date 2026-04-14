@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Matches;
 
+use App\Actions\Decks\GetDeckViewSharedProps;
 use App\Actions\Matches\BuildMatchGameData;
 use App\Actions\Matches\GetGameLogEntries;
 use App\Data\Front\ArchetypeData;
@@ -9,6 +10,7 @@ use App\Data\Front\MatchData;
 use App\Http\Controllers\Controller;
 use App\Models\Archetype;
 use App\Models\Card;
+use App\Models\Deck;
 use App\Models\DeckVersion;
 use App\Models\MtgoMatch;
 use Inertia\Inertia;
@@ -22,8 +24,12 @@ class ShowController extends Controller
             'games.timeline',
             'opponentArchetypes.archetype',
             'opponentArchetypes.player',
-            'deck',
+            'deck.cover',
+            'deck.archetype',
             'league',
+        ])->withCount([
+            'games as games_won_count' => fn ($q) => $q->where('won', true),
+            'games as games_lost_count' => fn ($q) => $q->where('won', false),
         ])->find($id);
 
         if (! $match) {
@@ -31,7 +37,7 @@ class ShowController extends Controller
         }
 
         $deckVersion = DeckVersion::find($match->deck_version_id);
-        $registeredCards = $deckVersion?->cards ?? [];
+        $registeredCards = $deckVersion->cards ?? [];
 
         // Batch all mtgo_ids: deck_json entries + timeline CatalogIDs
         $deckMtgoIds = $match->games->flatMap(fn ($game) => $game->players->flatMap(
@@ -61,11 +67,18 @@ class ShowController extends Controller
             $game->id => GetGameLogEntries::run($game),
         ]);
 
+        // Get deck sidebar props if match has a deck
+        $deck = $deckVersion?->deck;
+        $shared = $deck ? GetDeckViewSharedProps::run($deck) : [];
+
         return Inertia::render('matches/Show', [
+            ...$shared,
+            'currentPage' => 'matches',
             'match' => MatchData::from($match),
             'games' => $games,
             'gameLogs' => $gameLogs,
             'archetypes' => ArchetypeData::collect(Archetype::orderBy('name')->get()),
+            'imported' => (bool) $match->imported,
         ]);
     }
 }

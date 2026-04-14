@@ -65,7 +65,7 @@ class SubmitMatchToApi
             'username' => $match->games->first()->localPlayers->first()->username,
             'player_archetype_uuid' => $playerArchetype->archetype->uuid,
             'opponent_archetype_uuid' => $opponentArchetype->archetype->uuid,
-            'result' => $match->games_won > $match->games_lost ? 'win' : 'loss',
+            'result' => $match->isWin() ? 'win' : 'loss',
             'format' => $match->format,
             'is_tournament' => $isTournament,
             'league_token' => $leagueToken,

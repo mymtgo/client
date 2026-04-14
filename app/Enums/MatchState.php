@@ -8,5 +8,4 @@ enum MatchState: string
     case InProgress = 'in_progress';
     case Ended = 'ended';
     case Complete = 'complete';
-    case Voided = 'voided';
 }

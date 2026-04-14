@@ -33,6 +33,11 @@ class IndexController extends Controller
                 'complete' => $query->whereNotNull('name')
                     ->whereNotNull('scryfall_id')
                     ->whereNotNull('image'),
+                'missing_art' => $query->whereNotNull('name')
+                    ->where(function ($q) {
+                        $q->whereNull('art_crop')
+                            ->orWhere('art_crop', '');
+                    }),
                 default => null,
             };
         }
@@ -43,6 +48,12 @@ class IndexController extends Controller
                 ->orWhereNull('image');
         })->count();
 
+        $missingArtCount = Card::whereNotNull('name')
+            ->where(function ($q) {
+                $q->whereNull('art_crop')
+                    ->orWhere('art_crop', '');
+            })->count();
+
         return Inertia::render('debug/Cards', [
             'cards' => $query->paginate(50)->withQueryString(),
             'filters' => [
@@ -50,6 +61,7 @@ class IndexController extends Controller
                 'status' => $request->input('status', ''),
             ],
             'missingCount' => $missingCount,
+            'missingArtCount' => $missingArtCount,
             'totalCount' => Card::count(),
         ]);
     }

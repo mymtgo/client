@@ -34,11 +34,11 @@ class GetArchetypeWinrates
                     ->whereColumn('gp.player_id', 'ma.player_id')
                     ->where('gp.is_local', $isLocal);
             })
-            ->selectRaw('
-                SUM(CASE WHEN m.games_won > m.games_lost THEN 1 ELSE 0 END) as wins,
-                SUM(CASE WHEN m.games_won < m.games_lost THEN 1 ELSE 0 END) as losses,
+            ->selectRaw("
+                SUM(CASE WHEN m.outcome = 'win' THEN 1 ELSE 0 END) as wins,
+                SUM(CASE WHEN m.outcome = 'loss' THEN 1 ELSE 0 END) as losses,
                 COUNT(*) as total
-            ')
+            ")
             ->first();
 
         if (! $result || $result->total === 0) {

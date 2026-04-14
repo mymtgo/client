@@ -1,6 +1,5 @@
 <?php
 
-use App\Jobs\BackfillCardGameStats;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -23,9 +22,6 @@ return new class extends Migration
             $table->unique(['oracle_id', 'game_id']);
             $table->index('deck_version_id');
         });
-
-        // Backfill existing completed games
-        BackfillCardGameStats::dispatch();
     }
 
     public function down(): void

@@ -15,6 +15,7 @@ class IndexController extends Controller
     public function __invoke(): Response
     {
         $matches = MtgoMatch::query()
+            ->withOpponentName()
             ->orderByDesc('id')
             ->paginate(50);
 

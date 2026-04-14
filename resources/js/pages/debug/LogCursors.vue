@@ -9,7 +9,7 @@ import { RefreshCw } from 'lucide-vue-next';
 
 const { add: toast } = useToast();
 
-usePoll(1000);
+usePoll(10000);
 
 const props = defineProps<{
     logCursors: {

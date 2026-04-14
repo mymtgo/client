@@ -38,6 +38,15 @@ return [
             'report' => false,
         ],
 
+        'cards' => [
+            'driver' => 'local',
+            'root' => storage_path('app/cards'),
+            'serve' => true,
+            'visibility' => 'public',
+            'throw' => false,
+            'report' => false,
+        ],
+
         'public' => [
             'driver' => 'local',
             'root' => storage_path('app/public'),
