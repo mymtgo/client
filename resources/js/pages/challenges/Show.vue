@@ -4,6 +4,7 @@ import DashboardController from '@/actions/App/Http/Controllers/Decks/DashboardC
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Link, router } from '@inertiajs/vue3';
 import { ArrowLeft, ChevronUp, ChevronDown, Minus } from 'lucide-vue-next';
 import { computed, onUnmounted, ref } from 'vue';
@@ -316,17 +317,18 @@ function eventTime(dateStr: string): string {
             <!-- Middle: Standings table -->
             <Card class="overflow-hidden">
                 <!-- Round tabs -->
-                <div v-if="rounds.length > 1" class="flex items-center gap-1 border-b border-zinc-800 px-3 py-2">
-                    <Button
-                        v-for="round in rounds"
-                        :key="round"
-                        size="sm"
-                        :variant="selectedRound === round ? 'default' : 'ghost'"
-                        @click="selectedRound = round"
-                        class="h-7 px-2.5 text-xs"
-                    >
-                        Round {{ round }}
-                    </Button>
+                <div v-if="rounds.length > 1" class="px-3 pt-3">
+                    <Tabs :model-value="String(selectedRound)" @update:model-value="(v: string) => selectedRound = Number(v)">
+                        <TabsList>
+                            <TabsTrigger
+                                v-for="round in rounds"
+                                :key="round"
+                                :value="String(round)"
+                            >
+                                Round {{ round }}
+                            </TabsTrigger>
+                        </TabsList>
+                    </Tabs>
                 </div>
                 <div class="max-h-[600px] overflow-y-auto">
                     <Table>
