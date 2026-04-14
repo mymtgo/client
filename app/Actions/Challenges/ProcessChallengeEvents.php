@@ -11,6 +11,7 @@ use App\Models\ChallengeStanding;
 use App\Models\ChallengeTimelineEvent;
 use App\Models\LogEvent;
 use App\Models\Player;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 
 class ProcessChallengeEvents
@@ -131,7 +132,9 @@ class ProcessChallengeEvents
                 'min_players' => ($tournamentData['MinPlayers'] ?? 0) ?: null,
                 'max_players' => ($tournamentData['MaxPlayers'] ?? 0) ?: null,
                 'player_count' => count($json['Players'] ?? []),
-                'scheduled_at' => $json['StartDate'] ?? null,
+                'scheduled_at' => isset($json['StartDate'])
+                    ? Carbon::parse($json['StartDate'])->utc()
+                    : null,
             ], fn ($v) => $v !== null),
         );
 
