@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Link, router } from '@inertiajs/vue3';
-import { ArrowLeft } from 'lucide-vue-next';
+import { ArrowLeft, ChevronUp, ChevronDown, Minus } from 'lucide-vue-next';
 import { computed, onUnmounted, ref } from 'vue';
 
 type Challenge = {
@@ -61,6 +61,29 @@ const props = defineProps<{
 
 const selectedRound = ref(props.latestRound);
 const standings = computed(() => props.standingsByRound[selectedRound.value] ?? []);
+
+const previousRound = computed(() => {
+    const idx = props.rounds.indexOf(selectedRound.value);
+    return idx > 0 ? props.rounds[idx - 1] : null;
+});
+
+const previousRankMap = computed(() => {
+    if (!previousRound.value) return {};
+    const prev = props.standingsByRound[previousRound.value] ?? [];
+    const map: Record<number, number> = {};
+    for (const s of prev) {
+        map[s.login_id] = s.rank;
+    }
+    return map;
+});
+
+function rankMovement(standing: Standing): 'up' | 'down' | 'same' | 'new' {
+    const prevRank = previousRankMap.value[standing.login_id];
+    if (prevRank === undefined) return 'new';
+    if (standing.rank < prevRank) return 'up';
+    if (standing.rank > prevRank) return 'down';
+    return 'same';
+}
 
 const isActive = computed(() => props.challenge.state !== 'completed');
 
@@ -328,7 +351,14 @@ function eventTime(dateStr: string): string {
                                 ]"
                             >
                                 <TableCell class="tabular-nums text-sm text-zinc-400">
-                                    {{ standing.rank }}
+                                    <div class="flex items-center gap-1">
+                                        {{ standing.rank }}
+                                        <template v-if="previousRound">
+                                            <ChevronUp v-if="rankMovement(standing) === 'up'" class="size-3.5 text-green-500" />
+                                            <ChevronDown v-else-if="rankMovement(standing) === 'down'" class="size-3.5 text-red-500" />
+                                            <Minus v-else-if="rankMovement(standing) === 'same'" class="size-3 text-zinc-600" />
+                                        </template>
+                                    </div>
                                 </TableCell>
                                 <TableCell
                                     class="text-sm"
