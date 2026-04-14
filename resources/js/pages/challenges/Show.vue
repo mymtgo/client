@@ -121,7 +121,7 @@ function formatPct(value: number | null): string {
 
 const eliminatedSet = computed(() => new Set(props.eliminatedIds));
 
-const localStanding = computed(() => props.standings.find((s) => s.is_local) ?? null);
+const localStanding = computed(() => standings.value.find((s) => s.is_local) ?? null);
 
 const showPinnedLocal = computed(() => {
     if (!localStanding.value) return false;
