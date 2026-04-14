@@ -14,10 +14,13 @@ class ShowController extends Controller
     {
         $latestRound = $challenge->standings()->max('round') ?? 0;
 
-        $standings = $challenge->standings()
-            ->where('round', $latestRound)
+        $standingsByRound = $challenge->standings()
             ->orderBy('rank')
-            ->get();
+            ->get()
+            ->groupBy('round')
+            ->sortKeys();
+
+        $rounds = $standingsByRound->keys()->sort()->values()->all();
 
         $timelineEvents = $challenge->timelineEvents()
             ->orderByDesc('occurred_at')
@@ -31,7 +34,8 @@ class ShowController extends Controller
 
         return Inertia::render('challenges/Show', [
             'challenge' => $challenge,
-            'standings' => $standings,
+            'standingsByRound' => $standingsByRound,
+            'rounds' => $rounds,
             'timelineEvents' => $timelineEvents,
             'eliminatedIds' => $eliminatedIds,
             'latestRound' => $latestRound,

@@ -34,6 +34,7 @@ it('includes standings for the latest round', function () {
 
     $response->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->has('standings', 1)
+            ->has('standingsByRound')
+            ->has('rounds', 1)
         );
 });

@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Link, router } from '@inertiajs/vue3';
 import { ArrowLeft } from 'lucide-vue-next';
-import { computed, onUnmounted } from 'vue';
+import { computed, onUnmounted, ref } from 'vue';
 
 type Challenge = {
     id: number;
@@ -51,19 +51,23 @@ type TimelineEvent = {
 
 const props = defineProps<{
     challenge: Challenge;
-    standings: Standing[];
+    standingsByRound: Record<number, Standing[]>;
+    rounds: number[];
     timelineEvents: TimelineEvent[];
     eliminatedIds: number[];
     latestRound: number;
     fromDeck: number | null;
 }>();
 
+const selectedRound = ref(props.latestRound);
+const standings = computed(() => props.standingsByRound[selectedRound.value] ?? []);
+
 const isActive = computed(() => props.challenge.state !== 'completed');
 
 let pollInterval: ReturnType<typeof setInterval> | null = null;
 if (isActive.value) {
     pollInterval = setInterval(() => {
-        router.reload({ only: ['challenge', 'standings', 'timelineEvents', 'eliminatedIds', 'latestRound'] });
+        router.reload({ only: ['challenge', 'standingsByRound', 'rounds', 'timelineEvents', 'eliminatedIds', 'latestRound'] });
     }, 30000);
 }
 
@@ -282,6 +286,19 @@ function eventTime(dateStr: string): string {
 
             <!-- Middle: Standings table -->
             <Card class="overflow-hidden">
+                <!-- Round tabs -->
+                <div v-if="rounds.length > 1" class="flex items-center gap-1 border-b border-zinc-800 px-3 py-2">
+                    <Button
+                        v-for="round in rounds"
+                        :key="round"
+                        size="sm"
+                        :variant="selectedRound === round ? 'default' : 'ghost'"
+                        @click="selectedRound = round"
+                        class="h-7 px-2.5 text-xs"
+                    >
+                        Round {{ round }}
+                    </Button>
+                </div>
                 <div class="max-h-[600px] overflow-y-auto">
                     <Table>
                         <TableHeader>
