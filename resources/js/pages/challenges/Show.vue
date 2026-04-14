@@ -85,6 +85,12 @@ function rankMovement(standing: Standing): 'up' | 'down' | 'same' | 'new' {
     return 'same';
 }
 
+function rankDelta(standing: Standing): number {
+    const prevRank = previousRankMap.value[standing.login_id];
+    if (prevRank === undefined) return 0;
+    return Math.abs(prevRank - standing.rank);
+}
+
 const isActive = computed(() => props.challenge.state !== 'completed');
 
 let pollInterval: ReturnType<typeof setInterval> | null = null;
@@ -326,6 +332,7 @@ function eventTime(dateStr: string): string {
                     <Table>
                         <TableHeader>
                             <TableRow>
+                                <TableHead v-if="previousRound" class="sticky top-0 bg-zinc-900 w-10"></TableHead>
                                 <TableHead class="sticky top-0 bg-zinc-900 w-12">#</TableHead>
                                 <TableHead class="sticky top-0 bg-zinc-900">Player</TableHead>
                                 <TableHead class="sticky top-0 bg-zinc-900 tabular-nums text-right">Pts</TableHead>
@@ -337,7 +344,7 @@ function eventTime(dateStr: string): string {
                         <TableBody>
                             <template v-if="standings.length === 0">
                                 <TableRow>
-                                    <TableCell colspan="6" class="py-12 text-center text-sm text-zinc-500">
+                                    <TableCell :colspan="previousRound ? 7 : 6" class="py-12 text-center text-sm text-zinc-500">
                                         No standings available yet.
                                     </TableCell>
                                 </TableRow>
@@ -350,15 +357,23 @@ function eventTime(dateStr: string): string {
                                     eliminatedSet.has(standing.login_id) ? 'text-zinc-500 line-through' : '',
                                 ]"
                             >
-                                <TableCell class="tabular-nums text-sm text-zinc-400">
-                                    <div class="flex items-center gap-1">
-                                        {{ standing.rank }}
-                                        <template v-if="previousRound">
-                                            <ChevronUp v-if="rankMovement(standing) === 'up'" class="size-3.5 text-green-500" />
-                                            <ChevronDown v-else-if="rankMovement(standing) === 'down'" class="size-3.5 text-red-500" />
-                                            <Minus v-else-if="rankMovement(standing) === 'same'" class="size-3 text-zinc-600" />
+                                <TableCell v-if="previousRound" class="text-xs w-10 px-2">
+                                    <div class="flex items-center gap-0.5">
+                                        <template v-if="rankMovement(standing) === 'up'">
+                                            <ChevronUp class="size-3.5 text-green-500" />
+                                            <span class="text-green-500 tabular-nums">{{ rankDelta(standing) }}</span>
+                                        </template>
+                                        <template v-else-if="rankMovement(standing) === 'down'">
+                                            <ChevronDown class="size-3.5 text-red-500" />
+                                            <span class="text-red-500 tabular-nums">{{ rankDelta(standing) }}</span>
+                                        </template>
+                                        <template v-else-if="rankMovement(standing) === 'same'">
+                                            <Minus class="size-3 text-zinc-600" />
                                         </template>
                                     </div>
+                                </TableCell>
+                                <TableCell class="tabular-nums text-sm text-zinc-400">
+                                    {{ standing.rank }}
                                 </TableCell>
                                 <TableCell
                                     class="text-sm"
@@ -383,11 +398,26 @@ function eventTime(dateStr: string): string {
                             <!-- Pinned local standing when outside top 15 -->
                             <template v-if="showPinnedLocal && localStanding">
                                 <TableRow class="border-t border-dashed border-zinc-700">
-                                    <TableCell colspan="6" class="py-0 px-4 text-xs text-zinc-500 italic">
+                                    <TableCell :colspan="previousRound ? 7 : 6" class="py-0 px-4 text-xs text-zinc-500 italic">
                                         Your position
                                     </TableCell>
                                 </TableRow>
                                 <TableRow class="bg-blue-500/10">
+                                    <TableCell v-if="previousRound" class="text-xs w-10 px-2">
+                                        <div class="flex items-center gap-0.5">
+                                            <template v-if="rankMovement(localStanding) === 'up'">
+                                                <ChevronUp class="size-3.5 text-green-500" />
+                                                <span class="text-green-500 tabular-nums">{{ previousRankMap[localStanding.login_id] }}</span>
+                                            </template>
+                                            <template v-else-if="rankMovement(localStanding) === 'down'">
+                                                <ChevronDown class="size-3.5 text-red-500" />
+                                                <span class="text-red-500 tabular-nums">{{ previousRankMap[localStanding.login_id] }}</span>
+                                            </template>
+                                            <template v-else-if="rankMovement(localStanding) === 'same'">
+                                                <Minus class="size-3 text-zinc-600" />
+                                            </template>
+                                        </div>
+                                    </TableCell>
                                     <TableCell class="tabular-nums text-sm text-zinc-400">
                                         {{ localStanding.rank }}
                                     </TableCell>
