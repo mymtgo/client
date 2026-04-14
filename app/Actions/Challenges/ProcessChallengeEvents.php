@@ -225,10 +225,10 @@ class ProcessChallengeEvents
         foreach ($json['Results'] as $result) {
             $loginId = (int) $result['LoginID'];
 
-            $records = collect($result['OpponentResults'] ?? [])
-                ->sortBy('Round')
-                ->map(fn ($r) => $r['Win'].'-'.$r['Loss'])
-                ->implode(', ');
+            $opponents = collect($result['OpponentResults'] ?? []);
+            $wins = $opponents->sum('Win');
+            $losses = $opponents->sum('Loss');
+            $draws = $opponents->sum('Draw');
 
             ChallengeStanding::updateOrCreate(
                 [
@@ -240,7 +240,9 @@ class ProcessChallengeEvents
                     'username' => $usernameMap[$loginId] ?? null,
                     'rank' => (int) $result['Rank'],
                     'points' => (int) $result['Points'],
-                    'match_record' => $records,
+                    'wins' => $wins,
+                    'losses' => $losses,
+                    'draws' => $draws,
                     'opponent_match_win_pct' => isset($result['OpponentMatchWinPercentage'])
                         ? (float) $result['OpponentMatchWinPercentage']
                         : null,

@@ -16,7 +16,9 @@ return new class extends Migration
             $table->string('username')->nullable();
             $table->integer('rank');
             $table->integer('points');
-            $table->string('match_record');
+            $table->unsignedInteger('wins')->default(0);
+            $table->unsignedInteger('losses')->default(0);
+            $table->unsignedInteger('draws')->default(0);
             $table->float('opponent_match_win_pct')->nullable();
             $table->float('game_win_pct')->nullable();
             $table->boolean('is_local')->default(false);

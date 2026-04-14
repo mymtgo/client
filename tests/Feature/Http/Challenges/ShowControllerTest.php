@@ -25,7 +25,9 @@ it('includes standings for the latest round', function () {
         'username' => 'TestPlayer',
         'rank' => 1,
         'points' => 3,
-        'match_record' => '2-0',
+        'wins' => 2,
+        'losses' => 0,
+        'draws' => 0,
     ]);
 
     $response = $this->get("/challenges/{$challenge->id}");

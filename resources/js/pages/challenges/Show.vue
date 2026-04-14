@@ -31,7 +31,9 @@ type Standing = {
     username: string | null;
     rank: number;
     points: number;
-    match_record: string;
+    wins: number;
+    losses: number;
+    draws: number;
     opponent_match_win_pct: number | null;
     game_win_pct: number | null;
     is_local: boolean;
@@ -122,16 +124,11 @@ const showPinnedLocal = computed(() => {
     return localStanding.value.rank > 15;
 });
 
-function aggregateRecord(matchRecord: string): string {
-    let wins = 0;
-    let losses = 0;
-    for (const part of matchRecord.split(',')) {
-        const trimmed = part.trim();
-        const [w, l] = trimmed.split('-').map(Number);
-        if (!isNaN(w)) wins += w;
-        if (!isNaN(l)) losses += l;
+function formatRecord(standing: Standing): string {
+    if (standing.draws > 0) {
+        return `${standing.wins}-${standing.draws}-${standing.losses}`;
     }
-    return `${wins}-${losses}`;
+    return `${standing.wins}-${standing.losses}`;
 }
 
 const groupedTimeline = computed(() => {
@@ -326,7 +323,7 @@ function eventTime(dateStr: string): string {
                                     {{ standing.points }}
                                 </TableCell>
                                 <TableCell class="tabular-nums text-sm text-right">
-                                    {{ aggregateRecord(standing.match_record) }}
+                                    {{ formatRecord(standing) }}
                                 </TableCell>
                                 <TableCell class="tabular-nums text-sm text-right text-zinc-400">
                                     {{ formatPct(standing.opponent_match_win_pct) }}
@@ -354,7 +351,7 @@ function eventTime(dateStr: string): string {
                                         {{ localStanding.points }}
                                     </TableCell>
                                     <TableCell class="tabular-nums text-sm text-right">
-                                        {{ aggregateRecord(localStanding.match_record) }}
+                                        {{ formatRecord(localStanding) }}
                                     </TableCell>
                                     <TableCell class="tabular-nums text-sm text-right text-zinc-400">
                                         {{ formatPct(localStanding.opponent_match_win_pct) }}
