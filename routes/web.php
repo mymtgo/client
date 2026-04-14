@@ -14,6 +14,7 @@ use App\Http\Controllers\Debug\Matches\ProcessController;
 use App\Http\Controllers\Debug\Matches\RestoreController;
 use App\Http\Controllers\Debug\Matches\UpdateController;
 use App\Http\Controllers\Decks\CardStatsController;
+use App\Http\Controllers\Decks\ChallengesController;
 use App\Http\Controllers\Decks\CoverArtOptionsController;
 use App\Http\Controllers\Decks\DashboardController;
 use App\Http\Controllers\Decks\DecklistController;
@@ -99,6 +100,13 @@ Route::group([], function (Router $router) {
     });
 
     $router->group([
+        'prefix' => 'challenges',
+    ], function (Router $group) {
+        $group->get('/', App\Http\Controllers\Challenges\IndexController::class)->name('challenges.index');
+        $group->get('{challenge}', App\Http\Controllers\Challenges\ShowController::class)->name('challenges.show');
+    });
+
+    $router->group([
         'prefix' => 'opponents',
     ], function (Router $group) {
         $group->get('/', App\Http\Controllers\Opponents\IndexController::class)->name('opponents.index');
@@ -112,6 +120,7 @@ Route::group([], function (Router $router) {
         $group->get('{deck:id}/card-stats', CardStatsController::class)->name('decks.card-stats');
         $group->get('{deck:id}/matches', MatchesController::class)->name('decks.matches');
         $group->get('{deck:id}/leagues', LeaguesController::class)->name('decks.leagues');
+        $group->get('{deck:id}/challenges', ChallengesController::class)->name('decks.challenges');
         $group->get('{deck:id}/matchups', MatchupsController::class)->name('decks.matchups');
         $group->get('{deck:id}/matchups/{archetype}', MatchupDetailController::class)->name('decks.matchup-detail');
         $group->get('{deck:id}/decklist', DecklistController::class)->name('decks.decklist');
