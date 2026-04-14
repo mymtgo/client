@@ -18,6 +18,7 @@ class Challenge extends Model
     protected $casts = [
         'state' => TournamentState::class,
         'tournament_structure' => TournamentStructure::class,
+        'scheduled_at' => 'datetime',
         'started_at' => 'datetime',
         'ended_at' => 'datetime',
         'participated' => 'boolean',

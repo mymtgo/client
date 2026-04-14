@@ -131,6 +131,7 @@ class ProcessChallengeEvents
                 'min_players' => ($tournamentData['MinPlayers'] ?? 0) ?: null,
                 'max_players' => ($tournamentData['MaxPlayers'] ?? 0) ?: null,
                 'player_count' => count($json['Players'] ?? []),
+                'scheduled_at' => $json['StartDate'] ?? null,
             ], fn ($v) => $v !== null),
         );
 

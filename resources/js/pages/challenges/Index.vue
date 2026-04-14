@@ -22,6 +22,7 @@ type Challenge = {
     max_rounds: number | null;
     player_count: number;
     max_players: number | null;
+    scheduled_at: string | null;
     started_at: string | null;
     participated: boolean;
 };
@@ -108,6 +109,16 @@ function relativeTime(dateStr: string | null): string {
     if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
     return `${Math.floor(diff / 86400)}d ago`;
 }
+
+function formatScheduled(dateStr: string): string {
+    const date = new Date(dateStr);
+    return date.toLocaleString(undefined, {
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+    });
+}
 </script>
 
 <template>
@@ -169,7 +180,7 @@ function relativeTime(dateStr: string | null): string {
                         <TableHead>Type</TableHead>
                         <TableHead>Round</TableHead>
                         <TableHead>Players</TableHead>
-                        <TableHead>Started</TableHead>
+                        <TableHead>Time</TableHead>
                         <TableHead>Your Rank</TableHead>
                         <TableHead class="w-0"></TableHead>
                     </TableRow>
@@ -224,7 +235,13 @@ function relativeTime(dateStr: string | null): string {
                             </template>
                         </TableCell>
                         <TableCell class="whitespace-nowrap text-sm text-muted-foreground">
-                            {{ relativeTime(challenge.started_at) }}
+                            <template v-if="challenge.started_at">
+                                {{ relativeTime(challenge.started_at) }}
+                            </template>
+                            <template v-else-if="challenge.scheduled_at">
+                                {{ formatScheduled(challenge.scheduled_at) }}
+                            </template>
+                            <template v-else>-</template>
                         </TableCell>
                         <TableCell class="tabular-nums text-sm">
                             <template v-if="localStandings[challenge.id]">

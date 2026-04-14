@@ -21,6 +21,7 @@ return new class extends Migration
             $table->integer('player_count')->default(0);
             $table->integer('min_players')->nullable();
             $table->integer('max_players')->nullable();
+            $table->timestamp('scheduled_at')->nullable();
             $table->timestamp('started_at')->nullable();
             $table->timestamp('ended_at')->nullable();
             $table->boolean('participated')->default(false);
