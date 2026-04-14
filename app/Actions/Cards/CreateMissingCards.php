@@ -22,7 +22,7 @@ class CreateMissingCards
         );
 
         if ($newCards->isNotEmpty()) {
-            PopulateMissingCardData::dispatchSync();
+            PopulateMissingCardData::dispatch();
         }
     }
 }

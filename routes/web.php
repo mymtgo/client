@@ -172,7 +172,8 @@ Route::group([], function (Router $router) {
         $group->get('scan/match/{match}/cards', ScanMatchCardsController::class)->name('import.scan.match.cards');
         $group->post('scan/{scan}/import', StoreController::class)->name('import.store');
         $group->post('scan/{scan}/import-all', ImportAllController::class)->name('import.import-all');
-        $group->delete('scan/{scan}', CancelScanController::class)->name('import.scan.cancel');
+        $group->delete('scan/{scan}', CancelScanController::class)->name('import.scan.cancel')
+            ->missing(fn () => response()->noContent());
         $group->delete('/', ImportDestroyController::class)->name('import.destroy');
     });
 

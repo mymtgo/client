@@ -45,7 +45,11 @@ class MtgoManager
 
     public function getLogPath(): string
     {
-        return Settings::get('log_path') ?: $this->defaultLogPath();
+        try {
+            return Settings::get('log_path') ?: $this->defaultLogPath();
+        } catch (\Throwable) {
+            return $this->defaultLogPath();
+        }
     }
 
     public function checkLogPath()
@@ -68,7 +72,11 @@ class MtgoManager
 
     public function getLogDataPath(): string
     {
-        return Settings::get('log_data_path') ?: $this->defaultDataPath();
+        try {
+            return Settings::get('log_data_path') ?: $this->defaultDataPath();
+        } catch (\Throwable) {
+            return $this->defaultDataPath();
+        }
     }
 
     public function setUsername(string $username): string

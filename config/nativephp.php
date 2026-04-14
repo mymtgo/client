@@ -146,31 +146,31 @@ return [
     'queue_workers' => [
         'default' => [
             'queues' => ['default'],
-            'memory_limit' => 512,
+            'memory_limit' => 1024,
             'timeout' => 60,
             'sleep' => 3,
         ],
         'downloads' => [
             'queues' => ['card_downloads'],
-            'memory_limit' => 512,
+            'memory_limit' => 1024,
             'timeout' => 60,
             'sleep' => 3,
         ],
         'updates' => [
             'queues' => ['updates'],
-            'memory_limit' => 512,
+            'memory_limit' => 1024,
             'timeout' => 60,
             'sleep' => 3,
         ],
         'importer' => [
             'queues' => ['importer'],
-            'memory_limit' => 512,
+            'memory_limit' => 2048,
             'timeout' => 300,
             'sleep' => 3,
         ],
         'match_archetypes' => [
             'queues' => ['match_archetypes'],
-            'memory_limit' => 512,
+            'memory_limit' => 1024,
             'timeout' => 60,
             'sleep' => 3,
         ],

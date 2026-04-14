@@ -9,6 +9,8 @@ use App\Actions\RegisterDevice;
 use App\Models\Card;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Http\Client\PendingRequest;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
 use Native\Desktop\Facades\Settings;
 
@@ -21,6 +23,11 @@ class PopulateMissingCardData implements ShouldQueue
 
     /** @var int[] */
     public array $backoff = [10, 60];
+
+    public function __construct()
+    {
+        $this->onQueue('card_downloads');
+    }
 
     /**
      * Execute the job.
@@ -47,52 +54,56 @@ class PopulateMissingCardData implements ShouldQueue
             return;
         }
 
-        // Split into regular cards and identified tokens
         $regularCards = $unresolved->whereNull('rarity')->merge($unresolved->where('rarity', '!=', 'token'));
         $tokenCards = $unresolved->where('rarity', 'token')->whereNotNull('name');
 
+        $downloadImages = (bool) Settings::get('local_images');
+        $http = $this->apiClient();
+
+        // Process regular cards in batches to avoid overwhelming the API
+        $regularCards->chunk(50)->each(function (Collection $chunk) use ($http, $downloadImages) {
+            $this->fetchAndUpdate($http, $chunk, collect(), $downloadImages);
+        });
+
+        // Process tokens in a single call (small set of unique names)
+        if ($tokenCards->isNotEmpty()) {
+            $this->fetchAndUpdate($http, collect(), $tokenCards, $downloadImages);
+        }
+    }
+
+    private function apiClient(): PendingRequest
+    {
+        return Http::withHeaders([
+            'X-Device-Id' => Settings::get('device_id'),
+            'X-Api-Key' => RegisterDevice::retrieveKey(),
+        ])->timeout(15);
+    }
+
+    /**
+     * @param  Collection<int, Card>  $regularCards
+     * @param  Collection<int, Card>  $tokenCards
+     */
+    private function fetchAndUpdate(PendingRequest $http, Collection $regularCards, Collection $tokenCards, bool $downloadImages): void
+    {
+        if ($regularCards->isEmpty() && $tokenCards->isEmpty()) {
+            return;
+        }
+
         try {
-            $response = Http::withHeaders([
-                'X-Device-Id' => Settings::get('device_id'),
-                'X-Api-Key' => RegisterDevice::retrieveKey(),
-            ])->post(config('mymtgo_api.url').'/api/cards', [
+            $response = $http->post(config('mymtgo_api.url').'/api/cards', [
                 'ids' => $regularCards->pluck('mtgo_id')->values(),
                 'tokens' => $tokenCards->pluck('name')->unique()->values(),
             ]);
 
             $cardsResponse = collect($response->json());
 
-            $downloadImages = (bool) Settings::get('local_images');
-
             foreach ($regularCards as $card) {
                 $cardData = $cardsResponse->first(
                     fn ($data) => ($data['value'] ?? null) == $card->mtgo_id
                 );
 
-                if (! $cardData) {
-                    continue;
-                }
-
-                $card->update([
-                    'scryfall_id' => $cardData['scryfall_id'],
-                    'oracle_id' => $cardData['oracle_id'],
-                    'name' => $cardData['name'],
-                    'type' => $cardData['type'],
-                    'sub_type' => $cardData['sub_type'],
-                    'rarity' => $cardData['rarity'],
-                    'color_identity' => collect(explode(',', $cardData['color_identity']))->map(function ($color) {
-                        return ! $color ? 'C' : $color;
-                    })->join(','),
-                    'colors' => $cardData['colors'] ?? null,
-                    'cmc' => $cardData['cmc'] ?? null,
-                    'set_name' => $cardData['set_name'] ?? null,
-                    'set_code' => $cardData['set'] ?? null,
-                    'art_crop' => $cardData['art_crop'] ?? null,
-                    'image' => $cardData['image'],
-                ]);
-
-                if ($downloadImages) {
-                    DownloadCardImage::run($card);
+                if ($cardData) {
+                    $this->updateCard($card, $cardData, $downloadImages);
                 }
             }
 
@@ -101,32 +112,43 @@ class PopulateMissingCardData implements ShouldQueue
                     fn ($data) => ($data['layout'] ?? null) === 'token' && ($data['name'] ?? null) === $card->name
                 );
 
-                if (! $cardData) {
-                    continue;
-                }
-
-                $card->update([
-                    'scryfall_id' => $cardData['scryfall_id'],
-                    'oracle_id' => $cardData['oracle_id'],
-                    'type' => $cardData['type'] ?? $card->type,
-                    'sub_type' => $cardData['sub_type'] ?? $card->sub_type,
-                    'color_identity' => $cardData['color_identity']
-                        ? collect(explode(',', $cardData['color_identity']))->map(fn ($c) => ! $c ? 'C' : $c)->join(',')
-                        : $card->color_identity,
-                    'colors' => $cardData['colors'] ?? null,
-                    'cmc' => $cardData['cmc'] ?? null,
-                    'set_name' => $cardData['set_name'] ?? null,
-                    'set_code' => $cardData['set'] ?? null,
-                    'art_crop' => $cardData['art_crop'] ?? null,
-                    'image' => $cardData['image'],
-                ]);
-
-                if ($downloadImages) {
-                    DownloadCardImage::run($card);
+                if ($cardData) {
+                    $this->updateCard($card, $cardData, $downloadImages, isToken: true);
                 }
             }
         } catch (\Throwable $e) {
             report($e);
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $cardData
+     */
+    private function updateCard(Card $card, array $cardData, bool $downloadImages, bool $isToken = false): void
+    {
+        $colorIdentity = $cardData['color_identity'] ?? null;
+        $formattedColorIdentity = $colorIdentity
+            ? collect(explode(',', $colorIdentity))->map(fn ($c) => ! $c ? 'C' : $c)->join(',')
+            : ($isToken ? $card->color_identity : null);
+
+        $card->update([
+            'scryfall_id' => $cardData['scryfall_id'],
+            'oracle_id' => $cardData['oracle_id'],
+            'name' => $cardData['name'] ?? $card->name,
+            'type' => $cardData['type'] ?? $card->type,
+            'sub_type' => $cardData['sub_type'] ?? $card->sub_type,
+            'rarity' => $cardData['rarity'] ?? $card->rarity,
+            'color_identity' => $formattedColorIdentity,
+            'colors' => $cardData['colors'] ?? null,
+            'cmc' => $cardData['cmc'] ?? null,
+            'set_name' => $cardData['set_name'] ?? null,
+            'set_code' => $cardData['set'] ?? null,
+            'art_crop' => $cardData['art_crop'] ?? null,
+            'image' => $cardData['image'],
+        ]);
+
+        if ($downloadImages) {
+            DownloadCardImage::run($card);
         }
     }
 }

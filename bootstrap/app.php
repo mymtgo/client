@@ -31,6 +31,12 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        // Don't report NativePHP internal route errors — these are framework-level
+        // race conditions (e.g. Electron event bus auth failures during startup).
+        $exceptions->dontReportWhen(function (Throwable $e) {
+            return $e instanceof HttpExceptionInterface && request()->is('_native/*');
+        });
+
         $exceptions->respond(function (Response $response, Throwable $e, Request $request) {
             if ($e instanceof HttpExceptionInterface
                 && in_array($response->getStatusCode(), [403, 404, 419, 500, 503])
@@ -45,8 +51,8 @@ return Application::configure(basePath: dirname(__DIR__))
 
             return $response;
         });
+
+        Integration::handles($exceptions);
     })->withSchedule(function (Schedule $schedule) {
         Mtgo::schedule($schedule);
-    })->withExceptions(function (Exceptions $exceptions) {
-        Integration::handles($exceptions);
     })->create();
