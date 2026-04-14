@@ -3,7 +3,9 @@ import ShowController from '@/actions/App/Http/Controllers/Challenges/ShowContro
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Link, router } from '@inertiajs/vue3';
 import { Medal, Search } from 'lucide-vue-next';
@@ -110,7 +112,7 @@ function relativeTime(dateStr: string | null): string {
 <template>
     <div class="flex flex-col gap-4 p-3 lg:p-4">
         <!-- Toolbar -->
-        <div class="flex flex-wrap items-center gap-2">
+        <div class="flex flex-wrap items-center gap-3">
             <!-- Format dropdown -->
             <Select :model-value="activeFormat || 'all'" @update:model-value="setFormat">
                 <SelectTrigger class="w-40">
@@ -122,18 +124,26 @@ function relativeTime(dateStr: string | null): string {
                 </SelectContent>
             </Select>
 
-            <!-- State toggle -->
-            <div class="flex items-center gap-1">
-                <Button size="sm" :variant="activeState === 'active' ? 'default' : 'outline'" @click="setState('active')">Active</Button>
-                <Button size="sm" :variant="activeState === 'completed' ? 'default' : 'outline'" @click="setState('completed')">Completed</Button>
-                <Button size="sm" :variant="activeState === 'all' ? 'default' : 'outline'" @click="setState('all')">All</Button>
-            </div>
+            <!-- State dropdown -->
+            <Select :model-value="activeState" @update:model-value="setState">
+                <SelectTrigger class="w-36">
+                    <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="completed">Completed</SelectItem>
+                    <SelectItem value="all">All</SelectItem>
+                </SelectContent>
+            </Select>
 
             <!-- Participated toggle -->
-            <Button size="sm" :variant="showParticipated ? 'default' : 'outline'" @click="toggleParticipated">
-                <Medal class="size-3.5" />
-                My Challenges
-            </Button>
+            <div class="flex items-center gap-2">
+                <Switch
+                    :checked="showParticipated"
+                    @update:checked="toggleParticipated"
+                />
+                <Label class="text-sm text-muted-foreground">Only participating</Label>
+            </div>
 
             <!-- Search -->
             <div class="relative ml-auto">
@@ -168,7 +178,7 @@ function relativeTime(dateStr: string | null): string {
                         <TableRow>
                             <TableCell colspan="10" class="py-12 text-center">
                                 <div class="flex flex-col items-center gap-2">
-                                    <Medal class="size-10 text-muted-foreground/40" />
+                                    <Medal class="size-10 text-zinc-600" />
                                     <p class="font-medium">No challenges found</p>
                                     <p class="text-sm text-muted-foreground">Challenges will appear here once MTGO data has been ingested.</p>
                                 </div>
