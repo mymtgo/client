@@ -97,6 +97,7 @@ function stateColor(state: string): string {
     if (state === 'completed') return 'text-zinc-400';
     if (state === 'round_in_progress') return 'text-green-500';
     if (state === 'between_rounds') return 'text-yellow-500';
+    if (state === 'awaiting_players') return 'text-zinc-500';
     return 'text-blue-500';
 }
 
