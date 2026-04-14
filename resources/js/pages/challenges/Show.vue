@@ -236,7 +236,7 @@ function eventTime(dateStr: string): string {
         <!-- 3-column layout -->
         <div class="grid grid-cols-1 gap-4 lg:grid-cols-[240px_1fr_280px]">
             <!-- Left: Challenge details -->
-            <Card>
+            <Card class="py-0">
                 <CardContent class="flex flex-col gap-3 p-4">
                     <div>
                         <h1 class="text-base font-semibold leading-tight">
@@ -315,7 +315,7 @@ function eventTime(dateStr: string): string {
             </Card>
 
             <!-- Middle: Standings table -->
-            <Card class="overflow-hidden">
+            <Card class="overflow-hidden py-0 gap-0">
                 <!-- Round tabs -->
                 <div v-if="rounds.length > 1" class="px-3 pt-3">
                     <Tabs :model-value="String(selectedRound)" @update:model-value="(v: string) => selectedRound = Number(v)">
@@ -397,56 +397,56 @@ function eventTime(dateStr: string): string {
                                 </TableCell>
                             </TableRow>
 
-                            <!-- Pinned local standing when outside top 15 -->
-                            <template v-if="showPinnedLocal && localStanding">
-                                <TableRow class="border-t border-dashed border-zinc-700">
-                                    <TableCell :colspan="previousRound ? 7 : 6" class="py-0 px-4 text-xs text-zinc-500 italic">
-                                        Your position
-                                    </TableCell>
-                                </TableRow>
-                                <TableRow class="bg-blue-500/10">
-                                    <TableCell v-if="previousRound" class="text-xs w-10 px-2">
-                                        <div class="flex items-center gap-0.5">
-                                            <template v-if="rankMovement(localStanding) === 'up'">
-                                                <ChevronUp class="size-3.5 text-green-500" />
-                                                <span class="text-green-500 tabular-nums">{{ previousRankMap[localStanding.login_id] }}</span>
-                                            </template>
-                                            <template v-else-if="rankMovement(localStanding) === 'down'">
-                                                <ChevronDown class="size-3.5 text-red-500" />
-                                                <span class="text-red-500 tabular-nums">{{ previousRankMap[localStanding.login_id] }}</span>
-                                            </template>
-                                            <template v-else-if="rankMovement(localStanding) === 'same'">
-                                                <Minus class="size-3 text-zinc-600" />
-                                            </template>
-                                        </div>
-                                    </TableCell>
-                                    <TableCell class="tabular-nums text-sm text-zinc-400">
-                                        {{ localStanding.rank }}
-                                    </TableCell>
-                                    <TableCell class="text-sm font-medium text-blue-400">
-                                        {{ localStanding.username ?? `#${localStanding.login_id}` }}
-                                    </TableCell>
-                                    <TableCell class="tabular-nums text-sm text-right">
-                                        {{ localStanding.points }}
-                                    </TableCell>
-                                    <TableCell class="tabular-nums text-sm text-right">
-                                        {{ formatRecord(localStanding) }}
-                                    </TableCell>
-                                    <TableCell class="tabular-nums text-sm text-right text-zinc-400">
-                                        {{ formatPct(localStanding.opponent_match_win_pct) }}
-                                    </TableCell>
-                                    <TableCell class="tabular-nums text-sm text-right text-zinc-400">
-                                        {{ formatPct(localStanding.game_win_pct) }}
-                                    </TableCell>
-                                </TableRow>
-                            </template>
+                        </TableBody>
+                    </Table>
+                </div>
+
+                <!-- Pinned local standing — always visible below scroll area -->
+                <div v-if="showPinnedLocal && localStanding" class="border-t border-blue-500/30 bg-blue-500/5">
+                    <Table>
+                        <TableBody>
+                            <TableRow class="bg-blue-500/10">
+                                <TableCell v-if="previousRound" class="text-xs w-10 px-2">
+                                    <div class="flex items-center gap-0.5">
+                                        <template v-if="rankMovement(localStanding) === 'up'">
+                                            <ChevronUp class="size-3.5 text-green-500" />
+                                            <span class="text-green-500 tabular-nums">{{ rankDelta(localStanding) }}</span>
+                                        </template>
+                                        <template v-else-if="rankMovement(localStanding) === 'down'">
+                                            <ChevronDown class="size-3.5 text-red-500" />
+                                            <span class="text-red-500 tabular-nums">{{ rankDelta(localStanding) }}</span>
+                                        </template>
+                                        <template v-else-if="rankMovement(localStanding) === 'same'">
+                                            <Minus class="size-3 text-zinc-600" />
+                                        </template>
+                                    </div>
+                                </TableCell>
+                                <TableCell class="tabular-nums text-sm text-zinc-400 w-12">
+                                    {{ localStanding.rank }}
+                                </TableCell>
+                                <TableCell class="text-sm font-medium text-blue-400">
+                                    {{ localStanding.username ?? `#${localStanding.login_id}` }}
+                                </TableCell>
+                                <TableCell class="tabular-nums text-sm text-right">
+                                    {{ localStanding.points }}
+                                </TableCell>
+                                <TableCell class="tabular-nums text-sm text-right">
+                                    {{ formatRecord(localStanding) }}
+                                </TableCell>
+                                <TableCell class="tabular-nums text-sm text-right text-zinc-400">
+                                    {{ formatPct(localStanding.opponent_match_win_pct) }}
+                                </TableCell>
+                                <TableCell class="tabular-nums text-sm text-right text-zinc-400">
+                                    {{ formatPct(localStanding.game_win_pct) }}
+                                </TableCell>
+                            </TableRow>
                         </TableBody>
                     </Table>
                 </div>
             </Card>
 
             <!-- Right: Timeline feed -->
-            <Card>
+            <Card class="py-0">
                 <CardContent class="p-4">
                     <h2 class="mb-3 text-sm font-semibold text-zinc-300">Timeline</h2>
                     <div v-if="timelineEvents.length === 0" class="py-8 text-center text-sm text-zinc-500">
