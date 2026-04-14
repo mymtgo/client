@@ -12,6 +12,66 @@ class ClassifyLogEvent
     {
         $text = $event->raw_text;
 
+        // Tournament sync data — the richest single message with full tournament snapshot
+        if (str_contains($text, 'EventSyncData_t in Tournament')) {
+            $json = ExtractJson::run($text)->first();
+            if (is_array($json) && isset($json['EventToken'])) {
+                return $event->fill([
+                    'event_type' => 'challenge_sync',
+                    'match_token' => $json['EventToken'],
+                ]);
+            }
+        }
+
+        // Tournament state change
+        if (preg_match('/Tournament State Changed for (?<token>[a-f0-9\-]+) from (?<from>\S+) to (?<to>\S+)/', $text, $m)) {
+            return $event->fill([
+                'event_type' => 'challenge_state_changed',
+                'match_token' => $m['token'],
+            ]);
+        }
+
+        // Tournament round result
+        if (str_contains($text, 'FlsTournamentRoundResultMessage')) {
+            $json = ExtractJson::run($text)->first();
+            if (is_array($json) && isset($json['Token'])) {
+                return $event->fill([
+                    'event_type' => 'challenge_round_result',
+                    'match_token' => $json['Token'],
+                ]);
+            }
+        }
+
+        // Tournament player eliminated
+        if (str_contains($text, 'FlsTournamentPlayerIsEliminatedMessage')) {
+            $json = ExtractJson::run($text)->first();
+            if (is_array($json) && isset($json['Token'])) {
+                return $event->fill([
+                    'event_type' => 'challenge_player_eliminated',
+                    'match_token' => $json['Token'],
+                ]);
+            }
+        }
+
+        // Tournament ended
+        if (str_contains($text, 'FlsTournamentEndRespMessage')) {
+            $json = ExtractJson::run($text)->first();
+            if (is_array($json) && isset($json['Token'])) {
+                return $event->fill([
+                    'event_type' => 'challenge_ended',
+                    'match_token' => $json['Token'],
+                ]);
+            }
+        }
+
+        // Tournament match state change (distinct from regular match state changes)
+        if (preg_match('/TournamentMatch State Changed for (?<token>[a-f0-9\-]+)/', $text, $m)) {
+            return $event->fill([
+                'event_type' => 'challenge_match_state_changed',
+                'match_token' => $m['token'],
+            ]);
+        }
+
         // Match state change
         if (preg_match('/Match State Changed for (?<token>[a-f0-9\-]+)/i', $text, $m)) {
             return $event->fill([
