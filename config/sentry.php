@@ -16,9 +16,8 @@ return [
     // @see: https://docs.sentry.io/platforms/php/guides/laravel/configuration/options/#logger
     // 'logger' => Sentry\Logger\DebugFileLogger::class, // By default this will log to `storage_path('logs/sentry.log')`
 
-    // The release version of your application
-    // Example with dynamic git hash: trim(exec('git --git-dir ' . base_path('.git') . ' log --pretty="%h" -n1 HEAD'))
-    'release' => env('SENTRY_RELEASE'),
+    // Tag events with the app build users are running (baked in at build time by NativePHP).
+    'release' => env('NATIVEPHP_APP_VERSION'),
 
     // When left empty or `null` the Laravel environment will be used (usually discovered from `APP_ENV` in your `.env`)
     'environment' => env('SENTRY_ENVIRONMENT'),

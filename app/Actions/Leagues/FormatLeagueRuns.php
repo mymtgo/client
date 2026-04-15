@@ -183,9 +183,9 @@ class FormatLeagueRuns
             }
         }
 
-        // Compute version label
+        // Compute version label — deck can be null when soft-deleted (see line 129).
         $versionLabel = null;
-        if ($league->deckVersion) {
+        if ($league->deckVersion?->deck) {
             $versionIndex = $league->deckVersion->deck->versions()
                 ->where('modified_at', '<=', $league->deckVersion->modified_at)
                 ->count();
