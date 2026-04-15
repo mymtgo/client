@@ -12,8 +12,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import DeckCardStatsRow from '@/pages/decks/partials/DeckCardStatsRow.vue';
 import { Deferred, router } from '@inertiajs/vue3';
 import {
     BarChart3,
@@ -23,7 +23,6 @@ import {
     ChevronsUpDown,
     Filter,
     Flame,
-    Image,
     Gem,
     HandFist,
     MountainSnow,
@@ -47,18 +46,22 @@ type CardStat = {
     totalGames: number;
     totalPossible: number;
     totalKept: number;
+    keptGames: number;
     keptWon: number;
     keptLost: number;
     totalSeen: number;
+    seenGames: number;
     seenWon: number;
     seenLost: number;
     totalCast: number;
+    castGames: number;
     castWon: number;
     castLost: number;
     postboardGames: number;
     sidedOutGames: number;
     sidedInGames: number;
     totalPlayed: number;
+    playedGames: number;
     totalKicked: number;
     totalActivated: number;
     totalFlashback: number;
@@ -217,10 +220,6 @@ type SortKey = 'name' | 'keptPct' | 'keptWinPct' | 'seenPct' | 'seenWinPct' | 'c
 const sortBy = ref<SortKey>('name');
 const sortDesc = ref(false);
 
-function pct(num: number, denom: number): number | null {
-    return denom > 0 ? Math.round((num / denom) * 100) : null;
-}
-
 function toggleSort(key: SortKey) {
     if (sortBy.value === key) {
         sortDesc.value = !sortDesc.value;
@@ -240,19 +239,19 @@ function sortValue(stat: CardStat, key: SortKey): number | string {
         case 'name':
             return stat.name;
         case 'keptPct':
-            return pctWithTiebreak(stat.totalKept, stat.totalPossible);
+            return pctWithTiebreak(stat.keptGames, stat.totalGames);
         case 'keptWinPct':
             return pctWithTiebreak(stat.keptWon, stat.keptWon + stat.keptLost);
         case 'seenPct':
-            return pctWithTiebreak(stat.totalSeen, stat.totalPossible);
+            return pctWithTiebreak(stat.seenGames, stat.totalGames);
         case 'seenWinPct':
             return pctWithTiebreak(stat.seenWon, stat.seenWon + stat.seenLost);
         case 'castPct':
-            return pctWithTiebreak(stat.totalCast, stat.totalPossible);
+            return pctWithTiebreak(stat.castGames, stat.totalGames);
         case 'castWinPct':
             return pctWithTiebreak(stat.castWon, stat.castWon + stat.castLost);
         case 'playedPct':
-            return pctWithTiebreak(stat.totalPlayed, stat.totalPossible);
+            return pctWithTiebreak(stat.playedGames, stat.totalGames);
         case 'kicked':
             return stat.totalKicked;
         case 'activated':
@@ -266,15 +265,41 @@ function sortValue(stat: CardStat, key: SortKey): number | string {
     }
 }
 
-const filteredAndSortedStats = computed(() => {
+const LOW_DATA_THRESHOLD = 20;
+
+// Columns whose sort value is derived from a small per-card sample (games where
+// the event actually happened). Sorting by these promotes noisy tiny samples,
+// so those rows are pushed below a "Low sample size" divider.
+const WIN_SAMPLE: Partial<Record<SortKey, (s: CardStat) => number>> = {
+    keptWinPct: (s) => s.keptWon + s.keptLost,
+    castWinPct: (s) => s.castWon + s.castLost,
+    seenWinPct: (s) => s.seenWon + s.seenLost,
+};
+
+const filteredAndSortedStats = computed<{ main: CardStat[]; lowData: CardStat[] }>(() => {
     const q = searchQuery.value.toLowerCase();
     const filtered = stats.value.filter((s) => passesFilter(s) && (!q || s.name.toLowerCase().includes(q)));
-    return [...filtered].sort((a, b) => {
+
+    const sortFn = (a: CardStat, b: CardStat) => {
         const aVal = sortValue(a, sortBy.value);
         const bVal = sortValue(b, sortBy.value);
         const cmp = aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
         return sortDesc.value ? -cmp : cmp;
-    });
+    };
+
+    const sampleFn = WIN_SAMPLE[sortBy.value];
+
+    if (!sampleFn) {
+        return { main: [...filtered].sort(sortFn), lowData: [] };
+    }
+
+    const main: CardStat[] = [];
+    const lowData: CardStat[] = [];
+    for (const stat of filtered) {
+        (sampleFn(stat) >= LOW_DATA_THRESHOLD ? main : lowData).push(stat);
+    }
+
+    return { main: main.sort(sortFn), lowData: lowData.sort(sortFn) };
 });
 
 // ── Card image hover ────────────────────────────────────────────────────────
@@ -296,13 +321,6 @@ function onRowLeave() {
 function sortIcon(key: SortKey) {
     if (sortBy.value !== key) return ChevronsUpDown;
     return sortDesc.value ? ChevronDown : ChevronUp;
-}
-
-function winRateClass(pctVal: number | null): string {
-    if (pctVal === null) return 'text-muted-foreground';
-    if (pctVal > 55) return 'text-success';
-    if (pctVal < 45) return 'text-destructive';
-    return '';
 }
 </script>
 
@@ -561,7 +579,7 @@ function winRateClass(pctVal: number | null): string {
             </p>
         </div>
 
-        <div v-else-if="!filteredAndSortedStats.length" class="flex flex-col items-center gap-3 py-16 text-center">
+        <div v-else-if="!filteredAndSortedStats.main.length && !filteredAndSortedStats.lowData.length" class="flex flex-col items-center gap-3 py-16 text-center">
             <Filter class="size-10 text-muted-foreground/40" />
             <p class="font-medium">All card types are hidden</p>
             <p class="max-w-sm text-sm text-muted-foreground">Enable some card types in the filter to view stats.</p>
@@ -640,125 +658,34 @@ function winRateClass(pctVal: number | null): string {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        <TableRow v-for="stat in filteredAndSortedStats" :key="stat.oracleId">
-                            <TableCell class="font-medium">
-                                <span class="flex items-center gap-1.5">
-                                    <Image
-                                        v-if="stat.image"
-                                        class="size-3.5 shrink-0 cursor-pointer text-zinc-600 hover:text-zinc-400"
-                                        @mouseenter="onRowEnter(stat)"
-                                        @mousemove="onRowMove"
-                                        @mouseleave="onRowLeave"
-                                    />
-                                    {{ stat.name ?? 'Unknown' }}
-                                </span>
-                            </TableCell>
-                            <TableCell class="text-muted-foreground">{{ stat.type ?? '-' }}</TableCell>
-                            <TableCell class="text-center">
-                                <Check v-if="stat.isSideboard" class="mx-auto size-3.5 text-muted-foreground" />
-                            </TableCell>
-                            <TableCell class="text-right tabular-nums">
-                                <template v-if="pct(stat.totalKept, stat.totalPossible) !== null">
-                                    {{ pct(stat.totalKept, stat.totalPossible) }}%
-                                    <span class="text-[10px] text-muted-foreground">({{ stat.totalKept }})</span>
-                                </template>
-                                <span v-else class="text-muted-foreground">-</span>
-                            </TableCell>
-                            <TableCell class="text-right tabular-nums">
-                                <template v-if="pct(stat.keptWon, stat.keptWon + stat.keptLost) !== null">
-                                    <span class="font-medium" :class="winRateClass(pct(stat.keptWon, stat.keptWon + stat.keptLost))">
-                                        {{ pct(stat.keptWon, stat.keptWon + stat.keptLost) }}%
-                                    </span>
-                                    <span class="text-[10px] text-muted-foreground">({{ stat.keptWon + stat.keptLost }})</span>
-                                </template>
-                                <span v-else class="text-muted-foreground">-</span>
-                            </TableCell>
-                            <TableCell class="text-right tabular-nums">
-                                <template v-if="pct(stat.totalCast, stat.totalPossible) !== null">
-                                    <TooltipProvider v-if="stat.totalFlashback > 0 || stat.totalMadness > 0 || stat.totalEvoked > 0">
-                                        <Tooltip>
-                                            <TooltipTrigger as-child>
-                                                <span class="cursor-default border-b border-dotted border-muted-foreground">
-                                                    {{ pct(stat.totalCast, stat.totalPossible) }}%
-                                                    <span class="text-[10px] text-muted-foreground">({{ stat.totalCast }})</span>
-                                                </span>
-                                            </TooltipTrigger>
-                                            <TooltipContent side="top" class="text-xs">
-                                                <span v-if="stat.totalFlashback > 0">{{ stat.totalFlashback }} flashback</span>
-                                                <span v-if="stat.totalMadness > 0">{{ stat.totalFlashback > 0 ? ', ' : '' }}{{ stat.totalMadness }} madness</span>
-                                                <span v-if="stat.totalEvoked > 0">{{ (stat.totalFlashback > 0 || stat.totalMadness > 0) ? ', ' : '' }}{{ stat.totalEvoked }} evoke</span>
-                                            </TooltipContent>
-                                        </Tooltip>
-                                    </TooltipProvider>
-                                    <template v-else>
-                                        {{ pct(stat.totalCast, stat.totalPossible) }}%
-                                        <span class="text-[10px] text-muted-foreground">({{ stat.totalCast }})</span>
-                                    </template>
-                                </template>
-                                <span v-else class="text-muted-foreground">-</span>
-                            </TableCell>
-                            <TableCell class="text-right tabular-nums">
-                                <template v-if="pct(stat.castWon, stat.castWon + stat.castLost) !== null">
-                                    <span class="font-medium" :class="winRateClass(pct(stat.castWon, stat.castWon + stat.castLost))">
-                                        {{ pct(stat.castWon, stat.castWon + stat.castLost) }}%
-                                    </span>
-                                    <span class="text-[10px] text-muted-foreground">({{ stat.castWon + stat.castLost }})</span>
-                                </template>
-                                <span v-else class="text-muted-foreground">-</span>
-                            </TableCell>
-                            <TableCell class="text-right tabular-nums">
-                                <template v-if="pct(stat.totalPlayed, stat.totalPossible) !== null">
-                                    {{ pct(stat.totalPlayed, stat.totalPossible) }}%
-                                    <span class="text-[10px] text-muted-foreground">({{ stat.totalPlayed }})</span>
-                                </template>
-                                <span v-else class="text-muted-foreground">-</span>
-                            </TableCell>
-                            <TableCell class="text-right tabular-nums">
-                                <template v-if="stat.totalKicked > 0">
-                                    {{ stat.totalKicked }}
-                                </template>
-                                <span v-else class="text-muted-foreground">-</span>
-                            </TableCell>
-                            <TableCell class="text-right tabular-nums">
-                                <template v-if="stat.totalActivated > 0">
-                                    {{ stat.totalActivated }}
-                                </template>
-                                <span v-else class="text-muted-foreground">-</span>
-                            </TableCell>
-                            <TableCell class="text-right tabular-nums">
-                                <template v-if="pct(stat.totalSeen, stat.totalPossible) !== null">
-                                    {{ pct(stat.totalSeen, stat.totalPossible) }}%
-                                    <span class="text-[10px] text-muted-foreground">({{ stat.totalSeen }})</span>
-                                </template>
-                                <span v-else class="text-muted-foreground">-</span>
-                            </TableCell>
-                            <TableCell class="text-right tabular-nums">
-                                <template v-if="pct(stat.seenWon, stat.seenWon + stat.seenLost) !== null">
-                                    <span class="font-medium" :class="winRateClass(pct(stat.seenWon, stat.seenWon + stat.seenLost))">
-                                        {{ pct(stat.seenWon, stat.seenWon + stat.seenLost) }}%
-                                    </span>
-                                    <span class="text-[10px] text-muted-foreground">({{ stat.seenWon + stat.seenLost }})</span>
-                                </template>
-                                <span v-else class="text-muted-foreground">-</span>
-                            </TableCell>
-                            <TableCell class="text-right tabular-nums">
-                                <template v-if="pct(stat.sidedOutGames, stat.postboardGames) !== null">
-                                    {{ pct(stat.sidedOutGames, stat.postboardGames) }}%
-                                    <span class="text-[10px] text-muted-foreground">({{ stat.sidedOutGames }})</span>
-                                </template>
-                                <span v-else class="text-muted-foreground">-</span>
-                            </TableCell>
-                            <TableCell class="text-right tabular-nums">
-                                <template v-if="pct(stat.sidedInGames, stat.postboardGames) !== null">
-                                    {{ pct(stat.sidedInGames, stat.postboardGames) }}%
-                                    <span class="text-[10px] text-muted-foreground">({{ stat.sidedInGames }})</span>
-                                </template>
-                                <span v-else class="text-muted-foreground">-</span>
-                            </TableCell>
-                            <TableCell class="text-right text-muted-foreground tabular-nums">
-                                {{ stat.totalGames }}
+                        <DeckCardStatsRow
+                            v-for="stat in filteredAndSortedStats.main"
+                            :key="stat.oracleId"
+                            :stat="stat"
+                            @image-enter="onRowEnter"
+                            @image-move="onRowMove"
+                            @image-leave="onRowLeave"
+                        />
+
+                        <TableRow v-if="filteredAndSortedStats.lowData.length" class="pointer-events-none">
+                            <TableCell :colspan="15" class="py-1.5">
+                                <div class="flex items-center gap-3">
+                                    <div class="h-px flex-1 bg-border" />
+                                    <span class="text-xs text-muted-foreground/60">Low sample size</span>
+                                    <div class="h-px flex-1 bg-border" />
+                                </div>
                             </TableCell>
                         </TableRow>
+
+                        <DeckCardStatsRow
+                            v-for="stat in filteredAndSortedStats.lowData"
+                            :key="stat.oracleId"
+                            :stat="stat"
+                            class="opacity-60"
+                            @image-enter="onRowEnter"
+                            @image-move="onRowMove"
+                            @image-leave="onRowLeave"
+                        />
                     </TableBody>
                 </Table>
             </CardContent>

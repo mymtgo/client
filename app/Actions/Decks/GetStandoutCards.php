@@ -8,7 +8,9 @@ use App\Models\DeckVersion;
 
 class GetStandoutCards
 {
-    private const MIN_GAMES = 3;
+    private const TOP_PERFORMER_MIN_GAMES = 20;
+
+    private const SIDEBOARD_MIN_GAMES = 3;
 
     /**
      * Get standout card highlights for the deck dashboard.
@@ -20,42 +22,42 @@ class GetStandoutCards
         $stats = GetCardGameStats::run($deck, $deckVersion);
 
         $nonLandMaindeck = $stats->filter(fn ($c) => ! $c['isSideboard'] && ! str_contains($c['type'] ?? '', 'Land'));
-        $withMinGames = $nonLandMaindeck->filter(fn ($c) => $c['totalCast'] >= self::MIN_GAMES);
 
-        $topPerformer = $withMinGames
-            ->sortByDesc(fn ($c) => $c['totalCast'] > 0 ? $c['castWon'] / $c['totalCast'] : 0)
+        $topPerformer = $nonLandMaindeck
+            ->filter(fn ($c) => $c['castGames'] >= self::TOP_PERFORMER_MIN_GAMES)
+            ->sortByDesc(fn ($c) => $c['castGames'] > 0 ? $c['castWon'] / $c['castGames'] : 0)
             ->first();
 
         $mostCast = $nonLandMaindeck
-            ->filter(fn ($c) => $c['totalCast'] > 0)
-            ->sortByDesc('totalCast')
+            ->filter(fn ($c) => $c['castGames'] > 0)
+            ->sortByDesc('castGames')
             ->first();
 
         $mostSeen = $stats
-            ->filter(fn ($c) => ! $c['isSideboard'] && ! str_contains($c['type'] ?? '', 'Land') && $c['totalSeen'] > 0)
-            ->sortByDesc('totalSeen')
+            ->filter(fn ($c) => ! $c['isSideboard'] && ! str_contains($c['type'] ?? '', 'Land') && $c['seenGames'] > 0)
+            ->sortByDesc('seenGames')
             ->first();
 
         $mostPlayedLand = $stats
-            ->filter(fn ($c) => ! $c['isSideboard'] && str_contains($c['type'] ?? '', 'Land') && $c['totalSeen'] > 0)
-            ->sortByDesc('totalSeen')
+            ->filter(fn ($c) => ! $c['isSideboard'] && str_contains($c['type'] ?? '', 'Land') && $c['playedGames'] > 0)
+            ->sortByDesc('playedGames')
             ->first();
 
         $mostSidedIn = $stats
-            ->filter(fn ($c) => $c['isSideboard'] && $c['sidedInGames'] > 0 && $c['postboardGames'] >= self::MIN_GAMES)
+            ->filter(fn ($c) => $c['isSideboard'] && $c['sidedInGames'] > 0 && $c['postboardGames'] >= self::SIDEBOARD_MIN_GAMES)
             ->sortByDesc('sidedInGames')
             ->first();
 
         $mostSidedOut = $nonLandMaindeck
-            ->filter(fn ($c) => $c['sidedOutGames'] > 0 && $c['postboardGames'] >= self::MIN_GAMES)
+            ->filter(fn ($c) => $c['sidedOutGames'] > 0 && $c['postboardGames'] >= self::SIDEBOARD_MIN_GAMES)
             ->sortByDesc('sidedOutGames')
             ->first();
 
         return [
-            'topPerformer' => $topPerformer ? self::formatPct($topPerformer, 'cast win rate', $topPerformer['castWon'], $topPerformer['totalCast']) : null,
-            'mostCast' => $mostCast ? self::formatCount($mostCast, 'Cast', $mostCast['totalCast'], $mostCast['totalGames']) : null,
-            'mostSeen' => $mostSeen ? self::formatCount($mostSeen, 'Seen', $mostSeen['totalSeen'], $mostSeen['totalGames']) : null,
-            'mostPlayedLand' => $mostPlayedLand ? self::formatCount($mostPlayedLand, 'Seen', $mostPlayedLand['totalSeen'], $mostPlayedLand['totalGames']) : null,
+            'topPerformer' => $topPerformer ? self::formatPct($topPerformer, 'cast win rate', $topPerformer['castWon'], $topPerformer['castGames']) : null,
+            'mostCast' => $mostCast ? self::formatGameCount($mostCast, 'Cast', $mostCast['castGames'], $mostCast['totalGames']) : null,
+            'mostSeen' => $mostSeen ? self::formatGameCount($mostSeen, 'Seen', $mostSeen['seenGames'], $mostSeen['totalGames']) : null,
+            'mostPlayedLand' => $mostPlayedLand ? self::formatGameCount($mostPlayedLand, 'Played', $mostPlayedLand['playedGames'], $mostPlayedLand['totalGames']) : null,
             'mostSidedIn' => $mostSidedIn ? self::formatPct($mostSidedIn, 'postboard games', $mostSidedIn['sidedInGames'], $mostSidedIn['postboardGames']) : null,
             'mostSidedOut' => $mostSidedOut ? self::formatPct($mostSidedOut, 'postboard games', $mostSidedOut['sidedOutGames'], $mostSidedOut['postboardGames']) : null,
         ];
@@ -72,12 +74,12 @@ class GetStandoutCards
         ];
     }
 
-    private static function formatCount(array $card, string $prefix, int $count, int $total): array
+    private static function formatGameCount(array $card, string $verb, int $gameCount, int $totalGames): array
     {
         return [
             'name' => $card['name'],
             'image' => $card['image'],
-            'stat' => "{$prefix} {$count} times in {$total} games",
+            'stat' => "{$verb} in {$gameCount} of {$totalGames} games",
         ];
     }
 }

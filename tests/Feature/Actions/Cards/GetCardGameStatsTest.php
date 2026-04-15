@@ -78,6 +78,78 @@ it('filters card stats to a single version when version specified', function () 
     expect($row['totalKept'])->toBe(2); // only v1
 });
 
+it('counts games where an event occurred separately from total copies', function () {
+    $deck = Deck::factory()->create();
+    $version = DeckVersion::factory()->for($deck)->create();
+
+    $card = Card::factory()->create([
+        'oracle_id' => 'test-oracle-games',
+        'name' => 'Swamp',
+        'type' => 'Basic Land',
+        'color_identity' => 'B',
+        'image' => null,
+    ]);
+
+    $match = MtgoMatch::factory()->create(['deck_version_id' => $version->id]);
+
+    // Game 1: 9 swamps in deck, 4 played, 3 seen, 2 kept, 0 cast
+    $game1 = Game::factory()->for($match, 'match')->create(['won' => true]);
+    insertCardGameStat([
+        'deck_version_id' => $version->id,
+        'game_id' => $game1->id,
+        'oracle_id' => $card->oracle_id,
+        'quantity' => 9,
+        'played' => 4,
+        'seen' => 3,
+        'kept' => 2,
+        'cast' => 0,
+        'won' => true,
+    ]);
+
+    // Game 2: 9 swamps in deck, nothing played/seen/kept/cast (edge case)
+    $game2 = Game::factory()->for($match, 'match')->create(['won' => false]);
+    insertCardGameStat([
+        'deck_version_id' => $version->id,
+        'game_id' => $game2->id,
+        'oracle_id' => $card->oracle_id,
+        'quantity' => 9,
+        'played' => 0,
+        'seen' => 0,
+        'kept' => 0,
+        'cast' => 0,
+        'won' => false,
+    ]);
+
+    // Game 3: 9 swamps, 2 played, 1 seen, 0 kept — partial
+    $game3 = Game::factory()->for($match, 'match')->create(['won' => true]);
+    insertCardGameStat([
+        'deck_version_id' => $version->id,
+        'game_id' => $game3->id,
+        'oracle_id' => $card->oracle_id,
+        'quantity' => 9,
+        'played' => 2,
+        'seen' => 1,
+        'kept' => 0,
+        'cast' => 0,
+        'won' => true,
+    ]);
+
+    $row = GetCardGameStats::run($deck)->first();
+
+    // Raw copy counts across all games (existing behaviour)
+    expect($row['totalGames'])->toBe(3);
+    expect($row['totalPossible'])->toBe(27); // 9 × 3 games
+    expect($row['totalPlayed'])->toBe(6);    // 4 + 0 + 2
+    expect($row['totalSeen'])->toBe(4);      // 3 + 0 + 1
+    expect($row['totalKept'])->toBe(2);      // 2 + 0 + 0
+
+    // Game counts — games where the event happened at least once
+    expect($row['playedGames'])->toBe(2); // game1 + game3
+    expect($row['seenGames'])->toBe(2);   // game1 + game3
+    expect($row['keptGames'])->toBe(1);   // game1 only
+    expect($row['castGames'])->toBe(0);   // never cast
+});
+
 it('filters by on_play', function () {
     $deck = Deck::factory()->create();
     $v1 = DeckVersion::factory()->for($deck)->create();
