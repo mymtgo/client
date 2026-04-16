@@ -79,7 +79,7 @@ class AdvanceMatchState
                     $players = $firstState['Players'] ?? [];
                     $playerNames = array_column($players, 'Name');
                     $username = $events->first(fn (LogEvent $e) => $e->username !== null)?->username
-                        ?? Mtgo::resolveUsername();
+                        ?? Mtgo::resolveUsername($playerNames);
 
                     if (count($players) < 2 || ($username && ! in_array($username, $playerNames))) {
                         Log::channel('pipeline')->info("AdvanceMatchState: skipping phantom match token={$matchToken} id={$matchId}", [
