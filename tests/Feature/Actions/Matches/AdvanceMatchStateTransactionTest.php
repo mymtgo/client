@@ -3,9 +3,11 @@
 use App\Actions\Matches\AdvanceMatchState;
 use App\Enums\LogEventType;
 use App\Enums\MatchState;
+use App\Jobs\SubmitMatchLogSample;
 use App\Models\LogEvent;
 use App\Models\MtgoMatch;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Queue;
 
 uses(RefreshDatabase::class);
 
@@ -131,4 +133,50 @@ it('handles concurrent match advancement without duplicates', function () {
     // All results should reference the same match
     $ids = array_unique(array_map(fn ($r) => $r->id, $results));
     expect($ids)->toHaveCount(1);
+});
+
+it('dispatches SubmitMatchLogSample when a new match is created', function () {
+    Queue::fake();
+
+    $matchId = '30005';
+    $matchToken = 'token-txn-log-sample';
+
+    txnLogEvent([
+        'match_id' => $matchId,
+        'match_token' => $matchToken,
+        'event_type' => LogEventType::MATCH_STATE_CHANGED->value,
+        'context' => 'MatchJoinedEventUnderwayState',
+        'raw_text' => txnJoinRawText(),
+    ]);
+
+    AdvanceMatchState::run($matchToken, $matchId);
+
+    Queue::assertPushed(SubmitMatchLogSample::class, 1);
+    Queue::assertPushed(SubmitMatchLogSample::class, function (SubmitMatchLogSample $job) use ($matchToken) {
+        return $job->matchToken === $matchToken
+            && $job->matchType !== ''
+            && $job->format !== ''
+            && str_contains($job->rawText, 'MatchJoinedEventUnderwayState');
+    });
+});
+
+it('does not dispatch SubmitMatchLogSample when match already exists', function () {
+    Queue::fake();
+
+    $matchId = '30006';
+    $matchToken = 'token-txn-no-dup-sample';
+
+    txnLogEvent([
+        'match_id' => $matchId,
+        'match_token' => $matchToken,
+        'event_type' => LogEventType::MATCH_STATE_CHANGED->value,
+        'context' => 'MatchJoinedEventUnderwayState',
+        'raw_text' => txnJoinRawText(),
+    ]);
+
+    AdvanceMatchState::run($matchToken, $matchId);
+    Queue::assertPushed(SubmitMatchLogSample::class, 1);
+
+    AdvanceMatchState::run($matchToken, $matchId);
+    Queue::assertPushed(SubmitMatchLogSample::class, 1); // still 1, not 2
 });

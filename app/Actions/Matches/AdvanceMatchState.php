@@ -7,6 +7,7 @@ use App\Actions\Util\ExtractJson;
 use App\Actions\Util\ExtractKeyValueBlock;
 use App\Enums\LogEventType;
 use App\Enums\MatchState;
+use App\Jobs\SubmitMatchLogSample;
 use App\Events\DeckLinkedToMatch;
 use App\Events\LeagueMatchStarted;
 use App\Facades\Mtgo;
@@ -104,6 +105,14 @@ class AdvanceMatchState
                     'ended_at' => null,
                     'state' => MatchState::Started,
                 ]);
+
+                SubmitMatchLogSample::dispatch(
+                    matchToken: $matchToken,
+                    matchType: $match->match_type,
+                    format: $match->format,
+                    rawText: $joinedState->raw_text,
+                    username: $username ?? null,
+                );
 
                 Log::channel('pipeline')->info("Match {$matchId}: created in Started state", [
                     'token' => $matchToken,
