@@ -2,7 +2,7 @@
 
 namespace App\Enums;
 
-enum ChallengeTimelineEventType: string
+enum TournamentTimelineEventType: string
 {
     case StateChanged = 'state_changed';
     case RoundResult = 'round_result';

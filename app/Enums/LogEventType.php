@@ -9,10 +9,10 @@ enum LogEventType: string
     case DECK_USED = 'deck_used';
     case LEAGUE_JOIN_REQUEST = 'league_join_request';
     case LEAGUE_JOINED = 'league_joined';
-    case CHALLENGE_SYNC = 'challenge_sync';
-    case CHALLENGE_STATE_CHANGED = 'challenge_state_changed';
-    case CHALLENGE_ROUND_RESULT = 'challenge_round_result';
-    case CHALLENGE_PLAYER_ELIMINATED = 'challenge_player_eliminated';
-    case CHALLENGE_ENDED = 'challenge_ended';
-    case CHALLENGE_MATCH_STATE_CHANGED = 'challenge_match_state_changed';
+    case TOURNAMENT_SYNC = 'tournament_sync';
+    case TOURNAMENT_STATE_CHANGED = 'tournament_state_changed';
+    case TOURNAMENT_ROUND_RESULT = 'tournament_round_result';
+    case TOURNAMENT_PLAYER_ELIMINATED = 'tournament_player_eliminated';
+    case TOURNAMENT_ENDED = 'tournament_ended';
+    case TOURNAMENT_MATCH_STATE_CHANGED = 'tournament_match_state_changed';
 }
