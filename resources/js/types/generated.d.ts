@@ -37,11 +37,23 @@ matchesLost: number;
 winrate: number;
 colorIdentity: string | null;
 coverArt: string | null;
+archetype: App.Data.Front.ArchetypeData | null;
 lastPlayedAt: string | null;
 lastPlayedAtHuman: string | null;
 matches: any;
 identity: any;
 cards: any;
+};
+export type DeckGroupData = {
+archetype: App.Data.Front.ArchetypeData | null;
+stats: App.Data.Front.DeckGroupStatsData;
+decks: Array<App.Data.Front.DeckData>;
+};
+export type DeckGroupStatsData = {
+totalMatches: number;
+totalWins: number;
+winrate: number | null;
+lastPlayedAt: string | null;
 };
 export type GameData = {
 id: number;
