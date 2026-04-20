@@ -67,7 +67,9 @@
       "mcp__sentry__get_sentry_resource",
       "Bash(mcp__laravel-boost__database-schema --summary --filter players)",
       "Bash(git add:*)",
-      "Bash(git commit -m ':*)"
+      "Bash(git commit -m ':*)",
+      "Bash(git mv *)",
+      "Bash(git commit *)"
     ]
   },
   "enableAllProjectMcpServers": true,
