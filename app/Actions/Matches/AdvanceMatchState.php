@@ -116,6 +116,12 @@ class AdvanceMatchState
                 );
 
                 if (str_contains($joinedState->context ?? '', 'TournamentMatchJoinedEventUnderwayState')) {
+                    if (empty($gameMeta['Description'])) {
+                        Log::channel('pipeline')->warning("Match {$matchId}: tournament join detected but gameMeta has no Description — cannot link", [
+                            'token' => $matchToken,
+                            'gameMeta_keys' => array_keys($gameMeta),
+                        ]);
+                    }
                     LinkMatchToTournament::run($match, $gameMeta);
                 }
 
