@@ -3,14 +3,14 @@
 namespace Database\Factories;
 
 use App\Enums\TournamentState;
-use App\Models\Challenge;
+use App\Models\Tournament;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
 
-/** @extends Factory<Challenge> */
-class ChallengeFactory extends Factory
+/** @extends Factory<Tournament> */
+class TournamentFactory extends Factory
 {
-    protected $model = Challenge::class;
+    protected $model = Tournament::class;
 
     public function definition(): array
     {

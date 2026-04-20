@@ -1,25 +1,25 @@
 <?php
 
-use App\Models\Challenge;
-use App\Models\ChallengeStanding;
+use App\Models\Tournament;
+use App\Models\TournamentStanding;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 
-it('renders the challenge detail page', function () {
-    $challenge = Challenge::factory()->inProgress()->create();
+it('renders the tournament detail page', function () {
+    $tournament = Tournament::factory()->inProgress()->create();
 
-    $response = $this->get("/challenges/{$challenge->id}");
+    $response = $this->get("/tournaments/{$tournament->id}");
 
     $response->assertOk()
-        ->assertInertia(fn ($page) => $page->component('challenges/Show'));
+        ->assertInertia(fn ($page) => $page->component('tournaments/Show'));
 });
 
 it('includes standings for the latest round', function () {
-    $challenge = Challenge::factory()->inProgress()->create();
+    $tournament = Tournament::factory()->inProgress()->create();
 
-    ChallengeStanding::create([
-        'challenge_id' => $challenge->id,
+    TournamentStanding::create([
+        'tournament_id' => $tournament->id,
         'round' => 1,
         'login_id' => 12345,
         'username' => 'TestPlayer',
@@ -30,7 +30,7 @@ it('includes standings for the latest round', function () {
         'draws' => 0,
     ]);
 
-    $response = $this->get("/challenges/{$challenge->id}");
+    $response = $this->get("/tournaments/{$tournament->id}");
 
     $response->assertOk()
         ->assertInertia(fn ($page) => $page

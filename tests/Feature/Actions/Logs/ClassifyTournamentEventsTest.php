@@ -10,7 +10,7 @@ it('classifies tournament state change events', function () {
 
     $result = ClassifyLogEvent::run($event);
 
-    expect($result->event_type)->toBe('challenge_state_changed')
+    expect($result->event_type)->toBe('tournament_state_changed')
         ->and($result->match_token)->toBe('b049851f-3a2b-41e6-9260-ed2100d57071');
 });
 
@@ -21,7 +21,7 @@ it('classifies tournament round result events', function () {
 
     $result = ClassifyLogEvent::run($event);
 
-    expect($result->event_type)->toBe('challenge_round_result')
+    expect($result->event_type)->toBe('tournament_round_result')
         ->and($result->match_token)->toBe('18c84071-d8b7-474e-9fdc-efaa08bcf02f');
 });
 
@@ -32,7 +32,7 @@ it('classifies tournament player elimination events', function () {
 
     $result = ClassifyLogEvent::run($event);
 
-    expect($result->event_type)->toBe('challenge_player_eliminated')
+    expect($result->event_type)->toBe('tournament_player_eliminated')
         ->and($result->match_token)->toBe('6eaaa32d-de66-45f8-85b9-cfde3eaa0924');
 });
 
@@ -43,7 +43,7 @@ it('classifies tournament end events', function () {
 
     $result = ClassifyLogEvent::run($event);
 
-    expect($result->event_type)->toBe('challenge_ended')
+    expect($result->event_type)->toBe('tournament_ended')
         ->and($result->match_token)->toBe('e63ba74a-50e1-4321-a123-456789abcdef');
 });
 
@@ -54,7 +54,7 @@ it('classifies tournament sync events', function () {
 
     $result = ClassifyLogEvent::run($event);
 
-    expect($result->event_type)->toBe('challenge_sync')
+    expect($result->event_type)->toBe('tournament_sync')
         ->and($result->match_token)->toBe('43bd3465-f61e-4d92-bb46-eecae05612d5');
 });
 
@@ -65,11 +65,11 @@ it('classifies tournament match state change events', function () {
 
     $result = ClassifyLogEvent::run($event);
 
-    expect($result->event_type)->toBe('challenge_match_state_changed')
+    expect($result->event_type)->toBe('tournament_match_state_changed')
         ->and($result->match_token)->toBe('d7da3580-a227-48b5-b449-22910c7404ea');
 });
 
-it('does not classify regular match state changes as challenge events', function () {
+it('does not classify regular match state changes as tournament events', function () {
     $event = new LogEvent([
         'raw_text' => '18:42:27 [INF] (Game Management|Match State Changed for abc12345-1234-5678-9012-abcdef123456 from MatchUninitializedState to MatchNotJoinedAwaitingMinPlayersState)',
     ]);

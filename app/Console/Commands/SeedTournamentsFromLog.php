@@ -30,7 +30,7 @@ class SeedTournamentsFromLog extends Command
 
         $this->info("Reading log file: {$fullPath}");
 
-        $challengeEventTypes = [
+        $tournamentEventTypes = [
             'tournament_sync',
             'tournament_state_changed',
             'tournament_round_result',
@@ -67,7 +67,7 @@ class SeedTournamentsFromLog extends Command
             $event = new LogEvent(['raw_text' => $entry]);
             $classified = ClassifyLogEvent::run($event);
 
-            if ($classified->event_type && in_array($classified->event_type, $challengeEventTypes)) {
+            if ($classified->event_type && in_array($classified->event_type, $tournamentEventTypes)) {
                 $loggedAt = null;
                 if (preg_match('/^(\d{2}:\d{2}:\d{2})/', $entry, $m)) {
                     $loggedAt = '2026-03-18 '.$m[1];
