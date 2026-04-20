@@ -1,12 +1,13 @@
 <?php
 
 use App\Actions\Tournaments\ProcessTournamentEvents;
-use App\Enums\TournamentTimelineEventType;
 use App\Enums\TournamentState;
-use App\Models\Tournament;
-use App\Models\TournamentStanding;
+use App\Enums\TournamentTimelineEventType;
+use App\Enums\TournamentType;
 use App\Models\LogEvent;
 use App\Models\Player;
+use App\Models\Tournament;
+use App\Models\TournamentStanding;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -266,4 +267,36 @@ it('is idempotent — reprocessing does not duplicate standings', function () {
     ProcessTournamentEvents::run();
 
     expect(TournamentStanding::count())->toBe(1);
+});
+
+it('populates event_id and type from EventSyncData_t', function () {
+    createTournamentLogEvent([
+        'raw_text' => json_encode([
+            'EventToken' => 'abc-123',
+            'EventID' => 12839688,
+            'Description' => 'Modern Challenge',
+            'PlayFormatCd' => 'CMODERN',
+            'GameStructureCd' => 'CMODERN',
+            'Players' => [],
+            'PremiereEventSyncData' => [
+                'TournamentSyncData' => [
+                    'TournamentStructureCd' => 'SWISS',
+                    'NumberOfRounds' => 7,
+                    'MinPlayers' => 32,
+                    'MaxPlayers' => 256,
+                ],
+            ],
+        ]),
+        'event_type' => 'tournament_sync',
+        'match_token' => 'abc-123',
+        'timestamp' => '2026-03-18 18:42:28',
+        'logged_at' => '2026-03-18 18:42:28',
+    ]);
+
+    ProcessTournamentEvents::run();
+
+    $tournament = Tournament::where('token', 'abc-123')->firstOrFail();
+
+    expect($tournament->event_id)->toBe(12839688)
+        ->and($tournament->type)->toBe(TournamentType::Constructed);
 });

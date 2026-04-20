@@ -3,14 +3,15 @@
 namespace App\Actions\Tournaments;
 
 use App\Actions\Util\ExtractJson;
-use App\Enums\TournamentTimelineEventType;
 use App\Enums\TournamentState;
 use App\Enums\TournamentStructure;
+use App\Enums\TournamentTimelineEventType;
+use App\Enums\TournamentType;
+use App\Models\LogEvent;
+use App\Models\Player;
 use App\Models\Tournament;
 use App\Models\TournamentStanding;
 use App\Models\TournamentTimelineEvent;
-use App\Models\LogEvent;
-use App\Models\Player;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 
@@ -121,6 +122,8 @@ class ProcessTournamentEvents
         $tournament = Tournament::updateOrCreate(
             ['token' => $token],
             array_filter([
+                'event_id' => $json['EventID'] ?? null,
+                'type' => TournamentType::fromPlayFormatCd($json['PlayFormatCd'] ?? null)?->value,
                 'name' => $json['Description'] ?? null,
                 'category' => $category,
                 'format' => $format,
