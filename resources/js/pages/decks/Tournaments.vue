@@ -24,6 +24,13 @@ type LocalStanding = {
     round: number;
 };
 
+type Kpis = {
+    tournaments_played: number;
+    best_finish: number | null;
+    top_8: number;
+    top_16: number;
+};
+
 const props = defineProps<{
     deck: App.Data.Front.DeckData;
     versions: VersionStats[];
@@ -33,6 +40,7 @@ const props = defineProps<{
     timeframe: string;
     tournaments: Tournament[];
     localStandings: Record<number, LocalStanding>;
+    kpis: Kpis;
 }>();
 
 function stateLabel(state: string): string {
@@ -47,6 +55,37 @@ function stateColor(state: string): string {
 
 <template>
     <div class="flex flex-col gap-4 p-3 lg:p-4">
+        <!-- KPI Cards -->
+        <div class="grid grid-cols-4 gap-4">
+            <Card class="gap-0 py-0">
+                <CardContent class="flex flex-col gap-0.5 p-3">
+                    <span class="text-xs tracking-wide text-muted-foreground uppercase">Played</span>
+                    <span class="text-3xl font-bold tabular-nums">{{ kpis.tournaments_played }}</span>
+                </CardContent>
+            </Card>
+            <Card class="gap-0 py-0">
+                <CardContent class="flex flex-col gap-0.5 p-3">
+                    <span class="text-xs tracking-wide text-muted-foreground uppercase">Best Finish</span>
+                    <span class="text-3xl font-bold tabular-nums">
+                        <template v-if="kpis.best_finish !== null">#{{ kpis.best_finish }}</template>
+                        <template v-else>-</template>
+                    </span>
+                </CardContent>
+            </Card>
+            <Card class="gap-0 py-0">
+                <CardContent class="flex flex-col gap-0.5 p-3">
+                    <span class="text-xs tracking-wide text-muted-foreground uppercase">Top 8</span>
+                    <span class="text-3xl font-bold tabular-nums">{{ kpis.top_8 }}</span>
+                </CardContent>
+            </Card>
+            <Card class="gap-0 py-0">
+                <CardContent class="flex flex-col gap-0.5 p-3">
+                    <span class="text-xs tracking-wide text-muted-foreground uppercase">Top 16</span>
+                    <span class="text-3xl font-bold tabular-nums">{{ kpis.top_16 }}</span>
+                </CardContent>
+            </Card>
+        </div>
+
         <div v-if="tournaments.length === 0" class="py-8 text-center text-sm text-zinc-500">
             No tournaments found for this deck. Tournaments will appear here once you participate in a tournament with this deck.
         </div>
