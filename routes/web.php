@@ -25,8 +25,8 @@ use App\Http\Controllers\Decks\OpenPopoutController;
 use App\Http\Controllers\Decks\PopoutController;
 use App\Http\Controllers\Decks\ScreenshotDataController;
 use App\Http\Controllers\Decks\SettingsController;
-use App\Http\Controllers\Decks\TournamentsController;
 use App\Http\Controllers\Decks\ToggleGroupingController;
+use App\Http\Controllers\Decks\TournamentsController;
 use App\Http\Controllers\Decks\UpdateCoverArtController;
 use App\Http\Controllers\Decks\UpdateDeckArchetypeController;
 use App\Http\Controllers\Games\OpenReplayController;
@@ -66,6 +66,7 @@ use App\Http\Controllers\Settings\UpdateOverlaySettingsController;
 use App\Http\Controllers\Settings\UpdateShareStatsController;
 use App\Http\Controllers\Settings\UpdateWatcherController;
 use App\Http\Controllers\Support\DownloadReportBundleController;
+use App\Http\Controllers\Tournaments\CandidatesController;
 use App\Http\Controllers\Updates\InstallController;
 use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Route;
@@ -104,6 +105,7 @@ Route::group([], function (Router $router) {
         'prefix' => 'tournaments',
     ], function (Router $group) {
         $group->get('/', App\Http\Controllers\Tournaments\IndexController::class)->name('tournaments.index');
+        $group->get('candidates', CandidatesController::class)->name('tournaments.candidates');
         $group->get('{tournament}', App\Http\Controllers\Tournaments\ShowController::class)->name('tournaments.show');
     });
 
