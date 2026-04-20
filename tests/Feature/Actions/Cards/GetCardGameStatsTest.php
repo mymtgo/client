@@ -150,6 +150,61 @@ it('counts games where an event occurred separately from total copies', function
     expect($row['castGames'])->toBe(0);   // never cast
 });
 
+it('aggregates pregame revealed and played counts per card', function () {
+    $deck = Deck::factory()->create();
+    $version = DeckVersion::factory()->for($deck)->create();
+
+    $card = Card::factory()->create([
+        'oracle_id' => 'test-oracle-pregame',
+        'name' => 'Devourer of Destiny',
+        'type' => 'Creature',
+        'color_identity' => 'B',
+        'image' => null,
+    ]);
+
+    $match = MtgoMatch::factory()->create(['deck_version_id' => $version->id]);
+
+    $game1 = Game::factory()->for($match, 'match')->create(['won' => true]);
+    insertCardGameStat([
+        'deck_version_id' => $version->id,
+        'game_id' => $game1->id,
+        'oracle_id' => $card->oracle_id,
+        'pregame_revealed' => true,
+        'pregame_played' => false,
+        'won' => true,
+    ]);
+
+    $game2 = Game::factory()->for($match, 'match')->create(['won' => false]);
+    insertCardGameStat([
+        'deck_version_id' => $version->id,
+        'game_id' => $game2->id,
+        'oracle_id' => $card->oracle_id,
+        'pregame_revealed' => true,
+        'pregame_played' => true,
+        'won' => false,
+    ]);
+
+    $game3 = Game::factory()->for($match, 'match')->create(['won' => true]);
+    insertCardGameStat([
+        'deck_version_id' => $version->id,
+        'game_id' => $game3->id,
+        'oracle_id' => $card->oracle_id,
+        'pregame_revealed' => false,
+        'pregame_played' => false,
+        'won' => true,
+    ]);
+
+    $row = GetCardGameStats::run($deck)->first();
+
+    expect($row['totalGames'])->toBe(3);
+    expect($row['pregameRevealedGames'])->toBe(2);
+    expect($row['pregamePlayedGames'])->toBe(1);
+    // Games where any pregame event fired (game1: revealed, game2: both, game3: neither)
+    expect($row['pregameGames'])->toBe(2);
+    expect($row['pregameWon'])->toBe(1);  // game1 won
+    expect($row['pregameLost'])->toBe(1); // game2 lost
+});
+
 it('filters by on_play', function () {
     $deck = Deck::factory()->create();
     $v1 = DeckVersion::factory()->for($deck)->create();

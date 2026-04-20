@@ -22,6 +22,8 @@ class CardGameStat extends Model
         'madness' => 'integer',
         'evoked' => 'integer',
         'activated' => 'integer',
+        'pregame_revealed' => 'boolean',
+        'pregame_played' => 'boolean',
     ];
 
     public function game(): BelongsTo

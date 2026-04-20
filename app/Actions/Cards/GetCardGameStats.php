@@ -103,7 +103,12 @@ class GetCardGameStats
                 SUM(cgs.activated) as total_activated,
                 SUM(cgs.flashback) as total_flashback,
                 SUM(cgs.madness) as total_madness,
-                SUM(cgs.evoked) as total_evoked
+                SUM(cgs.evoked) as total_evoked,
+                SUM(CASE WHEN cgs.pregame_revealed THEN 1 ELSE 0 END) as pregame_revealed_games,
+                SUM(CASE WHEN cgs.pregame_played THEN 1 ELSE 0 END) as pregame_played_games,
+                SUM(CASE WHEN cgs.pregame_revealed OR cgs.pregame_played THEN 1 ELSE 0 END) as pregame_games,
+                SUM(CASE WHEN (cgs.pregame_revealed OR cgs.pregame_played) AND cgs.won THEN 1 ELSE 0 END) as pregame_won,
+                SUM(CASE WHEN (cgs.pregame_revealed OR cgs.pregame_played) AND NOT cgs.won THEN 1 ELSE 0 END) as pregame_lost
             ')
             ->orderBy('c.type')
             ->orderBy('c.name')
@@ -139,6 +144,11 @@ class GetCardGameStats
                 'totalFlashback' => (int) $row->total_flashback,
                 'totalMadness' => (int) $row->total_madness,
                 'totalEvoked' => (int) $row->total_evoked,
+                'pregameRevealedGames' => (int) $row->pregame_revealed_games,
+                'pregamePlayedGames' => (int) $row->pregame_played_games,
+                'pregameGames' => (int) $row->pregame_games,
+                'pregameWon' => (int) $row->pregame_won,
+                'pregameLost' => (int) $row->pregame_lost,
             ]);
     }
 

@@ -73,6 +73,7 @@ class RegenerateCardGameStats
         $cardData = ExtractCardsFromGameLog::run($gameLog->decoded_entries);
         $cardsByGame = $cardData['cards_by_game'] ?? [];
         $gameMeta = $cardData['game_meta'] ?? [];
+        $pregameActions = $cardData['pregame_actions'] ?? [];
 
         $firstGame = $match->games->sortBy('started_at')->first();
         if (! $firstGame) {
@@ -98,6 +99,7 @@ class RegenerateCardGameStats
                 $match->deck_version_id,
                 $gameCards,
                 isPostboard: $index > 0,
+                pregameActions: $pregameActions[$index][$localName] ?? [],
             );
 
             // Write game metadata

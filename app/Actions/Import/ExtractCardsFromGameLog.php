@@ -10,10 +10,10 @@ class ExtractCardsFromGameLog
      * Extract unique card names and CatalogIDs per player from parsed game log entries.
      *
      * Returns match-level aggregates (cards_by_player), per-game breakdowns (cards_by_game),
-     * and per-game metadata (game_meta).
+     * per-game metadata (game_meta), and per-game pre-game actions (pregame_actions).
      *
      * @param  array<int, array{timestamp: string, message: string}>  $entries
-     * @return array{players: array<int, string>, cards_by_player: array<string, list<array<string, mixed>>>, cards_by_game: array<int, array<string, list<array<string, mixed>>>>, game_meta: array<int, array{dice_rolls: array<string, int>, mulligans: array<string, int>, turn_count: int|null}>}
+     * @return array{players: array<int, string>, cards_by_player: array<string, list<array<string, mixed>>>, cards_by_game: array<int, array<string, list<array<string, mixed>>>>, game_meta: array<int, array{dice_rolls: array<string, int>, mulligans: array<string, int>, turn_count: int|null}>, pregame_actions: array<int, array<string, array<int, array{mtgo_id: int, type: string}>>>}
      */
     public static function run(array $entries): array
     {
@@ -25,6 +25,7 @@ class ExtractCardsFromGameLog
         // Per-game extraction
         $cardsByGame = [];
         $gameMeta = [];
+        $pregameActions = [];
         // Match-level aggregate (union of all games)
         $matchIndex = [];
         $cardsByPlayer = [];
@@ -37,6 +38,7 @@ class ExtractCardsFromGameLog
             $gameCards = self::extractFromEntries($gameEntries, $players);
             $cardsByGame[$gameIndex] = $gameCards;
             $gameMeta[$gameIndex] = self::extractGameMeta($gameEntries, $players);
+            $pregameActions[$gameIndex] = self::extractPregameActions($gameEntries, $players);
 
             foreach ($players as $player) {
                 foreach ($gameCards[$player] ?? [] as $card) {
@@ -60,6 +62,7 @@ class ExtractCardsFromGameLog
             'cards_by_player' => $cardsByPlayer,
             'cards_by_game' => $cardsByGame,
             'game_meta' => $gameMeta,
+            'pregame_actions' => $pregameActions,
         ];
     }
 
@@ -289,6 +292,77 @@ class ExtractCardsFromGameLog
             'mulligans' => $mulliganCounts,
             'turn_count' => $turnCount,
         ];
+    }
+
+    /**
+     * Extract pre-game actions from a single game's entries.
+     *
+     * Pre-game actions occur between the last "begins the game with" message
+     * and the first "@PTurn 1:" marker. Known patterns:
+     * - Reveal from opening hand (Devourer of Destiny, Chancellor cycle)
+     * - Put onto the battlefield (Gemstone Caverns, Leylines)
+     *
+     * @param  array<int, array{timestamp: string, message: string}>  $gameEntries
+     * @param  array<int, string>  $players
+     * @return array<string, array<int, array{mtgo_id: int, type: string}>>
+     */
+    private static function extractPregameActions(array $gameEntries, array $players): array
+    {
+        $p = ExtractGameResults::PLAYER_PATTERN;
+        $actions = [];
+
+        foreach ($players as $player) {
+            $actions[$player] = [];
+        }
+
+        // Find the pre-game window: after last "begins the game with" and before first "@PTurn 1:"
+        $pregameStart = null;
+        $pregameEnd = null;
+
+        foreach ($gameEntries as $i => $entry) {
+            $msg = $entry['message'];
+
+            if (preg_match('/begins the game with/', $msg)) {
+                $pregameStart = $i + 1;
+            }
+
+            if ($pregameStart !== null && preg_match('/^@PTurn 1:/', $msg)) {
+                $pregameEnd = $i;
+
+                break;
+            }
+        }
+
+        if ($pregameStart === null || $pregameEnd === null || $pregameStart >= $pregameEnd) {
+            return $actions;
+        }
+
+        // Scan the pre-game window for actions
+        for ($i = $pregameStart; $i < $pregameEnd; $i++) {
+            $msg = $gameEntries[$i]['message'];
+
+            foreach ($players as $player) {
+                $qp = preg_quote($player, '/');
+
+                // "@PPlayer reveals @[Card] from their opening hand." (Devourer of Destiny, Chancellors)
+                if (preg_match('/@P'.$qp.' reveals @\[([^@]+)@:(\d+),\d+:@\] from their opening hand/', $msg, $m)) {
+                    $actions[$player][] = [
+                        'mtgo_id' => (int) $m[2] >> 1,
+                        'type' => 'revealed',
+                    ];
+                }
+
+                // "@PPlayer puts @[Card] onto the battlefield." (Gemstone Caverns, Leylines)
+                if (preg_match('/@P'.$qp.' puts @\[([^@]+)@:(\d+),\d+:@\] onto the battlefield/', $msg, $m)) {
+                    $actions[$player][] = [
+                        'mtgo_id' => (int) $m[2] >> 1,
+                        'type' => 'played',
+                    ];
+                }
+            }
+        }
+
+        return $actions;
     }
 
     /**

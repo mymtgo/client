@@ -13,8 +13,9 @@ class ComputeImportedCardGameStats
      * Create reduced-fidelity card_game_stats for an imported game.
      *
      * @param  array<int, array{mtgo_id: int, cast: int}>  $cardStats  Cards seen in game log with cast counts
+     * @param  array<int, array{mtgo_id: int, type: string}>  $pregameActions  Pre-game actions for local player
      */
-    public static function run(Game $game, int $deckVersionId, array $cardStats, bool $isPostboard): void
+    public static function run(Game $game, int $deckVersionId, array $cardStats, bool $isPostboard, array $pregameActions = []): void
     {
         if ($game->won === null) {
             return;
@@ -79,6 +80,22 @@ class ComputeImportedCardGameStats
             }
         }
 
+        // Map pregame actions to oracle_ids
+        $pregameRevealedOracles = [];
+        $pregamePlayedOracles = [];
+        foreach ($pregameActions as $action) {
+            $oracleId = $mtgoToOracle[$action['mtgo_id']] ?? null;
+            if (! $oracleId) {
+                continue;
+            }
+            if ($action['type'] === 'revealed') {
+                $pregameRevealedOracles[$oracleId] = true;
+            }
+            if ($action['type'] === 'played') {
+                $pregamePlayedOracles[$oracleId] = true;
+            }
+        }
+
         // Build mainboard quantities by oracle_id
         $mainboardQuantities = [];
         foreach ($deckCards as $card) {
@@ -106,6 +123,8 @@ class ComputeImportedCardGameStats
                 'madness' => $madnessByOracle[$oracleId] ?? 0,
                 'evoked' => $evokedByOracle[$oracleId] ?? 0,
                 'activated' => $activatedByOracle[$oracleId] ?? 0,
+                'pregame_revealed' => isset($pregameRevealedOracles[$oracleId]),
+                'pregame_played' => isset($pregamePlayedOracles[$oracleId]),
                 'won' => $game->won,
                 'is_postboard' => $isPostboard,
                 'sided_out' => false,

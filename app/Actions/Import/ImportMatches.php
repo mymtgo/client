@@ -140,8 +140,9 @@ class ImportMatches
                     $gameResults = ExtractGameResults::run($gameLog->decoded_entries, $localPlayer);
                     $cardsByGame = $cardData['cards_by_game'] ?? [];
                     $gameMeta = $cardData['game_meta'] ?? [];
+                    $pregameActionsByGame = $cardData['pregame_actions'] ?? [];
 
-                    $games = collect($gameResults['games'])->map(function ($g) use ($localPlayer, $opponent, $cardsByGame, $gameMeta) {
+                    $games = collect($gameResults['games'])->map(function ($g) use ($localPlayer, $opponent, $cardsByGame, $gameMeta, $pregameActionsByGame) {
                         $gameCards = $cardsByGame[$g['game_index']] ?? [];
                         $meta = $gameMeta[$g['game_index']] ?? [];
 
@@ -160,6 +161,7 @@ class ImportMatches
                             'local_mulligan_count' => $meta['mulligans'][$localPlayer] ?? 0,
                             'opponent_mulligan_count' => $meta['mulligans'][$opponent] ?? 0,
                             'turn_count' => $meta['turn_count'] ?? null,
+                            'pregame_actions' => $pregameActionsByGame[$g['game_index']][$localPlayer] ?? [],
                         ];
                     })->toArray();
                 }
@@ -302,7 +304,8 @@ class ImportMatches
                     $game,
                     $match->deck_version_id,
                     $cardStats,
-                    isPostboard: $index > 0
+                    isPostboard: $index > 0,
+                    pregameActions: $gameData['pregame_actions'] ?? [],
                 );
             }
         }

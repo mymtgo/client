@@ -34,6 +34,11 @@ type CardStat = {
     totalFlashback: number;
     totalMadness: number;
     totalEvoked: number;
+    pregameRevealedGames: number;
+    pregamePlayedGames: number;
+    pregameGames: number;
+    pregameWon: number;
+    pregameLost: number;
 };
 
 defineProps<{
@@ -141,6 +146,37 @@ function winRateClass(pctVal: number | null): string {
         <TableCell class="text-right tabular-nums">
             <template v-if="stat.totalActivated > 0">
                 {{ stat.totalActivated }}
+            </template>
+            <span v-else class="text-muted-foreground">-</span>
+        </TableCell>
+        <TableCell class="text-right tabular-nums">
+            <template v-if="stat.pregameGames > 0 && pct(stat.pregameGames, stat.totalGames) !== null">
+                <TooltipProvider v-if="stat.pregameRevealedGames > 0 && stat.pregamePlayedGames > 0">
+                    <Tooltip>
+                        <TooltipTrigger as-child>
+                            <span class="cursor-default border-b border-dotted border-muted-foreground">
+                                {{ pct(stat.pregameGames, stat.totalGames) }}%
+                                <span class="text-[10px] text-muted-foreground">({{ stat.pregameGames }})</span>
+                            </span>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" class="text-xs">
+                            <span>{{ stat.pregameRevealedGames }} revealed, {{ stat.pregamePlayedGames }} played</span>
+                        </TooltipContent>
+                    </Tooltip>
+                </TooltipProvider>
+                <template v-else>
+                    {{ pct(stat.pregameGames, stat.totalGames) }}%
+                    <span class="text-[10px] text-muted-foreground">({{ stat.pregameGames }})</span>
+                </template>
+            </template>
+            <span v-else class="text-muted-foreground">-</span>
+        </TableCell>
+        <TableCell class="text-right tabular-nums">
+            <template v-if="pct(stat.pregameWon, stat.pregameWon + stat.pregameLost) !== null">
+                <span class="font-medium" :class="winRateClass(pct(stat.pregameWon, stat.pregameWon + stat.pregameLost))">
+                    {{ pct(stat.pregameWon, stat.pregameWon + stat.pregameLost) }}%
+                </span>
+                <span class="text-[10px] text-muted-foreground">({{ stat.pregameWon + stat.pregameLost }})</span>
             </template>
             <span v-else class="text-muted-foreground">-</span>
         </TableCell>

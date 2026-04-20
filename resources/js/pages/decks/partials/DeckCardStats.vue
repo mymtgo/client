@@ -67,6 +67,11 @@ type CardStat = {
     totalFlashback: number;
     totalMadness: number;
     totalEvoked: number;
+    pregameRevealedGames: number;
+    pregamePlayedGames: number;
+    pregameGames: number;
+    pregameWon: number;
+    pregameLost: number;
 };
 
 const props = defineProps<{
@@ -216,7 +221,7 @@ function passesFilter(stat: CardStat): boolean {
 
 // ── Sorting ──────────────────────────────────────────────────────────────────
 
-type SortKey = 'name' | 'keptPct' | 'keptWinPct' | 'seenPct' | 'seenWinPct' | 'castPct' | 'castWinPct' | 'playedPct' | 'kicked' | 'activated' | 'sbOutPct' | 'sbInPct' | 'games';
+type SortKey = 'name' | 'keptPct' | 'keptWinPct' | 'seenPct' | 'seenWinPct' | 'castPct' | 'castWinPct' | 'playedPct' | 'kicked' | 'activated' | 'pregamePct' | 'pregameWinPct' | 'sbOutPct' | 'sbInPct' | 'games';
 const sortBy = ref<SortKey>('name');
 const sortDesc = ref(false);
 
@@ -256,6 +261,10 @@ function sortValue(stat: CardStat, key: SortKey): number | string {
             return stat.totalKicked;
         case 'activated':
             return stat.totalActivated;
+        case 'pregamePct':
+            return pctWithTiebreak(stat.pregameGames, stat.totalGames);
+        case 'pregameWinPct':
+            return pctWithTiebreak(stat.pregameWon, stat.pregameWon + stat.pregameLost);
         case 'sbOutPct':
             return pctWithTiebreak(stat.sidedOutGames, stat.postboardGames);
         case 'sbInPct':
@@ -274,6 +283,7 @@ const WIN_SAMPLE: Partial<Record<SortKey, (s: CardStat) => number>> = {
     keptWinPct: (s) => s.keptWon + s.keptLost,
     castWinPct: (s) => s.castWon + s.castLost,
     seenWinPct: (s) => s.seenWon + s.seenLost,
+    pregameWinPct: (s) => s.pregameWon + s.pregameLost,
 };
 
 const filteredAndSortedStats = computed<{ main: CardStat[]; lowData: CardStat[] }>(() => {
@@ -498,6 +508,23 @@ function sortIcon(key: SortKey) {
                                 </section>
 
                                 <section>
+                                    <h3 class="mb-1 text-sm font-semibold">Pregame %</h3>
+                                    <p class="text-sm text-muted-foreground">
+                                        The percentage of games where this card triggered before Turn 1 &mdash; either revealed from your opening hand (Chancellor cycle, Devourer of Destiny) or put onto the battlefield pre-game (Gemstone Caverns, Leylines). The number in brackets is the raw count.
+                                    </p>
+                                    <p class="mt-1 text-sm text-muted-foreground">
+                                        When a card has both revealed and played triggers recorded, hover the cell for the breakdown.
+                                    </p>
+                                </section>
+
+                                <section>
+                                    <h3 class="mb-1 text-sm font-semibold">Pregame Win %</h3>
+                                    <p class="text-sm text-muted-foreground">
+                                        Your win rate in games where this card triggered pre-game. Compare against Kept Win % to see whether the opening-hand effect actually correlates with winning &mdash; a Leyline that&rsquo;s 75% Pregame Win but 45% Cast Win tells you the card is mostly a dead draw unless you open on it.
+                                    </p>
+                                </section>
+
+                                <section>
                                     <h3 class="mb-1 text-sm font-semibold">Seen %</h3>
                                     <p class="text-sm text-muted-foreground">
                                         The percentage of games where this card left your library &mdash; whether drawn naturally, tutored, milled, or
@@ -630,6 +657,16 @@ function sortIcon(key: SortKey) {
                                     >Activated <component :is="sortIcon('activated')" class="size-3"
                                 /></span>
                             </TableHead>
+                            <TableHead class="cursor-pointer text-right select-none" @click="toggleSort('pregamePct')">
+                                <span class="inline-flex items-center justify-end gap-1"
+                                    >Pregame % <component :is="sortIcon('pregamePct')" class="size-3"
+                                /></span>
+                            </TableHead>
+                            <TableHead class="cursor-pointer text-right select-none" @click="toggleSort('pregameWinPct')">
+                                <span class="inline-flex items-center justify-end gap-1"
+                                    >Pregame Win % <component :is="sortIcon('pregameWinPct')" class="size-3"
+                                /></span>
+                            </TableHead>
                             <TableHead class="cursor-pointer text-right select-none" @click="toggleSort('seenPct')">
                                 <span class="inline-flex items-center justify-end gap-1"
                                     >Seen % <component :is="sortIcon('seenPct')" class="size-3"
@@ -668,7 +705,7 @@ function sortIcon(key: SortKey) {
                         />
 
                         <TableRow v-if="filteredAndSortedStats.lowData.length" class="pointer-events-none">
-                            <TableCell :colspan="15" class="py-1.5">
+                            <TableCell :colspan="17" class="py-1.5">
                                 <div class="flex items-center gap-3">
                                     <div class="h-px flex-1 bg-border" />
                                     <span class="text-xs text-muted-foreground/60">Low sample size</span>
