@@ -14,6 +14,7 @@ import DetectArchetypeController from '@/actions/App/Http/Controllers/Matches/De
 import ShowController from '@/actions/App/Http/Controllers/Matches/ShowController';
 import DeckDashboardController from '@/actions/App/Http/Controllers/Decks/DashboardController';
 import SetArchetypeDialog from '@/components/matches/SetArchetypeDialog.vue';
+import LinkTournamentDialog from '@/components/matches/LinkTournamentDialog.vue';
 import { useToast } from '@/composables/useToast';
 import { NotepadText, RefreshCw, Tags, X } from 'lucide-vue-next';
 import SortableHeader from '@/components/SortableHeader.vue';
@@ -32,6 +33,7 @@ const emit = defineEmits<{
 
 const archetypeDialog = ref<InstanceType<typeof SetArchetypeDialog> | null>(null);
 const notesDialog = ref<InstanceType<typeof MatchNotesDialog> | null>(null);
+const linkTournamentDialog = ref<InstanceType<typeof LinkTournamentDialog> | null>(null);
 const detectingMatchId = ref<number | null>(null);
 const { add: toast } = useToast();
 
@@ -125,6 +127,7 @@ const detectArchetype = (matchId: number) => {
 <template>
     <SetArchetypeDialog ref="archetypeDialog" :archetypes="archetypes ?? []" @archetype-set="clearSelection" />
     <MatchNotesDialog ref="notesDialog" />
+    <LinkTournamentDialog ref="linkTournamentDialog" />
 
     <div v-if="selectedIds.length > 0" class="flex items-center gap-3 border-b bg-muted/50 px-4 py-2">
         <span class="text-sm font-medium">{{ selectedIds.length }} selected</span>
@@ -261,6 +264,15 @@ const detectArchetype = (matchId: number) => {
                         <ContextMenuItem @click="archetypeDialog?.openForMatch(match.id, match.format)">Set manual archetype</ContextMenuItem>
                         <ContextMenuItem v-if="match.opponentArchetypes?.[0]?.archetype" @click="clearArchetype(match.id)">
                             Clear archetype
+                        </ContextMenuItem>
+                        <ContextMenuItem
+                            @click="linkTournamentDialog?.openForMatch(
+                                match.id,
+                                match.tournament?.id ?? null,
+                                match.tournamentRound ?? null,
+                            )"
+                        >
+                            Link to tournament
                         </ContextMenuItem>
                         <ContextMenuItem @click="deleteMatch(match.id)">Remove from stats</ContextMenuItem>
                     </ContextMenuContent>
