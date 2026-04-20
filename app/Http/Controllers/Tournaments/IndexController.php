@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Http\Controllers\Challenges;
+namespace App\Http\Controllers\Tournaments;
 
 use App\Http\Controllers\Controller;
-use App\Models\Challenge;
-use App\Models\ChallengeStanding;
+use App\Models\Tournament;
+use App\Models\TournamentStanding;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -18,7 +18,7 @@ class IndexController extends Controller
         $participated = $request->boolean('participated', false);
         $search = $request->input('search');
 
-        $query = Challenge::query()
+        $query = Tournament::query()
             ->orderByRaw("CASE WHEN state = 'completed' THEN 1 ELSE 0 END")
             ->orderByDesc('started_at');
 
@@ -40,21 +40,21 @@ class IndexController extends Controller
             $query->where('name', 'like', "%{$search}%");
         }
 
-        $challenges = $query->paginate(20)->withQueryString();
+        $tournaments = $query->paginate(20)->withQueryString();
 
-        $challengeIds = collect($challenges->items())->pluck('id')->all();
-        $localStandings = ChallengeStanding::whereIn('challenge_id', $challengeIds)
+        $tournamentIds = collect($tournaments->items())->pluck('id')->all();
+        $localStandings = TournamentStanding::whereIn('tournament_id', $tournamentIds)
             ->where('is_local', true)
-            ->select('challenge_id', 'rank', 'round')
+            ->select('tournament_id', 'rank', 'round')
             ->orderByDesc('round')
             ->get()
-            ->unique('challenge_id')
-            ->keyBy('challenge_id');
+            ->unique('tournament_id')
+            ->keyBy('tournament_id');
 
-        $allFormats = Challenge::distinct()->whereNotNull('format')->pluck('format')->sort()->values()->all();
+        $allFormats = Tournament::distinct()->whereNotNull('format')->pluck('format')->sort()->values()->all();
 
-        return Inertia::render('challenges/Index', [
-            'challenges' => $challenges,
+        return Inertia::render('tournaments/Index', [
+            'tournaments' => $tournaments,
             'localStandings' => $localStandings,
             'allFormats' => $allFormats,
             'filters' => [

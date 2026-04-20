@@ -5,14 +5,14 @@ namespace App\Http\Controllers\Decks;
 use App\Actions\Decks\GetDeckViewSharedProps;
 use App\Concerns\HasTimeframeFilter;
 use App\Http\Controllers\Controller;
-use App\Models\Challenge;
-use App\Models\ChallengeStanding;
 use App\Models\Deck;
+use App\Models\Tournament;
+use App\Models\TournamentStanding;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
-class ChallengesController extends Controller
+class TournamentsController extends Controller
 {
     use HasTimeframeFilter;
 
@@ -23,25 +23,25 @@ class ChallengesController extends Controller
 
         $shared = GetDeckViewSharedProps::run($deck, $from, $to);
 
-        $challenges = Challenge::whereHas('matches', function ($q) use ($deck) {
+        $tournaments = Tournament::whereHas('matches', function ($q) use ($deck) {
             $q->whereHas('deckVersion', fn ($dv) => $dv->where('deck_id', $deck->id));
         })
             ->orderByDesc('started_at')
             ->get();
 
-        $challengeIds = $challenges->pluck('id')->all();
-        $localStandings = ChallengeStanding::whereIn('challenge_id', $challengeIds)
+        $tournamentIds = $tournaments->pluck('id')->all();
+        $localStandings = TournamentStanding::whereIn('tournament_id', $tournamentIds)
             ->where('is_local', true)
             ->orderByDesc('round')
             ->get()
-            ->unique('challenge_id')
-            ->keyBy('challenge_id');
+            ->unique('tournament_id')
+            ->keyBy('tournament_id');
 
-        return Inertia::render('decks/Challenges', [
+        return Inertia::render('decks/Tournaments', [
             ...$shared,
-            'currentPage' => 'challenges',
+            'currentPage' => 'tournaments',
             'timeframe' => $timeframe,
-            'challenges' => $challenges,
+            'tournaments' => $tournaments,
             'localStandings' => $localStandings,
         ]);
     }
