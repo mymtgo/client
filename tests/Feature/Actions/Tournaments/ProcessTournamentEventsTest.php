@@ -9,6 +9,7 @@ use App\Models\Player;
 use App\Models\Tournament;
 use App\Models\TournamentStanding;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 
 uses(RefreshDatabase::class);
 
@@ -301,4 +302,55 @@ it('populates event_id and type from EventSyncData_t', function () {
 
     expect($tournament->event_id)->toBe(12839688)
         ->and($tournament->type)->toBe(TournamentType::Constructed);
+});
+
+it('enriches a stub tournament when sync data arrives after participation', function () {
+    $stub = Tournament::factory()->create([
+        'event_id' => 12839688,
+        'token' => (string) Str::uuid(),
+        'name' => null,
+        'description' => null,
+        'max_rounds' => null,
+        'type' => TournamentType::Constructed,
+        'state' => TournamentState::RoundInProgress,
+        'participated' => true,
+    ]);
+
+    $json = json_encode([
+        'EventToken' => 'real-token-123',
+        'EventID' => 12839688,
+        'Description' => 'Modern Challenge',
+        'FormatDescription' => '[b]Modern[/b]',
+        'PlayFormatCd' => 'CMODERN',
+        'GameStructureCd' => 'CMODERN',
+        'Players' => [
+            ['LoginID' => 111, 'PlayerName' => 'Alice', 'AvatarID' => 1, 'State' => 1, 'IsMatchConceded' => false],
+        ],
+        'PremiereEventSyncData' => [
+            'TournamentSyncData' => [
+                'TournamentStructureCd' => 'SWISS',
+                'NumberOfRounds' => 7,
+                'MinPlayers' => 32,
+                'MaxPlayers' => 256,
+            ],
+        ],
+    ]);
+
+    createTournamentLogEvent([
+        'raw_text' => "18:42:28 [INF] (Game Management|Processing Registered Handler for EventSyncData_t in TournamentUninitializedState) Message: {$json}",
+        'event_type' => 'tournament_sync',
+        'match_token' => 'real-token-123',
+        'timestamp' => '2026-03-18 18:42:28',
+        'logged_at' => '2026-03-18 18:42:28',
+    ]);
+
+    ProcessTournamentEvents::run();
+
+    expect(Tournament::where('event_id', 12839688)->count())->toBe(1);
+
+    $stub->refresh();
+    expect($stub->token)->toBe('real-token-123')
+        ->and($stub->name)->toBe('Modern Challenge')
+        ->and($stub->max_rounds)->toBe(7)
+        ->and($stub->participated)->toBeTrue();
 });
