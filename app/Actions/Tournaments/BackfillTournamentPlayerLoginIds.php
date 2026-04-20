@@ -39,6 +39,10 @@ class BackfillTournamentPlayerLoginIds
         $local = Player::find($localPlayerId);
         $opponent = Player::find($opponentPlayerId);
 
+        if (! $local || ! $opponent) {
+            return;
+        }
+
         $localKnown = $local->login_id !== null;
         $opponentKnown = $opponent->login_id !== null;
 
