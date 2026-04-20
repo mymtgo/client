@@ -3,6 +3,7 @@
 namespace App\Actions\Matches;
 
 use App\Actions\Logs\ConvertMtgoTimestamp;
+use App\Actions\Tournaments\LinkMatchToTournament;
 use App\Actions\Util\ExtractJson;
 use App\Actions\Util\ExtractKeyValueBlock;
 use App\Enums\LogEventType;
@@ -113,6 +114,10 @@ class AdvanceMatchState
                     rawText: $joinedState->raw_text,
                     username: $username ?? null,
                 );
+
+                if (str_contains($joinedState->context ?? '', 'TournamentMatchJoinedEventUnderwayState')) {
+                    LinkMatchToTournament::run($match, $gameMeta);
+                }
 
                 Log::channel('pipeline')->info("Match {$matchId}: created in Started state", [
                     'token' => $matchToken,
