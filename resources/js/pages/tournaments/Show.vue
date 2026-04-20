@@ -227,17 +227,23 @@ function eventDescription(event: TimelineEvent): string {
 function eventTime(dateStr: string): string {
     return new Date(dateStr).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
 }
+
+function goBackToTournaments() {
+    if (window.history.length > 1) {
+        window.history.back();
+        return;
+    }
+    router.visit(IndexController.url());
+}
 </script>
 
 <template>
     <div class="flex flex-col gap-4 p-3 lg:p-4">
         <!-- Back navigation -->
         <div class="flex items-center gap-2">
-            <Button variant="ghost" size="sm" as-child>
-                <Link :href="IndexController.url()">
-                    <ArrowLeft class="size-3.5" />
-                    Back to Tournaments
-                </Link>
+            <Button variant="ghost" size="sm" @click="goBackToTournaments">
+                <ArrowLeft class="size-3.5" />
+                Back to Tournaments
             </Button>
             <Button v-if="fromDeck !== null" variant="ghost" size="sm" as-child>
                 <Link :href="DashboardController.url({ deck: fromDeck })">
@@ -247,9 +253,11 @@ function eventTime(dateStr: string): string {
             </Button>
         </div>
 
-        <!-- 3-column layout -->
-        <div class="grid grid-cols-1 gap-4 lg:grid-cols-[240px_1fr_280px]">
-            <!-- Left: Tournament details -->
+        <!-- 2-column layout: content left, timeline full-height right -->
+        <div class="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_320px] lg:items-start">
+            <!-- Left column: Details + Standings + Your Rounds stacked -->
+            <div class="flex flex-col gap-4">
+            <!-- Details -->
             <Card class="py-0">
                 <CardContent class="flex flex-col gap-3 p-4">
                     <div>
@@ -328,7 +336,7 @@ function eventTime(dateStr: string): string {
                 </CardContent>
             </Card>
 
-            <!-- Middle: Standings table -->
+            <!-- Standings -->
             <Card class="overflow-hidden py-0 gap-0">
                 <!-- Round tabs -->
                 <div v-if="rounds.length > 1" class="px-3 pt-3">
@@ -459,15 +467,16 @@ function eventTime(dateStr: string): string {
                 </div>
             </Card>
 
-            <!-- Middle bottom: Your Rounds (participated only) -->
-            <Card v-if="tournament.participated" class="py-0 lg:col-start-2">
+            <!-- Your Rounds (participated only) -->
+            <Card v-if="tournament.participated" class="py-0">
                 <CardContent class="p-4">
                     <YourRounds :rounds="yourRounds" :eliminated-after-round="eliminatedAfterRound" />
                 </CardContent>
             </Card>
+            </div>
 
-            <!-- Right: Timeline feed -->
-            <Card class="py-0">
+            <!-- Right column: Timeline (spans full height) -->
+            <Card class="py-0 lg:sticky lg:top-4 lg:max-h-[calc(100vh-8rem)]">
                 <CardContent class="p-4">
                     <h2 class="mb-3 text-sm font-semibold text-zinc-300">Timeline</h2>
                     <div v-if="timelineEvents.length === 0" class="py-8 text-center text-sm text-zinc-500">

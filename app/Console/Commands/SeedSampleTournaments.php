@@ -14,6 +14,8 @@ use App\Models\TournamentTimelineEvent;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
 class SeedSampleTournaments extends Command
@@ -54,13 +56,15 @@ class SeedSampleTournaments extends Command
             return self::FAILURE;
         }
 
+        $sourceStandings = $this->loadSourceStandings();
+
         $topEightMatches = $matches->slice(0, 7)->values();
         $droppedMatches = $matches->slice(7, 6)->values();
 
-        $this->seedTopEight($topEightMatches);
-        $this->seedDropped($droppedMatches);
+        $this->seedTopEight($topEightMatches, $sourceStandings);
+        $this->seedDropped($droppedMatches, $sourceStandings);
 
-        $this->info('Seeded 2 sample tournaments.');
+        $this->info('Seeded 2 sample tournaments with full standings.');
 
         return self::SUCCESS;
     }
@@ -86,9 +90,47 @@ class SeedSampleTournaments extends Command
         Tournament::query()->whereIn('id', $priorIds)->forceDelete();
     }
 
-    private function seedTopEight(Collection $matches): void
+    /**
+     * Pull real standings rows from the legacy challenge_standings table
+     * (if it still exists) to use as seed source. Returns a single
+     * flat collection of ~45 player rows sorted by rank.
+     *
+     * @return Collection<int, object>
+     */
+    private function loadSourceStandings(): Collection
+    {
+        if (! Schema::hasTable('challenge_standings')) {
+            return collect();
+        }
+
+        $best = DB::table('challenge_standings')
+            ->select('challenge_id', DB::raw('COUNT(*) as n'))
+            ->groupBy('challenge_id')
+            ->orderByDesc('n')
+            ->first();
+
+        if (! $best) {
+            return collect();
+        }
+
+        $maxRound = (int) DB::table('challenge_standings')
+            ->where('challenge_id', $best->challenge_id)
+            ->max('round');
+
+        return collect(DB::table('challenge_standings')
+            ->where('challenge_id', $best->challenge_id)
+            ->where('round', $maxRound)
+            ->where('login_id', '!=', self::LOCAL_LOGIN_ID)
+            ->orderBy('rank')
+            ->get());
+    }
+
+    private function seedTopEight(Collection $matches, Collection $source): void
     {
         $startedAt = Carbon::now()->subDays(5)->setTime(14, 0);
+        $totalRounds = 7;
+        $localFinalRank = 6;
+        $playerCount = $source->count() + 1;
 
         $tournament = Tournament::create([
             'token' => (string) Str::uuid(),
@@ -100,9 +142,9 @@ class SeedSampleTournaments extends Command
             'type' => TournamentType::Constructed,
             'tournament_structure' => TournamentStructure::Swiss,
             'state' => TournamentState::Completed,
-            'current_round' => 7,
-            'max_rounds' => 7,
-            'player_count' => 128,
+            'current_round' => $totalRounds,
+            'max_rounds' => $totalRounds,
+            'player_count' => $playerCount,
             'min_players' => 32,
             'max_players' => 256,
             'started_at' => $startedAt,
@@ -110,22 +152,18 @@ class SeedSampleTournaments extends Command
             'participated' => true,
         ]);
 
-        $record = $this->linkMatches($tournament, $matches, opponentOffset: 1_000_000);
+        $this->linkMatches($tournament, $matches, opponentOffset: 1_000_000);
 
-        TournamentStanding::create([
-            'tournament_id' => $tournament->id,
-            'round' => 7,
-            'login_id' => self::LOCAL_LOGIN_ID,
-            'username' => null,
-            'rank' => 6,
-            'points' => ($record['wins'] * 3) + $record['draws'],
-            'wins' => $record['wins'],
-            'losses' => $record['losses'],
-            'draws' => $record['draws'],
-            'opponent_match_win_pct' => 0.58,
-            'game_win_pct' => 0.62,
-            'is_local' => true,
-        ]);
+        $this->seedStandingsProgression(
+            tournament: $tournament,
+            source: $source,
+            totalRounds: $totalRounds,
+            finalRank: $localFinalRank,
+            finalWins: 5,
+            finalLosses: 2,
+            finalOmw: 0.58,
+            finalGw: 0.62,
+        );
 
         TournamentTimelineEvent::create([
             'tournament_id' => $tournament->id,
@@ -138,9 +176,13 @@ class SeedSampleTournaments extends Command
         ]);
     }
 
-    private function seedDropped(Collection $matches): void
+    private function seedDropped(Collection $matches, Collection $source): void
     {
         $startedAt = Carbon::now()->subDays(2)->setTime(14, 0);
+        $totalRounds = 7;
+        $localDropRound = 6;
+        $playerCount = $source->count() + 1;
+        $localFinalRank = max(2, $playerCount - 4);
 
         $tournament = Tournament::create([
             'token' => (string) Str::uuid(),
@@ -152,9 +194,9 @@ class SeedSampleTournaments extends Command
             'type' => TournamentType::Constructed,
             'tournament_structure' => TournamentStructure::Swiss,
             'state' => TournamentState::Completed,
-            'current_round' => 7,
-            'max_rounds' => 7,
-            'player_count' => 96,
+            'current_round' => $totalRounds,
+            'max_rounds' => $totalRounds,
+            'player_count' => $playerCount,
             'min_players' => 32,
             'max_players' => 256,
             'started_at' => $startedAt,
@@ -162,26 +204,22 @@ class SeedSampleTournaments extends Command
             'participated' => true,
         ]);
 
-        $record = $this->linkMatches($tournament, $matches, opponentOffset: 2_000_000);
+        $this->linkMatches($tournament, $matches, opponentOffset: 2_000_000);
 
-        TournamentStanding::create([
-            'tournament_id' => $tournament->id,
-            'round' => 6,
-            'login_id' => self::LOCAL_LOGIN_ID,
-            'username' => null,
-            'rank' => 78,
-            'points' => ($record['wins'] * 3) + $record['draws'],
-            'wins' => $record['wins'],
-            'losses' => $record['losses'],
-            'draws' => $record['draws'],
-            'opponent_match_win_pct' => 0.45,
-            'game_win_pct' => 0.41,
-            'is_local' => true,
-        ]);
+        $this->seedStandingsProgression(
+            tournament: $tournament,
+            source: $source,
+            totalRounds: $localDropRound,
+            finalRank: $localFinalRank,
+            finalWins: 2,
+            finalLosses: 4,
+            finalOmw: 0.45,
+            finalGw: 0.41,
+        );
 
         TournamentTimelineEvent::create([
             'tournament_id' => $tournament->id,
-            'round' => 6,
+            'round' => $localDropRound,
             'event_type' => TournamentTimelineEventType::PlayerEliminated,
             'login_id' => self::LOCAL_LOGIN_ID,
             'username' => null,
@@ -201,14 +239,86 @@ class SeedSampleTournaments extends Command
     }
 
     /**
-     * @return array{wins: int, losses: int, draws: int}
+     * Populate all rounds of a tournament with standings, copied from the
+     * source collection (~45 real players) with the local user inserted
+     * at a rank that interpolates from mid-pack toward their final rank.
+     *
+     * Ranks ≥ local's slot are shifted up by 1 to make room; wins/losses
+     * interpolate linearly so each round shows a plausible progression.
+     *
+     * @param  Collection<int, object>  $source
      */
-    private function linkMatches(Tournament $tournament, Collection $matches, int $opponentOffset): array
-    {
-        $wins = 0;
-        $losses = 0;
-        $draws = 0;
+    private function seedStandingsProgression(
+        Tournament $tournament,
+        Collection $source,
+        int $totalRounds,
+        int $finalRank,
+        int $finalWins,
+        int $finalLosses,
+        float $finalOmw,
+        float $finalGw,
+    ): void {
+        $playerCount = $source->count() + 1;
+        $midRank = (int) round($playerCount / 2);
 
+        foreach (range(1, $totalRounds) as $round) {
+            $progress = $round / $totalRounds;
+
+            $localRank = (int) round($midRank + ($finalRank - $midRank) * $progress);
+            $localRank = max(1, min($playerCount, $localRank));
+
+            $localWins = (int) round($finalWins * $progress);
+            $localLosses = (int) round($finalLosses * $progress);
+            $localPoints = $localWins * 3;
+            $localOmw = $round > 1 ? $finalOmw : null;
+            $localGw = $round > 1 ? $finalGw : null;
+
+            foreach ($source as $src) {
+                $shiftedRank = $src->rank >= $localRank ? $src->rank + 1 : $src->rank;
+
+                if ($shiftedRank > $playerCount) {
+                    continue;
+                }
+
+                $roundWins = (int) round(($src->wins ?? 0) * $progress);
+                $roundLosses = (int) round(($src->losses ?? 0) * $progress);
+                $roundDraws = (int) round(($src->draws ?? 0) * $progress);
+
+                TournamentStanding::create([
+                    'tournament_id' => $tournament->id,
+                    'round' => $round,
+                    'login_id' => $src->login_id,
+                    'username' => $src->username,
+                    'rank' => $shiftedRank,
+                    'points' => ($roundWins * 3) + $roundDraws,
+                    'wins' => $roundWins,
+                    'losses' => $roundLosses,
+                    'draws' => $roundDraws,
+                    'opponent_match_win_pct' => $round > 1 ? $src->opponent_match_win_pct : null,
+                    'game_win_pct' => $round > 1 ? $src->game_win_pct : null,
+                    'is_local' => false,
+                ]);
+            }
+
+            TournamentStanding::create([
+                'tournament_id' => $tournament->id,
+                'round' => $round,
+                'login_id' => self::LOCAL_LOGIN_ID,
+                'username' => null,
+                'rank' => $localRank,
+                'points' => $localPoints,
+                'wins' => $localWins,
+                'losses' => $localLosses,
+                'draws' => 0,
+                'opponent_match_win_pct' => $localOmw,
+                'game_win_pct' => $localGw,
+                'is_local' => true,
+            ]);
+        }
+    }
+
+    private function linkMatches(Tournament $tournament, Collection $matches, int $opponentOffset): void
+    {
         foreach ($matches as $index => $match) {
             $round = $index + 1;
 
@@ -217,15 +327,6 @@ class SeedSampleTournaments extends Command
                 'tournament_round' => $round,
                 'participant_login_ids' => [self::LOCAL_LOGIN_ID, $opponentOffset + $round],
             ]);
-
-            match ($match->outcome?->value ?? 'unknown') {
-                'win' => $wins++,
-                'loss' => $losses++,
-                'draw' => $draws++,
-                default => null,
-            };
         }
-
-        return ['wins' => $wins, 'losses' => $losses, 'draws' => $draws];
     }
 }
