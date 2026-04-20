@@ -270,23 +270,25 @@ it('is idempotent — reprocessing does not duplicate standings', function () {
 });
 
 it('populates event_id and type from EventSyncData_t', function () {
-    createTournamentLogEvent([
-        'raw_text' => json_encode([
-            'EventToken' => 'abc-123',
-            'EventID' => 12839688,
-            'Description' => 'Modern Challenge',
-            'PlayFormatCd' => 'CMODERN',
-            'GameStructureCd' => 'CMODERN',
-            'Players' => [],
-            'PremiereEventSyncData' => [
-                'TournamentSyncData' => [
-                    'TournamentStructureCd' => 'SWISS',
-                    'NumberOfRounds' => 7,
-                    'MinPlayers' => 32,
-                    'MaxPlayers' => 256,
-                ],
+    $json = json_encode([
+        'EventToken' => 'abc-123',
+        'EventID' => 12839688,
+        'Description' => 'Modern Challenge',
+        'PlayFormatCd' => 'CMODERN',
+        'GameStructureCd' => 'CMODERN',
+        'Players' => [],
+        'PremiereEventSyncData' => [
+            'TournamentSyncData' => [
+                'TournamentStructureCd' => 'SWISS',
+                'NumberOfRounds' => 7,
+                'MinPlayers' => 32,
+                'MaxPlayers' => 256,
             ],
-        ]),
+        ],
+    ]);
+
+    createTournamentLogEvent([
+        'raw_text' => "18:42:28 [INF] (Game Management|Processing Registered Handler for EventSyncData_t in TournamentUninitializedState) Message: {$json}",
         'event_type' => 'tournament_sync',
         'match_token' => 'abc-123',
         'timestamp' => '2026-03-18 18:42:28',
