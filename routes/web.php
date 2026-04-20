@@ -46,6 +46,7 @@ use App\Http\Controllers\Leagues\OverlayController;
 use App\Http\Controllers\Matches\BulkUpdateArchetypeController;
 use App\Http\Controllers\Matches\DeleteController;
 use App\Http\Controllers\Matches\DetectArchetypeController;
+use App\Http\Controllers\Matches\LinkToTournamentController;
 use App\Http\Controllers\Matches\ShowController;
 use App\Http\Controllers\Matches\UpdateArchetypeController;
 use App\Http\Controllers\Matches\UpdateNotesController;
@@ -82,6 +83,8 @@ Route::group([], function (Router $router) {
         $group->patch('bulk-archetype', BulkUpdateArchetypeController::class)->name('matches.bulk-update-archetype');
         $group->post('{id}/detect-archetype', DetectArchetypeController::class)->name('matches.detect-archetype');
         $group->patch('{id}/notes', UpdateNotesController::class)->name('matches.update-notes');
+        $group->post('{match}/tournament', [LinkToTournamentController::class, 'store'])->name('matches.link-tournament');
+        $group->delete('{match}/tournament', [LinkToTournamentController::class, 'destroy'])->name('matches.unlink-tournament');
         $group->delete('{id}', DeleteController::class)->name('matches.delete');
     });
 
