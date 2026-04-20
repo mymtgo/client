@@ -2,20 +2,20 @@
 
 namespace App\Console\Commands;
 
-use App\Actions\Challenges\ProcessChallengeEvents;
 use App\Actions\Logs\ClassifyLogEvent;
-use App\Models\Challenge;
-use App\Models\ChallengeStanding;
-use App\Models\ChallengeTimelineEvent;
+use App\Actions\Tournaments\ProcessTournamentEvents;
 use App\Models\LogEvent;
 use App\Models\Player;
+use App\Models\Tournament;
+use App\Models\TournamentStanding;
+use App\Models\TournamentTimelineEvent;
 use Illuminate\Console\Command;
 
-class SeedChallengesFromLog extends Command
+class SeedTournamentsFromLog extends Command
 {
-    protected $signature = 'challenges:seed-from-log {path=storage/app/mtgo.log}';
+    protected $signature = 'tournaments:seed-from-log {path=storage/app/mtgo.log}';
 
-    protected $description = 'Seed challenge data from an MTGO log file through the real pipeline';
+    protected $description = 'Seed tournament data from an MTGO log file through the real pipeline';
 
     public function handle(): int
     {
@@ -31,12 +31,12 @@ class SeedChallengesFromLog extends Command
         $this->info("Reading log file: {$fullPath}");
 
         $challengeEventTypes = [
-            'challenge_sync',
-            'challenge_state_changed',
-            'challenge_round_result',
-            'challenge_player_eliminated',
-            'challenge_ended',
-            'challenge_match_state_changed',
+            'tournament_sync',
+            'tournament_state_changed',
+            'tournament_round_result',
+            'tournament_player_eliminated',
+            'tournament_ended',
+            'tournament_match_state_changed',
         ];
 
         $lines = file($fullPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
@@ -97,17 +97,17 @@ class SeedChallengesFromLog extends Command
 
         $bar->finish();
         $this->newLine();
-        $this->info("Created {$created} challenge log events");
+        $this->info("Created {$created} tournament log events");
 
-        $this->info('Processing challenge events...');
-        ProcessChallengeEvents::run();
+        $this->info('Processing tournament events...');
+        ProcessTournamentEvents::run();
 
-        $challengeCount = Challenge::count();
-        $standingCount = ChallengeStanding::count();
-        $timelineCount = ChallengeTimelineEvent::count();
+        $tournamentCount = Tournament::count();
+        $standingCount = TournamentStanding::count();
+        $timelineCount = TournamentTimelineEvent::count();
         $playerCount = Player::whereNotNull('login_id')->count();
 
-        $this->info("Done! Created {$challengeCount} challenges, {$standingCount} standings, {$timelineCount} timeline events, {$playerCount} player mappings");
+        $this->info("Done! Created {$tournamentCount} tournaments, {$standingCount} standings, {$timelineCount} timeline events, {$playerCount} player mappings");
 
         return self::SUCCESS;
     }

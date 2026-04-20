@@ -1,30 +1,30 @@
 <?php
 
-namespace App\Actions\Challenges;
+namespace App\Actions\Tournaments;
 
 use App\Actions\Util\ExtractJson;
-use App\Enums\ChallengeTimelineEventType;
+use App\Enums\TournamentTimelineEventType;
 use App\Enums\TournamentState;
 use App\Enums\TournamentStructure;
-use App\Models\Challenge;
-use App\Models\ChallengeStanding;
-use App\Models\ChallengeTimelineEvent;
+use App\Models\Tournament;
+use App\Models\TournamentStanding;
+use App\Models\TournamentTimelineEvent;
 use App\Models\LogEvent;
 use App\Models\Player;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 
-class ProcessChallengeEvents
+class ProcessTournamentEvents
 {
     public static function run(): void
     {
         $eventTypes = [
-            'challenge_sync',
-            'challenge_state_changed',
-            'challenge_round_result',
-            'challenge_player_eliminated',
-            'challenge_ended',
-            'challenge_match_state_changed',
+            'tournament_sync',
+            'tournament_state_changed',
+            'tournament_round_result',
+            'tournament_player_eliminated',
+            'tournament_ended',
+            'tournament_match_state_changed',
         ];
 
         $events = LogEvent::whereIn('event_type', $eventTypes)
@@ -34,17 +34,17 @@ class ProcessChallengeEvents
 
         foreach ($events as $event) {
             $processed = match ($event->event_type) {
-                'challenge_sync' => self::processSync($event),
-                'challenge_state_changed' => self::processStateChanged($event),
-                'challenge_round_result' => self::processRoundResult($event),
-                'challenge_player_eliminated' => self::processElimination($event),
-                'challenge_ended' => self::processEnded($event),
-                'challenge_match_state_changed' => self::processMatchStateChanged($event),
+                'tournament_sync' => self::processSync($event),
+                'tournament_state_changed' => self::processStateChanged($event),
+                'tournament_round_result' => self::processRoundResult($event),
+                'tournament_player_eliminated' => self::processElimination($event),
+                'tournament_ended' => self::processEnded($event),
+                'tournament_match_state_changed' => self::processMatchStateChanged($event),
                 default => true,
             };
 
             // Only mark as processed if the handler succeeded.
-            // Events that couldn't find their challenge yet will be retried next cycle.
+            // Events that couldn't find their tournament yet will be retried next cycle.
             if ($processed) {
                 $event->update(['processed_at' => now()]);
             }
@@ -53,7 +53,7 @@ class ProcessChallengeEvents
 
     /**
      * Limited events (Draft, Sealed, Cube, Queue) are handled by a separate domain.
-     * Don't create Challenge records for them.
+     * Don't create Tournament records for them.
      */
     private static function isLimitedEvent(string $name): bool
     {
@@ -69,7 +69,7 @@ class ProcessChallengeEvents
     }
 
     /**
-     * Parse the challenge category from the MTGO event name.
+     * Parse the tournament category from the MTGO event name.
      * e.g. "Modern Challenge 32" → "Challenge", "Standard Preliminary" → "Preliminary"
      */
     private static function parseCategoryFromName(string $name): ?string
@@ -97,7 +97,7 @@ class ProcessChallengeEvents
         $token = $json['EventToken'];
         $name = $json['Description'] ?? '';
 
-        // Limited events are handled by a separate domain — don't create Challenge records.
+        // Limited events are handled by a separate domain — don't create Tournament records.
         // Mark as processed so we don't retry.
         if (self::isLimitedEvent($name)) {
             return true;
@@ -118,7 +118,7 @@ class ProcessChallengeEvents
         // Category from the event name (e.g. "Modern Challenge 32" → "Challenge")
         $category = self::parseCategoryFromName($name);
 
-        $challenge = Challenge::updateOrCreate(
+        $tournament = Tournament::updateOrCreate(
             ['token' => $token],
             array_filter([
                 'name' => $json['Description'] ?? null,
@@ -147,9 +147,9 @@ class ProcessChallengeEvents
             }
         }
 
-        Log::channel('pipeline')->info("ProcessChallengeEvents: synced challenge #{$challenge->id}", [
+        Log::channel('pipeline')->info("ProcessTournamentEvents: synced tournament #{$tournament->id}", [
             'token' => $token,
-            'name' => $challenge->name,
+            'name' => $tournament->name,
             'players' => count($json['Players'] ?? []),
         ]);
 
@@ -161,10 +161,10 @@ class ProcessChallengeEvents
         $token = $event->match_token;
         $text = $event->raw_text;
 
-        // Only update existing challenges — processSync is responsible for creation.
-        // If no challenge exists yet, leave unprocessed for retry next cycle.
-        $challenge = Challenge::where('token', $token)->first();
-        if (! $challenge) {
+        // Only update existing tournaments — processSync is responsible for creation.
+        // If no tournament exists yet, leave unprocessed for retry next cycle.
+        $tournament = Tournament::where('token', $token)->first();
+        if (! $tournament) {
             return false;
         }
 
@@ -180,22 +180,22 @@ class ProcessChallengeEvents
         $updates = ['state' => $toState];
 
         if ($toState === TournamentState::RoundInProgress) {
-            $updates['current_round'] = ($challenge->current_round ?? 0) + 1;
+            $updates['current_round'] = ($tournament->current_round ?? 0) + 1;
         }
 
         if ($toState === TournamentState::Completed) {
             $updates['ended_at'] = $event->logged_at;
         }
 
-        if ($toState !== TournamentState::AwaitingPlayers && ! $challenge->started_at) {
+        if ($toState !== TournamentState::AwaitingPlayers && ! $tournament->started_at) {
             $updates['started_at'] = $event->logged_at;
         }
 
-        $challenge->update($updates);
+        $tournament->update($updates);
 
-        ChallengeTimelineEvent::create([
-            'challenge_id' => $challenge->id,
-            'event_type' => ChallengeTimelineEventType::StateChanged,
+        TournamentTimelineEvent::create([
+            'tournament_id' => $tournament->id,
+            'event_type' => TournamentTimelineEventType::StateChanged,
             'payload' => ['to_state' => $toState->value],
             'occurred_at' => $event->logged_at,
         ]);
@@ -210,13 +210,13 @@ class ProcessChallengeEvents
             return true;
         }
 
-        $challenge = Challenge::where('token', $json['Token'])->first();
-        if (! $challenge) {
+        $tournament = Tournament::where('token', $json['Token'])->first();
+        if (! $tournament) {
             return false;
         }
 
         $round = (int) $json['Round'];
-        $challenge->update([
+        $tournament->update([
             'current_round' => $round,
             'player_count' => count($json['Results']),
         ]);
@@ -234,9 +234,9 @@ class ProcessChallengeEvents
             $losses = $opponents->filter(fn ($r) => $r['Loss'] > $r['Win'])->count();
             $draws = $opponents->filter(fn ($r) => $r['Win'] === $r['Loss'])->count();
 
-            ChallengeStanding::updateOrCreate(
+            TournamentStanding::updateOrCreate(
                 [
-                    'challenge_id' => $challenge->id,
+                    'tournament_id' => $tournament->id,
                     'round' => $round,
                     'login_id' => $loginId,
                 ],
@@ -257,15 +257,15 @@ class ProcessChallengeEvents
             );
         }
 
-        ChallengeTimelineEvent::create([
-            'challenge_id' => $challenge->id,
+        TournamentTimelineEvent::create([
+            'tournament_id' => $tournament->id,
             'round' => $round,
-            'event_type' => ChallengeTimelineEventType::RoundResult,
+            'event_type' => TournamentTimelineEventType::RoundResult,
             'payload' => ['player_count' => count($json['Results'])],
             'occurred_at' => $event->logged_at,
         ]);
 
-        Log::channel('pipeline')->info("ProcessChallengeEvents: round {$round} results for challenge #{$challenge->id}", [
+        Log::channel('pipeline')->info("ProcessTournamentEvents: round {$round} results for tournament #{$tournament->id}", [
             'players' => count($json['Results']),
         ]);
 
@@ -279,18 +279,18 @@ class ProcessChallengeEvents
             return true;
         }
 
-        $challenge = Challenge::where('token', $json['Token'])->first();
-        if (! $challenge) {
+        $tournament = Tournament::where('token', $json['Token'])->first();
+        if (! $tournament) {
             return false;
         }
 
         $loginId = (int) $json['LoginID'];
         $username = Player::where('login_id', $loginId)->value('username');
 
-        ChallengeTimelineEvent::create([
-            'challenge_id' => $challenge->id,
-            'round' => $challenge->current_round,
-            'event_type' => ChallengeTimelineEventType::PlayerEliminated,
+        TournamentTimelineEvent::create([
+            'tournament_id' => $tournament->id,
+            'round' => $tournament->current_round,
+            'event_type' => TournamentTimelineEventType::PlayerEliminated,
             'login_id' => $loginId,
             'username' => $username,
             'payload' => ['reason' => $json['Reason'] ?? null],
@@ -307,19 +307,19 @@ class ProcessChallengeEvents
             return true;
         }
 
-        $challenge = Challenge::where('token', $json['Token'])->first();
-        if (! $challenge) {
+        $tournament = Tournament::where('token', $json['Token'])->first();
+        if (! $tournament) {
             return false;
         }
 
-        $challenge->update([
+        $tournament->update([
             'state' => TournamentState::Completed,
             'ended_at' => isset($json['EndDate']) ? $json['EndDate'] : $event->logged_at,
         ]);
 
-        ChallengeTimelineEvent::create([
-            'challenge_id' => $challenge->id,
-            'event_type' => ChallengeTimelineEventType::StateChanged,
+        TournamentTimelineEvent::create([
+            'tournament_id' => $tournament->id,
+            'event_type' => TournamentTimelineEventType::StateChanged,
             'payload' => ['to_state' => TournamentState::Completed->value],
             'occurred_at' => $event->logged_at,
         ]);

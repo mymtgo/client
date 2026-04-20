@@ -17,7 +17,7 @@ class ClassifyLogEvent
             $json = ExtractJson::run($text)->first();
             if (is_array($json) && isset($json['EventToken'])) {
                 return $event->fill([
-                    'event_type' => 'challenge_sync',
+                    'event_type' => 'tournament_sync',
                     'match_token' => $json['EventToken'],
                 ]);
             }
@@ -26,7 +26,7 @@ class ClassifyLogEvent
         // Tournament state change
         if (preg_match('/Tournament State Changed for (?<token>[a-f0-9\-]+) from (?<from>\S+) to (?<to>\S+)/', $text, $m)) {
             return $event->fill([
-                'event_type' => 'challenge_state_changed',
+                'event_type' => 'tournament_state_changed',
                 'match_token' => $m['token'],
             ]);
         }
@@ -36,7 +36,7 @@ class ClassifyLogEvent
             $json = ExtractJson::run($text)->first();
             if (is_array($json) && isset($json['Token'])) {
                 return $event->fill([
-                    'event_type' => 'challenge_round_result',
+                    'event_type' => 'tournament_round_result',
                     'match_token' => $json['Token'],
                 ]);
             }
@@ -47,7 +47,7 @@ class ClassifyLogEvent
             $json = ExtractJson::run($text)->first();
             if (is_array($json) && isset($json['Token'])) {
                 return $event->fill([
-                    'event_type' => 'challenge_player_eliminated',
+                    'event_type' => 'tournament_player_eliminated',
                     'match_token' => $json['Token'],
                 ]);
             }
@@ -58,7 +58,7 @@ class ClassifyLogEvent
             $json = ExtractJson::run($text)->first();
             if (is_array($json) && isset($json['Token'])) {
                 return $event->fill([
-                    'event_type' => 'challenge_ended',
+                    'event_type' => 'tournament_ended',
                     'match_token' => $json['Token'],
                 ]);
             }
@@ -67,7 +67,7 @@ class ClassifyLogEvent
         // Tournament match state change (distinct from regular match state changes)
         if (preg_match('/TournamentMatch State Changed for (?<token>[a-f0-9\-]+)/', $text, $m)) {
             return $event->fill([
-                'event_type' => 'challenge_match_state_changed',
+                'event_type' => 'tournament_match_state_changed',
                 'match_token' => $m['token'],
             ]);
         }

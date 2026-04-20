@@ -69,7 +69,7 @@ class SubmitMatchToApi
             'format' => $match->format,
             'is_tournament' => $isTournament,
             'league_token' => $leagueToken,
-            'challenge_token' => null,
+            'tournament_token' => null,
             'played_at' => $match->started_at->toIso8601String(),
             'deck' => $deck,
             'games' => $gamesPayload,

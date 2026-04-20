@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Actions\Challenges;
+namespace App\Actions\Tournaments;
 
 class StripBbCode
 {
