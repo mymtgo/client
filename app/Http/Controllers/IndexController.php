@@ -105,7 +105,7 @@ class IndexController extends Controller
                     ->when($accountId, fn ($q, $id) => $q->forAccount($id))
                     ->when($format, fn ($q, $f) => $q->where('format', $f))
                     ->whereBetween('started_at', [$start, $end])
-                    ->with(['games.players', 'opponentArchetypes.archetype', 'opponentArchetypes.player', 'league', 'deck.cover', 'deck.archetype'])
+                    ->with(['games.players', 'opponentArchetypes.archetype', 'opponentArchetypes.player', 'league', 'deck.cover', 'deck.archetype', 'tournament'])
                     ->withCount([
                         'games as games_won_count' => fn ($q) => $q->where('won', true),
                         'games as games_lost_count' => fn ($q) => $q->where('won', false),

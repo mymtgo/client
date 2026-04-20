@@ -31,6 +31,9 @@ class MatchData extends Data
         public Lazy|Collection $games,
         /** @var array<int, array{result: string, onPlay: bool|null}> */
         public Lazy|array $gameResults,
+        /** @var array{id: int, eventId: int|null, format: string|null}|null */
+        public Lazy|array|null $tournament,
+        public ?int $tournamentRound,
     ) {}
 
     public static function fromModel(MtgoMatch $match): self
@@ -61,6 +64,12 @@ class MatchData extends Data
                     'result' => $g->won ? 'W' : 'L',
                     'onPlay' => $g->players->first(fn ($p) => $p->pivot->is_local)?->pivot->on_play,
                 ])->all()),
+            tournament: Lazy::whenLoaded('tournament', $match, fn () => $match->tournament ? [
+                'id' => $match->tournament->id,
+                'eventId' => $match->tournament->event_id,
+                'format' => $match->tournament->format,
+            ] : null),
+            tournamentRound: $match->tournament_round,
         );
     }
 }
