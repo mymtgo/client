@@ -2,11 +2,14 @@
 
 namespace App\Http\Controllers\Tournaments;
 
+use App\Enums\TournamentTimelineEventType;
 use App\Enums\TournamentType;
 use App\Http\Controllers\Controller;
 use App\Models\Tournament;
 use App\Models\TournamentStanding;
+use App\Models\TournamentTimelineEvent;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -60,11 +63,26 @@ class IndexController extends Controller
         $allFormats = Tournament::distinct()->whereNotNull('format')->pluck('format')->sort()->values()->all();
         $types = collect(TournamentType::cases())->map(fn ($t) => $t->value)->values()->all();
 
+        $eliminatedIds = TournamentTimelineEvent::query()
+            ->whereIn('tournament_id', $tournamentIds)
+            ->where('event_type', TournamentTimelineEventType::PlayerEliminated->value)
+            ->whereExists(function ($q) {
+                $q->select(DB::raw(1))
+                    ->from('tournament_standings')
+                    ->whereColumn('tournament_standings.tournament_id', 'tournament_timeline_events.tournament_id')
+                    ->whereColumn('tournament_standings.login_id', 'tournament_timeline_events.login_id')
+                    ->where('tournament_standings.is_local', true);
+            })
+            ->distinct()
+            ->pluck('tournament_id')
+            ->all();
+
         return Inertia::render('tournaments/Index', [
             'tournaments' => $tournaments,
             'localStandings' => $localStandings,
             'allFormats' => $allFormats,
             'types' => $types,
+            'eliminatedIds' => $eliminatedIds,
             'filters' => [
                 'format' => $format ?? '',
                 'state' => $state,

@@ -253,11 +253,9 @@ function goBackToTournaments() {
             </Button>
         </div>
 
-        <!-- 2-column layout: content left, timeline full-height right -->
-        <div class="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_320px] lg:items-start">
-            <!-- Left column: Details + Standings + Your Rounds stacked -->
-            <div class="flex flex-col gap-4">
-            <!-- Details -->
+        <!-- 3-column layout: details | standings+rounds | timeline -->
+        <div class="grid grid-cols-1 gap-4 lg:grid-cols-[240px_1fr_320px] lg:items-start">
+            <!-- Left: Details -->
             <Card class="py-0">
                 <CardContent class="flex flex-col gap-3 p-4">
                     <div>
@@ -336,6 +334,8 @@ function goBackToTournaments() {
                 </CardContent>
             </Card>
 
+            <!-- Middle: Standings + Your Rounds stacked -->
+            <div class="flex flex-col gap-4">
             <!-- Standings -->
             <Card class="overflow-hidden py-0 gap-0">
                 <!-- Round tabs -->

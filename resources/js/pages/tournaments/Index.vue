@@ -9,7 +9,7 @@ import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Link, router } from '@inertiajs/vue3';
 import { Medal, Search } from 'lucide-vue-next';
-import { ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 type Tournament = {
     id: number;
@@ -40,6 +40,7 @@ const props = defineProps<{
     localStandings: Record<number, { tournament_id: number; rank: number; round: number }>;
     allFormats: string[];
     types: string[];
+    eliminatedIds: number[];
     filters: {
         format: string;
         state: string;
@@ -96,19 +97,29 @@ watch(searchQuery, () => {
     searchTimeout = setTimeout(() => navigate(), 300);
 });
 
-function stateLabel(state: string): string {
-    return state
-        .split('_')
-        .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-        .join(' ');
-}
+const eliminatedSet = computed(() => new Set(props.eliminatedIds));
 
-function stateColor(state: string): string {
-    if (state === 'completed') return 'text-zinc-400';
-    if (state === 'round_in_progress') return 'text-green-500';
-    if (state === 'between_rounds') return 'text-yellow-500';
-    if (state === 'awaiting_players') return 'text-zinc-500';
-    return 'text-blue-500';
+function statusBadge(tournament: Tournament): { label: string; classes: string } {
+    const base = 'inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium';
+
+    if (tournament.state === 'completed' && eliminatedSet.value.has(tournament.id)) {
+        return {
+            label: 'Eliminated',
+            classes: `${base} border-red-400 bg-red-300/10 text-red-400`,
+        };
+    }
+
+    if (tournament.state === 'completed') {
+        return {
+            label: 'Completed',
+            classes: `${base} border-blue-400 bg-blue-300/10 text-blue-400`,
+        };
+    }
+
+    return {
+        label: 'In Progress',
+        classes: `${base} border-blue-400 bg-blue-300/10 text-blue-400`,
+    };
 }
 
 function relativeTime(dateStr: string | null): string {
@@ -219,8 +230,8 @@ function formatScheduled(dateStr: string): string {
                     </template>
                     <TableRow v-for="tournament in tournaments.data" :key="tournament.id">
                         <TableCell>
-                            <span class="text-sm font-medium" :class="stateColor(tournament.state)">
-                                {{ stateLabel(tournament.state) }}
+                            <span :class="statusBadge(tournament).classes">
+                                {{ statusBadge(tournament).label }}
                             </span>
                         </TableCell>
                         <TableCell class="font-medium">
