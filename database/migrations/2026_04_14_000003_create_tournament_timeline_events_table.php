@@ -8,23 +8,24 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('challenge_timeline_events', function (Blueprint $table) {
+        Schema::create('tournament_timeline_events', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('challenge_id')->constrained()->cascadeOnDelete();
-            $table->integer('round')->nullable();
+            $table->foreignId('tournament_id')->constrained()->cascadeOnDelete();
+            $table->unsignedInteger('round')->nullable();
             $table->string('event_type');
-            $table->integer('login_id')->nullable();
+            $table->unsignedInteger('login_id')->nullable();
             $table->string('username')->nullable();
             $table->json('payload')->nullable();
             $table->timestamp('occurred_at');
             $table->timestamps();
-            $table->index(['challenge_id', 'round']);
-            $table->index(['challenge_id', 'event_type']);
+
+            $table->index(['tournament_id', 'round']);
+            $table->index(['tournament_id', 'event_type']);
         });
     }
 
     public function down(): void
     {
-        Schema::dropIfExists('challenge_timeline_events');
+        Schema::dropIfExists('tournament_timeline_events');
     }
 };

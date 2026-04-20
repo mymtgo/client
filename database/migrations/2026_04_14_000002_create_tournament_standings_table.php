@@ -8,14 +8,14 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('challenge_standings', function (Blueprint $table) {
+        Schema::create('tournament_standings', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('challenge_id')->constrained()->cascadeOnDelete();
-            $table->integer('round');
-            $table->integer('login_id');
+            $table->foreignId('tournament_id')->constrained()->cascadeOnDelete();
+            $table->unsignedInteger('round');
+            $table->unsignedInteger('login_id');
             $table->string('username')->nullable();
-            $table->integer('rank');
-            $table->integer('points');
+            $table->unsignedInteger('rank');
+            $table->unsignedInteger('points');
             $table->unsignedInteger('wins')->default(0);
             $table->unsignedInteger('losses')->default(0);
             $table->unsignedInteger('draws')->default(0);
@@ -23,13 +23,14 @@ return new class extends Migration
             $table->float('game_win_pct')->nullable();
             $table->boolean('is_local')->default(false);
             $table->timestamps();
-            $table->unique(['challenge_id', 'round', 'login_id']);
+
+            $table->unique(['tournament_id', 'round', 'login_id']);
             $table->index(['login_id', 'is_local']);
         });
     }
 
     public function down(): void
     {
-        Schema::dropIfExists('challenge_standings');
+        Schema::dropIfExists('tournament_standings');
     }
 };
