@@ -2,6 +2,7 @@
 
 namespace App\Actions\Matches;
 
+use App\Actions\Tournaments\BackfillTournamentPlayerLoginIds;
 use App\Actions\Util\ExtractJson;
 use App\Enums\LogEventType;
 use App\Models\LogEvent;
@@ -38,6 +39,10 @@ class CreateOrUpdateGames
 
             CreateGames::run($match, $gameId, $gameEvents, $gameIndex, $deckJson);
             $gameIndex++;
+        }
+
+        if ($match->participant_login_ids !== null) {
+            BackfillTournamentPlayerLoginIds::run($match);
         }
     }
 }
