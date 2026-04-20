@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\TournamentType;
 use App\Models\Tournament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -47,5 +48,17 @@ it('shows all tournaments when state is all', function () {
     $response->assertOk()
         ->assertInertia(fn ($page) => $page
             ->has('tournaments.data', 2)
+        );
+});
+
+it('filters by type', function () {
+    Tournament::factory()->create(['type' => TournamentType::Constructed]);
+    Tournament::factory()->create(['type' => TournamentType::Limited]);
+
+    $response = $this->get('/tournaments?type=Constructed&state=all');
+
+    $response->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('tournaments.data', 1)
         );
 });

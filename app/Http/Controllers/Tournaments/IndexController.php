@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Tournaments;
 
+use App\Enums\TournamentType;
 use App\Http\Controllers\Controller;
 use App\Models\Tournament;
 use App\Models\TournamentStanding;
@@ -17,6 +18,7 @@ class IndexController extends Controller
         $state = $request->input('state', 'active');
         $participated = $request->boolean('participated', false);
         $search = $request->input('search');
+        $type = $request->input('type');
 
         $query = Tournament::query()
             ->orderByRaw("CASE WHEN state = 'completed' THEN 1 ELSE 0 END")
@@ -40,6 +42,10 @@ class IndexController extends Controller
             $query->where('name', 'like', "%{$search}%");
         }
 
+        if ($request->filled('type')) {
+            $query->where('type', $request->string('type')->toString());
+        }
+
         $tournaments = $query->paginate(20)->withQueryString();
 
         $tournamentIds = collect($tournaments->items())->pluck('id')->all();
@@ -52,16 +58,19 @@ class IndexController extends Controller
             ->keyBy('tournament_id');
 
         $allFormats = Tournament::distinct()->whereNotNull('format')->pluck('format')->sort()->values()->all();
+        $types = collect(TournamentType::cases())->map(fn ($t) => $t->value)->values()->all();
 
         return Inertia::render('tournaments/Index', [
             'tournaments' => $tournaments,
             'localStandings' => $localStandings,
             'allFormats' => $allFormats,
+            'types' => $types,
             'filters' => [
                 'format' => $format ?? '',
                 'state' => $state,
                 'participated' => $participated,
                 'search' => $search ?? '',
+                'type' => $type ?? '',
             ],
         ]);
     }

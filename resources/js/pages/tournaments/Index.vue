@@ -39,16 +39,19 @@ const props = defineProps<{
     };
     localStandings: Record<number, { tournament_id: number; rank: number; round: number }>;
     allFormats: string[];
+    types: string[];
     filters: {
         format: string;
         state: string;
         participated: boolean;
         search: string;
+        type: string;
     };
 }>();
 
 const activeFormat = ref(props.filters.format || '');
 const activeState = ref(props.filters.state || 'active');
+const activeType = ref(props.filters.type || '');
 const showParticipated = ref(props.filters.participated);
 const searchQuery = ref(props.filters.search || '');
 let searchTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -59,6 +62,7 @@ function navigate(overrides: Record<string, unknown> = {}) {
         {
             format: activeFormat.value || undefined,
             state: activeState.value !== 'all' ? activeState.value : undefined,
+            type: activeType.value || undefined,
             participated: showParticipated.value || undefined,
             search: searchQuery.value || undefined,
             ...overrides,
@@ -74,6 +78,11 @@ function setFormat(value: string) {
 
 function setState(s: string) {
     activeState.value = s;
+    navigate();
+}
+
+function setType(value: string) {
+    activeType.value = value === 'all' ? '' : value;
     navigate();
 }
 
@@ -133,6 +142,17 @@ function formatScheduled(dateStr: string): string {
                 <SelectContent>
                     <SelectItem value="all">All Formats</SelectItem>
                     <SelectItem v-for="f in allFormats" :key="f" :value="f">{{ f }}</SelectItem>
+                </SelectContent>
+            </Select>
+
+            <!-- Type dropdown -->
+            <Select :model-value="activeType || 'all'" @update:model-value="setType">
+                <SelectTrigger class="w-36">
+                    <SelectValue placeholder="All Types" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="all">All Types</SelectItem>
+                    <SelectItem v-for="t in types" :key="t" :value="t">{{ t }}</SelectItem>
                 </SelectContent>
             </Select>
 
