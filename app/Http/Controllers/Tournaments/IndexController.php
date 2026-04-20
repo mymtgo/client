@@ -22,6 +22,7 @@ class IndexController extends Controller
         $participated = $request->boolean('participated', false);
         $search = $request->input('search');
         $type = $request->input('type');
+        $category = $request->input('category');
 
         $query = Tournament::query()
             ->orderByRaw("CASE WHEN state = 'completed' THEN 1 ELSE 0 END")
@@ -49,6 +50,10 @@ class IndexController extends Controller
             $query->where('type', $request->string('type')->toString());
         }
 
+        if ($request->filled('category')) {
+            $query->where('category', $request->string('category')->toString());
+        }
+
         $tournaments = $query->paginate(20)->withQueryString();
 
         $tournamentIds = collect($tournaments->items())->pluck('id')->all();
@@ -61,6 +66,7 @@ class IndexController extends Controller
             ->keyBy('tournament_id');
 
         $allFormats = Tournament::distinct()->whereNotNull('format')->pluck('format')->sort()->values()->all();
+        $allCategories = Tournament::distinct()->whereNotNull('category')->pluck('category')->sort()->values()->all();
         $types = collect(TournamentType::cases())
             ->reject(fn (TournamentType $t) => $t === TournamentType::Limited)
             ->map(fn (TournamentType $t) => $t->value)
@@ -85,6 +91,7 @@ class IndexController extends Controller
             'tournaments' => $tournaments,
             'localStandings' => $localStandings,
             'allFormats' => $allFormats,
+            'allCategories' => $allCategories,
             'types' => $types,
             'eliminatedIds' => $eliminatedIds,
             'filters' => [
@@ -93,6 +100,7 @@ class IndexController extends Controller
                 'participated' => $participated,
                 'search' => $search ?? '',
                 'type' => $type ?? '',
+                'category' => $category ?? '',
             ],
         ]);
     }

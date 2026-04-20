@@ -39,6 +39,7 @@ const props = defineProps<{
     };
     localStandings: Record<number, { tournament_id: number; rank: number; round: number }>;
     allFormats: string[];
+    allCategories: string[];
     types: string[];
     eliminatedIds: number[];
     filters: {
@@ -47,12 +48,14 @@ const props = defineProps<{
         participated: boolean;
         search: string;
         type: string;
+        category: string;
     };
 }>();
 
 const activeFormat = ref(props.filters.format || '');
 const activeState = ref(props.filters.state || 'active');
 const activeType = ref(props.filters.type || '');
+const activeCategory = ref(props.filters.category || '');
 const showParticipated = ref(props.filters.participated);
 const searchQuery = ref(props.filters.search || '');
 let searchTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -64,6 +67,7 @@ function navigate(overrides: Record<string, unknown> = {}) {
             format: activeFormat.value || undefined,
             state: activeState.value,
             type: activeType.value || undefined,
+            category: activeCategory.value || undefined,
             participated: showParticipated.value || undefined,
             search: searchQuery.value || undefined,
             ...overrides,
@@ -84,6 +88,11 @@ function setState(s: string) {
 
 function setType(value: string) {
     activeType.value = value === 'all' ? '' : value;
+    navigate();
+}
+
+function setCategory(value: string) {
+    activeCategory.value = value === 'all' ? '' : value;
     navigate();
 }
 
@@ -164,6 +173,17 @@ function formatScheduled(dateStr: string): string {
                 <SelectContent>
                     <SelectItem value="all">All Types</SelectItem>
                     <SelectItem v-for="t in types" :key="t" :value="t">{{ t }}</SelectItem>
+                </SelectContent>
+            </Select>
+
+            <!-- Category dropdown -->
+            <Select :model-value="activeCategory || 'all'" @update:model-value="setCategory">
+                <SelectTrigger class="w-40">
+                    <SelectValue placeholder="All Categories" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="all">All Categories</SelectItem>
+                    <SelectItem v-for="c in allCategories" :key="c" :value="c">{{ c }}</SelectItem>
                 </SelectContent>
             </Select>
 
