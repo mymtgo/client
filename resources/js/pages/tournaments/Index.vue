@@ -61,7 +61,7 @@ function navigate(overrides: Record<string, unknown> = {}) {
         '/tournaments',
         {
             format: activeFormat.value || undefined,
-            state: activeState.value !== 'all' ? activeState.value : undefined,
+            state: activeState.value,
             type: activeType.value || undefined,
             participated: showParticipated.value || undefined,
             search: searchQuery.value || undefined,
