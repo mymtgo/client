@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import IndexController from '@/actions/App/Http/Controllers/Challenges/IndexController';
+import IndexController from '@/actions/App/Http/Controllers/Tournaments/IndexController';
 import DashboardController from '@/actions/App/Http/Controllers/Decks/DashboardController';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -9,7 +9,7 @@ import { Link, router } from '@inertiajs/vue3';
 import { ArrowLeft, ChevronUp, ChevronDown, Minus } from 'lucide-vue-next';
 import { computed, onUnmounted, ref } from 'vue';
 
-type Challenge = {
+type Tournament = {
     id: number;
     name: string | null;
     format: string | null;
@@ -51,7 +51,7 @@ type TimelineEvent = {
 };
 
 const props = defineProps<{
-    challenge: Challenge;
+    tournament: Tournament;
     standingsByRound: Record<number, Standing[]>;
     rounds: number[];
     timelineEvents: TimelineEvent[];
@@ -92,12 +92,12 @@ function rankDelta(standing: Standing): number {
     return Math.abs(prevRank - standing.rank);
 }
 
-const isActive = computed(() => props.challenge.state !== 'completed');
+const isActive = computed(() => props.tournament.state !== 'completed');
 
 let pollInterval: ReturnType<typeof setInterval> | null = null;
 if (isActive.value) {
     pollInterval = setInterval(() => {
-        router.reload({ only: ['challenge', 'standingsByRound', 'rounds', 'timelineEvents', 'eliminatedIds', 'latestRound'] });
+        router.reload({ only: ['tournament', 'standingsByRound', 'rounds', 'timelineEvents', 'eliminatedIds', 'latestRound'] });
     }, 30000);
 }
 
@@ -193,7 +193,7 @@ function eventDotClass(eventType: string): string {
 function eventDescription(event: TimelineEvent): string {
     if (event.event_type === 'state_changed') {
         const state = (event.payload?.to_state as string) ?? '';
-        return `Challenge moved to ${stateLabel(state)}`;
+        return `Tournament moved to ${stateLabel(state)}`;
     }
     if (event.event_type === 'player_eliminated') {
         const name = event.username ?? `Player #${event.login_id}`;
@@ -222,7 +222,7 @@ function eventTime(dateStr: string): string {
             <Button variant="ghost" size="sm" as-child>
                 <Link :href="IndexController.url()">
                     <ArrowLeft class="size-3.5" />
-                    Back to Challenges
+                    Back to Tournaments
                 </Link>
             </Button>
             <Button v-if="fromDeck !== null" variant="ghost" size="sm" as-child>
@@ -235,40 +235,40 @@ function eventTime(dateStr: string): string {
 
         <!-- 3-column layout -->
         <div class="grid grid-cols-1 gap-4 lg:grid-cols-[240px_1fr_280px]">
-            <!-- Left: Challenge details -->
+            <!-- Left: Tournament details -->
             <Card class="py-0">
                 <CardContent class="flex flex-col gap-3 p-4">
                     <div>
                         <h1 class="text-base font-semibold leading-tight">
-                            {{ challenge.name ?? 'Challenge' }}
+                            {{ tournament.name ?? 'Tournament' }}
                         </h1>
-                        <p v-if="challenge.format" class="mt-0.5 text-sm text-zinc-400">{{ challenge.format }}</p>
+                        <p v-if="tournament.format" class="mt-0.5 text-sm text-zinc-400">{{ tournament.format }}</p>
                     </div>
 
                     <!-- Status badge -->
                     <span
                         class="inline-flex w-fit items-center rounded-full px-2.5 py-0.5 text-xs font-medium"
-                        :class="stateBadgeClass(challenge.state)"
+                        :class="stateBadgeClass(tournament.state)"
                     >
-                        {{ stateLabel(challenge.state) }}
+                        {{ stateLabel(tournament.state) }}
                     </span>
 
                     <div class="flex flex-col gap-2 text-sm">
                         <!-- Structure -->
-                        <div v-if="challenge.tournament_structure" class="flex flex-col gap-0.5">
+                        <div v-if="tournament.tournament_structure" class="flex flex-col gap-0.5">
                             <span class="text-xs font-medium text-zinc-500 uppercase tracking-wide">Structure</span>
-                            <span class="text-zinc-200">{{ challenge.tournament_structure }}</span>
+                            <span class="text-zinc-200">{{ tournament.tournament_structure }}</span>
                         </div>
 
                         <!-- Round progress -->
                         <div class="flex flex-col gap-0.5">
                             <span class="text-xs font-medium text-zinc-500 uppercase tracking-wide">Round</span>
                             <span class="tabular-nums text-zinc-200">
-                                <template v-if="challenge.current_round !== null && challenge.max_rounds !== null">
-                                    {{ challenge.current_round }} / {{ challenge.max_rounds }}
+                                <template v-if="tournament.current_round !== null && tournament.max_rounds !== null">
+                                    {{ tournament.current_round }} / {{ tournament.max_rounds }}
                                 </template>
-                                <template v-else-if="challenge.current_round !== null">
-                                    {{ challenge.current_round }}
+                                <template v-else-if="tournament.current_round !== null">
+                                    {{ tournament.current_round }}
                                 </template>
                                 <template v-else>—</template>
                             </span>
@@ -278,12 +278,12 @@ function eventTime(dateStr: string): string {
                         <div class="flex flex-col gap-0.5">
                             <span class="text-xs font-medium text-zinc-500 uppercase tracking-wide">Players</span>
                             <span class="tabular-nums text-zinc-200">
-                                <template v-if="challenge.max_players !== null">
-                                    {{ challenge.player_count }} / {{ challenge.max_players }}
+                                <template v-if="tournament.max_players !== null">
+                                    {{ tournament.player_count }} / {{ tournament.max_players }}
                                 </template>
-                                <template v-else>{{ challenge.player_count }}</template>
-                                <template v-if="challenge.min_players !== null">
-                                    <span class="text-zinc-500"> (min {{ challenge.min_players }})</span>
+                                <template v-else>{{ tournament.player_count }}</template>
+                                <template v-if="tournament.min_players !== null">
+                                    <span class="text-zinc-500"> (min {{ tournament.min_players }})</span>
                                 </template>
                             </span>
                         </div>
@@ -291,23 +291,23 @@ function eventTime(dateStr: string): string {
                         <!-- Started -->
                         <div class="flex flex-col gap-0.5">
                             <span class="text-xs font-medium text-zinc-500 uppercase tracking-wide">Started</span>
-                            <span class="text-zinc-200" :title="formatTime(challenge.started_at)">
-                                {{ relativeTime(challenge.started_at) }}
+                            <span class="text-zinc-200" :title="formatTime(tournament.started_at)">
+                                {{ relativeTime(tournament.started_at) }}
                             </span>
                         </div>
 
                         <!-- Ended -->
-                        <div v-if="challenge.ended_at" class="flex flex-col gap-0.5">
+                        <div v-if="tournament.ended_at" class="flex flex-col gap-0.5">
                             <span class="text-xs font-medium text-zinc-500 uppercase tracking-wide">Ended</span>
-                            <span class="text-zinc-200" :title="formatTime(challenge.ended_at)">
-                                {{ relativeTime(challenge.ended_at) }}
+                            <span class="text-zinc-200" :title="formatTime(tournament.ended_at)">
+                                {{ relativeTime(tournament.ended_at) }}
                             </span>
                         </div>
 
                         <!-- Participation -->
                         <div class="flex flex-col gap-0.5">
                             <span class="text-xs font-medium text-zinc-500 uppercase tracking-wide">Participation</span>
-                            <span v-if="challenge.participated" class="text-green-400">Participated</span>
+                            <span v-if="tournament.participated" class="text-green-400">Participated</span>
                             <span v-else class="text-zinc-500">Not participated</span>
                         </div>
                     </div>

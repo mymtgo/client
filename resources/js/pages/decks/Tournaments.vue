@@ -3,12 +3,12 @@ import AppLayout from '@/AppLayout.vue';
 import DeckViewLayout from '@/Layouts/DeckViewLayout.vue';
 import { Link } from '@inertiajs/vue3';
 import { Card, CardContent } from '@/components/ui/card';
-import ShowController from '@/actions/App/Http/Controllers/Challenges/ShowController';
+import ShowController from '@/actions/App/Http/Controllers/Tournaments/ShowController';
 import type { VersionStats } from '@/types/decks';
 
 defineOptions({ layout: [AppLayout, DeckViewLayout] });
 
-type Challenge = {
+type Tournament = {
     id: number;
     name: string | null;
     format: string | null;
@@ -19,7 +19,7 @@ type Challenge = {
 };
 
 type LocalStanding = {
-    challenge_id: number;
+    tournament_id: number;
     rank: number;
     round: number;
 };
@@ -31,7 +31,7 @@ const props = defineProps<{
     trophies: number;
     currentPage: string;
     timeframe: string;
-    challenges: Challenge[];
+    tournaments: Tournament[];
     localStandings: Record<number, LocalStanding>;
 }>();
 
@@ -47,11 +47,11 @@ function stateColor(state: string): string {
 
 <template>
     <div class="flex flex-col gap-4 p-3 lg:p-4">
-        <div v-if="challenges.length === 0" class="py-8 text-center text-sm text-zinc-500">
-            No challenges found for this deck. Challenges will appear here once you participate in a challenge with this deck.
+        <div v-if="tournaments.length === 0" class="py-8 text-center text-sm text-zinc-500">
+            No tournaments found for this deck. Tournaments will appear here once you participate in a tournament with this deck.
         </div>
 
-        <Card v-if="challenges.length > 0">
+        <Card v-if="tournaments.length > 0">
             <CardContent class="p-0">
                 <table class="w-full text-sm">
                     <thead>
@@ -67,35 +67,35 @@ function stateColor(state: string): string {
                     </thead>
                     <tbody>
                         <tr
-                            v-for="challenge in challenges"
-                            :key="challenge.id"
+                            v-for="tournament in tournaments"
+                            :key="tournament.id"
                             class="border-b border-zinc-800/50 hover:bg-zinc-800/30"
                         >
-                            <td class="px-3 py-2">{{ challenge.name || 'Challenge' }}</td>
-                            <td class="px-3 py-2">{{ challenge.format || '-' }}</td>
+                            <td class="px-3 py-2">{{ tournament.name || 'Tournament' }}</td>
+                            <td class="px-3 py-2">{{ tournament.format || '-' }}</td>
                             <td class="px-3 py-2">
-                                <span :class="stateColor(challenge.state)" class="text-xs font-medium">
-                                    {{ stateLabel(challenge.state) }}
+                                <span :class="stateColor(tournament.state)" class="text-xs font-medium">
+                                    {{ stateLabel(tournament.state) }}
                                 </span>
                             </td>
                             <td class="px-3 py-2">
-                                <template v-if="challenge.current_round">
-                                    {{ challenge.current_round }}<span v-if="challenge.max_rounds">/{{ challenge.max_rounds }}</span>
+                                <template v-if="tournament.current_round">
+                                    {{ tournament.current_round }}<span v-if="tournament.max_rounds">/{{ tournament.max_rounds }}</span>
                                 </template>
                                 <template v-else>-</template>
                             </td>
                             <td class="px-3 py-2">
-                                <template v-if="localStandings[challenge.id]">
-                                    #{{ localStandings[challenge.id].rank }}
+                                <template v-if="localStandings[tournament.id]">
+                                    #{{ localStandings[tournament.id].rank }}
                                 </template>
                                 <template v-else>-</template>
                             </td>
                             <td class="px-3 py-2 text-zinc-400">
-                                {{ challenge.started_at ? new Date(challenge.started_at).toLocaleDateString() : '-' }}
+                                {{ tournament.started_at ? new Date(tournament.started_at).toLocaleDateString() : '-' }}
                             </td>
                             <td class="px-3 py-2 text-right">
                                 <Link
-                                    :href="ShowController.url({ challenge: challenge.id }) + `?from=deck&deck_id=${deck.id}`"
+                                    :href="ShowController.url({ tournament: tournament.id }) + `?from=deck&deck_id=${deck.id}`"
                                     class="text-xs text-blue-400 hover:text-blue-300"
                                 >
                                     View

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import ShowController from '@/actions/App/Http/Controllers/Challenges/ShowController';
+import ShowController from '@/actions/App/Http/Controllers/Tournaments/ShowController';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -11,7 +11,7 @@ import { Link, router } from '@inertiajs/vue3';
 import { Medal, Search } from 'lucide-vue-next';
 import { ref, watch } from 'vue';
 
-type Challenge = {
+type Tournament = {
     id: number;
     name: string | null;
     format: string | null;
@@ -30,14 +30,14 @@ type Challenge = {
 type PaginatorLink = { url: string | null; label: string; active: boolean };
 
 const props = defineProps<{
-    challenges: {
-        data: Challenge[];
+    tournaments: {
+        data: Tournament[];
         links: PaginatorLink[];
         current_page: number;
         last_page: number;
         total: number;
     };
-    localStandings: Record<number, { challenge_id: number; rank: number; round: number }>;
+    localStandings: Record<number, { tournament_id: number; rank: number; round: number }>;
     allFormats: string[];
     filters: {
         format: string;
@@ -55,7 +55,7 @@ let searchTimeout: ReturnType<typeof setTimeout> | null = null;
 
 function navigate(overrides: Record<string, unknown> = {}) {
     router.get(
-        '/challenges',
+        '/tournaments',
         {
             format: activeFormat.value || undefined,
             state: activeState.value !== 'all' ? activeState.value : undefined,
@@ -162,13 +162,13 @@ function formatScheduled(dateStr: string): string {
                 <Search class="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
                 <Input
                     v-model="searchQuery"
-                    placeholder="Search challenges..."
+                    placeholder="Search tournaments..."
                     class="h-8 w-52 pl-8 text-sm"
                 />
             </div>
         </div>
 
-        <!-- Challenges table -->
+        <!-- Tournaments table -->
         <Card class="overflow-hidden">
             <Table>
                 <TableHeader class="sticky top-0 z-10 backdrop-blur-sm">
@@ -186,66 +186,66 @@ function formatScheduled(dateStr: string): string {
                     </TableRow>
                 </TableHeader>
                 <TableBody>
-                    <template v-if="challenges.data.length === 0">
+                    <template v-if="tournaments.data.length === 0">
                         <TableRow>
                             <TableCell colspan="10" class="py-12 text-center">
                                 <div class="flex flex-col items-center gap-2">
                                     <Medal class="size-10 text-zinc-600" />
-                                    <p class="font-medium">No challenges found</p>
-                                    <p class="text-sm text-muted-foreground">Challenges will appear here once MTGO data has been ingested.</p>
+                                    <p class="font-medium">No tournaments found</p>
+                                    <p class="text-sm text-muted-foreground">Tournaments will appear here once MTGO data has been ingested.</p>
                                 </div>
                             </TableCell>
                         </TableRow>
                     </template>
-                    <TableRow v-for="challenge in challenges.data" :key="challenge.id">
+                    <TableRow v-for="tournament in tournaments.data" :key="tournament.id">
                         <TableCell>
-                            <span class="text-sm font-medium" :class="stateColor(challenge.state)">
-                                {{ stateLabel(challenge.state) }}
+                            <span class="text-sm font-medium" :class="stateColor(tournament.state)">
+                                {{ stateLabel(tournament.state) }}
                             </span>
                         </TableCell>
                         <TableCell class="font-medium">
-                            {{ challenge.name ?? '-' }}
+                            {{ tournament.name ?? '-' }}
                         </TableCell>
                         <TableCell class="text-sm text-muted-foreground">
-                            {{ challenge.format ?? '-' }}
+                            {{ tournament.format ?? '-' }}
                         </TableCell>
                         <TableCell class="text-sm text-muted-foreground">
-                            {{ challenge.category ?? '-' }}
+                            {{ tournament.category ?? '-' }}
                         </TableCell>
                         <TableCell class="text-sm text-muted-foreground capitalize">
-                            {{ challenge.tournament_structure ?? '-' }}
+                            {{ tournament.tournament_structure ?? '-' }}
                         </TableCell>
                         <TableCell class="tabular-nums text-sm">
-                            <template v-if="challenge.current_round && challenge.max_rounds">
-                                {{ challenge.current_round }}/{{ challenge.max_rounds }}
+                            <template v-if="tournament.current_round && tournament.max_rounds">
+                                {{ tournament.current_round }}/{{ tournament.max_rounds }}
                             </template>
-                            <template v-else-if="challenge.current_round">
-                                {{ challenge.current_round }}
+                            <template v-else-if="tournament.current_round">
+                                {{ tournament.current_round }}
                             </template>
                             <template v-else>
                                 <span class="text-muted-foreground">-</span>
                             </template>
                         </TableCell>
                         <TableCell class="tabular-nums text-sm">
-                            <template v-if="challenge.max_players !== null">
-                                {{ challenge.player_count }}/{{ challenge.max_players }}
+                            <template v-if="tournament.max_players !== null">
+                                {{ tournament.player_count }}/{{ tournament.max_players }}
                             </template>
                             <template v-else>
-                                {{ challenge.player_count }}
+                                {{ tournament.player_count }}
                             </template>
                         </TableCell>
                         <TableCell class="whitespace-nowrap text-sm text-muted-foreground">
-                            <template v-if="challenge.started_at">
-                                {{ relativeTime(challenge.started_at) }}
+                            <template v-if="tournament.started_at">
+                                {{ relativeTime(tournament.started_at) }}
                             </template>
-                            <template v-else-if="challenge.scheduled_at">
-                                {{ formatScheduled(challenge.scheduled_at) }}
+                            <template v-else-if="tournament.scheduled_at">
+                                {{ formatScheduled(tournament.scheduled_at) }}
                             </template>
                             <template v-else>-</template>
                         </TableCell>
                         <TableCell class="tabular-nums text-sm">
-                            <template v-if="localStandings[challenge.id]">
-                                #{{ localStandings[challenge.id].rank }}
+                            <template v-if="localStandings[tournament.id]">
+                                #{{ localStandings[tournament.id].rank }}
                             </template>
                             <template v-else>
                                 <span class="text-muted-foreground">-</span>
@@ -253,7 +253,7 @@ function formatScheduled(dateStr: string): string {
                         </TableCell>
                         <TableCell>
                             <Link
-                                :href="ShowController.url({ challenge: challenge.id })"
+                                :href="ShowController.url({ tournament: tournament.id })"
                                 class="text-sm text-primary hover:underline"
                             >
                                 View
@@ -264,8 +264,8 @@ function formatScheduled(dateStr: string): string {
             </Table>
 
             <!-- Pagination -->
-            <div v-if="challenges.last_page > 1" class="flex justify-end gap-1 px-2 py-2">
-                <template v-for="link in challenges.links" :key="link.label">
+            <div v-if="tournaments.last_page > 1" class="flex justify-end gap-1 px-2 py-2">
+                <template v-for="link in tournaments.links" :key="link.label">
                     <Button
                         v-if="link.url"
                         size="sm"

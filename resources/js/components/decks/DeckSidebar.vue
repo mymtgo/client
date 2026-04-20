@@ -7,7 +7,7 @@ import DashboardController from '@/actions/App/Http/Controllers/Decks/DashboardC
 import CardStatsController from '@/actions/App/Http/Controllers/Decks/CardStatsController';
 import MatchesController from '@/actions/App/Http/Controllers/Decks/MatchesController';
 import LeaguesController from '@/actions/App/Http/Controllers/Decks/LeaguesController';
-import ChallengesController from '@/actions/App/Http/Controllers/Decks/ChallengesController';
+import TournamentsController from '@/actions/App/Http/Controllers/Decks/TournamentsController';
 import MatchupsController from '@/actions/App/Http/Controllers/Decks/MatchupsController';
 import DecklistController from '@/actions/App/Http/Controllers/Decks/DecklistController';
 import SettingsController from '@/actions/App/Http/Controllers/Decks/SettingsController';
@@ -52,7 +52,7 @@ const navItems = computed(() => [
     { key: 'card-stats', label: 'Card Stats', icon: BarChart3, href: CardStatsController.url({ deck: props.deck.id }) + timeframeQuery.value },
     { key: 'matches', label: 'Matches', icon: Swords, href: MatchesController.url({ deck: props.deck.id }) + timeframeQuery.value },
     { key: 'leagues', label: 'Leagues', icon: TrophyIcon, href: LeaguesController.url({ deck: props.deck.id }) + timeframeQuery.value },
-    { key: 'challenges', label: 'Challenges', icon: Medal, href: ChallengesController.url({ deck: props.deck.id }) + timeframeQuery.value },
+    { key: 'tournaments', label: 'Tournaments', icon: Medal, href: TournamentsController.url({ deck: props.deck.id }) + timeframeQuery.value },
     { key: 'matchups', label: 'Matchups', icon: ScrollText, href: MatchupsController.url({ deck: props.deck.id }) + timeframeQuery.value },
     { key: 'decklist', label: 'Decklist', icon: List, href: DecklistController.url({ deck: props.deck.id }) },
     { key: 'settings', label: 'Settings', icon: SettingsIcon, href: SettingsController.url({ deck: props.deck.id }) },
