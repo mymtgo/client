@@ -61,7 +61,11 @@ class IndexController extends Controller
             ->keyBy('tournament_id');
 
         $allFormats = Tournament::distinct()->whereNotNull('format')->pluck('format')->sort()->values()->all();
-        $types = collect(TournamentType::cases())->map(fn ($t) => $t->value)->values()->all();
+        $types = collect(TournamentType::cases())
+            ->reject(fn (TournamentType $t) => $t === TournamentType::Limited)
+            ->map(fn (TournamentType $t) => $t->value)
+            ->values()
+            ->all();
 
         $eliminatedIds = TournamentTimelineEvent::query()
             ->whereIn('tournament_id', $tournamentIds)
