@@ -47,9 +47,13 @@ class TournamentsController extends Controller
             ->distinct()
             ->pluck('tournament_id');
 
-        $completedFinishes = Tournament::query()
+        $participatedTournamentIds = Tournament::query()
             ->whereIn('id', $linkedTournamentIds)
             ->where('participated', true)
+            ->pluck('id');
+
+        $completedFinishes = Tournament::query()
+            ->whereIn('id', $participatedTournamentIds)
             ->where('state', TournamentState::Completed->value)
             ->get()
             ->map(fn (Tournament $tournament) => TournamentStanding::query()
@@ -62,7 +66,7 @@ class TournamentsController extends Controller
             ->values();
 
         $kpis = [
-            'tournaments_played' => $linkedTournamentIds->count(),
+            'tournaments_played' => $participatedTournamentIds->count(),
             'best_finish' => $completedFinishes->min(),
             'top_8' => $completedFinishes->filter(fn ($r) => $r <= 8)->count(),
             'top_16' => $completedFinishes->filter(fn ($r) => $r <= 16)->count(),
