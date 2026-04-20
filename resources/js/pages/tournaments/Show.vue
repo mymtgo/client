@@ -8,6 +8,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Link, router } from '@inertiajs/vue3';
 import { ArrowLeft, ChevronUp, ChevronDown, Minus } from 'lucide-vue-next';
 import { computed, onUnmounted, ref } from 'vue';
+import YourRounds from './partials/YourRounds.vue';
 
 type Tournament = {
     id: number;
@@ -50,6 +51,17 @@ type TimelineEvent = {
     occurred_at: string;
 };
 
+type YourRound = {
+    match_id: number;
+    round: number;
+    opponent_username: string | null;
+    opponent_login_id: number | null;
+    opponent_rank: number | null;
+    result: string;
+    deck_name: string | null;
+    deck_id: number | null;
+};
+
 const props = defineProps<{
     tournament: Tournament;
     standingsByRound: Record<number, Standing[]>;
@@ -58,6 +70,8 @@ const props = defineProps<{
     eliminatedIds: number[];
     latestRound: number;
     fromDeck: number | null;
+    yourRounds: YourRound[];
+    eliminatedAfterRound: number | null;
 }>();
 
 const selectedRound = ref(props.latestRound);
@@ -443,6 +457,13 @@ function eventTime(dateStr: string): string {
                         </TableBody>
                     </Table>
                 </div>
+            </Card>
+
+            <!-- Middle bottom: Your Rounds (participated only) -->
+            <Card v-if="tournament.participated" class="py-0 lg:col-start-2">
+                <CardContent class="p-4">
+                    <YourRounds :rounds="yourRounds" :eliminated-after-round="eliminatedAfterRound" />
+                </CardContent>
             </Card>
 
             <!-- Right: Timeline feed -->
