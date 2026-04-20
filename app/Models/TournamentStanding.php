@@ -5,7 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class ChallengeStanding extends Model
+class TournamentStanding extends Model
 {
     protected $guarded = [];
 
@@ -15,9 +15,9 @@ class ChallengeStanding extends Model
         'game_win_pct' => 'float',
     ];
 
-    /** @return BelongsTo<Challenge, $this> */
-    public function challenge(): BelongsTo
+    /** @return BelongsTo<Tournament, $this> */
+    public function tournament(): BelongsTo
     {
-        return $this->belongsTo(Challenge::class);
+        return $this->belongsTo(Tournament::class);
     }
 }

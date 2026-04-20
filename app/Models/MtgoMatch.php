@@ -42,6 +42,8 @@ class MtgoMatch extends Model
         'state' => MatchState::class,
         'outcome' => MatchOutcome::class,
         'imported' => 'boolean',
+        'tournament_round' => 'integer',
+        'participant_login_ids' => 'array',
     ];
 
     public function getTable()
@@ -164,10 +166,10 @@ class MtgoMatch extends Model
         return $this->belongsTo(League::class);
     }
 
-    /** @return BelongsTo<Challenge, $this> */
-    public function challenge(): BelongsTo
+    /** @return BelongsTo<Tournament, $this> */
+    public function tournament(): BelongsTo
     {
-        return $this->belongsTo(Challenge::class);
+        return $this->belongsTo(Tournament::class);
     }
 
     public function scopeForAccount(Builder $query, int $accountId): Builder

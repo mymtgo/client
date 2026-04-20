@@ -4,12 +4,13 @@ namespace App\Models;
 
 use App\Enums\TournamentState;
 use App\Enums\TournamentStructure;
+use App\Enums\TournamentType;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class Challenge extends Model
+class Tournament extends Model
 {
     use HasFactory, SoftDeletes;
 
@@ -18,28 +19,30 @@ class Challenge extends Model
     protected $casts = [
         'state' => TournamentState::class,
         'tournament_structure' => TournamentStructure::class,
+        'type' => TournamentType::class,
+        'event_id' => 'integer',
         'scheduled_at' => 'datetime',
         'started_at' => 'datetime',
         'ended_at' => 'datetime',
         'participated' => 'boolean',
     ];
 
-    /** @return HasMany<ChallengeStanding, $this> */
+    /** @return HasMany<TournamentStanding, $this> */
     public function standings(): HasMany
     {
-        return $this->hasMany(ChallengeStanding::class);
+        return $this->hasMany(TournamentStanding::class);
     }
 
-    /** @return HasMany<ChallengeTimelineEvent, $this> */
+    /** @return HasMany<TournamentTimelineEvent, $this> */
     public function timelineEvents(): HasMany
     {
-        return $this->hasMany(ChallengeTimelineEvent::class);
+        return $this->hasMany(TournamentTimelineEvent::class);
     }
 
     /** @return HasMany<MtgoMatch, $this> */
     public function matches(): HasMany
     {
-        return $this->hasMany(MtgoMatch::class);
+        return $this->hasMany(MtgoMatch::class, 'tournament_id');
     }
 
     public function scopeActive($query)
@@ -62,7 +65,7 @@ class Challenge extends Model
         return $query->where('format', $format);
     }
 
-    public function localStanding(): ?ChallengeStanding
+    public function localStanding(): ?TournamentStanding
     {
         return $this->standings()
             ->where('is_local', true)
