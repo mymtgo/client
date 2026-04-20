@@ -94,6 +94,22 @@ opponentName: any | string | null;
 leagueName: any | string | null;
 games: any | Array<any>;
 gameResults: Array<{ result: 'W' | 'L'; onPlay: boolean | null }>;
+tournament: any | App.Data.Front.TournamentSummaryData | null;
+tournamentRound: number | null;
+};
+export type TournamentCandidateData = {
+id: number;
+eventId: number | null;
+type: string | null;
+format: string | null;
+scheduledAt: string | null;
+startedAt: string | null;
+maxRounds: number | null;
+};
+export type TournamentSummaryData = {
+id: number;
+eventId: number | null;
+format: string | null;
 };
 export type MatchDeckData = {
 deck: any | App.Data.Front.DeckData;
