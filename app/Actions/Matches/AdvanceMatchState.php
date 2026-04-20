@@ -10,6 +10,7 @@ use App\Enums\MatchState;
 use App\Events\DeckLinkedToMatch;
 use App\Events\LeagueMatchStarted;
 use App\Facades\Mtgo;
+use App\Jobs\SubmitMatchLogSample;
 use App\Jobs\SyncDecks;
 use App\Models\LogEvent;
 use App\Models\MtgoMatch;
@@ -78,7 +79,7 @@ class AdvanceMatchState
                     $players = $firstState['Players'] ?? [];
                     $playerNames = array_column($players, 'Name');
                     $username = $events->first(fn (LogEvent $e) => $e->username !== null)?->username
-                        ?? Mtgo::resolveUsername();
+                        ?? Mtgo::resolveUsername($playerNames);
 
                     if (count($players) < 2 || ($username && ! in_array($username, $playerNames))) {
                         Log::channel('pipeline')->info("AdvanceMatchState: skipping phantom match token={$matchToken} id={$matchId}", [
@@ -104,6 +105,14 @@ class AdvanceMatchState
                     'ended_at' => null,
                     'state' => MatchState::Started,
                 ]);
+
+                SubmitMatchLogSample::dispatch(
+                    matchToken: $matchToken,
+                    matchType: $match->match_type,
+                    format: $match->format,
+                    rawText: $joinedState->raw_text,
+                    username: $username ?? null,
+                );
 
                 Log::channel('pipeline')->info("Match {$matchId}: created in Started state", [
                     'token' => $matchToken,
