@@ -119,27 +119,40 @@ class ProcessTournamentEvents
         // Category from the event name (e.g. "Modern Challenge 32" → "Challenge")
         $category = self::parseCategoryFromName($name);
 
-        $tournament = Tournament::updateOrCreate(
-            ['token' => $token],
-            array_filter([
-                'event_id' => $json['EventID'] ?? null,
-                'type' => TournamentType::fromPlayFormatCd($json['PlayFormatCd'] ?? null)?->value,
-                'name' => $json['Description'] ?? null,
-                'category' => $category,
-                'format' => $format,
-                'description' => isset($json['FormatDescription']) ? StripBbCode::run($json['FormatDescription']) : null,
-                'tournament_structure' => isset($tournamentData['TournamentStructureCd'])
-                    ? TournamentStructure::fromMtgoCode($tournamentData['TournamentStructureCd'])
-                    : null,
-                'max_rounds' => ($tournamentData['NumberOfRounds'] ?? 0) ?: null,
-                'min_players' => ($tournamentData['MinPlayers'] ?? 0) ?: null,
-                'max_players' => ($tournamentData['MaxPlayers'] ?? 0) ?: null,
-                'player_count' => count($json['Players'] ?? []),
-                'scheduled_at' => isset($json['StartDate'])
-                    ? Carbon::parse($json['StartDate'])->utc()
-                    : null,
-            ], fn ($v) => $v !== null),
-        );
+        $existing = null;
+        if (isset($json['EventID'])) {
+            $existing = Tournament::where('event_id', $json['EventID'])->first();
+        }
+        if (! $existing) {
+            $existing = Tournament::where('token', $token)->first();
+        }
+
+        $attributes = array_filter([
+            'token' => $token,
+            'event_id' => $json['EventID'] ?? null,
+            'type' => TournamentType::fromPlayFormatCd($json['PlayFormatCd'] ?? null)?->value,
+            'name' => $json['Description'] ?? null,
+            'category' => $category,
+            'format' => $format,
+            'description' => isset($json['FormatDescription']) ? StripBbCode::run($json['FormatDescription']) : null,
+            'tournament_structure' => isset($tournamentData['TournamentStructureCd'])
+                ? TournamentStructure::fromMtgoCode($tournamentData['TournamentStructureCd'])
+                : null,
+            'max_rounds' => ($tournamentData['NumberOfRounds'] ?? 0) ?: null,
+            'min_players' => ($tournamentData['MinPlayers'] ?? 0) ?: null,
+            'max_players' => ($tournamentData['MaxPlayers'] ?? 0) ?: null,
+            'player_count' => count($json['Players'] ?? []),
+            'scheduled_at' => isset($json['StartDate'])
+                ? Carbon::parse($json['StartDate'])->utc()
+                : null,
+        ], fn ($v) => $v !== null);
+
+        if ($existing) {
+            $existing->update($attributes);
+            $tournament = $existing;
+        } else {
+            $tournament = Tournament::create($attributes);
+        }
 
         foreach ($json['Players'] ?? [] as $player) {
             if (isset($player['LoginID'], $player['PlayerName'])) {
