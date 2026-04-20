@@ -13,15 +13,16 @@ use Illuminate\Support\Facades\Log;
 class RegenerateCardGameStats
 {
     /**
-     * Truncate card_game_stats and recompute for all complete matches.
+     * Recompute card_game_stats for all complete matches.
+     *
+     * Per-match delete-then-insert is handled inside each match's processing path
+     * (live: ComputeCardGameStats::handle; imported: reprocessImportedMatch below),
+     * so the table is never globally empty during regeneration.
      *
      * @return array{live: int, imported: int}
      */
     public static function run(): array
     {
-        // Truncate resets auto-increment IDs back to 1
-        CardGameStat::truncate();
-
         $live = 0;
         $imported = 0;
 
@@ -70,9 +71,14 @@ class RegenerateCardGameStats
             return;
         }
 
+        // Clear this match's existing rows so ComputeImportedCardGameStats' insertOrIgnore
+        // doesn't silently skip updates — unique (oracle_id, game_id) would otherwise retain stale rows.
+        CardGameStat::whereIn('game_id', $match->games->pluck('id'))->delete();
+
         $cardData = ExtractCardsFromGameLog::run($gameLog->decoded_entries);
         $cardsByGame = $cardData['cards_by_game'] ?? [];
         $gameMeta = $cardData['game_meta'] ?? [];
+        $pregameActions = $cardData['pregame_actions'] ?? [];
 
         $firstGame = $match->games->sortBy('started_at')->first();
         if (! $firstGame) {
@@ -98,6 +104,7 @@ class RegenerateCardGameStats
                 $match->deck_version_id,
                 $gameCards,
                 isPostboard: $index > 0,
+                pregameActions: $pregameActions[$index][$localName] ?? [],
             );
 
             // Write game metadata

@@ -284,6 +284,120 @@ it('extracts mulligan count per player', function () {
     expect($result['game_meta'][0]['mulligans'])->toBe(['Alpha' => 1, 'Bravo' => 0]);
 });
 
+it('detects pregame reveal from opening hand (Devourer of Destiny)', function () {
+    $entries = [
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@PAlpha rolled a 3.'],
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@PBravo rolled a 4.'],
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@PAlpha joined the game.'],
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@PBravo joined the game.'],
+        ['timestamp' => '2026-01-01T00:00:01+00:00', 'message' => '@PBravo chooses to play first.'],
+        ['timestamp' => '2026-01-01T00:00:01+00:00', 'message' => '@PBravo begins the game with seven cards in hand.'],
+        ['timestamp' => '2026-01-01T00:00:01+00:00', 'message' => '@PAlpha begins the game with seven cards in hand.'],
+        ['timestamp' => '2026-01-01T00:00:02+00:00', 'message' => '@PAlpha reveals @[Devourer of Destiny@:252042,427:@] from their opening hand.'],
+        ['timestamp' => '2026-01-01T00:00:03+00:00', 'message' => '@PTurn 1: Bravo'],
+        ['timestamp' => '2026-01-01T00:00:10+00:00', 'message' => '@PAlpha wins the game.'],
+    ];
+    $result = ExtractCardsFromGameLog::run($entries);
+
+    expect($result)->toHaveKey('pregame_actions');
+    expect($result['pregame_actions'][0]['Alpha'])->toHaveCount(1);
+    expect($result['pregame_actions'][0]['Alpha'][0])->toBe([
+        'mtgo_id' => 126021,
+        'type' => 'revealed',
+    ]);
+    expect($result['pregame_actions'][0]['Bravo'])->toBeEmpty();
+});
+
+it('detects pregame put onto battlefield (Gemstone Caverns)', function () {
+    $entries = [
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@PAlpha rolled a 3.'],
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@PBravo rolled a 4.'],
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@PAlpha joined the game.'],
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@PBravo joined the game.'],
+        ['timestamp' => '2026-01-01T00:00:01+00:00', 'message' => '@PBravo chooses to play first.'],
+        ['timestamp' => '2026-01-01T00:00:01+00:00', 'message' => '@PBravo begins the game with seven cards in hand.'],
+        ['timestamp' => '2026-01-01T00:00:01+00:00', 'message' => '@PAlpha begins the game with seven cards in hand.'],
+        ['timestamp' => '2026-01-01T00:00:02+00:00', 'message' => '@PAlpha puts @[Gemstone Caverns@:51778,419:@] onto the battlefield.'],
+        ['timestamp' => '2026-01-01T00:00:03+00:00', 'message' => '@PTurn 1: Bravo'],
+        ['timestamp' => '2026-01-01T00:00:10+00:00', 'message' => '@PAlpha wins the game.'],
+    ];
+    $result = ExtractCardsFromGameLog::run($entries);
+
+    expect($result['pregame_actions'][0]['Alpha'])->toHaveCount(1);
+    expect($result['pregame_actions'][0]['Alpha'][0])->toBe([
+        'mtgo_id' => 25889,
+        'type' => 'played',
+    ]);
+    expect($result['pregame_actions'][0]['Bravo'])->toBeEmpty();
+});
+
+it('detects pregame put onto battlefield (Leyline of the Guildpact)', function () {
+    $entries = [
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@PAlpha joined the game.'],
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@PBravo joined the game.'],
+        ['timestamp' => '2026-01-01T00:00:01+00:00', 'message' => '@PAlpha chooses to play first.'],
+        ['timestamp' => '2026-01-01T00:00:01+00:00', 'message' => '@PAlpha begins the game with seven cards in hand.'],
+        ['timestamp' => '2026-01-01T00:00:01+00:00', 'message' => '@PBravo begins the game with seven cards in hand.'],
+        ['timestamp' => '2026-01-01T00:00:02+00:00', 'message' => '@PBravo puts @[Leyline of the Guildpact@:242604,414:@] onto the battlefield.'],
+        ['timestamp' => '2026-01-01T00:00:03+00:00', 'message' => '@PTurn 1: Alpha'],
+        ['timestamp' => '2026-01-01T00:00:10+00:00', 'message' => '@PAlpha wins the game.'],
+    ];
+    $result = ExtractCardsFromGameLog::run($entries);
+
+    expect($result['pregame_actions'][0]['Alpha'])->toBeEmpty();
+    expect($result['pregame_actions'][0]['Bravo'])->toHaveCount(1);
+    expect($result['pregame_actions'][0]['Bravo'][0]['type'])->toBe('played');
+});
+
+it('does not flag post-turn-1 actions as pregame', function () {
+    $entries = [
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@PAlpha joined the game.'],
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@PBravo joined the game.'],
+        ['timestamp' => '2026-01-01T00:00:01+00:00', 'message' => '@PAlpha begins the game with seven cards in hand.'],
+        ['timestamp' => '2026-01-01T00:00:01+00:00', 'message' => '@PBravo begins the game with seven cards in hand.'],
+        ['timestamp' => '2026-01-01T00:00:02+00:00', 'message' => '@PTurn 1: Alpha'],
+        ['timestamp' => '2026-01-01T00:00:03+00:00', 'message' => '@PAlpha plays @[Gemstone Caverns@:51778,419:@].'],
+        ['timestamp' => '2026-01-01T00:00:10+00:00', 'message' => '@PAlpha wins the game.'],
+    ];
+    $result = ExtractCardsFromGameLog::run($entries);
+
+    expect($result['pregame_actions'][0]['Alpha'])->toBeEmpty();
+    expect($result['pregame_actions'][0]['Bravo'])->toBeEmpty();
+});
+
+it('detects pregame actions in multiple games independently', function () {
+    $entries = [
+        // Game 1: Alpha reveals Devourer
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@PAlpha rolled a 3.'],
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@PBravo rolled a 5.'],
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@PAlpha joined the game.'],
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@PBravo joined the game.'],
+        ['timestamp' => '2026-01-01T00:00:01+00:00', 'message' => '@PBravo chooses to play first.'],
+        ['timestamp' => '2026-01-01T00:00:01+00:00', 'message' => '@PBravo begins the game with seven cards in hand.'],
+        ['timestamp' => '2026-01-01T00:00:01+00:00', 'message' => '@PAlpha begins the game with seven cards in hand.'],
+        ['timestamp' => '2026-01-01T00:00:02+00:00', 'message' => '@PAlpha reveals @[Devourer of Destiny@:252042,427:@] from their opening hand.'],
+        ['timestamp' => '2026-01-01T00:00:03+00:00', 'message' => '@PTurn 1: Bravo'],
+        ['timestamp' => '2026-01-01T00:00:10+00:00', 'message' => '@PBravo wins the game.'],
+        // Game 2: No pregame actions
+        ['timestamp' => '2026-01-01T00:01:00+00:00', 'message' => '@P@PAlpha joined the game.'],
+        ['timestamp' => '2026-01-01T00:01:00+00:00', 'message' => '@P@PBravo joined the game.'],
+        ['timestamp' => '2026-01-01T00:01:01+00:00', 'message' => '@PAlpha chooses to play first.'],
+        ['timestamp' => '2026-01-01T00:01:01+00:00', 'message' => '@PAlpha begins the game with seven cards in hand.'],
+        ['timestamp' => '2026-01-01T00:01:01+00:00', 'message' => '@PBravo begins the game with seven cards in hand.'],
+        ['timestamp' => '2026-01-01T00:01:02+00:00', 'message' => '@PTurn 1: Alpha'],
+        ['timestamp' => '2026-01-01T00:01:10+00:00', 'message' => '@PAlpha wins the game.'],
+    ];
+    $result = ExtractCardsFromGameLog::run($entries);
+
+    // Game 1: Devourer revealed
+    expect($result['pregame_actions'][0]['Alpha'])->toHaveCount(1);
+    expect($result['pregame_actions'][0]['Alpha'][0]['type'])->toBe('revealed');
+
+    // Game 2: No pregame actions
+    expect($result['pregame_actions'][1]['Alpha'])->toBeEmpty();
+    expect($result['pregame_actions'][1]['Bravo'])->toBeEmpty();
+});
+
 it('extracts turn count from turn markers', function () {
     $entries = [
         ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@PAlpha joined the game.'],

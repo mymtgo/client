@@ -382,6 +382,104 @@ it('reads cast data from game log instead of timeline zone transitions', functio
     expect($stat->seen)->toBe(1);
 });
 
+it('flags pregame_revealed and pregame_played from game log in live pipeline', function () {
+    [$match, $deckVersion, $local, $opponent] = createMatchWithGames();
+
+    $devourer = Card::factory()->create(['oracle_id' => 'oracle-devourer', 'mtgo_id' => 5001, 'name' => 'Devourer of Destiny']);
+    $leyline = Card::factory()->create(['oracle_id' => 'oracle-leyline', 'mtgo_id' => 5002, 'name' => 'Leyline of the Guildpact']);
+    $neutral = Card::factory()->create(['oracle_id' => 'oracle-neutral', 'mtgo_id' => 5003, 'name' => 'Forest']);
+
+    $game = Game::factory()->for($match, 'match')->create([
+        'won' => true,
+        'started_at' => now(),
+    ]);
+    attachPlayers($game, $local, $opponent, deckJson: [
+        ['mtgo_id' => 5001, 'quantity' => 4, 'sideboard' => false],
+        ['mtgo_id' => 5002, 'quantity' => 4, 'sideboard' => false],
+        ['mtgo_id' => 5003, 'quantity' => 20, 'sideboard' => false],
+    ]);
+
+    createTimeline($game, [
+        ['Id' => 10, 'CatalogID' => 5001, 'Zone' => 'Hand', 'Owner' => 0, 'Controller' => 0],
+        ['Id' => 11, 'CatalogID' => 5002, 'Zone' => 'Battlefield', 'Owner' => 0, 'Controller' => 0],
+        ['Id' => 12, 'CatalogID' => 5003, 'Zone' => 'Hand', 'Owner' => 0, 'Controller' => 0],
+    ]);
+
+    // mtgo_id 5001 → CatalogID 10002 (5001 << 1), 5002 → 10004
+    GameLog::create([
+        'match_token' => $match->token,
+        'file_path' => '/fake/path.dat',
+        'decoded_entries' => [
+            ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@Ptestplayer joined the game.'],
+            ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@Popponent joined the game.'],
+            ['timestamp' => '2026-01-01T00:00:01+00:00', 'message' => '@Popponent begins the game with seven cards in hand.'],
+            ['timestamp' => '2026-01-01T00:00:01+00:00', 'message' => '@Ptestplayer begins the game with seven cards in hand.'],
+            ['timestamp' => '2026-01-01T00:00:02+00:00', 'message' => '@Ptestplayer reveals @[Devourer of Destiny@:10002,101:@] from their opening hand.'],
+            ['timestamp' => '2026-01-01T00:00:02+00:00', 'message' => '@Ptestplayer puts @[Leyline of the Guildpact@:10004,102:@] onto the battlefield.'],
+            ['timestamp' => '2026-01-01T00:00:03+00:00', 'message' => '@PTurn 1: testplayer'],
+            ['timestamp' => '2026-01-01T00:00:10+00:00', 'message' => '@Ptestplayer wins the game.'],
+        ],
+    ]);
+
+    (new ComputeCardGameStats($match->id))->handle();
+
+    $stats = DB::table('card_game_stats')
+        ->where('game_id', $game->id)
+        ->get()
+        ->keyBy('oracle_id');
+
+    expect((bool) $stats['oracle-devourer']->pregame_revealed)->toBeTrue();
+    expect((bool) $stats['oracle-devourer']->pregame_played)->toBeFalse();
+
+    expect((bool) $stats['oracle-leyline']->pregame_revealed)->toBeFalse();
+    expect((bool) $stats['oracle-leyline']->pregame_played)->toBeTrue();
+
+    // Card that had no pregame action gets both flags false
+    expect((bool) $stats['oracle-neutral']->pregame_revealed)->toBeFalse();
+    expect((bool) $stats['oracle-neutral']->pregame_played)->toBeFalse();
+});
+
+it('writes pregame flags as false when game log has no pregame actions', function () {
+    [$match, $deckVersion, $local, $opponent] = createMatchWithGames();
+
+    $card = Card::factory()->create(['oracle_id' => 'oracle-quiet', 'mtgo_id' => 6001, 'name' => 'Card Q']);
+
+    $game = Game::factory()->for($match, 'match')->create([
+        'won' => true,
+        'started_at' => now(),
+    ]);
+    attachPlayers($game, $local, $opponent, deckJson: [
+        ['mtgo_id' => 6001, 'quantity' => 4, 'sideboard' => false],
+    ]);
+    createTimeline($game, [
+        ['Id' => 10, 'CatalogID' => 6001, 'Zone' => 'Hand', 'Owner' => 0, 'Controller' => 0],
+    ]);
+
+    GameLog::create([
+        'match_token' => $match->token,
+        'file_path' => '/fake/path.dat',
+        'decoded_entries' => [
+            ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@Ptestplayer joined the game.'],
+            ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@Popponent joined the game.'],
+            ['timestamp' => '2026-01-01T00:00:01+00:00', 'message' => '@Popponent begins the game with seven cards in hand.'],
+            ['timestamp' => '2026-01-01T00:00:01+00:00', 'message' => '@Ptestplayer begins the game with seven cards in hand.'],
+            ['timestamp' => '2026-01-01T00:00:03+00:00', 'message' => '@PTurn 1: testplayer'],
+            ['timestamp' => '2026-01-01T00:00:10+00:00', 'message' => '@Ptestplayer wins the game.'],
+        ],
+    ]);
+
+    (new ComputeCardGameStats($match->id))->handle();
+
+    $stat = DB::table('card_game_stats')
+        ->where('oracle_id', 'oracle-quiet')
+        ->where('game_id', $game->id)
+        ->first();
+
+    expect($stat)->not->toBeNull();
+    expect((bool) $stat->pregame_revealed)->toBeFalse();
+    expect((bool) $stat->pregame_played)->toBeFalse();
+});
+
 it('tracks land plays separately from casts in live pipeline', function () {
     [$match, $deckVersion, $local, $opponent] = createMatchWithGames();
 

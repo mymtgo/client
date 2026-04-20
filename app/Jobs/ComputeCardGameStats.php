@@ -139,6 +139,8 @@ class ComputeCardGameStats implements ShouldQueue
         $madnessByOracle = [];
         $evokedByOracle = [];
         $activatedByOracle = [];
+        $pregameRevealedOracles = [];
+        $pregamePlayedOracles = [];
 
         if ($gameLogStats) {
             $localName = $game->players->first(fn ($p) => $p->pivot->is_local)?->username;
@@ -156,6 +158,20 @@ class ComputeCardGameStats implements ShouldQueue
                     $madnessByOracle[$oracleId] = ($madnessByOracle[$oracleId] ?? 0) + $card['madness'];
                     $evokedByOracle[$oracleId] = ($evokedByOracle[$oracleId] ?? 0) + $card['evoked'];
                     $activatedByOracle[$oracleId] = ($activatedByOracle[$oracleId] ?? 0) + $card['activated'];
+                }
+
+                $pregameActions = $gameLogStats['pregame_actions'][$gameIndex][$localName] ?? [];
+                foreach ($pregameActions as $action) {
+                    $oracleId = $catalogToOracle[(string) $action['mtgo_id']] ?? null;
+                    if (! $oracleId) {
+                        continue;
+                    }
+                    if ($action['type'] === 'revealed') {
+                        $pregameRevealedOracles[$oracleId] = true;
+                    }
+                    if ($action['type'] === 'played') {
+                        $pregamePlayedOracles[$oracleId] = true;
+                    }
                 }
             }
         }
@@ -187,6 +203,8 @@ class ComputeCardGameStats implements ShouldQueue
                 'madness' => $madnessByOracle[$oracleId] ?? 0,
                 'evoked' => $evokedByOracle[$oracleId] ?? 0,
                 'activated' => $activatedByOracle[$oracleId] ?? 0,
+                'pregame_revealed' => isset($pregameRevealedOracles[$oracleId]),
+                'pregame_played' => isset($pregamePlayedOracles[$oracleId]),
                 'won' => $game->won,
                 'is_postboard' => $isPostboard,
                 'sided_out' => $sidedOut,
@@ -214,6 +232,8 @@ class ComputeCardGameStats implements ShouldQueue
                         'madness' => 0,
                         'evoked' => 0,
                         'activated' => 0,
+                        'pregame_revealed' => false,
+                        'pregame_played' => false,
                         'won' => $game->won,
                         'is_postboard' => true,
                         'sided_out' => true,
