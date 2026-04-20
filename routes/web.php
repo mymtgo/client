@@ -25,6 +25,7 @@ use App\Http\Controllers\Decks\OpenPopoutController;
 use App\Http\Controllers\Decks\PopoutController;
 use App\Http\Controllers\Decks\ScreenshotDataController;
 use App\Http\Controllers\Decks\SettingsController;
+use App\Http\Controllers\Decks\ToggleGroupingController;
 use App\Http\Controllers\Decks\UpdateCoverArtController;
 use App\Http\Controllers\Decks\UpdateDeckArchetypeController;
 use App\Http\Controllers\Games\OpenReplayController;
@@ -122,6 +123,7 @@ Route::group([], function (Router $router) {
         $group->get('{deck:id}/cover-art-options', CoverArtOptionsController::class)->name('decks.cover-art-options');
         $group->patch('{deck:id}/cover-art', UpdateCoverArtController::class)->name('decks.update-cover-art');
         $group->patch('{deck:id}/archetype', UpdateDeckArchetypeController::class)->name('decks.update-archetype');
+        $group->post('grouping', ToggleGroupingController::class)->name('decks.toggle-grouping');
     });
 
     $router->group([
