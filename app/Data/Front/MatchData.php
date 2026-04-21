@@ -29,7 +29,7 @@ class MatchData extends Data
         public Lazy|string|null $opponentName,
         public Lazy|string|null $leagueName,
         public Lazy|Collection $games,
-        /** @var array<int, array{result: string, onPlay: bool|null}> */
+        /** @var Lazy|list<GameResultSummaryData> */
         public Lazy|array $gameResults,
     ) {}
 
@@ -57,10 +57,10 @@ class MatchData extends Data
                 ->filter(fn ($g) => $g->won !== null)
                 ->sortBy('started_at')
                 ->values()
-                ->map(fn ($g) => [
-                    'result' => $g->won ? 'W' : 'L',
-                    'onPlay' => $g->players->first(fn ($p) => $p->pivot->is_local)?->pivot->on_play,
-                ])->all()),
+                ->map(fn ($g) => new GameResultSummaryData(
+                    result: $g->won ? 'W' : 'L',
+                    onPlay: $g->players->first(fn ($p) => $p->pivot->is_local)?->pivot->on_play,
+                ))->all()),
         );
     }
 }

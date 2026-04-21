@@ -6,6 +6,7 @@ format: string;
 colorIdentity: string | null;
 decklistDownloadedAt: string | null;
 hasDecklist: boolean;
+manual: boolean;
 };
 export type ArchetypeDetailData = {
 archetype: App.Data.Front.ArchetypeData;
@@ -47,7 +48,7 @@ cards: any;
 export type DeckGroupData = {
 archetype: App.Data.Front.ArchetypeData | null;
 stats: App.Data.Front.DeckGroupStatsData;
-decks: Array<App.Data.Front.DeckData>;
+decks: { [key: number]: App.Data.Front.DeckData };
 };
 export type DeckGroupStatsData = {
 totalMatches: number;
@@ -59,6 +60,10 @@ export type GameData = {
 id: number;
 players: any | Array<any>;
 timeline: any | Array<any>;
+};
+export type GameResultSummaryData = {
+result: string;
+onPlay: boolean | null;
 };
 export type GameTimelineData = {
 timestamp: string;
@@ -86,14 +91,14 @@ result: string;
 startedAt: string;
 since: string;
 startedAtFormatted: string;
-matchTime: string;
+matchTime: string | null;
 notes: string | null;
 deck: any | App.Data.Front.DeckData;
 opponentArchetypes: any;
 opponentName: any | string | null;
 leagueName: any | string | null;
 games: any | Array<any>;
-gameResults: Array<{ result: 'W' | 'L'; onPlay: boolean | null }>;
+gameResults: any | { [key: number]: App.Data.Front.GameResultSummaryData };
 };
 export type MatchDeckData = {
 deck: any | App.Data.Front.DeckData;
