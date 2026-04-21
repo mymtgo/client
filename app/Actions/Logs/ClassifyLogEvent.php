@@ -3,6 +3,7 @@
 namespace App\Actions\Logs;
 
 use App\Actions\Util\ExtractJson;
+use App\Enums\LogEventType;
 use App\Models\LogEvent;
 use Illuminate\Support\Facades\Log;
 
@@ -81,6 +82,18 @@ class ClassifyLogEvent
                     'event_type' => 'league_joined',
                     'match_token' => $eventToken,
                     'match_id' => $eventId,
+                ]);
+            }
+        }
+
+        // Tournament sync — carries Token inside JSON block.
+        if (str_contains($text, 'EventSyncData_t')) {
+            $json = ExtractJson::run($text)->first();
+
+            if (is_array($json) && ! empty($json['Token'])) {
+                return $event->fill([
+                    'event_type' => LogEventType::TOURNAMENT_SYNC->value,
+                    'tournament_token' => $json['Token'],
                 ]);
             }
         }
