@@ -28,3 +28,21 @@ it('classifies EventSyncData_t blocks as tournament_sync', function () {
     expect($event->event_type)->toBe(LogEventType::TOURNAMENT_SYNC->value);
     expect($event->tournament_token)->toBe('4b92a89a-a319-4725-aa5a-35bff1357ec9');
 });
+
+it('classifies Tournament State Changed lines as tournament_state_changed', function () {
+    $raw = '15:43:18 [INF] (Tournament|Transition) Token=4b92a89a-a319-4725-aa5a-35bff1357ec9 Tournament State Changed from TournamentUninitializedState to TournamentNotJoinedRoundInProgressState';
+
+    $event = ClassifyLogEvent::run(makeLogEvent($raw));
+
+    expect($event->event_type)->toBe(LogEventType::TOURNAMENT_STATE_CHANGED->value);
+    expect($event->tournament_token)->toBe('4b92a89a-a319-4725-aa5a-35bff1357ec9');
+});
+
+it('leaves tournament_token null when the state change line has no token', function () {
+    $raw = '15:43:18 [INF] (Tournament|Transition) Tournament State Changed from X to Y';
+
+    $event = ClassifyLogEvent::run(makeLogEvent($raw));
+
+    expect($event->event_type)->toBe(LogEventType::TOURNAMENT_STATE_CHANGED->value);
+    expect($event->tournament_token)->toBeNull();
+});

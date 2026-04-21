@@ -86,6 +86,19 @@ class ClassifyLogEvent
             }
         }
 
+        // Tournament state change — "Tournament State Changed from X to Y"
+        if (str_contains($text, 'Tournament State Changed from')) {
+            $token = null;
+            if (preg_match('/Token=([a-f0-9\-]{32,36})/i', $text, $m)) {
+                $token = $m[1];
+            }
+
+            return $event->fill([
+                'event_type' => LogEventType::TOURNAMENT_STATE_CHANGED->value,
+                'tournament_token' => $token,
+            ]);
+        }
+
         // Tournament sync — carries Token inside JSON block.
         if (str_contains($text, 'EventSyncData_t')) {
             $json = ExtractJson::run($text)->first();
