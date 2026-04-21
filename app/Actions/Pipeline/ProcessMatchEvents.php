@@ -3,6 +3,7 @@
 namespace App\Actions\Pipeline;
 
 use App\Actions\Matches\AdvanceMatchState;
+use App\Enums\LogEventType;
 use App\Enums\MatchState;
 use App\Facades\Mtgo;
 use App\Models\Account;
@@ -32,7 +33,11 @@ class ProcessMatchEvents
         $tokenToMatchId = LogEvent::whereNotNull('match_id')
             ->whereNotNull('match_token')
             ->whereNull('processed_at')
-            ->whereNotIn('event_type', ['league_joined', 'league_join_request'])
+            ->whereNotIn('event_type', [
+                'league_joined',
+                'league_join_request',
+                ...LogEventType::tournamentValues(),
+            ])
             ->distinct()
             ->pluck('match_id', 'match_token');
 
@@ -41,6 +46,7 @@ class ProcessMatchEvents
             ->whereNull('match_id')
             ->whereNull('processed_at')
             ->whereNotIn('match_token', $tokenToMatchId->keys())
+            ->whereNotIn('event_type', LogEventType::tournamentValues())
             ->distinct()
             ->pluck('match_token')
             ->each(function (string $token) use ($tokenToMatchId) {

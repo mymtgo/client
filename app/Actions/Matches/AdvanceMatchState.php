@@ -96,6 +96,14 @@ class AdvanceMatchState
 
                 $started = ConvertMtgoTimestamp::run($joinedState->logged_at, $joinedState->timestamp);
 
+                $tournamentEventId = null;
+                $tournamentRound = null;
+                $descriptionSource = $gameMeta['Description'] ?? $joinedState->raw_text;
+                if (preg_match('/Tournament:(\d+)\s+Round:(\d+)/', $descriptionSource, $descMatch)) {
+                    $tournamentEventId = (int) $descMatch[1];
+                    $tournamentRound = (int) $descMatch[2];
+                }
+
                 $match = MtgoMatch::create([
                     'mtgo_id' => $matchId,
                     'token' => $matchToken,
@@ -104,6 +112,8 @@ class AdvanceMatchState
                     'started_at' => $started,
                     'ended_at' => null,
                     'state' => MatchState::Started,
+                    'tournament_event_id' => $tournamentEventId,
+                    'tournament_round' => $tournamentRound,
                 ]);
 
                 SubmitMatchLogSample::dispatch(

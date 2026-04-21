@@ -3,6 +3,7 @@
 namespace App\Actions\Logs;
 
 use App\Actions\Util\ExtractJson;
+use App\Enums\LogEventType;
 use App\Models\LogEvent;
 use Illuminate\Support\Facades\Log;
 
@@ -11,6 +12,16 @@ class ClassifyLogEvent
     public static function run(LogEvent $event): LogEvent
     {
         $text = $event->raw_text;
+
+        // Tournament match state change — per-match transition, match_token only.
+        // Must match BEFORE the plain "Match State Changed" branch because the word
+        // "Match" is a substring of "TournamentMatch".
+        if (preg_match('/TournamentMatch State Changed for (?<token>[a-f0-9\-]{32,36})/i', $text, $m)) {
+            return $event->fill([
+                'event_type' => LogEventType::TOURNAMENT_MATCH_STATE_CHANGED->value,
+                'match_token' => $m['token'],
+            ]);
+        }
 
         // Match state change
         if (preg_match('/Match State Changed for (?<token>[a-f0-9\-]+)/i', $text, $m)) {
@@ -81,6 +92,50 @@ class ClassifyLogEvent
                     'event_type' => 'league_joined',
                     'match_token' => $eventToken,
                     'match_id' => $eventId,
+                ]);
+            }
+        }
+
+        // Tournament state change — "Tournament State Changed from X to Y"
+        if (str_contains($text, 'Tournament State Changed from')) {
+            $token = null;
+            if (preg_match('/Token=([a-f0-9\-]{32,36})/i', $text, $m)) {
+                $token = $m[1];
+            }
+
+            return $event->fill([
+                'event_type' => LogEventType::TOURNAMENT_STATE_CHANGED->value,
+                'tournament_token' => $token,
+            ]);
+        }
+
+        // JSON-payload tournament events.
+        $jsonMarkers = [
+            'FlsTournamentRoundInfoMessage' => LogEventType::TOURNAMENT_ROUND_INFO,
+            'FlsTournamentRoundResultMessage' => LogEventType::TOURNAMENT_ROUND_RESULT,
+            'FlsTournamentPlayerIsEliminatedMessage' => LogEventType::TOURNAMENT_PLAYER_ELIMINATED,
+            'FlsTournamentEndedMessage' => LogEventType::TOURNAMENT_ENDED,
+        ];
+
+        foreach ($jsonMarkers as $marker => $type) {
+            if (str_contains($text, $marker)) {
+                $json = ExtractJson::run($text)->first();
+
+                return $event->fill([
+                    'event_type' => $type->value,
+                    'tournament_token' => is_array($json) ? ($json['Token'] ?? null) : null,
+                ]);
+            }
+        }
+
+        // Tournament sync — carries Token inside JSON block.
+        if (str_contains($text, 'EventSyncData_t')) {
+            $json = ExtractJson::run($text)->first();
+
+            if (is_array($json) && ! empty($json['Token'])) {
+                return $event->fill([
+                    'event_type' => LogEventType::TOURNAMENT_SYNC->value,
+                    'tournament_token' => $json['Token'],
                 ]);
             }
         }
