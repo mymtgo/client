@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import ToggleGroupingController from '@/actions/App/Http/Controllers/Decks/ToggleGroupingController';
 import IndexController from '@/actions/App/Http/Controllers/Decks/IndexController';
+import RunSyncController from '@/actions/App/Http/Controllers/Settings/RunSyncController';
 import { Button } from '@/components/ui/button';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Pagination, PaginationContent, PaginationItem, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
@@ -11,7 +11,7 @@ import { Switch } from '@/components/ui/switch';
 import ArchetypeGroup from '@/pages/decks/partials/ArchetypeGroup.vue';
 import DeckCard from '@/pages/decks/partials/DeckCard.vue';
 import { router } from '@inertiajs/vue3';
-import { ArrowUpDown, Layers, Search } from 'lucide-vue-next';
+import { ArrowUpDown, Layers, RefreshCw, Search } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
 
 type Paginator<T> = { data: T[]; total: number; per_page: number; current_page: number };
@@ -35,16 +35,6 @@ const props = defineProps<FlatProps | GroupedProps>();
 const searchInput = ref(props.filters.search);
 const activeFormat = ref(props.filters.format || 'all');
 const sortBy = ref(props.filters.sort);
-
-const sortLabel = computed(
-    () =>
-        ({
-            lastPlayed: 'Last Played',
-            winRate: 'Win Rate',
-            matchCount: 'Match Count',
-            name: 'Name',
-        })[sortBy.value] ?? 'Last Played',
-);
 
 const hasAnyDecks = computed(() => {
     if (props.mode === 'flat') return props.decks.total > 0;
@@ -75,6 +65,20 @@ function toggleGrouping(value: boolean) {
     );
 }
 
+const syncing = ref(false);
+
+function syncDecks() {
+    if (syncing.value) return;
+    syncing.value = true;
+    router.post(RunSyncController.url(), {}, {
+        preserveScroll: true,
+        preserveState: true,
+        onFinish: () => {
+            syncing.value = false;
+        },
+    });
+}
+
 let searchTimeout: ReturnType<typeof setTimeout> | null = null;
 
 watch(searchInput, () => {
@@ -101,22 +105,27 @@ function updatePage(page: number) {
 
         <template v-else>
             <div class="flex flex-wrap items-center gap-2">
-                <DropdownMenu>
-                    <DropdownMenuTrigger as-child>
-                        <Button variant="outline" size="sm" class="gap-1.5">
-                            <ArrowUpDown class="size-3.5" />
-                            {{ sortLabel }}
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start">
-                        <DropdownMenuRadioGroup v-model="sortBy">
-                            <DropdownMenuRadioItem value="lastPlayed">Last Played</DropdownMenuRadioItem>
-                            <DropdownMenuRadioItem value="winRate">Win Rate</DropdownMenuRadioItem>
-                            <DropdownMenuRadioItem value="matchCount">Match Count</DropdownMenuRadioItem>
-                            <DropdownMenuRadioItem value="name">Name</DropdownMenuRadioItem>
-                        </DropdownMenuRadioGroup>
-                    </DropdownMenuContent>
-                </DropdownMenu>
+                <div class="relative">
+                    <Search class="pointer-events-none absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                        v-model="searchInput"
+                        placeholder="Search decks..."
+                        class="h-8 w-48 py-0 pl-7 text-xs"
+                    />
+                </div>
+
+                <Select v-model="sortBy">
+                    <SelectTrigger size="sm" class="w-36 gap-1.5 text-xs">
+                        <ArrowUpDown class="size-3.5 text-muted-foreground" />
+                        <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="lastPlayed" class="text-xs">Last Played</SelectItem>
+                        <SelectItem value="winRate" class="text-xs">Win Rate</SelectItem>
+                        <SelectItem value="matchCount" class="text-xs">Match Count</SelectItem>
+                        <SelectItem value="name" class="text-xs">Name</SelectItem>
+                    </SelectContent>
+                </Select>
 
                 <Select v-model="activeFormat">
                     <SelectTrigger size="sm" class="w-36 text-xs">
@@ -130,23 +139,25 @@ function updatePage(page: number) {
                     </SelectContent>
                 </Select>
 
-                <div class="relative">
-                    <Search class="pointer-events-none absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                        v-model="searchInput"
-                        placeholder="Search decks..."
-                        class="h-8 w-48 py-0 pl-7 text-xs"
-                    />
-                </div>
-
-                <div class="flex items-center gap-2">
+                <div class="ml-auto flex items-center gap-2">
+                    <Label for="group-by-archetype" class="cursor-pointer text-xs">Group by archetype</Label>
                     <Switch
                         id="group-by-archetype"
                         :modelValue="mode === 'grouped'"
                         @update:modelValue="toggleGrouping"
                     />
-                    <Label for="group-by-archetype" class="cursor-pointer text-xs">Group by archetype</Label>
                 </div>
+
+                <Button
+                    variant="outline"
+                    size="sm"
+                    class="gap-1.5 text-xs"
+                    :disabled="syncing"
+                    @click="syncDecks"
+                >
+                    <RefreshCw :class="['size-3.5', syncing && 'animate-spin']" />
+                    {{ syncing ? 'Syncing…' : 'Sync decks' }}
+                </Button>
 
                 <Pagination
                     v-if="mode === 'flat' && decks.total > decks.per_page"

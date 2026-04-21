@@ -60,32 +60,35 @@ const navItems = computed(() => [
 <template>
     <div class="flex h-full flex-col border-r border-black/80 bg-muted/20">
         <!-- Deck header -->
-        <div class="relative overflow-hidden border-b border-black/60 px-4 py-4">
+        <div class="relative h-24 overflow-hidden border-b border-black/60">
             <img
                 v-if="deck.coverArt"
                 :src="deck.coverArt"
                 :alt="deck.name"
                 class="pointer-events-none absolute inset-0 h-full w-full object-cover object-top opacity-50"
             />
-            <div class="relative flex flex-col gap-1.5" :class="deck.coverArt ? '[text-shadow:_0_1px_4px_rgb(0_0_0_/_80%)]' : ''">
-                <div class="flex items-center gap-2">
-                    <h2 class="truncate text-base leading-tight font-semibold">{{ deck.name }}</h2>
-                    <ManaSymbols v-if="deck.colorIdentity" :symbols="deck.colorIdentity" class="shrink-0" />
-                </div>
-                <div class="flex items-center gap-2">
-                    <Badge variant="outline" class="text-xs">{{ deck.format }}</Badge>
-                    <span v-if="trophies" class="flex items-center gap-1 text-xs font-medium text-yellow-400">
-                        <TrophyIcon class="size-3" />
-                        {{ trophies }}
-                    </span>
-                </div>
+            <div
+                class="relative flex h-full flex-col items-start justify-center gap-1.5 px-4"
+                :class="deck.coverArt ? '[text-shadow:_0_1px_4px_rgb(0_0_0_/_80%)]' : ''"
+            >
+                <ManaSymbols v-if="deck.colorIdentity" :symbols="deck.colorIdentity" class="shrink-0" />
+                <h2 class="truncate text-base leading-tight font-semibold">{{ deck.name }}</h2>
             </div>
         </div>
 
-        <!-- Version selector -->
-        <div class="border-b border-black/80 px-2 pb-1" v-if="selectableVersions.length > 2">
-            <Select v-model="selectedVersionKey">
-                <SelectTrigger class="mt-1 h-8 w-full text-xs">
+        <!-- Deck meta + version selector -->
+        <div class="flex flex-col gap-2 border-b border-black/80 px-3 py-3">
+            <div class="flex items-center gap-2">
+                <span class="rounded-md border border-black/70 bg-background px-2.5 py-1 text-xs font-medium">
+                    {{ deck.format }}
+                </span>
+                <span class="flex items-center gap-1 rounded-md border border-black/70 bg-background px-2.5 py-1 text-xs font-medium text-yellow-400">
+                    <TrophyIcon class="size-3" />
+                    {{ trophies }}
+                </span>
+            </div>
+            <Select v-if="selectableVersions.length > 2" v-model="selectedVersionKey">
+                <SelectTrigger class="h-8 w-full text-xs">
                     <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -115,10 +118,8 @@ const navItems = computed(() => [
             >
                 <component
                     :is="item.icon"
-                    class="size-4 shrink-0"
-                    :class="{
-                        'text-primary shadow': currentPage === item.key,
-                    }"
+                    class="size-4 shrink-0 transition-[color,filter] duration-150"
+                    :class="{ 'nav-icon-active': currentPage === item.key }"
                 />
                 <span class="shadow-red-500 text-shadow-md">{{ item.label }}</span>
             </Link>
@@ -136,3 +137,10 @@ const navItems = computed(() => [
         </div>
     </div>
 </template>
+
+<style scoped>
+.nav-icon-active {
+    color: #38bdf8;
+    filter: drop-shadow(0 0 4px rgba(56, 189, 248, 0.7)) drop-shadow(0 0 8px rgba(56, 189, 248, 0.35));
+}
+</style>

@@ -64,7 +64,8 @@
       "Read(//Volumes/Dev/mymtgo/api/**)",
       "Bash(vendor/bin/pint:*)",
       "Bash(npx vue-tsc:*)",
-      "mcp__sentry__get_sentry_resource"
+      "mcp__sentry__get_sentry_resource",
+      "Bash(git *)"
     ]
   },
   "enableAllProjectMcpServers": true,
