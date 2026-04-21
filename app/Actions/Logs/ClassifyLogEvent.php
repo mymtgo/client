@@ -13,6 +13,16 @@ class ClassifyLogEvent
     {
         $text = $event->raw_text;
 
+        // Tournament match state change — per-match transition, match_token only.
+        // Must match BEFORE the plain "Match State Changed" branch because the word
+        // "Match" is a substring of "TournamentMatch".
+        if (preg_match('/TournamentMatch State Changed for (?<token>[a-f0-9\-]{32,36})/i', $text, $m)) {
+            return $event->fill([
+                'event_type' => LogEventType::TOURNAMENT_MATCH_STATE_CHANGED->value,
+                'match_token' => $m['token'],
+            ]);
+        }
+
         // Match state change
         if (preg_match('/Match State Changed for (?<token>[a-f0-9\-]+)/i', $text, $m)) {
             return $event->fill([

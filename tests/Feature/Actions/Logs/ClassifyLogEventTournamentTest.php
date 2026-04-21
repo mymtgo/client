@@ -82,3 +82,13 @@ it('classifies tournament end messages', function () {
     expect($event->event_type)->toBe(LogEventType::TOURNAMENT_ENDED->value);
     expect($event->tournament_token)->toBe('4b92a89a-a319-4725-aa5a-35bff1357ec9');
 });
+
+it('classifies TournamentMatch State Changed lines with a match token', function () {
+    $raw = '18:12:05 [INF] (Tournament|MatchTransition) TournamentMatch State Changed for 459eabbd-84b0-4549-a499-d53499350926 from MatchInProgressState to MatchCompleteState';
+
+    $event = ClassifyLogEvent::run(makeLogEvent($raw));
+
+    expect($event->event_type)->toBe(LogEventType::TOURNAMENT_MATCH_STATE_CHANGED->value);
+    expect($event->match_token)->toBe('459eabbd-84b0-4549-a499-d53499350926');
+    expect($event->tournament_token)->toBeNull();
+});
