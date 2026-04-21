@@ -17,6 +17,12 @@ class AssignLeague
      */
     public static function run(MtgoMatch $match, array $gameMeta): void
     {
+        // Tournament matches are handled separately — no league assignment.
+        // tournament_event_id / tournament_round were stamped by AdvanceMatchState.
+        if (preg_match('/Tournament:\d+\s+Round:\d+/', $gameMeta['Description'] ?? '')) {
+            return;
+        }
+
         if (! empty($gameMeta['League Token'])) {
             $league = null;
 
