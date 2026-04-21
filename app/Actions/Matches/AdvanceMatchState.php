@@ -116,6 +116,14 @@ class AdvanceMatchState
                     'tournament_round' => $tournamentRound,
                 ]);
 
+                // If a round_info event landed before the match did, pull the
+                // tournament_token now. Otherwise RunPipeline's backfill pass
+                // will pick it up on a later tick.
+                if ($tournamentEventId !== null) {
+                    LinkMatchToTournament::run($match);
+                    $match->refresh();
+                }
+
                 SubmitMatchLogSample::dispatch(
                     matchToken: $matchToken,
                     matchType: $match->match_type,

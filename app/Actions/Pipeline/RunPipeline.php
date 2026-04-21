@@ -2,7 +2,9 @@
 
 namespace App\Actions\Pipeline;
 
+use App\Actions\Matches\LinkMatchToTournament;
 use App\Actions\Tournaments\EnqueueTournamentObservations;
+use App\Models\MtgoMatch;
 
 class RunPipeline
 {
@@ -22,7 +24,15 @@ class RunPipeline
         $processedTokens = ProcessMatchEvents::run();
         ResolveActiveMatches::run($processedTokens);
 
-        // Phase 3: Enqueue tournament observations for shipping.
+        // Phase 3: Backfill tournament tokens on matches whose round_info
+        // event arrived after the match itself was created.
+        MtgoMatch::query()
+            ->whereNull('tournament_token')
+            ->whereNotNull('tournament_event_id')
+            ->get()
+            ->each(fn (MtgoMatch $match) => LinkMatchToTournament::run($match));
+
+        // Phase 4: Enqueue tournament observations for shipping.
         // The sender job runs on its own schedule (see MtgoManager::schedule).
         EnqueueTournamentObservations::run();
     }
