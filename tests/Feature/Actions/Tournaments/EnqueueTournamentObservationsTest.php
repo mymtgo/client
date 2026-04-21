@@ -80,3 +80,19 @@ it('ignores non-tournament log events', function () {
 
     expect(TournamentObservationQueue::count())->toBe(0);
 });
+
+it('skips events whose extracted payload is empty', function () {
+    // A tournament_state_changed event whose raw_text does NOT match the
+    // extractor regex. Extraction returns [], so the row must not be enqueued
+    // — the API would 422 on an empty payload.
+    LogEvent::factory()->create([
+        'event_type' => LogEventType::TOURNAMENT_STATE_CHANGED->value,
+        'raw_text' => 'garbage line with no from/to',
+        'tournament_token' => 'deadbeef-dead-beef-dead-beefdeadbeef',
+    ]);
+
+    $inserted = EnqueueTournamentObservations::run();
+
+    expect($inserted)->toBe(0);
+    expect(TournamentObservationQueue::count())->toBe(0);
+});

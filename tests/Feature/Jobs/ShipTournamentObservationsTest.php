@@ -126,3 +126,38 @@ it('skips observations whose next_attempt_at is in the future', function () {
     expect($obs->fresh()->attempts)->toBe(0);
     Http::assertNothingSent();
 });
+
+it('sends a body that satisfies the API validator: array of observations with required fields', function () {
+    enqueueObservation('tournament_state_changed');
+
+    Http::fake([
+        '*/api/tournament-observations' => Http::response('', 204),
+        '*' => Http::response('', 200),
+    ]);
+
+    (new ShipTournamentObservations)->handle();
+
+    Http::assertSent(function ($request) {
+        $decoded = gzdecode($request->body());
+        expect($decoded)->not->toBeFalse();
+
+        $body = json_decode($decoded, true);
+        expect($body)->toBeArray()->toHaveCount(1);
+
+        $obs = $body[0];
+        expect($obs)->toHaveKeys([
+            'tournament_token',
+            'match_token',
+            'event_type',
+            'payload',
+            'client_observed_at',
+        ]);
+
+        expect($obs['tournament_token'])->toBe('tok-1');
+        expect($obs['event_type'])->toBe('tournament_state_changed');
+        expect($obs['payload'])->toBeArray()->not->toBeEmpty();
+        expect($obs['client_observed_at'])->toMatch('/^\d{4}-\d{2}-\d{2}T/');
+
+        return true;
+    });
+});

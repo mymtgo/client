@@ -13,16 +13,6 @@ class ClassifyLogEvent
     {
         $text = $event->raw_text;
 
-        // Tournament match state change — per-match transition, match_token only.
-        // Must match BEFORE the plain "Match State Changed" branch because the word
-        // "Match" is a substring of "TournamentMatch".
-        if (preg_match('/TournamentMatch State Changed for (?<token>[a-f0-9\-]{32,36})/i', $text, $m)) {
-            return $event->fill([
-                'event_type' => LogEventType::TOURNAMENT_MATCH_STATE_CHANGED->value,
-                'match_token' => $m['token'],
-            ]);
-        }
-
         // Match state change
         if (preg_match('/Match State Changed for (?<token>[a-f0-9\-]+)/i', $text, $m)) {
             return $event->fill([
@@ -45,6 +35,50 @@ class ClassifyLogEvent
             return $event->fill([
                 'event_type' => 'deck_used',
                 'game_id' => (int) $m['game'],
+            ]);
+        }
+
+        // Tournament events. Must come BEFORE game_management_json because the
+        // tournament sync payload contains a nested MatchCreateInfo.MatchToken
+        // that would falsely match the generic JSON branch.
+
+        // tournament_state_changed — no JSON, UUID is embedded in context.
+        // Real MTGO format: "Tournament State Changed for <UUID> from X to Y"
+        if (preg_match('/Tournament State Changed for (?<token>[a-f0-9\-]{36}) from \S+ to \S+/i', $text, $m)) {
+            return $event->fill([
+                'event_type' => LogEventType::TOURNAMENT_STATE_CHANGED->value,
+                'tournament_token' => $m['token'],
+            ]);
+        }
+
+        // JSON-carrying tournament events. Marker => [event type, json key for token].
+        $tournamentJsonMarkers = [
+            'EventSyncData_t' => [LogEventType::TOURNAMENT_SYNC, 'EventToken'],
+            'FlsTournamentRoundInfoMessage' => [LogEventType::TOURNAMENT_ROUND_INFO, 'Token'],
+            'FlsTournamentRoundResultMessage' => [LogEventType::TOURNAMENT_ROUND_RESULT, 'Token'],
+            'FlsTournamentPlayerIsEliminatedMessage' => [LogEventType::TOURNAMENT_PLAYER_ELIMINATED, 'Token'],
+            'FlsTournamentEndRespMessage' => [LogEventType::TOURNAMENT_ENDED, 'Token'],
+        ];
+
+        foreach ($tournamentJsonMarkers as $marker => [$type, $tokenKey]) {
+            if (! str_contains($text, $marker)) {
+                continue;
+            }
+
+            $json = ExtractJson::run($text)->first();
+            $token = is_array($json) ? ($json[$tokenKey] ?? null) : null;
+
+            if ($token === null) {
+                Log::warning('ClassifyLogEvent: tournament marker matched but token missing', [
+                    'marker' => $marker,
+                    'token_key' => $tokenKey,
+                    'text_preview' => mb_substr($text, 0, 200),
+                ]);
+            }
+
+            return $event->fill([
+                'event_type' => $type->value,
+                'tournament_token' => $token,
             ]);
         }
 
@@ -92,50 +126,6 @@ class ClassifyLogEvent
                     'event_type' => 'league_joined',
                     'match_token' => $eventToken,
                     'match_id' => $eventId,
-                ]);
-            }
-        }
-
-        // Tournament state change — "Tournament State Changed from X to Y"
-        if (str_contains($text, 'Tournament State Changed from')) {
-            $token = null;
-            if (preg_match('/Token=([a-f0-9\-]{32,36})/i', $text, $m)) {
-                $token = $m[1];
-            }
-
-            return $event->fill([
-                'event_type' => LogEventType::TOURNAMENT_STATE_CHANGED->value,
-                'tournament_token' => $token,
-            ]);
-        }
-
-        // JSON-payload tournament events.
-        $jsonMarkers = [
-            'FlsTournamentRoundInfoMessage' => LogEventType::TOURNAMENT_ROUND_INFO,
-            'FlsTournamentRoundResultMessage' => LogEventType::TOURNAMENT_ROUND_RESULT,
-            'FlsTournamentPlayerIsEliminatedMessage' => LogEventType::TOURNAMENT_PLAYER_ELIMINATED,
-            'FlsTournamentEndedMessage' => LogEventType::TOURNAMENT_ENDED,
-        ];
-
-        foreach ($jsonMarkers as $marker => $type) {
-            if (str_contains($text, $marker)) {
-                $json = ExtractJson::run($text)->first();
-
-                return $event->fill([
-                    'event_type' => $type->value,
-                    'tournament_token' => is_array($json) ? ($json['Token'] ?? null) : null,
-                ]);
-            }
-        }
-
-        // Tournament sync — carries Token inside JSON block.
-        if (str_contains($text, 'EventSyncData_t')) {
-            $json = ExtractJson::run($text)->first();
-
-            if (is_array($json) && ! empty($json['Token'])) {
-                return $event->fill([
-                    'event_type' => LogEventType::TOURNAMENT_SYNC->value,
-                    'tournament_token' => $json['Token'],
                 ]);
             }
         }

@@ -1,0 +1,1 @@
+16:34:31 [INF] (Game Management|Processing Registered Handler for EventSyncData_t in TournamentUninitializedState) Processor: TournamentUninitializedState Message: {"EventToken":"b197b9e8-0d08-4227-aa17-ba38cb4c1731","EventID":12839726,"PlayerEventType":4,"Description":"Contraption Challenge 32"} Receiver: WotC.MtGO.Client.Model.Play.TournamentEvent.Tournament

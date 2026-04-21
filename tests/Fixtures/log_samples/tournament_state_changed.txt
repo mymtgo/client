@@ -1,0 +1,1 @@
+16:34:31 [INF] (Game Management|Tournament State Changed for b197b9e8-0d08-4227-aa17-ba38cb4c1731 from TournamentUninitializedState to PremierNotJoinedAwaitingMinPlayersState)

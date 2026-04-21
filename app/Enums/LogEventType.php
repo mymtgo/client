@@ -19,7 +19,10 @@ enum LogEventType: string
     case TOURNAMENT_MATCH_STATE_CHANGED = 'tournament_match_state_changed';
 
     /**
-     * @return array<string> Tournament event_type values.
+     * @return array<string> Tournament event_type values that can be enqueued
+     *                       for shipping to the API. TOURNAMENT_MATCH_STATE_CHANGED
+     *                       is excluded — no real MTGO log produces it; revisit
+     *                       when per-match tournament transitions are actually needed.
      */
     public static function tournamentValues(): array
     {
@@ -30,7 +33,6 @@ enum LogEventType: string
             self::TOURNAMENT_ROUND_INFO->value,
             self::TOURNAMENT_PLAYER_ELIMINATED->value,
             self::TOURNAMENT_ENDED->value,
-            self::TOURNAMENT_MATCH_STATE_CHANGED->value,
         ];
     }
 }

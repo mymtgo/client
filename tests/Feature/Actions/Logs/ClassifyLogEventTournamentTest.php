@@ -4,91 +4,92 @@ use App\Actions\Logs\ClassifyLogEvent;
 use App\Enums\LogEventType;
 use App\Models\LogEvent;
 
-function makeLogEvent(string $rawText, string $category = 'Tournament', string $context = ''): LogEvent
+function makeEventFromFixture(string $filename): LogEvent
 {
+    $path = base_path("tests/Fixtures/log_samples/{$filename}");
+    $raw = trim(file_get_contents($path));
+
+    preg_match(
+        '/^(?<time>\d{2}:\d{2}:\d{2}) \[(?<level>\w+)\] \((?<cat>[^|]+)\|(?<ctx>[^\)]*)\)/',
+        $raw,
+        $m,
+    );
+
     return (new LogEvent)->fill([
         'file_path' => '/tmp/fake.log',
         'byte_offset_start' => 0,
-        'byte_offset_end' => strlen($rawText),
-        'timestamp' => '12:00:00',
-        'level' => 'INF',
-        'category' => $category,
-        'context' => $context,
-        'raw_text' => $rawText,
+        'byte_offset_end' => strlen($raw),
+        'timestamp' => $m['time'] ?? '00:00:00',
+        'level' => $m['level'] ?? 'INF',
+        'category' => $m['cat'] ?? '',
+        'context' => $m['ctx'] ?? '',
+        'raw_text' => $raw,
         'ingested_at' => now(),
         'logged_at' => now(),
     ]);
 }
 
-it('classifies EventSyncData_t blocks as tournament_sync', function () {
-    $raw = '12:34:56 [INF] (Tournament|Sync) EventSyncData_t in TournamentUninitializedState {"Token":"4b92a89a-a319-4725-aa5a-35bff1357ec9","Foo":1}';
+it('classifies tournament_state_changed with tournament_token from context', function () {
+    $event = ClassifyLogEvent::run(makeEventFromFixture('tournament_state_changed.txt'));
 
-    $event = ClassifyLogEvent::run(makeLogEvent($raw));
+    expect($event->event_type)->toBe(LogEventType::TOURNAMENT_STATE_CHANGED->value);
+    expect($event->tournament_token)->toBe('b197b9e8-0d08-4227-aa17-ba38cb4c1731');
+    expect($event->match_token)->toBeNull();
+});
+
+it('classifies tournament_sync from EventSyncData_t marker using EventToken field', function () {
+    $event = ClassifyLogEvent::run(makeEventFromFixture('tournament_sync.txt'));
 
     expect($event->event_type)->toBe(LogEventType::TOURNAMENT_SYNC->value);
-    expect($event->tournament_token)->toBe('4b92a89a-a319-4725-aa5a-35bff1357ec9');
+    expect($event->tournament_token)->toBe('b197b9e8-0d08-4227-aa17-ba38cb4c1731');
 });
 
-it('classifies Tournament State Changed lines as tournament_state_changed', function () {
-    $raw = '15:43:18 [INF] (Tournament|Transition) Token=4b92a89a-a319-4725-aa5a-35bff1357ec9 Tournament State Changed from TournamentUninitializedState to TournamentNotJoinedRoundInProgressState';
-
-    $event = ClassifyLogEvent::run(makeLogEvent($raw));
-
-    expect($event->event_type)->toBe(LogEventType::TOURNAMENT_STATE_CHANGED->value);
-    expect($event->tournament_token)->toBe('4b92a89a-a319-4725-aa5a-35bff1357ec9');
-});
-
-it('leaves tournament_token null when the state change line has no token', function () {
-    $raw = '15:43:18 [INF] (Tournament|Transition) Tournament State Changed from X to Y';
-
-    $event = ClassifyLogEvent::run(makeLogEvent($raw));
-
-    expect($event->event_type)->toBe(LogEventType::TOURNAMENT_STATE_CHANGED->value);
-    expect($event->tournament_token)->toBeNull();
-});
-
-it('classifies FlsTournamentRoundResultMessage as tournament_round_result', function () {
-    $raw = '19:35:39 [INF] (Tournament|Round) FlsTournamentRoundResultMessage {"Token":"4b92a89a-a319-4725-aa5a-35bff1357ec9","Round":3,"OpponentResults":[]}';
-
-    $event = ClassifyLogEvent::run(makeLogEvent($raw));
-
-    expect($event->event_type)->toBe(LogEventType::TOURNAMENT_ROUND_RESULT->value);
-    expect($event->tournament_token)->toBe('4b92a89a-a319-4725-aa5a-35bff1357ec9');
-});
-
-it('classifies FlsTournamentRoundInfoMessage as tournament_round_info', function () {
-    $raw = '19:31:20 [INF] (Tournament|Round) FlsTournamentRoundInfoMessage {"Token":"4b92a89a-a319-4725-aa5a-35bff1357ec9","Round":{"Number":3,"Matches":[]}}';
-
-    $event = ClassifyLogEvent::run(makeLogEvent($raw));
+it('classifies tournament_round_info from FlsTournamentRoundInfoMessage marker', function () {
+    $event = ClassifyLogEvent::run(makeEventFromFixture('tournament_round_info.txt'));
 
     expect($event->event_type)->toBe(LogEventType::TOURNAMENT_ROUND_INFO->value);
-    expect($event->tournament_token)->toBe('4b92a89a-a319-4725-aa5a-35bff1357ec9');
+    expect($event->tournament_token)->toBe('44b6fb76-9171-4e21-a8b7-ff635ed06c8f');
 });
 
-it('classifies FlsTournamentPlayerIsEliminatedMessage as tournament_player_eliminated', function () {
-    $raw = '19:43:50 [INF] (Tournament|Player) FlsTournamentPlayerIsEliminatedMessage {"Token":"4b92a89a-a319-4725-aa5a-35bff1357ec9","LoginID":964394}';
+it('classifies tournament_round_result from FlsTournamentRoundResultMessage marker', function () {
+    $event = ClassifyLogEvent::run(makeEventFromFixture('tournament_round_result.txt'));
 
-    $event = ClassifyLogEvent::run(makeLogEvent($raw));
+    expect($event->event_type)->toBe(LogEventType::TOURNAMENT_ROUND_RESULT->value);
+    expect($event->tournament_token)->toBe('32d98b9d-2af6-4cc7-a95d-cd7471d75809');
+});
+
+it('classifies tournament_player_eliminated from FlsTournamentPlayerIsEliminatedMessage marker', function () {
+    $event = ClassifyLogEvent::run(makeEventFromFixture('tournament_player_eliminated.txt'));
 
     expect($event->event_type)->toBe(LogEventType::TOURNAMENT_PLAYER_ELIMINATED->value);
-    expect($event->tournament_token)->toBe('4b92a89a-a319-4725-aa5a-35bff1357ec9');
+    expect($event->tournament_token)->toBe('32d98b9d-2af6-4cc7-a95d-cd7471d75809');
 });
 
-it('classifies tournament end messages', function () {
-    $raw = '22:00:00 [INF] (Tournament|End) FlsTournamentEndedMessage {"Token":"4b92a89a-a319-4725-aa5a-35bff1357ec9"}';
-
-    $event = ClassifyLogEvent::run(makeLogEvent($raw));
+it('classifies tournament_ended from FlsTournamentEndRespMessage marker', function () {
+    $event = ClassifyLogEvent::run(makeEventFromFixture('tournament_ended.txt'));
 
     expect($event->event_type)->toBe(LogEventType::TOURNAMENT_ENDED->value);
-    expect($event->tournament_token)->toBe('4b92a89a-a319-4725-aa5a-35bff1357ec9');
+    expect($event->tournament_token)->toBe('87b97a55-bc56-47f9-866b-ca51ed0db0d5');
 });
 
-it('classifies TournamentMatch State Changed lines with a match token', function () {
-    $raw = '18:12:05 [INF] (Tournament|MatchTransition) TournamentMatch State Changed for 459eabbd-84b0-4549-a499-d53499350926 from MatchInProgressState to MatchCompleteState';
+it('does not mis-route tournament_sync to game_management_json despite nested MatchToken', function () {
+    $raw = '16:34:31 [INF] (Game Management|Processing Registered Handler for EventSyncData_t in TournamentUninitializedState) Processor: TournamentUninitializedState Message: {"EventToken":"b197b9e8-0d08-4227-aa17-ba38cb4c1731","MatchCreateInfo":{"MatchToken":"00000000-0000-0000-0000-000000000000","MatchID":0}} Receiver: WotC.MtGO.Client.Model.Play.TournamentEvent.Tournament';
 
-    $event = ClassifyLogEvent::run(makeLogEvent($raw));
+    $event = (new LogEvent)->fill([
+        'file_path' => '/tmp/fake.log',
+        'byte_offset_start' => 0,
+        'byte_offset_end' => strlen($raw),
+        'timestamp' => '16:34:31',
+        'level' => 'INF',
+        'category' => 'Game Management',
+        'context' => 'Processing Registered Handler for EventSyncData_t in TournamentUninitializedState',
+        'raw_text' => $raw,
+        'ingested_at' => now(),
+        'logged_at' => now(),
+    ]);
 
-    expect($event->event_type)->toBe(LogEventType::TOURNAMENT_MATCH_STATE_CHANGED->value);
-    expect($event->match_token)->toBe('459eabbd-84b0-4549-a499-d53499350926');
-    expect($event->tournament_token)->toBeNull();
+    $result = ClassifyLogEvent::run($event);
+
+    expect($result->event_type)->toBe(LogEventType::TOURNAMENT_SYNC->value);
+    expect($result->tournament_token)->toBe('b197b9e8-0d08-4227-aa17-ba38cb4c1731');
 });

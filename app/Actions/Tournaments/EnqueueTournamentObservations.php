@@ -5,6 +5,7 @@ namespace App\Actions\Tournaments;
 use App\Enums\LogEventType;
 use App\Models\LogEvent;
 use App\Models\TournamentObservationQueue;
+use Illuminate\Support\Facades\Log;
 
 class EnqueueTournamentObservations
 {
@@ -28,6 +29,16 @@ class EnqueueTournamentObservations
         $inserted = 0;
         foreach ($events as $event) {
             $payload = ExtractTournamentPayload::run($event);
+
+            if (empty($payload)) {
+                Log::warning('EnqueueTournamentObservations: skipping event with empty payload', [
+                    'log_event_id' => $event->id,
+                    'event_type' => $event->event_type,
+                    'raw_text_preview' => mb_substr($event->raw_text, 0, 200),
+                ]);
+
+                continue;
+            }
 
             TournamentObservationQueue::query()->insertOrIgnore([
                 'log_event_id' => $event->id,

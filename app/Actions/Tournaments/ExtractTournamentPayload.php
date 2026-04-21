@@ -26,8 +26,6 @@ class ExtractTournamentPayload
 
             LogEventType::TOURNAMENT_STATE_CHANGED->value => self::fromTournamentStateChange($event),
 
-            LogEventType::TOURNAMENT_MATCH_STATE_CHANGED->value => self::fromMatchStateChange($event),
-
             default => [],
         };
     }
@@ -43,22 +41,12 @@ class ExtractTournamentPayload
     /** @return array<string, mixed> */
     private static function fromTournamentStateChange(LogEvent $event): array
     {
-        if (preg_match('/Tournament State Changed from (\S+) to (\S+)/', $event->raw_text, $m)) {
+        if (preg_match(
+            '/Tournament State Changed for [a-f0-9\-]{36} from (?<from>\S+) to (?<to>\S+?)\)?$/i',
+            trim($event->raw_text),
+            $m,
+        )) {
             return [
-                'from' => $m[1],
-                'to' => $m[2],
-            ];
-        }
-
-        return [];
-    }
-
-    /** @return array<string, mixed> */
-    private static function fromMatchStateChange(LogEvent $event): array
-    {
-        if (preg_match('/TournamentMatch State Changed for (?<token>[a-f0-9\-]{32,36}) from (?<from>\S+) to (?<to>\S+)/i', $event->raw_text, $m)) {
-            return [
-                'match_token' => $m['token'],
                 'from' => $m['from'],
                 'to' => $m['to'],
             ];

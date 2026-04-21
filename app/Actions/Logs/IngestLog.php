@@ -267,6 +267,7 @@ class IngestLog
             'logged_at' => $event->logged_at,
             'match_id' => $event->match_id,
             'match_token' => $event->match_token,
+            'tournament_token' => $event->tournament_token,
             'game_id' => $event->game_id,
             'created_at' => $now,
             'updated_at' => $now,

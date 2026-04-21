@@ -17,14 +17,19 @@ createInertiaApp({
     },
     setup({ el, App, props, plugin }) {
 
+
+
+        const app = createApp({ render: () => h(App, props) })
+            .use(plugin);
+
         Sentry.init({
+            app: app,
             dsn: 'https://013633bd183642005b90b1b6ddba00a4@o4510380004802560.ingest.de.sentry.io/4511202597666896',
             integrations: [],
         });
 
-        createApp({ render: () => h(App, props) })
-            .use(plugin)
-            .mount(el);
+        app.mount(el);
+
     },
     progress: {
         color: '#4B5563',
