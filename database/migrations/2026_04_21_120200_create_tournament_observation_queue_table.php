@@ -9,6 +9,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (Schema::hasTable('tournament_observation_queue')) {
+            return;
+        }
+
         Schema::create('tournament_observation_queue', function (Blueprint $table) {
             $table->id();
             $table->foreignIdFor(LogEvent::class)->unique()->constrained()->cascadeOnDelete();
