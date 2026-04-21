@@ -65,8 +65,15 @@ class ClassifyLogEvent
                 continue;
             }
 
-            $json = ExtractJson::run($text)->first();
-            $token = is_array($json) ? ($json[$tokenKey] ?? null) : null;
+            // Extract the token via regex rather than json_decode — MTGO
+            // occasionally ships malformed/truncated JSON (e.g. FlsTournamentRoundInfoMessage
+            // with a missing outer closing brace). A direct regex on the key
+            // survives those while ExtractJson would fall through to an inner block.
+            $token = null;
+            $pattern = '/"'.preg_quote($tokenKey, '/').'"\s*:\s*"(?<token>[a-f0-9\-]{36})"/i';
+            if (preg_match($pattern, $text, $m)) {
+                $token = $m['token'];
+            }
 
             if ($token === null) {
                 Log::warning('ClassifyLogEvent: tournament marker matched but token missing', [
