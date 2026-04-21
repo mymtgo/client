@@ -119,10 +119,6 @@ class MtgoManager
 
     public function retryUnsubmittedMatches(): void
     {
-        if (! Settings::get('share_stats')) {
-            return;
-        }
-
         MtgoMatch::submittable()
             ->get()
             ->each(fn (MtgoMatch $match) => SubmitMatch::dispatch($match->id));
