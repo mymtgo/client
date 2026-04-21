@@ -24,6 +24,22 @@ it('does not assign a league when the match has a tournament Description', funct
     expect(League::count())->toBe(0);
 });
 
+it('skips league assignment when tournament_event_id is stamped on the match (gameMeta empty)', function () {
+    // Real single-line tournament logs don't parse through ExtractKeyValueBlock,
+    // so gameMeta.Description can be empty. AdvanceMatchState stamps the
+    // match column directly — the exclusion must use that as the primary signal.
+    $match = MtgoMatch::factory()->create([
+        'state' => MatchState::Started,
+        'tournament_event_id' => 12839688,
+        'tournament_round' => 3,
+    ]);
+
+    AssignLeague::run($match, []);
+
+    expect($match->fresh()->league_id)->toBeNull();
+    expect(League::count())->toBe(0);
+});
+
 it('still creates a phantom league for non-tournament matches', function () {
     $match = MtgoMatch::factory()->create(['state' => MatchState::Started, 'format' => 'CMODERN']);
 

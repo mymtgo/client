@@ -18,8 +18,13 @@ class AssignLeague
     public static function run(MtgoMatch $match, array $gameMeta): void
     {
         // Tournament matches are handled separately — no league assignment.
-        // tournament_event_id / tournament_round were stamped by AdvanceMatchState.
-        if (preg_match('/Tournament:\d+\s+Round:\d+/', $gameMeta['Description'] ?? '')) {
+        // Prefer the match column (stamped by AdvanceMatchState) because
+        // $gameMeta['Description'] is unreliable for single-line logs where
+        // ExtractKeyValueBlock can't split keys correctly.
+        $isTournament = $match->tournament_event_id !== null
+            || preg_match('/Tournament:\d+\s+Round:\d+/', $gameMeta['Description'] ?? '');
+
+        if ($isTournament) {
             return;
         }
 
