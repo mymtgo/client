@@ -47,7 +47,6 @@ Ship a producer/consumer pair — client producer, API consumer — that:
   "match_token": null,
   "event_type": "tournament_round_result",
   "payload": { "... raw JSON from log line ..." },
-  "content_hash": "sha256-hex-digest",
   "client_observed_at": "2026-04-21T09:12:33Z"
 }
 ```
@@ -60,8 +59,9 @@ Field rules:
 | `match_token` | string (UUID) | At least one of this or `tournament_token` | The MTGO match UUID. Set for `tournament_match_state_changed` and any event that carries a match-scope identifier. |
 | `event_type` | string | yes | One of the seven types listed below. |
 | `payload` | object | yes | The raw JSON object extracted from the log line, untouched apart from standard JSON parsing. |
-| `content_hash` | string (64 hex chars) | yes | sha256 of the canonical-JSON string `{event_type}{tournament_token or match_token}{canonical(payload)}`. Computed client-side, re-verified server-side. |
-| `client_observed_at` | ISO-8601 UTC | yes | When the client ingested the log line (not MTGO's own timestamp — MTGO timestamps are in the payload if present). Useful for support/debugging only; not part of dedupe. |
+| `client_observed_at` | ISO-8601 UTC | yes | When the client ingested the log line (not MTGO's own timestamp — MTGO timestamps are in the payload if present). Useful for support/debugging only. |
+
+**No server-side dedupe at write time.** The observations table is append-only; the same event observed by N clients will produce N rows. The projection job (sub-project 2) is responsible for dedup at projection time — it already needs idempotent per-tournament rebuild logic, so this keeps the write path dumb. Tournament events are small and bounded, so the storage cost is acceptable.
 
 ### Event types
 
@@ -76,16 +76,6 @@ The client classifies and forwards exactly these seven types. Anything else is i
 | `tournament_player_eliminated` | `FlsTournamentPlayerIsEliminatedMessage` | `Token` in payload |
 | `tournament_ended` | tournament-end signature | `Token` in payload |
 | `tournament_match_state_changed` | `TournamentMatch State Changed` lines **(new classification)** | `match_token` only; server correlates to tournament via RoundInfo cross-reference |
-
-### Content hash
-
-**Canonicalisation:** `json_encode($payload, JSON_SORT_KEYS | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)`. PHP equivalent: sort keys recursively, then `json_encode` with the listed flags. Node/server should use the same canonical form.
-
-**Hash input:** `{$event_type}|{$tournament_token ?? $match_token}|{$canonical_payload_json}`
-
-**Hash output:** lowercase hex sha256.
-
-**Dedupe semantics:** API rejects (silently accepts) any observation whose `content_hash` already exists. Unique constraint on the column. No special behaviour for same-content different-user: first one wins.
 
 ### Auth
 
@@ -114,35 +104,53 @@ Nullable, on the existing `matches` table (do NOT port the `tournaments` FK from
 
 | Column | Type | Purpose |
 | --- | --- | --- |
-| `tournament_event_id` | `unsignedInteger`, nullable, indexed | Numeric MTGO event ID parsed from `Description=Tournament:{N}` on `TournamentMatchJoined*` events. The ID a participated match is most reliably keyed by. |
+| `tournament_event_id` | `unsignedInteger`, nullable, indexed | Numeric MTGO tournament event ID parsed from `Description=Tournament:{N}` on `TournamentMatchJoined*` events. Distinct from `matches.mtgo_id` (which is the **match's** numeric ID). |
 | `tournament_round` | `unsignedSmallInteger`, nullable | Round number parsed from `Description=Round:{M}`. |
-| `tournament_match_token` | `string`, nullable, indexed | The match_token from the join event's `gameMeta`. Secondary correlation key. |
+
+Already present and reused as correlation keys:
+
+- `matches.token` — equals `gameMeta.MatchToken` (UUID, e.g. `2212f089-c748-42c8-ab3f-61c463a4278f`).
+- `matches.mtgo_id` — equals `gameMeta.MatchID` (numeric, e.g. `286451927`). This is likely the value that appears in `RoundInfo.Matches[].EventID` server-side — see "Event ID ↔ tournament token mapping" below.
 
 No `tournament_id` FK yet — that lands in sub-project 3 (hydration) where local tournament rows start existing.
 
 ### Stamping the match on join
 
-The existing match pipeline already receives the join event's `gameMeta`. Add a new hook in `App\Actions\Matches\AdvanceMatchState` (or wherever the participated-join transition lands on `main` — verify at implementation time, since the `challenge_tab` version of this file doesn't exist here):
+`App\Actions\Matches\AdvanceMatchState` already handles the join event and writes `matches.token` and `matches.mtgo_id`. Extend the creation path (around line 99–107) to also stamp tournament fields when the Description matches the tournament pattern:
 
 ```php
+$tournamentEventId = null;
+$tournamentRound = null;
 if (preg_match('/Tournament:(\d+)\s+Round:(\d+)/', $gameMeta['Description'] ?? '', $m)) {
-    $match->update([
-        'tournament_event_id' => (int) $m[1],
-        'tournament_round' => (int) $m[2],
-        'tournament_match_token' => $gameMeta['MatchToken'] ?? $match->token,
-    ]);
+    $tournamentEventId = (int) $m[1];
+    $tournamentRound = (int) $m[2];
+}
+
+$match = MtgoMatch::create([
+    'mtgo_id' => $matchId,
+    'token' => $matchToken,
+    // …existing fields…
+    'tournament_event_id' => $tournamentEventId,
+    'tournament_round' => $tournamentRound,
+]);
+```
+
+Real join events from MTGO (provided 2026-04-21) confirm the Description format, e.g. `Description=Tournament:12839688 Round:3`.
+
+### Phantom-league exclusion
+
+`App\Actions\Matches\AssignLeague` currently routes matches with no `gameMeta['League Token']` into `findOrCreatePhantomLeague` (line 73+). Tournament matches carry a Description but no League Token, so today they would be bucketed into phantom leagues — wrong.
+
+Fix: in `AssignLeague::run`, branch off before the phantom fallback:
+
+```php
+if (preg_match('/Tournament:\d+\s+Round:\d+/', $gameMeta['Description'] ?? '')) {
+    // Tournament match — deliberately unassigned until hydration lands (sub-project 3).
+    return;
 }
 ```
 
-The third column (`tournament_match_token`) may already equal `matches.token` for participated matches — **VERIFY**: check a real participated-match log to confirm the `gameMeta.MatchToken` equals the local `matches.token`. If so, we only need the first two columns and can drop the third.
-
-### Phantom-draft exclusion
-
-Wherever the client categorises matches into phantom leagues / phantom drafts (current codebase on `main` — **locate at implementation time**), short-circuit with:
-
-> If `matches.tournament_event_id` is not null, the match is a tournament match. Skip any phantom routing.
-
-This prevents the categoriser from dropping tournament matches into practice buckets before hydration has a chance to link them up.
+This leaves `matches.league_id = NULL` for tournament matches. When hydration is built, tournament matches get linked via `matches.tournament_id` instead.
 
 ### Queue table: `tournament_observation_queue`
 
@@ -150,11 +158,11 @@ New table, client-local.
 
 ```
 id                  big int, PK
+log_event_id        big int, FK to log_events(id), UNIQUE
 tournament_token    string, nullable, indexed
 match_token         string, nullable, indexed
 event_type          string, indexed
 payload             json
-content_hash        string (64), unique
 client_observed_at  datetime
 status              enum('pending','sending','sent','failed'), default 'pending', indexed
 attempts            unsigned small int, default 0
@@ -163,7 +171,7 @@ last_error          text, nullable
 created_at/updated_at
 ```
 
-- Unique content_hash prevents the client from queueing its own duplicate.
+- Unique `log_event_id` ensures one classified LogEvent produces at most one queue row. If classification re-runs (e.g., dev rebuild), we don't re-enqueue. No cryptographic hashing needed — the LogEvent FK is the natural idempotency key.
 - `status='sending'` is a transient state while a batch is in flight; reverted to `pending` on failure or `sent` on success.
 - `sent` rows are kept for 7 days for support/debug visibility, then pruned by a scheduled job.
 
@@ -182,9 +190,9 @@ Use the `challenge_tab` branch as reference for regex patterns and `ExtractJson`
 
 After classification, if `event_type` is one of the seven tournament types, write a row into `tournament_observation_queue`:
 
-- Compute `content_hash` client-side using the canonical-JSON form described above
+- `log_event_id` = the classified LogEvent's ID
 - `status = 'pending'`, `attempts = 0`
-- Duplicate content_hash ⇒ silently swallow (client already sent it)
+- Duplicate `log_event_id` ⇒ silently swallow (this LogEvent was already enqueued)
 
 ### Sender job
 
@@ -204,21 +212,21 @@ Lives in the companion project at `/Volumes/Dev/mymtgo/api` (Windows path: `E:\m
 
 ### `tournament_observations` table
 
-Server-side storage for the raw observation log.
+Server-side storage for the raw observation log. Append-only — no dedup at write time, no updates, no soft-deletes.
 
 ```
 id                  big int, PK
-content_hash        string (64), unique         ← idempotency key
 tournament_token    string, nullable, indexed
 match_token         string, nullable, indexed
 event_type          string, indexed
 payload             json
 submitted_by_device string (device ID from header)
+processed_at        datetime, nullable, indexed     ← used by sub-project 2's projection job
 client_observed_at  datetime
 created_at          datetime
 ```
 
-No soft-deletes, no updates — this is an append-only log.
+The `processed_at` column is included up front so sub-project 2's projection job can mark observations as processed without another migration.
 
 ### `POST /api/tournament-observations`
 
@@ -229,47 +237,55 @@ Request:
 Behaviour:
 1. Authenticate device via existing middleware.
 2. Decompress, parse array. Reject if array is empty or >200 items (413).
-3. For each observation:
-   - Re-compute `content_hash` server-side. If it doesn't match the submitted value, drop that single observation and log a warning (do not fail the whole batch).
-   - Validate shape (required fields, event_type enum, at least one token present). Invalid observations are dropped and logged; the batch still succeeds.
-4. Insert the surviving observations in one statement using `ON CONFLICT DO NOTHING` on the `content_hash` unique index, so duplicates are absorbed at the database layer without per-row try/catch.
+3. For each observation, validate shape (required fields, event_type enum, at least one token present). Invalid observations are dropped and logged; the batch still succeeds.
+4. Insert the surviving observations in one bulk insert. No dedupe — every observation gets a row. Projection-time dedup is the later sub-project's problem.
 5. Return `204 No Content` on success (nothing useful to send back).
 
 The server does **not** derive or update any tournament/standings/timeline state in this sub-project. That's sub-project 2.
 
 ### Event ID ↔ tournament token mapping
 
-Not built in this sub-project, but worth calling out so sub-project 2's design can hit the ground running.
+Not built in this sub-project, but worth mapping out so sub-project 2's design can hit the ground running.
 
-The findings note `FlsTournamentRoundInfoMessage` payloads include `Token` (tournament UUID) alongside per-match entries containing `EventToken` (match UUID) and `EventID` (a numeric ID).
+Participated matches carry a **tournament numeric ID** (`Description=Tournament:12839688`) and a **match numeric ID** (`MatchID=286415435`). Spectator-side events carry the **tournament UUID token** (`4b92a89a-…`). We need a way to connect these identifier families.
 
-**VERIFY at implementation time (API side):** confirm that the per-match `EventID` field in RoundInfo is the same numeric ID as the participated-match `Description=Tournament:{N}` descriptor. If yes, RoundInfo becomes the universal bridge: one observation lets the server map every participated match to its tournament_token. If no, we need a different bridge (another event type carries both IDs, or we accept weaker linking).
+The findings note `FlsTournamentRoundInfoMessage` payloads include the tournament `Token` alongside per-match entries with `EventToken` and `EventID`. Given the findings described `EventID` as per-match detail, the most likely bridge is:
 
-Even though we're not building the mapping now, we should verify the premise early — before sub-project 3 depends on it.
+- Client-side join event → stamps `matches.mtgo_id` (= MatchID) and `matches.tournament_event_id` (= tournament numeric ID). Both are included in the observation payload when the join is forwarded.
+- Server-side RoundInfo observation → carries tournament `Token` (UUID) and per-match `EventID` values.
+- **Assumed bridge:** `RoundInfo.Matches[].EventID` == the match's `MatchID` (same numeric ID we've stored locally as `matches.mtgo_id`).
+- Server projection (sub-project 2) cross-references: observed join has `MatchID=X` linked to `tournament_event_id=Y`; RoundInfo has `Token=Z` containing `EventID=X` → therefore `tournament_event_id Y ↔ tournament_token Z`.
+
+**VERIFY at the start of sub-project 2 (API side):** capture a real `FlsTournamentRoundInfoMessage` payload and confirm (a) per-match `EventID` equals the same numeric ID we see as `MatchID` in the join event, and (b) there is no field that carries the tournament numeric ID directly. If (a) is false or (b) is surprisingly true, the bridge changes.
+
+For this sub-project, no server-side logic acts on this mapping yet. We just ensure the client ships enough in the payload — specifically, the raw log JSON (which includes `MatchID`/`MatchToken`) — so the projection job has everything it needs.
 
 ## Testing Considerations
 
 **Client:**
 
-- Classifier unit tests for each of the two new event types, using real log fragments as fixtures.
-- Unit test for the content-hash canonicaliser: identical payloads (different key ordering, different whitespace) produce identical hashes.
+- Classifier unit tests for each of the seven event types, using the real 2026-04-21 log fragments as fixtures for the join events (tournament `12839688`, rounds 1–4 and tournament `12839714` round 1).
 - Feature test: a classified tournament event lands in `tournament_observation_queue` with the expected fields.
-- Feature test: duplicate observation (same content_hash) is dropped silently at enqueue time.
-- Feature test: sender job claims pending rows, on 200 flips them to `sent`, on 500 flips them back with incremented attempts.
-- Feature test: match stamping — a `TournamentMatchJoinedEventUnderwayState` log with `Description=Tournament:12345 Round:3` sets the three new columns on the match row.
-- Feature test: phantom-draft categoriser skips a match whose `tournament_event_id` is set.
+- Feature test: classifying the same LogEvent twice enqueues only one observation (unique `log_event_id` FK).
+- Feature test: sender job claims pending rows, on 200 flips them to `sent`, on 500 flips them back with incremented `attempts` and a backoff-based `next_attempt_at`.
+- Feature test: match stamping — a `TournamentMatchJoinedEventUnderwayState` log with `Description=Tournament:12839688 Round:3` sets `tournament_event_id=12839688` and `tournament_round=3` on the new match row, while `matches.token` and `matches.mtgo_id` are populated as before.
+- Feature test: `AssignLeague` returns without assigning a league for a match whose `gameMeta.Description` matches the tournament pattern (no phantom league created, `matches.league_id` remains null).
 
-**API:** (lives with sub-project's API plan)
+**API:** (lives with sub-project's API plan, but noted here for contract visibility)
 
-- POST with gzipped body → rows inserted.
-- POST with tampered hash on one observation → that observation dropped, rest succeed, warning logged.
-- POST with duplicate hash → 204, no new row.
+- POST with gzipped body → all valid rows inserted.
+- POST with an invalid observation in the array (missing token, unknown event_type) → that observation dropped, rest succeed, warning logged.
 - POST with empty/oversize array → 413.
 - POST without auth headers → 401.
+- POST from a device observing the same event twice in different batches → two rows (no write-time dedupe).
 
 ## Open Questions (resolve at implementation time)
 
-1. Does `gameMeta.MatchToken` equal `matches.token` for participated matches? If yes, drop `tournament_match_token` column.
-2. Does `RoundInfo.Matches[].EventID` match the participated `Description=Tournament:{N}` numeric ID? Confirm before sub-project 3.
-3. On `main`, what's the current shape of classifier code? The `challenge_tab` layout (`App\Actions\Logs\ClassifyLogEvent`) may or may not exist — the plan should locate and either extend or create.
-4. Where does phantom-league routing live on `main`? Plan should find the exact call site before writing the exclusion patch.
+1. **Classifier shape on `main`.** The `challenge_tab` layout (`App\Actions\Logs\ClassifyLogEvent`) may or may not exist here — the plan should locate the existing classifier and either extend or add tournament branches. Use `challenge_tab` as reference, not a cherry-pick source.
+2. **RoundInfo `EventID` field semantics.** Assumption: per-match `EventID` in `FlsTournamentRoundInfoMessage` equals the match's `MatchID` (i.e., `matches.mtgo_id`). Confirm at the start of sub-project 2 with a captured RoundInfo payload.
+
+## Resolved assumptions (confirmed 2026-04-21)
+
+- `gameMeta.MatchToken` equals `matches.token` and `gameMeta.MatchID` equals `matches.mtgo_id` (confirmed against real join events). No `tournament_match_token` column needed — `matches.token` is already the match UUID.
+- `Description=Tournament:{N}` carries the tournament's numeric event ID (distinct from the match's numeric MatchID).
+- Tournament matches currently fall into phantom-league routing at `AssignLeague.php:73` because they have no `League Token`. Exclusion branches off at the top of `AssignLeague::run`.
