@@ -46,3 +46,39 @@ it('leaves tournament_token null when the state change line has no token', funct
     expect($event->event_type)->toBe(LogEventType::TOURNAMENT_STATE_CHANGED->value);
     expect($event->tournament_token)->toBeNull();
 });
+
+it('classifies FlsTournamentRoundResultMessage as tournament_round_result', function () {
+    $raw = '19:35:39 [INF] (Tournament|Round) FlsTournamentRoundResultMessage {"Token":"4b92a89a-a319-4725-aa5a-35bff1357ec9","Round":3,"OpponentResults":[]}';
+
+    $event = ClassifyLogEvent::run(makeLogEvent($raw));
+
+    expect($event->event_type)->toBe(LogEventType::TOURNAMENT_ROUND_RESULT->value);
+    expect($event->tournament_token)->toBe('4b92a89a-a319-4725-aa5a-35bff1357ec9');
+});
+
+it('classifies FlsTournamentRoundInfoMessage as tournament_round_info', function () {
+    $raw = '19:31:20 [INF] (Tournament|Round) FlsTournamentRoundInfoMessage {"Token":"4b92a89a-a319-4725-aa5a-35bff1357ec9","Round":{"Number":3,"Matches":[]}}';
+
+    $event = ClassifyLogEvent::run(makeLogEvent($raw));
+
+    expect($event->event_type)->toBe(LogEventType::TOURNAMENT_ROUND_INFO->value);
+    expect($event->tournament_token)->toBe('4b92a89a-a319-4725-aa5a-35bff1357ec9');
+});
+
+it('classifies FlsTournamentPlayerIsEliminatedMessage as tournament_player_eliminated', function () {
+    $raw = '19:43:50 [INF] (Tournament|Player) FlsTournamentPlayerIsEliminatedMessage {"Token":"4b92a89a-a319-4725-aa5a-35bff1357ec9","LoginID":964394}';
+
+    $event = ClassifyLogEvent::run(makeLogEvent($raw));
+
+    expect($event->event_type)->toBe(LogEventType::TOURNAMENT_PLAYER_ELIMINATED->value);
+    expect($event->tournament_token)->toBe('4b92a89a-a319-4725-aa5a-35bff1357ec9');
+});
+
+it('classifies tournament end messages', function () {
+    $raw = '22:00:00 [INF] (Tournament|End) FlsTournamentEndedMessage {"Token":"4b92a89a-a319-4725-aa5a-35bff1357ec9"}';
+
+    $event = ClassifyLogEvent::run(makeLogEvent($raw));
+
+    expect($event->event_type)->toBe(LogEventType::TOURNAMENT_ENDED->value);
+    expect($event->tournament_token)->toBe('4b92a89a-a319-4725-aa5a-35bff1357ec9');
+});

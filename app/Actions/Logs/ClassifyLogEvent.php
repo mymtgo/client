@@ -99,6 +99,25 @@ class ClassifyLogEvent
             ]);
         }
 
+        // JSON-payload tournament events.
+        $jsonMarkers = [
+            'FlsTournamentRoundInfoMessage' => LogEventType::TOURNAMENT_ROUND_INFO,
+            'FlsTournamentRoundResultMessage' => LogEventType::TOURNAMENT_ROUND_RESULT,
+            'FlsTournamentPlayerIsEliminatedMessage' => LogEventType::TOURNAMENT_PLAYER_ELIMINATED,
+            'FlsTournamentEndedMessage' => LogEventType::TOURNAMENT_ENDED,
+        ];
+
+        foreach ($jsonMarkers as $marker => $type) {
+            if (str_contains($text, $marker)) {
+                $json = ExtractJson::run($text)->first();
+
+                return $event->fill([
+                    'event_type' => $type->value,
+                    'tournament_token' => is_array($json) ? ($json['Token'] ?? null) : null,
+                ]);
+            }
+        }
+
         // Tournament sync — carries Token inside JSON block.
         if (str_contains($text, 'EventSyncData_t')) {
             $json = ExtractJson::run($text)->first();
