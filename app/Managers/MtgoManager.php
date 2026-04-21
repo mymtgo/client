@@ -11,6 +11,7 @@ use App\Actions\RegisterDevice;
 use App\Actions\Settings\ValidatePath;
 use App\Jobs\DownloadArchetypes;
 use App\Jobs\PopulateMissingCardData;
+use App\Jobs\ShipTournamentObservations;
 use App\Jobs\SubmitMatch;
 use App\Jobs\SyncDecks;
 use App\Models\Account;
@@ -222,6 +223,11 @@ class MtgoManager
         $schedule->call(fn () => $this->retryUnsubmittedMatches())
             ->everyMinute()
             ->name('submit_matches')
+            ->withoutOverlapping(60);
+
+        $schedule->job(new ShipTournamentObservations)
+            ->everyThirtySeconds()
+            ->name('ship_tournament_observations')
             ->withoutOverlapping(60);
 
         $schedule->call(fn () => $this->downloadArchetypes())
