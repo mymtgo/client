@@ -2,7 +2,6 @@
 
 use App\Actions\Logs\ClassifyLogEvent;
 use App\Actions\Tournaments\ExtractTournamentPayload;
-use App\Enums\LogEventType;
 use App\Models\LogEvent;
 
 function makeClassifiedEvent(string $filename): LogEvent
