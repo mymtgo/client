@@ -1,13 +1,13 @@
 <?php
 
 use App\Data\Casts\LocalTimeCast;
+use App\Facades\AppSettings;
 use Carbon\Carbon;
-use Native\Desktop\Facades\Settings;
 use Spatie\LaravelData\Support\Creation\CreationContext;
 use Spatie\LaravelData\Support\DataProperty;
 
 it('converts UTC carbon to local timezone', function () {
-    Settings::set('system_tz', 'America/Los_Angeles');
+    AppSettings::setSystemTimezone('America/Los_Angeles');
 
     $cast = new LocalTimeCast;
 
@@ -25,7 +25,7 @@ it('converts UTC carbon to local timezone', function () {
 });
 
 it('handles string timestamp input', function () {
-    Settings::set('system_tz', 'America/New_York');
+    AppSettings::setSystemTimezone('America/New_York');
 
     $cast = new LocalTimeCast;
 

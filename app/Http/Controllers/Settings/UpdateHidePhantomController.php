@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers\Settings;
 
+use App\Facades\AppSettings;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Native\Desktop\Facades\Settings;
 
 class UpdateHidePhantomController extends Controller
 {
@@ -15,7 +15,7 @@ class UpdateHidePhantomController extends Controller
             'enabled' => 'required|boolean',
         ]);
 
-        Settings::set('hide_phantom_leagues', $request->boolean('enabled') ? 1 : 0);
+        AppSettings::setHidePhantomLeagues($request->boolean('enabled'));
 
         return back();
     }

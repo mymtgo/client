@@ -3,19 +3,19 @@
 namespace App\Actions\Matches;
 
 use App\Actions\RegisterDevice;
+use App\Facades\AppSettings;
 use App\Models\Card;
 use App\Models\DeckVersion;
 use App\Models\MtgoMatch;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Native\Desktop\Facades\Settings;
 
 class SubmitMatchToApi
 {
     public static function run(int $matchId): void
     {
-        if (! Settings::get('share_stats')) {
+        if (! AppSettings::shouldTransmitMatches()) {
             return;
         }
 
@@ -106,7 +106,7 @@ class SubmitMatchToApi
     private static function authenticatedRequest(): PendingRequest
     {
         return Http::withHeaders([
-            'X-Device-Id' => Settings::get('device_id'),
+            'X-Device-Id' => AppSettings::deviceId(),
             'X-Api-Key' => RegisterDevice::retrieveKey(),
         ]);
     }

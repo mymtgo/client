@@ -3,19 +3,19 @@
 namespace App\Http\Controllers\Leagues;
 
 use App\Actions\Leagues\FormatLeagueRuns;
+use App\Facades\AppSettings;
 use App\Http\Controllers\Controller;
 use App\Models\Account;
 use App\Models\League;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
-use Native\Desktop\Facades\Settings;
 
 class IndexController extends Controller
 {
     public function __invoke(Request $request): Response
     {
-        $hidePhantom = (bool) Settings::get('hide_phantom_leagues');
+        $hidePhantom = AppSettings::hidePhantomLeagues();
         $activeAccountId = Account::active()->value('id');
         $format = $request->input('format');
 

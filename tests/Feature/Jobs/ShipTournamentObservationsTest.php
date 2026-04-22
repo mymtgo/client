@@ -1,12 +1,11 @@
 <?php
 
+use App\Facades\AppSettings;
 use App\Jobs\ShipTournamentObservations;
 use App\Models\LogEvent;
 use App\Models\TournamentObservationQueue;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Http;
-use Native\Desktop\Facades\Settings;
 
 uses(RefreshDatabase::class);
 
@@ -16,8 +15,8 @@ beforeEach(function () {
     $ref = new ReflectionProperty($factory, 'stubCallbacks');
     $ref->setValue($factory, collect());
 
-    Settings::set('device_id', 'test-device');
-    Settings::set('api_key', Crypt::encrypt('test-key'));
+    AppSettings::setDeviceId('test-device');
+    AppSettings::setApiKey('test-key');
 });
 
 function enqueueObservation(string $eventType = 'tournament_sync'): TournamentObservationQueue

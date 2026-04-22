@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Facades\AppSettings;
 use App\Models\Account;
 use App\Models\LogCursor;
 use App\Models\MtgoMatch;
@@ -9,7 +10,6 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Inertia\Middleware;
-use Native\Desktop\Facades\Settings;
 
 class HandleInertiaRequests extends Middleware
 {
@@ -31,12 +31,12 @@ class HandleInertiaRequests extends Middleware
                 'error' => $request->session()->get('error'),
             ],
             'status' => fn () => [
-                'watcherRunning' => (bool) Settings::get('watcher_active', true),
+                'watcherRunning' => AppSettings::isWatcherActive(),
                 'lastIngestAt' => LogCursor::max('updated_at'),
                 'lastIngestAtHuman' => ($ts = LogCursor::max('updated_at')) ? Carbon::parse($ts)->toLocal()->diffForHumans() : null,
                 'pendingMatchCount' => MtgoMatch::submittable()->count(),
             ],
-            'debugMode' => fn () => (bool) Settings::get('debug_mode'),
+            'debugMode' => fn () => AppSettings::isDebugMode(),
             'activeAccount' => fn () => Account::active()->first()?->username,
             'accounts' => fn () => Account::tracked()->orderBy('username')->get(['id', 'username', 'active']),
             'availableUpdate' => fn () => Cache::get('available_update'),

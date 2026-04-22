@@ -2,8 +2,8 @@
 
 namespace App\Actions\Logs;
 
+use App\Facades\AppSettings;
 use Carbon\Carbon;
-use Native\Desktop\Facades\Settings;
 
 class ConvertMtgoTimestamp
 {
@@ -16,7 +16,7 @@ class ConvertMtgoTimestamp
      */
     public static function run(Carbon $loggedAt, string $mtgoTime): Carbon
     {
-        $systemTz = Settings::get('system_tz', 'UTC');
+        $systemTz = AppSettings::systemTimezone();
         $localDate = $loggedAt->copy()->setTimezone($systemTz)->format('Y-m-d');
 
         return Carbon::parse($localDate.' '.$mtgoTime, $systemTz)->utc();

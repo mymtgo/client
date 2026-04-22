@@ -1,5 +1,6 @@
 <?php
 
+use App\Facades\AppSettings;
 use Illuminate\Support\Facades\Http;
 use Native\Desktop\Facades\Settings;
 use Native\Desktop\Facades\Window;
@@ -29,7 +30,8 @@ pest()->extend(TestCase::class)
                 new Native\Desktop\Windows\Window('main'),
             ]);
 
-        // Settings doesn't support ::fake() so we swap with an in-memory store.
+        // Legacy NativePHP Settings swap — kept during migration while call sites
+        // are replaced. Remove once all production code uses AppSettings.
         Settings::swap(new class
         {
             protected array $store = [];
@@ -52,6 +54,24 @@ pest()->extend(TestCase::class)
             public function clear(): void
             {
                 $this->store = [];
+            }
+        });
+
+        // AppSettings: an in-memory subclass that overrides the storage
+        // primitives. Typed accessors defined on the parent class fall through
+        // to these, so no per-method stubbing is required.
+        AppSettings::swap(new class extends App\Settings\AppSettings
+        {
+            protected array $store = [];
+
+            public function get(string $key, mixed $default = null): mixed
+            {
+                return array_key_exists($key, $this->store) ? $this->store[$key] : $default;
+            }
+
+            public function set(string $key, mixed $value): void
+            {
+                $this->store[$key] = $value;
             }
         });
     })

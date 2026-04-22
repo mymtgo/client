@@ -6,13 +6,13 @@ use App\Actions\Cards\CreateMissingCardsFromTimelines;
 use App\Actions\Cards\DownloadCardImage;
 use App\Actions\Cards\PopulateTokensFromXml;
 use App\Actions\RegisterDevice;
+use App\Facades\AppSettings;
 use App\Models\Card;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
-use Native\Desktop\Facades\Settings;
 
 class PopulateMissingCardData implements ShouldQueue
 {
@@ -57,7 +57,7 @@ class PopulateMissingCardData implements ShouldQueue
         $regularCards = $unresolved->whereNull('rarity')->merge($unresolved->where('rarity', '!=', 'token'));
         $tokenCards = $unresolved->where('rarity', 'token')->whereNotNull('name');
 
-        $downloadImages = (bool) Settings::get('local_images');
+        $downloadImages = AppSettings::downloadImagesLocally();
         $http = $this->apiClient();
 
         // Process regular cards in batches to avoid overwhelming the API
@@ -74,7 +74,7 @@ class PopulateMissingCardData implements ShouldQueue
     private function apiClient(): PendingRequest
     {
         return Http::withHeaders([
-            'X-Device-Id' => Settings::get('device_id'),
+            'X-Device-Id' => AppSettings::deviceId(),
             'X-Api-Key' => RegisterDevice::retrieveKey(),
         ])->timeout(15);
     }

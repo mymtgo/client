@@ -2,10 +2,10 @@
 
 namespace App\Actions\Archetypes;
 
+use App\Facades\AppSettings;
 use App\Models\Archetype;
 use App\Models\Card;
 use Illuminate\Support\Str;
-use Native\Desktop\Facades\Settings;
 
 class StoreManualArchetype
 {
@@ -14,7 +14,7 @@ class StoreManualArchetype
      */
     public static function run(string $name, string $format, ?string $colorIdentity, array $resolvedCards): Archetype
     {
-        $deviceId = Settings::get('device_id', '00000000');
+        $deviceId = AppSettings::deviceId() ?? '00000000';
         $prefix = substr($deviceId, 0, 8);
         $uuid = $prefix.'-'.Str::uuid();
 

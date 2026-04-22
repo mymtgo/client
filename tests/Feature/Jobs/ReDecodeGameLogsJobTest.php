@@ -1,17 +1,17 @@
 <?php
 
 use App\Actions\Matches\ParseGameLogBinary;
+use App\Facades\AppSettings;
 use App\Jobs\ReDecodeGameLogsJob;
 use App\Models\GameLog;
 use App\Models\MtgoMatch;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Native\Desktop\Facades\Settings;
 
 uses(RefreshDatabase::class);
 
 it('re-decodes game logs and updates match timestamps', function () {
-    Settings::set('system_tz', 'America/Los_Angeles');
+    AppSettings::setSystemTimezone('America/Los_Angeles');
 
     $match = MtgoMatch::factory()->create([
         'token' => 'test-token',
@@ -43,7 +43,7 @@ it('re-decodes game logs and updates match timestamps', function () {
 });
 
 it('skips game logs already at the current decoded version', function () {
-    Settings::set('system_tz', 'UTC');
+    AppSettings::setSystemTimezone('UTC');
 
     MtgoMatch::factory()->create(['token' => 'current-version']);
 
@@ -65,7 +65,7 @@ it('skips game logs already at the current decoded version', function () {
 });
 
 it('skips game logs with missing files', function () {
-    Settings::set('system_tz', 'UTC');
+    AppSettings::setSystemTimezone('UTC');
 
     MtgoMatch::factory()->create(['token' => 'missing-file']);
 

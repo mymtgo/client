@@ -3,11 +3,11 @@
 namespace App\Jobs;
 
 use App\Actions\RegisterDevice;
+use App\Facades\AppSettings;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Native\Desktop\Facades\Settings;
 
 class SubmitMatchLogSample implements ShouldQueue
 {
@@ -28,12 +28,12 @@ class SubmitMatchLogSample implements ShouldQueue
 
     public function handle(): void
     {
-        if (! Settings::get('share_stats')) {
+        if (! AppSettings::shouldTransmitMatches()) {
             return;
         }
 
         $response = Http::withHeaders([
-            'X-Device-Id' => Settings::get('device_id'),
+            'X-Device-Id' => AppSettings::deviceId(),
             'X-Api-Key' => RegisterDevice::retrieveKey(),
         ])->post(config('mymtgo_api.url').'/api/match-log-samples', [
             'match_token' => $this->matchToken,

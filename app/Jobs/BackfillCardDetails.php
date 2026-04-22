@@ -4,13 +4,13 @@ namespace App\Jobs;
 
 use App\Actions\Cards\DownloadCardImage;
 use App\Actions\RegisterDevice;
+use App\Facades\AppSettings;
 use App\Models\Card;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Native\Desktop\Facades\Settings;
 
 class BackfillCardDetails implements ShouldQueue
 {
@@ -40,7 +40,7 @@ class BackfillCardDetails implements ShouldQueue
 
         Log::info("BackfillCardDetails: backfilling {$cards->count()} cards");
 
-        $this->downloadImages = (bool) Settings::get('local_images');
+        $this->downloadImages = AppSettings::downloadImagesLocally();
 
         $regularCards = $cards->where('rarity', '!=', 'token');
         $tokenCards = $cards->where('rarity', 'token');
@@ -62,7 +62,7 @@ class BackfillCardDetails implements ShouldQueue
     private function updateRegularCards($cards): void
     {
         $response = Http::withHeaders([
-            'X-Device-Id' => Settings::get('device_id'),
+            'X-Device-Id' => AppSettings::deviceId(),
             'X-Api-Key' => RegisterDevice::retrieveKey(),
         ])->post(config('mymtgo_api.url').'/api/cards', [
             'ids' => $cards->pluck('mtgo_id')->values(),
@@ -109,7 +109,7 @@ class BackfillCardDetails implements ShouldQueue
     private function updateTokenCards($cards): void
     {
         $response = Http::withHeaders([
-            'X-Device-Id' => Settings::get('device_id'),
+            'X-Device-Id' => AppSettings::deviceId(),
             'X-Api-Key' => RegisterDevice::retrieveKey(),
         ])->post(config('mymtgo_api.url').'/api/cards', [
             'tokens' => $cards->pluck('name')->unique()->values(),

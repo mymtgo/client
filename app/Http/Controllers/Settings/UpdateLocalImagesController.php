@@ -2,12 +2,12 @@
 
 namespace App\Http\Controllers\Settings;
 
+use App\Facades\AppSettings;
 use App\Http\Controllers\Controller;
 use App\Jobs\ClearLocalCardImages;
 use App\Jobs\DownloadAllCardImages;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Native\Desktop\Facades\Settings;
 
 class UpdateLocalImagesController extends Controller
 {
@@ -19,7 +19,7 @@ class UpdateLocalImagesController extends Controller
 
         $enabled = $request->boolean('enabled');
 
-        Settings::set('local_images', $enabled ? 1 : 0);
+        AppSettings::setDownloadImagesLocally($enabled);
 
         if ($enabled) {
             DownloadAllCardImages::dispatch();

@@ -1,14 +1,14 @@
 <?php
 
 use App\Actions\Archetypes\StoreManualArchetype;
+use App\Facades\AppSettings;
 use App\Models\Card;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Native\Desktop\Facades\Settings;
 
 uses(RefreshDatabase::class);
 
 it('creates a manual archetype with cards', function () {
-    Settings::set('device_id', 'abcdef1234567890');
+    AppSettings::setDeviceId('abcdef1234567890');
 
     $card = Card::create([
         'oracle_id' => 'oracle-bolt',

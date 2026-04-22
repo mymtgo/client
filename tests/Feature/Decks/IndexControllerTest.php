@@ -1,13 +1,16 @@
 <?php
 
+use App\Facades\AppSettings;
 use App\Models\Archetype;
 use App\Models\Deck;
 use App\Models\DeckVersion;
 use App\Models\MtgoMatch;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Native\Desktop\Facades\Settings;
+use Illuminate\Support\Facades\Storage;
 
 uses(RefreshDatabase::class);
+
+beforeEach(fn () => Storage::fake());
 
 function seedDeck(array $attributes = [], int $won = 0, int $lost = 0): Deck
 {
@@ -29,7 +32,7 @@ function seedDeck(array $attributes = [], int $won = 0, int $lost = 0): Deck
 }
 
 it('returns flat mode when grouping setting is off', function () {
-    Settings::set('decks_grouped_by_archetype', 0);
+    AppSettings::setDecksGroupedByArchetype(false);
     Deck::factory()->count(3)->create();
 
     $response = $this->get(route('decks.index'));
@@ -43,7 +46,7 @@ it('returns flat mode when grouping setting is off', function () {
 });
 
 it('returns grouped mode with archetype groups when setting is on', function () {
-    Settings::set('decks_grouped_by_archetype', 1);
+    AppSettings::setDecksGroupedByArchetype(true);
 
     $tron = Archetype::factory()->create(['name' => 'Eldrazi Tron', 'format' => 'CMODERN']);
     $burn = Archetype::factory()->create(['name' => 'Burn', 'format' => 'CMODERN']);
@@ -62,7 +65,7 @@ it('returns grouped mode with archetype groups when setting is on', function () 
 });
 
 it('places decks with no archetype into an Unassigned group at the end', function () {
-    Settings::set('decks_grouped_by_archetype', 1);
+    AppSettings::setDecksGroupedByArchetype(true);
 
     $tron = Archetype::factory()->create(['name' => 'Eldrazi Tron']);
     Deck::factory()->create(['archetype_id' => $tron->id]);
@@ -78,7 +81,7 @@ it('places decks with no archetype into an Unassigned group at the end', functio
 });
 
 it('omits archetype groups whose decks do not match the format filter', function () {
-    Settings::set('decks_grouped_by_archetype', 1);
+    AppSettings::setDecksGroupedByArchetype(true);
 
     $modern = Archetype::factory()->create(['name' => 'Modern Tron']);
     $legacy = Archetype::factory()->create(['name' => 'Legacy Tron']);
@@ -95,7 +98,7 @@ it('omits archetype groups whose decks do not match the format filter', function
 });
 
 it('computes weighted winrate stats per archetype group', function () {
-    Settings::set('decks_grouped_by_archetype', 1);
+    AppSettings::setDecksGroupedByArchetype(true);
 
     $tron = Archetype::factory()->create(['name' => 'Eldrazi Tron']);
     seedDeck(['archetype_id' => $tron->id], won: 6, lost: 4);
@@ -111,7 +114,7 @@ it('computes weighted winrate stats per archetype group', function () {
 });
 
 it('orders groups by winrate descending when sort is winRate, unassigned last', function () {
-    Settings::set('decks_grouped_by_archetype', 1);
+    AppSettings::setDecksGroupedByArchetype(true);
 
     $weak = Archetype::factory()->create(['name' => 'Weak']);
     $strong = Archetype::factory()->create(['name' => 'Strong']);
@@ -130,7 +133,7 @@ it('orders groups by winrate descending when sort is winRate, unassigned last', 
 });
 
 it('orders groups by name alphabetically when sort is name, unassigned last', function () {
-    Settings::set('decks_grouped_by_archetype', 1);
+    AppSettings::setDecksGroupedByArchetype(true);
 
     $z = Archetype::factory()->create(['name' => 'Zoo']);
     $a = Archetype::factory()->create(['name' => 'Affinity']);

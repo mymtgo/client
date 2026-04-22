@@ -2,16 +2,16 @@
 
 namespace App\Http\Middleware;
 
+use App\Facades\AppSettings;
 use Closure;
 use Illuminate\Http\Request;
-use Native\Desktop\Facades\Settings;
 use Symfony\Component\HttpFoundation\Response;
 
 class EnsureDebugMode
 {
     public function handle(Request $request, Closure $next): Response
     {
-        if (! (bool) Settings::get('debug_mode')) {
+        if (! AppSettings::isDebugMode()) {
             return redirect('/');
         }
 

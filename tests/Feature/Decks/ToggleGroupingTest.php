@@ -1,26 +1,29 @@
 <?php
 
+use App\Facades\AppSettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Native\Desktop\Facades\Settings;
+use Illuminate\Support\Facades\Storage;
 
 uses(RefreshDatabase::class);
 
+beforeEach(fn () => Storage::fake());
+
 it('persists the grouping flag when enabling', function () {
-    Settings::set('decks_grouped_by_archetype', 0);
+    AppSettings::setDecksGroupedByArchetype(false);
 
     $response = $this->post(route('decks.toggle-grouping'), ['grouped' => true]);
 
     $response->assertRedirect();
-    expect(Settings::get('decks_grouped_by_archetype'))->toBe(1);
+    expect(AppSettings::decksGroupedByArchetype())->toBeTrue();
 });
 
 it('persists the grouping flag when disabling', function () {
-    Settings::set('decks_grouped_by_archetype', 1);
+    AppSettings::setDecksGroupedByArchetype(true);
 
     $response = $this->post(route('decks.toggle-grouping'), ['grouped' => false]);
 
     $response->assertRedirect();
-    expect(Settings::get('decks_grouped_by_archetype'))->toBe(0);
+    expect(AppSettings::decksGroupedByArchetype())->toBeFalse();
 });
 
 it('rejects the request when the grouped field is missing', function () {

@@ -2,21 +2,20 @@
 
 namespace App\Actions;
 
-use Illuminate\Support\Facades\Crypt;
+use App\Facades\AppSettings;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
-use Native\Desktop\Facades\Settings;
 
 class RegisterDevice
 {
     public static function run(): bool
     {
-        $deviceId = Settings::get('device_id');
+        $deviceId = AppSettings::deviceId();
 
         if (! $deviceId) {
             $deviceId = (string) Str::uuid();
-            Settings::set('device_id', $deviceId);
+            AppSettings::setDeviceId($deviceId);
         }
 
         try {
@@ -25,8 +24,8 @@ class RegisterDevice
             ]);
 
             if ($response->successful()) {
-                self::storeKey($response->json('api_key'));
-                Settings::set('api_key_expires_at', now()->addHours(47)->toIso8601String());
+                AppSettings::setApiKey($response->json('api_key'));
+                AppSettings::setApiKeyExpiresAt(now()->addHours(47)->toIso8601String());
 
                 return true;
             }
@@ -46,15 +45,6 @@ class RegisterDevice
 
     public static function retrieveKey(): ?string
     {
-        try {
-            return Crypt::decrypt(Settings::get('api_key'));
-        } catch (\Throwable) {
-            return null;
-        }
-    }
-
-    private static function storeKey(string $plain): void
-    {
-        Settings::set('api_key', Crypt::encrypt($plain));
+        return AppSettings::apiKey();
     }
 }

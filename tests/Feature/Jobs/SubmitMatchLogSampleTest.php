@@ -1,14 +1,13 @@
 <?php
 
+use App\Facades\AppSettings;
 use App\Jobs\SubmitMatchLogSample;
-use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Http;
-use Native\Desktop\Facades\Settings;
 
 beforeEach(function () {
-    Settings::set('share_stats', 1);
-    Settings::set('device_id', 'test-device');
-    Settings::set('api_key', Crypt::encrypt('test-key'));
+    AppSettings::setShouldTransmitMatches(true);
+    AppSettings::setDeviceId('test-device');
+    AppSettings::setApiKey('test-key');
 });
 
 function runSampleJob(array $overrides = []): void
@@ -50,7 +49,7 @@ it('posts to the API with the correct payload when share_stats is enabled', func
 });
 
 it('no-ops when share_stats is disabled', function () {
-    Settings::set('share_stats', 0);
+    AppSettings::setShouldTransmitMatches(false);
     Http::fake();
 
     runSampleJob();

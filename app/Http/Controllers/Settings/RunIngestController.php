@@ -3,17 +3,17 @@
 namespace App\Http\Controllers\Settings;
 
 use App\Actions\Settings\ValidatePath;
+use App\Facades\AppSettings;
 use App\Facades\Mtgo;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
-use Native\Desktop\Facades\Settings;
 
 class RunIngestController extends Controller
 {
     public function __invoke(): RedirectResponse
     {
-        $logOk = ValidatePath::forLogs(Settings::get('log_path', ''));
-        $dataOk = ValidatePath::forData(Settings::get('log_data_path', ''));
+        $logOk = ValidatePath::forLogs(AppSettings::logPath());
+        $dataOk = ValidatePath::forData(AppSettings::logDataPath());
 
         if (! $logOk['valid'] || ! $dataOk['valid']) {
             return back()->withErrors(['ingest' => 'File paths are invalid. Fix them before running ingestion.']);

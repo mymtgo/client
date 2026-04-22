@@ -55,7 +55,6 @@ use App\Http\Controllers\Settings\RunSubmitMatchesController;
 use App\Http\Controllers\Settings\RunSyncController;
 use App\Http\Controllers\Settings\SwitchAccountController;
 use App\Http\Controllers\Settings\UpdateAccountTrackingController;
-use App\Http\Controllers\Settings\UpdateAnonymousStatsController;
 use App\Http\Controllers\Settings\UpdateDataPathController;
 use App\Http\Controllers\Settings\UpdateDebugModeController;
 use App\Http\Controllers\Settings\UpdateHidePhantomController;
@@ -153,7 +152,6 @@ Route::group([], function (Router $router) {
         $group->post('ingest', RunIngestController::class)->name('settings.ingest');
         $group->post('sync', RunSyncController::class)->name('settings.sync');
         $group->post('populate-cards', RunPopulateCardsController::class)->name('settings.populate-cards');
-        $group->patch('anonymous-stats', UpdateAnonymousStatsController::class)->name('settings.anonymous-stats');
         $group->patch('share-stats', UpdateShareStatsController::class)->name('settings.share-stats');
         $group->patch('hide-phantom', UpdateHidePhantomController::class)->name('settings.hide-phantom');
         $group->post('submit-matches', RunSubmitMatchesController::class)->name('settings.submit-matches');

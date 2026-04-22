@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Actions\RegisterDevice;
+use App\Facades\AppSettings;
 use App\Models\TournamentObservationQueue;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -13,7 +14,6 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Native\Desktop\Facades\Settings;
 use Throwable;
 
 class ShipTournamentObservations implements ShouldQueue
@@ -101,7 +101,7 @@ class ShipTournamentObservations implements ShouldQueue
 
         try {
             $response = Http::withHeaders([
-                'X-Device-Id' => Settings::get('device_id'),
+                'X-Device-Id' => AppSettings::deviceId(),
                 'X-Api-Key' => RegisterDevice::retrieveKey(),
                 'Content-Encoding' => 'gzip',
                 'Content-Type' => 'application/json',

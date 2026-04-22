@@ -1,13 +1,16 @@
 <?php
 
-use Native\Desktop\Facades\Settings;
+use App\Facades\AppSettings;
+use Illuminate\Support\Facades\Storage;
+
+beforeEach(fn () => Storage::fake());
 
 it('persists league window setting', function () {
     $this->post(route('settings.overlay'), [
         'league_window' => true,
     ])->assertRedirect();
 
-    expect(Settings::get('league_window'))->toBe(1);
+    expect(AppSettings::showLeagueWindow())->toBeTrue();
 });
 
 it('validates league window is boolean', function () {

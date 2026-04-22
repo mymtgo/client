@@ -3,12 +3,12 @@
 namespace App\Actions\Matches;
 
 use App\Enums\LeagueState;
+use App\Facades\AppSettings;
 use App\Models\DeckVersion;
 use App\Models\League;
 use App\Models\MtgoMatch;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
-use Native\Desktop\Facades\Settings;
 
 class AssignLeague
 {
@@ -81,7 +81,7 @@ class AssignLeague
                     ->where('started_at', '<=', $league->started_at)
                     ->update(['state' => LeagueState::Partial]);
             }
-        } elseif (! Settings::get('hide_phantom_leagues')) {
+        } elseif (! AppSettings::hidePhantomLeagues()) {
             $match->refresh();
 
             $deckId = $match->deck_version_id

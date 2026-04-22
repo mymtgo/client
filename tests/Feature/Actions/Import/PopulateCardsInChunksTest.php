@@ -1,10 +1,10 @@
 <?php
 
 use App\Actions\Import\PopulateCardsInChunks;
+use App\Facades\AppSettings;
 use App\Models\Card;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
-use Native\Desktop\Facades\Settings;
 
 uses(RefreshDatabase::class);
 
@@ -19,8 +19,8 @@ beforeEach(function () {
 it('populates card data from the API', function () {
     Card::create(['mtgo_id' => 100]);
 
-    Settings::set('device_id', 'test-device');
-    Settings::set('api_key', encrypt('test-key'));
+    AppSettings::setDeviceId('test-device');
+    AppSettings::setApiKey('test-key');
 
     Http::fake([
         '*/api/cards' => Http::response([

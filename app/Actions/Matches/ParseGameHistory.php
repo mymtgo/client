@@ -2,11 +2,11 @@
 
 namespace App\Actions\Matches;
 
+use App\Facades\AppSettings;
 use App\Facades\Mtgo;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
-use Native\Desktop\Facades\Settings;
 use Symfony\Component\Finder\Finder;
 
 /**
@@ -432,7 +432,7 @@ class ParseGameHistory
         }
 
         try {
-            $tz = Settings::get('system_tz', 'UTC');
+            $tz = AppSettings::systemTimezone();
             $wallClock = gmdate('Y-m-d H:i:s', (int) $unixSeconds);
 
             return Carbon::parse($wallClock, $tz)->utc()->format('Y-m-d\TH:i:s\Z');

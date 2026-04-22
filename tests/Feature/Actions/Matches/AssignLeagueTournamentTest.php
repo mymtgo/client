@@ -2,10 +2,10 @@
 
 use App\Actions\Matches\AssignLeague;
 use App\Enums\MatchState;
+use App\Facades\AppSettings;
 use App\Models\League;
 use App\Models\MtgoMatch;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Native\Desktop\Facades\Settings;
 
 uses(RefreshDatabase::class);
 
@@ -43,7 +43,7 @@ it('skips league assignment when tournament_event_id is stamped on the match (ga
 it('still creates a phantom league for non-tournament matches', function () {
     $match = MtgoMatch::factory()->create(['state' => MatchState::Started, 'format' => 'CMODERN']);
 
-    Settings::set('hide_phantom_leagues', false);
+    AppSettings::setHidePhantomLeagues(false);
 
     $gameMeta = [
         'Description' => 'LeagueMatch',
