@@ -17,6 +17,7 @@ use App\Http\Controllers\Decks\CardStatsController;
 use App\Http\Controllers\Decks\CoverArtOptionsController;
 use App\Http\Controllers\Decks\DashboardController;
 use App\Http\Controllers\Decks\DecklistController;
+use App\Http\Controllers\Decks\GameStatsController;
 use App\Http\Controllers\Decks\LeaguesController;
 use App\Http\Controllers\Decks\MatchesController;
 use App\Http\Controllers\Decks\MatchupDetailController;
@@ -110,6 +111,7 @@ Route::group([], function (Router $router) {
         $group->get('/', App\Http\Controllers\Decks\IndexController::class)->name('decks.index');
         $group->get('{deck:id}', DashboardController::class)->name('decks.show');
         $group->get('{deck:id}/card-stats', CardStatsController::class)->name('decks.card-stats');
+        $group->get('{deck:id}/game-stats', GameStatsController::class)->name('decks.game-stats');
         $group->get('{deck:id}/matches', MatchesController::class)->name('decks.matches');
         $group->get('{deck:id}/leagues', LeaguesController::class)->name('decks.leagues');
         $group->get('{deck:id}/matchups', MatchupsController::class)->name('decks.matchups');

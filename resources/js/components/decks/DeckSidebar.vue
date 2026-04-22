@@ -5,6 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import ManaSymbols from '@/components/ManaSymbols.vue';
 import DashboardController from '@/actions/App/Http/Controllers/Decks/DashboardController';
 import CardStatsController from '@/actions/App/Http/Controllers/Decks/CardStatsController';
+import GameStatsController from '@/actions/App/Http/Controllers/Decks/GameStatsController';
 import MatchesController from '@/actions/App/Http/Controllers/Decks/MatchesController';
 import LeaguesController from '@/actions/App/Http/Controllers/Decks/LeaguesController';
 import MatchupsController from '@/actions/App/Http/Controllers/Decks/MatchupsController';
@@ -12,7 +13,7 @@ import DecklistController from '@/actions/App/Http/Controllers/Decks/DecklistCon
 import SettingsController from '@/actions/App/Http/Controllers/Decks/SettingsController';
 import OpenPopoutController from '@/actions/App/Http/Controllers/Decks/OpenPopoutController';
 import type { VersionStats } from '@/types/decks';
-import { ExternalLink, LayoutDashboard, BarChart3, Swords, Trophy as TrophyIcon, ScrollText, List, SettingsIcon } from 'lucide-vue-next';
+import { ExternalLink, LayoutDashboard, BarChart3, Boxes, Swords, Trophy as TrophyIcon, ScrollText, List, SettingsIcon } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
 import { Button } from '@/components/ui/button';
 
@@ -49,6 +50,7 @@ const timeframeQuery = computed(() => {
 const navItems = computed(() => [
     { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, href: DashboardController.url({ deck: props.deck.id }) + timeframeQuery.value },
     { key: 'card-stats', label: 'Card Stats', icon: BarChart3, href: CardStatsController.url({ deck: props.deck.id }) + timeframeQuery.value },
+    { key: 'game-stats', label: 'Game Stats', icon: Boxes, href: GameStatsController.url({ deck: props.deck.id }) + timeframeQuery.value },
     { key: 'matches', label: 'Matches', icon: Swords, href: MatchesController.url({ deck: props.deck.id }) + timeframeQuery.value },
     { key: 'leagues', label: 'Leagues', icon: TrophyIcon, href: LeaguesController.url({ deck: props.deck.id }) + timeframeQuery.value },
     { key: 'matchups', label: 'Matchups', icon: ScrollText, href: MatchupsController.url({ deck: props.deck.id }) + timeframeQuery.value },

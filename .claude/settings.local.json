@@ -65,7 +65,11 @@
       "Bash(vendor/bin/pint:*)",
       "Bash(npx vue-tsc:*)",
       "mcp__sentry__get_sentry_resource",
-      "Bash(git *)"
+      "Bash(git *)",
+      "mcp__sentry__search_issues",
+      "mcp__sentry__search_events",
+      "Bash(xargs ls *)",
+      "Bash(php *)"
     ]
   },
   "enableAllProjectMcpServers": true,
