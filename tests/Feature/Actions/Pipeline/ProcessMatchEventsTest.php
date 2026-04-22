@@ -1,10 +1,13 @@
 <?php
 
 use App\Actions\Pipeline\ProcessMatchEvents;
+use App\Enums\MatchState;
 use App\Models\Account;
 use App\Models\LogEvent;
 use App\Models\MtgoMatch;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 
 uses(RefreshDatabase::class);
 
@@ -130,4 +133,55 @@ it('drops match as phantom when fallback attributes to wrong multi-account user'
 
     // Documented trade-off: better to drop than to mis-attribute.
     expect(MtgoMatch::where('token', 'tok-phantom')->exists())->toBeFalse();
+});
+
+it('does not consume a retry attempt when commit fails with a readonly-database error', function () {
+    Account::create(['username' => 'alec', 'active' => true, 'tracked' => true]);
+
+    // Seed the match with 4 prior attempts so the NEXT failure would trip
+    // the 5-strike rule if the error were mis-classified.
+    $match = MtgoMatch::create([
+        'mtgo_id' => 'readonly-1',
+        'token' => 'tok-readonly',
+        'format' => 'Modern',
+        'match_type' => 'Swiss',
+        'started_at' => now(),
+        'state' => MatchState::Started,
+        'attempts' => 4,
+    ]);
+
+    createMatchEvents(token: 'tok-readonly', matchId: 'readonly-1', localUsername: 'alec', rowUsername: 'alec');
+
+    // Fail the first match-table UPDATE AdvanceMatchState issues (the Started
+    // → InProgress state bump) by raising a QueryException wrapping a
+    // PDOException with SQLite READONLY (native code 8). The match is
+    // pre-seeded above, so AdvanceMatchState takes the "find existing"
+    // path — no INSERT on matches is expected.
+    $thrown = false;
+    DB::listen(function ($query) use (&$thrown) {
+        if ($thrown) {
+            return;
+        }
+
+        if (str_starts_with($query->sql, 'update "matches"')) {
+            $thrown = true;
+            $pdo = new PDOException('SQLSTATE[HY000]: General error: 8 attempt to write a readonly database');
+            $pdo->errorInfo = ['HY000', 8, 'attempt to write a readonly database'];
+            throw new QueryException(
+                connectionName: 'sqlite',
+                sql: $query->sql,
+                bindings: $query->bindings,
+                previous: $pdo,
+            );
+        }
+    });
+
+    ProcessMatchEvents::run();
+
+    $match->refresh();
+
+    // The readonly error must be treated as transient — attempts stays at 4,
+    // failed_at stays null, and the match lives to be retried on the next tick.
+    expect($match->attempts)->toBe(4);
+    expect($match->failed_at)->toBeNull();
 });

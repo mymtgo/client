@@ -136,9 +136,15 @@ class ProcessMatchEvents
 
     private static function handleMatchFailure(MtgoMatch $match, \Throwable $e): void
     {
-        // SQLite lock errors are transient — don't count them as failures
-        if (str_contains($e->getMessage(), 'database is locked')) {
-            Log::channel('pipeline')->info("Match {$match->mtgo_id}: skipped due to database lock, will retry");
+        // Transient SQLite write errors (BUSY, LOCKED, READONLY, IOERR, and
+        // their extended codes) are retried on the next pipeline tick rather
+        // than consuming the per-match retry budget. Otherwise a brief burst
+        // of readonly/locked state during an active session can exhaust the
+        // 5-attempt budget and permanently abandon live matches.
+        if (IsTransientWriteError::run($e)) {
+            Log::channel('pipeline')->info("Match {$match->mtgo_id}: skipped due to transient write error, will retry", [
+                'error' => $e->getMessage(),
+            ]);
 
             return;
         }
