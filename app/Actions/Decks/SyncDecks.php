@@ -3,10 +3,9 @@
 namespace App\Actions\Decks;
 
 use App\Actions\DetermineDeckArchetype;
-use App\Actions\Matches\DetermineMatchDeck;
+use App\Actions\Matches\RelinkOrphanMatches;
 use App\Models\Account;
 use App\Models\Deck;
-use App\Models\MtgoMatch;
 use Illuminate\Support\Facades\DB;
 
 class SyncDecks
@@ -102,11 +101,12 @@ class SyncDecks
                 Deck::whereNull('account_id')->whereNotIn('id', $deckIds)->delete();
             }
 
-            // Re-link complete matches that lost their deck association
-            MtgoMatch::where('state', 'complete')
-                ->whereNull('deck_version_id')
-                ->each(fn (MtgoMatch $match) => DetermineMatchDeck::run($match));
         });
+
+        // Re-link complete matches that lost (or never got) their deck association.
+        // Kept outside the transaction above to avoid holding the SQLite write lock
+        // across the loop.
+        RelinkOrphanMatches::run(limit: 200);
     }
 
     /**

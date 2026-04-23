@@ -11,7 +11,6 @@ use App\Events\DeckLinkedToMatch;
 use App\Events\LeagueMatchStarted;
 use App\Facades\Mtgo;
 use App\Jobs\SubmitMatchLogSample;
-use App\Jobs\SyncDecks;
 use App\Models\LogEvent;
 use App\Models\MtgoMatch;
 use Illuminate\Support\Collection;
@@ -205,16 +204,14 @@ class AdvanceMatchState
         CreateOrUpdateGames::run($match, $events);
 
         // ── Link deck (if not already linked) ──
+        // If the matching DeckVersion doesn't exist yet (deck XML not synced),
+        // RelinkOrphanMatches will re-attempt on a later pipeline tick once
+        // SyncDecks creates it. We intentionally do NOT dispatch SyncDecks
+        // synchronously here — it holds the SQLite write lock across XML I/O
+        // and caused the queue worker to thrash on "database is locked".
         if (! $match->deck_version_id) {
             DetermineMatchDeck::run($match);
             $match->refresh();
-
-            // No match found — sync decks from disk and retry
-            if (! $match->deck_version_id) {
-                SyncDecks::dispatchSync();
-                DetermineMatchDeck::run($match);
-                $match->refresh();
-            }
 
             if ($match->deck_version_id) {
                 DeckLinkedToMatch::dispatch($match);

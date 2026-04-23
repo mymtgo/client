@@ -3,6 +3,7 @@
 namespace App\Actions\Pipeline;
 
 use App\Actions\Matches\LinkMatchToTournament;
+use App\Actions\Matches\RelinkOrphanMatches;
 use App\Actions\Tournaments\EnqueueTournamentObservations;
 use App\Models\MtgoMatch;
 
@@ -35,5 +36,10 @@ class RunPipeline
         // Phase 4: Enqueue tournament observations for shipping.
         // The sender job runs on its own schedule (see MtgoManager::schedule).
         EnqueueTournamentObservations::run();
+
+        // Phase 5: Relink complete matches whose deck XML arrived after the
+        // Started → InProgress boundary (otherwise they stay invisible in the
+        // deck-scoped match views).
+        RelinkOrphanMatches::run();
     }
 }

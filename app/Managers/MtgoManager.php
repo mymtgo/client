@@ -254,6 +254,13 @@ class MtgoManager
             ->name('submit_matches')
             ->withoutOverlapping(60);
 
+        // Pick up new/updated deck XML files so RunPipeline's orphan relinker
+        // has fresh DeckVersions to match against.
+        $schedule->call(fn () => $this->syncDecks())
+            ->everyFiveMinutes()
+            ->name('sync_decks')
+            ->withoutOverlapping(60);
+
         $schedule->job(new ShipTournamentObservations)
             ->everyThirtySeconds()
             ->name('ship_tournament_observations')
