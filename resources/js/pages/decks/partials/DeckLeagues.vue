@@ -17,7 +17,6 @@ type LeagueRun = {
     deck: { id: number; name: string } | null;
     startedAt: string;
     results: ('W' | 'L' | null)[];
-    phantom: boolean;
     state: 'active' | 'complete' | 'partial';
     matches: LeagueMatch[];
 };

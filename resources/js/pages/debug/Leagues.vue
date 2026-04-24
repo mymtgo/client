@@ -66,7 +66,6 @@ const columns = [
     { key: 'name', label: 'Name', type: 'text' as const },
     { key: 'format', label: 'Format', type: 'text' as const },
     { key: 'state', label: 'State', type: 'select' as const, optionsKey: 'stateOptions' as const },
-    { key: 'phantom', label: 'Phantom', type: 'switch' as const },
     { key: 'deck_change_detected', label: 'Deck Change', type: 'switch' as const },
     { key: 'deck_version_id', label: 'Deck Version', type: 'select' as const, optionsKey: 'deckVersionOptions' as const, nullable: true },
     { key: 'started_at', label: 'Started', type: 'readonly' as const },

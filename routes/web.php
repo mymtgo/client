@@ -40,7 +40,6 @@ use App\Http\Controllers\Import\ScanMatchesController;
 use App\Http\Controllers\Import\ScanStatusController;
 use App\Http\Controllers\Import\StoreController;
 use App\Http\Controllers\IndexController;
-use App\Http\Controllers\Leagues\AbandonController;
 use App\Http\Controllers\Leagues\OpponentScoutWindowController;
 use App\Http\Controllers\Leagues\OverlayController;
 use App\Http\Controllers\Matches\BulkUpdateArchetypeController;
@@ -58,7 +57,6 @@ use App\Http\Controllers\Settings\SwitchAccountController;
 use App\Http\Controllers\Settings\UpdateAccountTrackingController;
 use App\Http\Controllers\Settings\UpdateDataPathController;
 use App\Http\Controllers\Settings\UpdateDebugModeController;
-use App\Http\Controllers\Settings\UpdateHidePhantomController;
 use App\Http\Controllers\Settings\UpdateLocalImagesController;
 use App\Http\Controllers\Settings\UpdateLogPathController;
 use App\Http\Controllers\Settings\UpdateOverlaySettingsController;
@@ -96,7 +94,6 @@ Route::group([], function (Router $router) {
         $group->get('/', App\Http\Controllers\Leagues\IndexController::class)->name('leagues.index');
         $group->get('overlay', OverlayController::class)->name('leagues.overlay');
         $group->get('opponent-scout', OpponentScoutWindowController::class)->name('leagues.opponent-scout');
-        $group->delete('{league}', AbandonController::class)->name('leagues.abandon');
     });
 
     $router->group([
@@ -155,7 +152,6 @@ Route::group([], function (Router $router) {
         $group->post('sync', RunSyncController::class)->name('settings.sync');
         $group->post('populate-cards', RunPopulateCardsController::class)->name('settings.populate-cards');
         $group->patch('share-stats', UpdateShareStatsController::class)->name('settings.share-stats');
-        $group->patch('hide-phantom', UpdateHidePhantomController::class)->name('settings.hide-phantom');
         $group->post('submit-matches', RunSubmitMatchesController::class)->name('settings.submit-matches');
         $group->patch('switch-account', SwitchAccountController::class)->name('settings.switch-account');
         $group->patch('account-tracking', UpdateAccountTrackingController::class)->name('settings.account-tracking');

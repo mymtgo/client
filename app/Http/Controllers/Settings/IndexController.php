@@ -43,7 +43,6 @@ class IndexController extends Controller
             'pendingMatches' => MtgoMatch::submittable()
                 ->latest('started_at')
                 ->get(['id', 'format', 'outcome', 'started_at']),
-            'hidePhantomLeagues' => AppSettings::hidePhantomLeagues(),
             'accounts' => Account::orderBy('username')->get(['id', 'username', 'tracked', 'active']),
             'debugMode' => AppSettings::isDebugMode(),
             'appVersion' => config('nativephp.version'),

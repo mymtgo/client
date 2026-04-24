@@ -66,7 +66,6 @@ class OverlayController extends Controller
                 'wins' => $league->wins_count,
                 'losses' => $league->losses_count,
                 'totalMatches' => $league->total_matches_count,
-                'phantom' => (bool) $league->phantom,
                 'deckName' => $deckName,
                 'hasActiveMatch' => ! is_null($currentMatch),
                 'games' => $games,

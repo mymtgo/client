@@ -6,7 +6,6 @@ use App\Models\Archetype;
 use App\Models\Deck;
 use App\Models\DeckVersion;
 use App\Models\Game;
-use App\Models\League;
 use App\Models\MatchArchetype;
 use App\Models\MtgoMatch;
 use App\Models\Player;
@@ -93,7 +92,7 @@ it('produces a 12-row breakdown grouped by game number and on-play split', funct
         ['won' => true, 'on_play' => false],
     ]);
 
-    $rows = AggregateGameStats::run($deck, 'alltime', null, false);
+    $rows = AggregateGameStats::run($deck, 'alltime', null);
 
     expect($rows)->toHaveCount(12);
 
@@ -134,7 +133,7 @@ it('partitions wins and losses by on-play vs on-draw', function () {
         ['won' => false, 'on_play' => true],
     ]);
 
-    $rows = AggregateGameStats::run($deck, 'alltime', null, false);
+    $rows = AggregateGameStats::run($deck, 'alltime', null);
 
     expect(findRow($rows, 'all_games', 'play'))
         ->toMatchArray(['wins' => 1, 'losses' => 1]);
@@ -162,7 +161,7 @@ it('averages local and opponent mulligans per game', function () {
         ['won' => false, 'on_play' => false, 'local_mulligans' => 1, 'opponent_mulligans' => 1],
     ]);
 
-    $rows = AggregateGameStats::run($deck, 'alltime', null, false);
+    $rows = AggregateGameStats::run($deck, 'alltime', null);
 
     expect(findRow($rows, 'all_games', 'overall'))
         ->toMatchArray(['mulligans' => 1.0, 'opponent_mulligans' => 1.0]);
@@ -182,7 +181,7 @@ it('averages turns excluding null turn counts but still counts wins and losses',
         ['won' => true, 'on_play' => true, 'turn_count' => 11],
     ]);
 
-    $rows = AggregateGameStats::run($deck, 'alltime', null, false);
+    $rows = AggregateGameStats::run($deck, 'alltime', null);
 
     expect(findRow($rows, 'all_games', 'overall'))
         ->toMatchArray(['wins' => 3, 'losses' => 0, 'turns' => 9.0]);
@@ -192,7 +191,7 @@ it('returns null averages and win rate when no games match a bucket', function (
     $deck = Deck::factory()->create();
     DeckVersion::factory()->create(['deck_id' => $deck->id]);
 
-    $rows = AggregateGameStats::run($deck, 'alltime', null, false);
+    $rows = AggregateGameStats::run($deck, 'alltime', null);
 
     $row = findRow($rows, 'all_games', 'overall');
     expect($row)->toMatchArray([
@@ -217,7 +216,7 @@ it('computes win_rate as a percentage with one decimal', function () {
         ['won' => false, 'on_play' => true],
     ]);
 
-    $rows = AggregateGameStats::run($deck, 'alltime', null, false);
+    $rows = AggregateGameStats::run($deck, 'alltime', null);
 
     expect(findRow($rows, 'all_games', 'overall'))
         ->toMatchArray(['win_rate' => 66.7]);
@@ -243,37 +242,10 @@ it('excludes matches outside the requested timeframe', function () {
         startedAt: now()->subMonths(6),
     );
 
-    $rows = AggregateGameStats::run($deck, 'week', null, false);
+    $rows = AggregateGameStats::run($deck, 'week', null);
 
     expect(findRow($rows, 'all_games', 'overall'))
         ->toMatchArray(['wins' => 1, 'losses' => 0]);
-});
-
-it('excludes phantom-league matches when hidePhantomLeagues is true', function () {
-    $deck = Deck::factory()->create();
-    $deckVersion = DeckVersion::factory()->create(['deck_id' => $deck->id]);
-    $archetype = Archetype::factory()->create();
-
-    $phantomLeague = League::factory()->create(['phantom' => true]);
-
-    createMatchForGameStats(
-        $deckVersion,
-        $archetype,
-        MatchOutcome::Win,
-        [['won' => true, 'on_play' => true]],
-        leagueId: $phantomLeague->id,
-    );
-    createMatchForGameStats(
-        $deckVersion,
-        $archetype,
-        MatchOutcome::Loss,
-        [['won' => false, 'on_play' => false]],
-    );
-
-    $rows = AggregateGameStats::run($deck, 'alltime', null, true);
-
-    expect(findRow($rows, 'all_games', 'overall'))
-        ->toMatchArray(['wins' => 0, 'losses' => 1]);
 });
 
 it('filters by opponent archetype uuid when provided', function () {
@@ -295,7 +267,7 @@ it('filters by opponent archetype uuid when provided', function () {
         [['won' => false, 'on_play' => false]],
     );
 
-    $rows = AggregateGameStats::run($deck, 'alltime', $archetypeA->uuid, false);
+    $rows = AggregateGameStats::run($deck, 'alltime', $archetypeA->uuid);
 
     expect(findRow($rows, 'all_games', 'overall'))
         ->toMatchArray(['wins' => 1, 'losses' => 0]);
@@ -315,7 +287,7 @@ it('includes games beyond game 3 in all_games but not in the game_1/2/3 rows', f
         ['won' => true, 'on_play' => false],  // game 4
     ]);
 
-    $rows = AggregateGameStats::run($deck, 'alltime', null, false);
+    $rows = AggregateGameStats::run($deck, 'alltime', null);
 
     expect(findRow($rows, 'all_games', 'overall'))
         ->toMatchArray(['wins' => 3, 'losses' => 1]);

@@ -3,7 +3,6 @@ import BrowseFolderController from '@/actions/App/Http/Controllers/Settings/Brow
 import RunSubmitMatchesController from '@/actions/App/Http/Controllers/Settings/RunSubmitMatchesController';
 import UpdateAccountTrackingController from '@/actions/App/Http/Controllers/Settings/UpdateAccountTrackingController';
 import UpdateDataPathController from '@/actions/App/Http/Controllers/Settings/UpdateDataPathController';
-import UpdateHidePhantomController from '@/actions/App/Http/Controllers/Settings/UpdateHidePhantomController';
 import UpdateLogPathController from '@/actions/App/Http/Controllers/Settings/UpdateLogPathController';
 import UpdateOverlaySettingsController from '@/actions/App/Http/Controllers/Settings/UpdateOverlaySettingsController';
 import UpdateShareStatsController from '@/actions/App/Http/Controllers/Settings/UpdateShareStatsController';
@@ -32,7 +31,6 @@ const props = defineProps<{
     shareStats: boolean;
     logPathStatus: { valid: boolean; fileCount: number; message: string };
     dataPathStatus: { valid: boolean; fileCount: number; message: string };
-    hidePhantomLeagues: boolean;
     pendingMatches: Array<{ id: number; format: string; outcome: string | null; started_at: string }>;
     accounts: Array<{ id: number; username: string; tracked: boolean; active: boolean }>;
 leagueWindowEnabled: boolean;
@@ -101,10 +99,6 @@ function toggleShareStats(val: boolean) {
     withProcessing('shareStats', 'patch', UpdateShareStatsController.url(), { enabled: val });
 }
 
-function toggleHidePhantom(val: boolean) {
-    withProcessing('hidePhantom', 'patch', UpdateHidePhantomController.url(), { enabled: val });
-}
-
 function submitPendingMatches() {
     withProcessing('submitMatches', 'post', RunSubmitMatchesController.url());
 }
@@ -137,7 +131,6 @@ const sampleLeague: LeagueData = {
     id: 0,
     name: 'Friendly League',
     format: 'Modern',
-    phantom: false,
     wins: 3,
     losses: 1,
     totalMatches: 4,
@@ -244,19 +237,6 @@ const sampleOpponent: OpponentData = {
                         />
                     </div>
 
-                    <Separator />
-
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <Label>Hide phantom leagues</Label>
-                            <p class="text-sm text-muted-foreground">Exclude phantom league runs from the Leagues page and dashboard stats.</p>
-                        </div>
-                        <Switch
-                            :modelValue="props.hidePhantomLeagues"
-                            @update:modelValue="toggleHidePhantom"
-                            :disabled="processing === 'hidePhantom'"
-                        />
-                    </div>
                 </CardContent>
             </Card>
 

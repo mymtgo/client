@@ -19,7 +19,6 @@ it('seeds all defaults on first run and leaves existing values untouched', funct
     expect(AppSettings::logDataPath())->toBeString();                  // seeded
     expect(AppSettings::shouldTransmitMatches())->toBeTrue();          // seeded
     expect(AppSettings::isWatcherActive())->toBeTrue();                // seeded (new)
-    expect(AppSettings::hidePhantomLeagues())->toBeFalse();            // seeded (new)
     expect(AppSettings::isDebugMode())->toBeTrue();                    // untouched
     expect(AppSettings::showLeagueWindow())->toBeFalse();              // seeded (new)
     expect(AppSettings::showOpponentWindow())->toBeFalse();            // seeded (new)

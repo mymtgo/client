@@ -23,7 +23,6 @@ it('round-trips logPath', function () {
 it('casts bool settings correctly with defaults', function () {
     expect(AppSettings::shouldTransmitMatches())->toBeTrue();
     expect(AppSettings::isWatcherActive())->toBeTrue();
-    expect(AppSettings::hidePhantomLeagues())->toBeFalse();
     expect(AppSettings::isDebugMode())->toBeFalse();
     expect(AppSettings::showLeagueWindow())->toBeFalse();
     expect(AppSettings::showOpponentWindow())->toBeFalse();
@@ -34,12 +33,10 @@ it('casts bool settings correctly with defaults', function () {
 it('round-trips bool mutators', function () {
     AppSettings::setShouldTransmitMatches(false);
     AppSettings::setWatcherActive(false);
-    AppSettings::setHidePhantomLeagues(true);
     AppSettings::setDebugMode(true);
 
     expect(AppSettings::shouldTransmitMatches())->toBeFalse();
     expect(AppSettings::isWatcherActive())->toBeFalse();
-    expect(AppSettings::hidePhantomLeagues())->toBeTrue();
     expect(AppSettings::isDebugMode())->toBeTrue();
 });
 

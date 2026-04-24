@@ -45,8 +45,8 @@ class SubmitMatchToApi
             return;
         }
 
-        $isTournament = ! $match->league?->phantom;
-        $leagueToken = $isTournament ? $match->league?->token : null;
+        $isTournament = $match->tournament_event_id !== null;
+        $leagueToken = $match->league?->token;
 
         $deckVersion = DeckVersion::find($match->deck_version_id);
         $deck = self::buildDeckPayload($deckVersion);

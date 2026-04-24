@@ -14,7 +14,6 @@ class LeagueData extends Data
     public function __construct(
         public string $name,
         public Carbon $startedAt,
-        public bool $phantom,
         public string $format,
         public Collection $matches,
     ) {}
@@ -24,7 +23,6 @@ class LeagueData extends Data
         return new self(
             name: $league->name,
             startedAt: $league->started_at,
-            phantom: $league->phantom,
             format: MtgoMatch::displayFormat($league->format),
             matches: MatchData::collect($league->matches),
         );

@@ -17,7 +17,7 @@ class UpdateController extends Controller
 
         $allowed = [
             'token', 'event_id', 'name', 'format',
-            'state', 'phantom', 'deck_change_detected', 'deck_version_id',
+            'state', 'deck_change_detected', 'deck_version_id',
         ];
 
         $field = collect($request->only($allowed))->keys()->first();
@@ -32,7 +32,6 @@ class UpdateController extends Controller
             'name' => 'required|string',
             'format' => 'required|string',
             'state' => ['required', Rule::enum(LeagueState::class)],
-            'phantom' => 'boolean',
             'deck_change_detected' => 'boolean',
             'deck_version_id' => 'nullable|integer|exists:deck_versions,id',
         ];

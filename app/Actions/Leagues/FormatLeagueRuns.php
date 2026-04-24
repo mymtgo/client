@@ -196,7 +196,6 @@ class FormatLeagueRuns
             'id' => $league->id,
             'name' => $league->name,
             'format' => MtgoMatch::displayFormat($league->format),
-            'phantom' => (bool) $league->phantom,
             'state' => $league->state->value,
             'startedAt' => $league->started_at,
             'startedAtHuman' => $league->started_at ? Carbon::parse($league->started_at)->toLocal()->diffForHumans() : null,

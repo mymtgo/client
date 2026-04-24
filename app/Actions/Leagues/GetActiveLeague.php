@@ -52,7 +52,6 @@ class GetActiveLeague
         return [
             'name' => $league->name,
             'format' => MtgoMatch::displayFormat($league->format),
-            'phantom' => $league->phantom,
             'isActive' => $matches->count() < 5,
             'isTrophy' => $wins === 5,
             'deckName' => $league->deckVersion?->deck->name ?? $matches->last()?->getRelation('deck')->getAttribute('name'),

@@ -33,7 +33,7 @@ class GetDeckViewSharedProps
         $leagueMatches = $deck->matches()
             ->select('matches.*')
             ->whereNotNull('league_id')
-            ->whereHas('league', fn ($q) => $q->where('phantom', false)->where('state', 'complete'))
+            ->whereHas('league', fn ($q) => $q->where('state', 'complete'))
             ->get();
 
         $trophies = $leagueMatches

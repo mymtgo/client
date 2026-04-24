@@ -20,7 +20,6 @@ class MigrateSettingsToJson
         'log_data_path' => '',
         'share_stats' => true,
         'watcher_active' => true,
-        'hide_phantom_leagues' => false,
         'debug_mode' => false,
         'league_window' => false,
         'opponent_window' => false,

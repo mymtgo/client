@@ -151,9 +151,6 @@ class MtgoManager
         if (AppSettings::get('watcher_active') === null) {
             AppSettings::setWatcherActive(true);
         }
-        if (AppSettings::get('hide_phantom_leagues') === null) {
-            AppSettings::setHidePhantomLeagues(false);
-        }
         if (AppSettings::get('debug_mode') === null) {
             AppSettings::setDebugMode(false);
         }

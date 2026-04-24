@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Facade;
 /**
  * @method static mixed get(string $key, mixed $default = null)
  * @method static void set(string $key, mixed $value)
+ * @method static void forget(string $key)
  * @method static string logPath()
  * @method static void setLogPath(string $path)
  * @method static string logDataPath()
@@ -15,8 +16,6 @@ use Illuminate\Support\Facades\Facade;
  * @method static void setShouldTransmitMatches(bool $value)
  * @method static bool isWatcherActive()
  * @method static void setWatcherActive(bool $value)
- * @method static bool hidePhantomLeagues()
- * @method static void setHidePhantomLeagues(bool $value)
  * @method static bool isDebugMode()
  * @method static void setDebugMode(bool $value)
  * @method static bool showLeagueWindow()

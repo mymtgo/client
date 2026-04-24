@@ -1,12 +1,10 @@
 <?php
 
 use App\Enums\MatchOutcome;
-use App\Facades\AppSettings;
 use App\Models\Archetype;
 use App\Models\Deck;
 use App\Models\DeckVersion;
 use App\Models\Game;
-use App\Models\League;
 use App\Models\MatchArchetype;
 use App\Models\MtgoMatch;
 use App\Models\Player;
@@ -113,24 +111,5 @@ it('respects the opponent query parameter', function () {
             ->where('opponent', $archA->uuid)
             ->where('stats.rows.0.wins', 1)
             ->where('stats.rows.0.losses', 0)
-        );
-});
-
-it('applies the hide_phantom_leagues app setting', function () {
-    AppSettings::setHidePhantomLeagues(true);
-
-    $deck = Deck::factory()->create();
-    $deckVersion = DeckVersion::factory()->create(['deck_id' => $deck->id]);
-    $archetype = Archetype::factory()->create();
-
-    $phantomLeague = League::factory()->create(['phantom' => true]);
-    createCompletedMatch($deckVersion, $archetype, MatchOutcome::Win, won: true, leagueId: $phantomLeague->id);
-    createCompletedMatch($deckVersion, $archetype, MatchOutcome::Loss, won: false);
-
-    $this->get(route('decks.game-stats', ['deck' => $deck->id]))
-        ->assertOk()
-        ->assertInertia(fn ($page) => $page
-            ->where('stats.rows.0.wins', 0)
-            ->where('stats.rows.0.losses', 1)
         );
 });

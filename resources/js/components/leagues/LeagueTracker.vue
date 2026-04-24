@@ -1,11 +1,8 @@
 <script setup lang="ts">
-import PhantomBadge from '@/components/leagues/PhantomBadge.vue';
-
 export interface LeagueData {
     id: number;
     name: string;
     format: string;
-    phantom: boolean;
     wins: number;
     losses: number;
     totalMatches: number;
@@ -59,7 +56,6 @@ function gameDotClass(game: { won: boolean | null; ended: boolean } | undefined)
             <div class="flex items-center justify-between text-base" :style="{ color: textColor, opacity: 0.7 }">
                 <span class="inline-flex items-center gap-1">
                     {{ league.format }}
-                    <PhantomBadge v-if="league.phantom" :label="false" />
                 </span>
                 <span v-if="league.hasActiveMatch" class="inline-flex items-center gap-1">
                     <span

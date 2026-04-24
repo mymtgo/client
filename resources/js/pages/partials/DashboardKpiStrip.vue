@@ -7,7 +7,6 @@ import { TrendingUp, TrendingDown, Minus, Trophy } from 'lucide-vue-next';
 type ActiveLeague = {
     name: string;
     format: string;
-    phantom: boolean;
     isActive: boolean;
     isTrophy: boolean;
     deckName: string | null;

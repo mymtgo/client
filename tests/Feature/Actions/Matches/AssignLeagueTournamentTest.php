@@ -2,7 +2,6 @@
 
 use App\Actions\Matches\AssignLeague;
 use App\Enums\MatchState;
-use App\Facades\AppSettings;
 use App\Models\League;
 use App\Models\MtgoMatch;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -40,18 +39,18 @@ it('skips league assignment when tournament_event_id is stamped on the match (ga
     expect(League::count())->toBe(0);
 });
 
-it('still creates a phantom league for non-tournament matches', function () {
-    $match = MtgoMatch::factory()->create(['state' => MatchState::Started, 'format' => 'CMODERN']);
+it('leaves non-tournament non-tokenized match unassigned', function () {
+    $match = MtgoMatch::factory()->create([
+        'state' => MatchState::Started,
+        'tournament_event_id' => null,
+    ]);
 
-    AppSettings::setHidePhantomLeagues(false);
+    AssignLeague::run($match, [
+        'PlayFormatCd' => 'CStandard',
+        'GameStructureCd' => 'Match',
+        'Description' => 'Just a casual match',
+    ]);
 
-    $gameMeta = [
-        'Description' => 'LeagueMatch',
-        'PlayFormatCd' => 'CMODERN',
-        'GameStructureCd' => 'Modern',
-    ];
-
-    AssignLeague::run($match, $gameMeta);
-
-    expect($match->fresh()->league_id)->not->toBeNull();
+    expect($match->fresh()->league_id)->toBeNull();
+    expect(League::count())->toBe(0);
 });

@@ -17,19 +17,10 @@ class LeagueFactory extends Factory
             'token' => fake()->uuid(),
             'name' => 'League '.fake()->word(),
             'format' => 'CStandard',
-            'phantom' => false,
             'deck_change_detected' => false,
             'state' => LeagueState::Active,
             'started_at' => now(),
         ];
-    }
-
-    public function phantom(): static
-    {
-        return $this->state(fn () => [
-            'phantom' => true,
-            'name' => 'Phantom League '.fake()->word(),
-        ]);
     }
 
     public function complete(): static

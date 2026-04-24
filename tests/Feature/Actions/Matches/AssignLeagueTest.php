@@ -258,27 +258,16 @@ it('creates league reactively when no pre-existing league found', function () {
     expect($match->league->token)->toBe('league-token-123');
 });
 
-/*
-|--------------------------------------------------------------------------
-| Phantom League Assignment
-|--------------------------------------------------------------------------
-*/
-
-it('sets deck_version_id on phantom leagues', function () {
+it('leaves match unassigned when no league token is present', function () {
     $deckVersion = DeckVersion::factory()->create();
     $match = makeMatchWithDeck($deckVersion);
 
-    // Phantom league — no League Token
-    $gameMeta = [
-        'League Token' => '',
+    AssignLeague::run($match, [
         'PlayFormatCd' => 'CStandard',
-        'GameStructureCd' => 'Constructed',
-    ];
+        'GameStructureCd' => 'Match',
+        // no 'League Token' key
+    ]);
 
-    callAssignLeague($match, $gameMeta);
-
-    $match->refresh();
-    expect($match->league)->not->toBeNull();
-    expect((bool) $match->league->phantom)->toBeTrue();
-    expect($match->league->deck_version_id)->toBe($deckVersion->id);
+    expect($match->fresh()->league_id)->toBeNull();
+    expect(League::count())->toBe(0);
 });

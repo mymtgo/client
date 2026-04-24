@@ -94,7 +94,6 @@ class ProcessLeagueEvents
             'token' => $leagueToken,
             'event_id' => $eventId,
             'format' => $format,
-            'phantom' => false,
             'state' => LeagueState::Active,
             'started_at' => $event->logged_at,
             'joined_at' => $event->logged_at,

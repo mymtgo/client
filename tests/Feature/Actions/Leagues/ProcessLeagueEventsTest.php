@@ -58,7 +58,6 @@ it('creates a league from a join event', function () {
     expect($league)->not->toBeNull();
     expect($league->token)->toBe('test-league-token');
     expect($league->state)->toBe(LeagueState::Active);
-    expect((bool) $league->phantom)->toBeFalse();
     expect($league->joined_at)->not->toBeNull();
 });
 

@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Decks;
 use App\Actions\Decks\AggregateGameStats;
 use App\Actions\Decks\GetDeckViewSharedProps;
 use App\Concerns\HasTimeframeFilter;
-use App\Facades\AppSettings;
 use App\Http\Controllers\Controller;
 use App\Models\Deck;
 use Illuminate\Http\Request;
@@ -25,9 +24,8 @@ class GameStatsController extends Controller
         $shared = GetDeckViewSharedProps::run($deck, $from, $to);
 
         $opponent = $request->input('opponent') ?: null;
-        $hidePhantom = AppSettings::hidePhantomLeagues();
 
-        $rows = AggregateGameStats::run($deck, $timeframe, $opponent, $hidePhantom);
+        $rows = AggregateGameStats::run($deck, $timeframe, $opponent);
         $opponents = $this->opponentOptions($deck);
 
         return Inertia::render('decks/GameStats', [

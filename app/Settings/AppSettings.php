@@ -95,6 +95,64 @@ class AppSettings
         }
     }
 
+    /**
+     * Remove a single key from settings.json under an exclusive file lock.
+     * No-op if the file does not exist or the key is absent.
+     */
+    public function forget(string $key): void
+    {
+        $path = $this->path();
+
+        if (! is_file($path)) {
+            return;
+        }
+
+        $handle = fopen($path, 'c+');
+        if ($handle === false) {
+            throw new \RuntimeException("Could not open {$path} for write");
+        }
+
+        try {
+            if (! flock($handle, LOCK_EX)) {
+                throw new \RuntimeException("Could not acquire exclusive lock on {$path}");
+            }
+
+            rewind($handle);
+            $raw = stream_get_contents($handle);
+            $data = json_decode($raw === false ? '' : $raw, true);
+            if (! is_array($data)) {
+                return;
+            }
+
+            if (! array_key_exists($key, $data)) {
+                return;
+            }
+
+            unset($data[$key]);
+
+            $encoded = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+            if ($encoded === false) {
+                throw new \RuntimeException('AppSettings: failed to encode settings as JSON');
+            }
+
+            rewind($handle);
+            if (ftruncate($handle, 0) === false) {
+                throw new \RuntimeException("AppSettings: failed to truncate {$path}");
+            }
+
+            if (fwrite($handle, $encoded) === false) {
+                throw new \RuntimeException("AppSettings: failed to write {$path}");
+            }
+
+            fflush($handle);
+        } finally {
+            if (is_resource($handle)) {
+                flock($handle, LOCK_UN);
+                fclose($handle);
+            }
+        }
+    }
+
     public function logPath(): string
     {
         return (string) $this->get('log_path', '');
@@ -133,16 +191,6 @@ class AppSettings
     public function setWatcherActive(bool $value): void
     {
         $this->set('watcher_active', $value);
-    }
-
-    public function hidePhantomLeagues(): bool
-    {
-        return (bool) $this->get('hide_phantom_leagues', false);
-    }
-
-    public function setHidePhantomLeagues(bool $value): void
-    {
-        $this->set('hide_phantom_leagues', $value);
     }
 
     public function isDebugMode(): bool

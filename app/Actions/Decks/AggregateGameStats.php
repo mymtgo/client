@@ -21,7 +21,6 @@ class AggregateGameStats
         Deck $deck,
         string $timeframe,
         ?string $opponentArchetypeUuid,
-        bool $hidePhantomLeagues,
     ): Collection {
         $deckVersionIds = $deck->versions()->pluck('id')->all();
 
@@ -43,18 +42,6 @@ class AggregateGameStats
             ->where('m.state', 'complete')
             ->whereNotNull('g.won')
             ->whereBetween('m.started_at', [$from, $to]);
-
-        if ($hidePhantomLeagues) {
-            $query->where(function ($q) {
-                $q->whereNull('m.league_id')
-                    ->orWhereExists(function ($sub) {
-                        $sub->selectRaw('1')
-                            ->from('leagues as l')
-                            ->whereColumn('l.id', 'm.league_id')
-                            ->where('l.phantom', false);
-                    });
-            });
-        }
 
         if ($opponentArchetypeUuid !== null) {
             $query->whereExists(function ($q) use ($opponentArchetypeUuid) {

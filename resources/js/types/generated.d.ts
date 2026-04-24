@@ -72,7 +72,6 @@ content: Array<any>;
 export type LeagueData = {
 name: string;
 startedAt: string;
-phantom: boolean;
 format: string;
 matches: Array<any>;
 };

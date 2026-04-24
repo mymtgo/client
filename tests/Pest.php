@@ -73,6 +73,11 @@ pest()->extend(TestCase::class)
             {
                 $this->store[$key] = $value;
             }
+
+            public function forget(string $key): void
+            {
+                unset($this->store[$key]);
+            }
         });
     })
     ->in('Feature');
