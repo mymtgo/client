@@ -69,7 +69,8 @@
       "mcp__sentry__search_issues",
       "mcp__sentry__search_events",
       "Bash(xargs ls *)",
-      "Bash(php *)"
+      "Bash(php *)",
+      "mcp__sentry__find_organizations"
     ]
   },
   "enableAllProjectMcpServers": true,
