@@ -69,29 +69,30 @@ it('holds an exclusive lock across read-modify-write', function () {
     // With an external exclusive lock held, a concurrent set() must wait.
     // We assert that the write call does not return immediately: we release
     // the external lock on a short timer and verify set() completes after.
-    register_shutdown_function(function () use ($external) {
-        @flock($external, LOCK_UN);
-        @fclose($external);
-    });
+    try {
+        $pid = pcntl_fork();
+        if ($pid === 0) {
+            usleep(200_000);
+            flock($external, LOCK_UN);
+            fclose($external);
+            exit(0);
+        }
 
-    // Release after 200ms and time the set().
-    $pid = pcntl_fork();
-    if ($pid === 0) {
-        usleep(200_000);
-        flock($external, LOCK_UN);
-        fclose($external);
-        exit(0);
+        $start = microtime(true);
+        $this->settings->set('b', 2);
+        $elapsed = microtime(true) - $start;
+
+        expect($elapsed)->toBeGreaterThan(0.15);
+        expect($this->settings->get('a'))->toBe(1);
+        expect($this->settings->get('b'))->toBe(2);
+
+        pcntl_waitpid($pid, $status);
+    } finally {
+        if (is_resource($external)) {
+            @flock($external, LOCK_UN);
+            @fclose($external);
+        }
     }
-
-    $start = microtime(true);
-    $this->settings->set('b', 2);
-    $elapsed = microtime(true) - $start;
-
-    expect($elapsed)->toBeGreaterThan(0.15);
-    expect($this->settings->get('a'))->toBe(1);
-    expect($this->settings->get('b'))->toBe(2);
-
-    pcntl_waitpid($pid, $status);
 })->skipOnWindows()->skip(! function_exists('pcntl_fork'), 'pcntl_fork required');
 
 it('renames a corrupt file aside and returns defaults on read', function () {

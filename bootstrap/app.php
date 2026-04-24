@@ -37,6 +37,18 @@ return Application::configure(basePath: dirname(__DIR__))
             return $e instanceof HttpExceptionInterface && request()->is('_native/*');
         });
 
+        // Don't report Blade compile rename races on Windows. The packaged Electron
+        // app runs `artisan optimize` → `view:cache` at startup; occasionally
+        // AV/indexer still holds a just-written temp file when rename() fires.
+        // The app keeps working — lazy compilation handles any view that missed
+        // the cache — so this warning is noise, not a user-facing bug.
+        $exceptions->dontReportWhen(function (Throwable $e) {
+            return $e instanceof ErrorException
+                && str_contains($e->getMessage(), 'rename(')
+                && str_contains($e->getMessage(), 'Access is denied')
+                && str_contains($e->getFile(), 'Filesystem');
+        });
+
         $exceptions->respond(function (Response $response, Throwable $e, Request $request) {
             if ($e instanceof HttpExceptionInterface
                 && in_array($response->getStatusCode(), [403, 404, 419, 500, 503])
