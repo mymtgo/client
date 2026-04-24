@@ -9,9 +9,11 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('leagues', function (Blueprint $table) {
-            $table->boolean('deck_change_detected')->default(false)->after('phantom');
-        });
+        if (! Schema::hasColumn('leagues', 'deck_change_detected')) {
+            Schema::table('leagues', function (Blueprint $table) {
+                $table->boolean('deck_change_detected')->default(false)->after('phantom');
+            });
+        }
 
         // Retroactively set phantom = true for leagues that were created as phantom
         // (identified by having a randomly-generated token, i.e. no real MTGO league token)

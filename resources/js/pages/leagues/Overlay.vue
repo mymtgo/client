@@ -2,8 +2,7 @@
 import OverlayLayout from '@/Layouts/OverlayLayout.vue';
 import type { LeagueData } from '@/components/leagues/LeagueTracker.vue';
 import LeagueTracker from '@/components/leagues/LeagueTracker.vue';
-import { router } from '@inertiajs/vue3';
-import { onMounted, onUnmounted } from 'vue';
+import { usePoll } from '@inertiajs/vue3';
 
 defineOptions({ layout: OverlayLayout });
 
@@ -11,17 +10,7 @@ defineProps<{
     league: LeagueData | null;
 }>();
 
-let interval: ReturnType<typeof setInterval>;
-
-onMounted(() => {
-    interval = setInterval(() => {
-        router.reload({ only: ['league'] });
-    }, 5000);
-});
-
-onUnmounted(() => {
-    clearInterval(interval);
-});
+usePoll(5000, { only: ['league'] });
 </script>
 
 <template>

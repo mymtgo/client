@@ -9,9 +9,11 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('log_events', function (Blueprint $table) {
-            $table->string('username', 20)->nullable()->after('logged_at')->index();
-        });
+        if (! Schema::hasColumn('log_events', 'username')) {
+            Schema::table('log_events', function (Blueprint $table) {
+                $table->string('username', 20)->nullable()->after('logged_at')->index();
+            });
+        }
 
         // Backfill: find the login event username and stamp all existing rows
         $loginEvent = DB::table('log_events')

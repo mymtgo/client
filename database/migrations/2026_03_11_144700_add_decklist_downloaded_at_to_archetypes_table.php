@@ -11,6 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (Schema::hasColumn('archetypes', 'decklist_downloaded_at')) {
+            return;
+        }
+
         Schema::table('archetypes', function (Blueprint $table) {
             $table->dateTime('decklist_downloaded_at')->nullable()->after('color_identity');
         });

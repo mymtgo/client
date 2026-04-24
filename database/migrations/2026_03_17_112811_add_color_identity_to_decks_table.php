@@ -10,9 +10,11 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('decks', function (Blueprint $table) {
-            $table->string('color_identity')->nullable()->after('format');
-        });
+        if (! Schema::hasColumn('decks', 'color_identity')) {
+            Schema::table('decks', function (Blueprint $table) {
+                $table->string('color_identity')->nullable()->after('format');
+            });
+        }
 
         // Backfill from latest deck version cards
         $ignoredTypes = ['Artifact', 'Land', 'Basic Land'];

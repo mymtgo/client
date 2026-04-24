@@ -11,6 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (Schema::hasTable('archetype_cards')) {
+            return;
+        }
+
         Schema::create('archetype_cards', function (Blueprint $table) {
             $table->id();
             $table->foreignId('archetype_id')->constrained()->cascadeOnDelete();

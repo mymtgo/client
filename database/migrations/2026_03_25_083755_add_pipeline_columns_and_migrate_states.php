@@ -12,9 +12,15 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('matches', function (Blueprint $table) {
-            $table->timestamp('failed_at')->nullable()->after('outcome');
-            $table->unsignedTinyInteger('attempts')->default(0)->after('failed_at');
+        $existing = Schema::getColumnListing('matches');
+
+        Schema::table('matches', function (Blueprint $table) use ($existing) {
+            if (! in_array('failed_at', $existing, true)) {
+                $table->timestamp('failed_at')->nullable()->after('outcome');
+            }
+            if (! in_array('attempts', $existing, true)) {
+                $table->unsignedTinyInteger('attempts')->default(0)->after('failed_at');
+            }
         });
 
         // Migrate existing state data

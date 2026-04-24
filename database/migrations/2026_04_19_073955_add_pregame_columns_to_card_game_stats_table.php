@@ -11,9 +11,15 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('card_game_stats', function (Blueprint $table) {
-            $table->boolean('pregame_revealed')->default(false)->after('activated');
-            $table->boolean('pregame_played')->default(false)->after('pregame_revealed');
+        $existing = Schema::getColumnListing('card_game_stats');
+
+        Schema::table('card_game_stats', function (Blueprint $table) use ($existing) {
+            if (! in_array('pregame_revealed', $existing, true)) {
+                $table->boolean('pregame_revealed')->default(false)->after('activated');
+            }
+            if (! in_array('pregame_played', $existing, true)) {
+                $table->boolean('pregame_played')->default(false)->after('pregame_revealed');
+            }
         });
     }
 

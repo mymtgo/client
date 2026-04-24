@@ -8,6 +8,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (Schema::hasTable('card_game_stats')) {
+            return;
+        }
+
         Schema::create('card_game_stats', function (Blueprint $table) {
             $table->id();
             $table->string('oracle_id')->index();

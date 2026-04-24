@@ -10,11 +10,19 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('game_logs', function (Blueprint $table) {
-            $table->timestamp('first_timestamp')->nullable()->after('file_path');
-            $table->json('players')->nullable()->after('first_timestamp');
+        $existing = Schema::getColumnListing('game_logs');
 
-            $table->index('first_timestamp');
+        Schema::table('game_logs', function (Blueprint $table) use ($existing) {
+            if (! in_array('first_timestamp', $existing, true)) {
+                $table->timestamp('first_timestamp')->nullable()->after('file_path');
+            }
+            if (! in_array('players', $existing, true)) {
+                $table->json('players')->nullable()->after('first_timestamp');
+            }
+
+            if (! Schema::hasIndex('game_logs', ['first_timestamp'])) {
+                $table->index('first_timestamp');
+            }
         });
 
         // Backfill existing decoded game logs

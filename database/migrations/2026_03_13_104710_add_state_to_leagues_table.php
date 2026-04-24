@@ -9,9 +9,11 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('leagues', function (Blueprint $table) {
-            $table->string('state')->default('active')->after('deck_change_detected');
-        });
+        if (! Schema::hasColumn('leagues', 'state')) {
+            Schema::table('leagues', function (Blueprint $table) {
+                $table->string('state')->default('active')->after('deck_change_detected');
+            });
+        }
 
         // Backfill: mark leagues with 5+ complete matches as complete
         $completeLeagueIds = DB::table('leagues')

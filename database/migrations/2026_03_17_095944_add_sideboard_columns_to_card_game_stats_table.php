@@ -8,9 +8,15 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('card_game_stats', function (Blueprint $table) {
-            $table->boolean('is_postboard')->default(false)->after('won');
-            $table->boolean('sided_out')->default(false)->after('is_postboard');
+        $existing = Schema::getColumnListing('card_game_stats');
+
+        Schema::table('card_game_stats', function (Blueprint $table) use ($existing) {
+            if (! in_array('is_postboard', $existing, true)) {
+                $table->boolean('is_postboard')->default(false)->after('won');
+            }
+            if (! in_array('sided_out', $existing, true)) {
+                $table->boolean('sided_out')->default(false)->after('is_postboard');
+            }
         });
     }
 

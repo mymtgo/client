@@ -12,6 +12,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (Schema::hasColumn('matches', 'league_id')) {
+            return;
+        }
+
         Schema::table('matches', function (Blueprint $table) {
             $table->foreignIdFor(League::class, 'league_id')->after('mtgo_id')->nullable()->constrained();
         });

@@ -11,7 +11,7 @@ import UpdateDeckArchetypeController from '@/actions/App/Http/Controllers/Decks/
 import ManaSymbols from '@/components/ManaSymbols.vue';
 import { Input } from '@/components/ui/input';
 import type { VersionStats } from '@/types/decks';
-import { computed, ref, watch } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 import { router } from '@inertiajs/vue3';
 
 defineOptions({ layout: [AppLayout, DeckViewLayout] });
@@ -119,6 +119,13 @@ const selectedArt = computed(() => artOptions.value.find(o => o.id === selectedC
 const archetypeSearch = ref('');
 const showArchetypeSelect = ref(false);
 const savingArchetype = ref(false);
+const archetypeSearchInput = ref<{ $el: HTMLInputElement } | null>(null);
+
+watch(showArchetypeSelect, (visible) => {
+    if (visible) {
+        nextTick(() => archetypeSearchInput.value?.$el?.focus());
+    }
+});
 
 const filteredArchetypes = computed(() => {
     if (!archetypeSearch.value) return props.archetypes;
@@ -185,7 +192,7 @@ function clearArchetype() {
                     </div>
 
                     <div v-if="showArchetypeSelect" class="flex flex-col gap-2">
-                        <Input v-model="archetypeSearch" placeholder="Search archetypes..." />
+                        <Input ref="archetypeSearchInput" v-model="archetypeSearch" placeholder="Search archetypes..." />
                         <div class="max-h-60 overflow-y-auto space-y-0.5 rounded-md border border-border p-1">
                             <Button
                                 v-for="archetype in filteredArchetypes"

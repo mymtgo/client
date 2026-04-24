@@ -41,7 +41,7 @@ class SubmitMatchToApi
             ->with('archetype')
             ->first();
 
-        if (! $playerArchetype?->archetype || ! $opponentArchetype?->archetype) {
+        if (! $playerArchetype?->archetype) {
             return;
         }
 
@@ -64,7 +64,7 @@ class SubmitMatchToApi
             'match_token' => $match->token,
             'username' => $match->games->first()->localPlayers->first()->username,
             'player_archetype_uuid' => $playerArchetype->archetype->uuid,
-            'opponent_archetype_uuid' => $opponentArchetype->archetype->uuid,
+            'opponent_archetype_uuid' => $opponentArchetype?->archetype?->uuid,
             'result' => $match->isWin() ? 'win' : 'loss',
             'format' => $match->format,
             'is_tournament' => $isTournament,

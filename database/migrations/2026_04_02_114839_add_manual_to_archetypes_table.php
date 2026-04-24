@@ -8,6 +8,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (Schema::hasColumn('archetypes', 'manual')) {
+            return;
+        }
+
         Schema::table('archetypes', function (Blueprint $table) {
             $table->boolean('manual')->default(false)->after('color_identity');
         });

@@ -11,6 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (Schema::hasColumn('card_game_stats', 'sided_in')) {
+            return;
+        }
+
         Schema::table('card_game_stats', function (Blueprint $table) {
             $table->boolean('sided_in')->default(false)->after('sided_out');
         });

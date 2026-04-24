@@ -9,6 +9,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (! Schema::hasColumn('matches', 'deleted_at')) {
+            return;
+        }
+
         // Delete any soft-deleted matches before dropping the column
         DB::table('matches')
             ->whereNotNull('deleted_at')

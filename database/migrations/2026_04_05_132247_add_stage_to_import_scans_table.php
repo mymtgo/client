@@ -8,6 +8,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (Schema::hasColumn('import_scans', 'stage')) {
+            return;
+        }
+
         Schema::table('import_scans', function (Blueprint $table) {
             $table->string('stage')->default('discovering')->after('status');
         });

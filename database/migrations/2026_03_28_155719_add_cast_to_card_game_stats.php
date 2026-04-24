@@ -11,6 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (Schema::hasColumn('card_game_stats', 'cast')) {
+            return;
+        }
+
         Schema::table('card_game_stats', function (Blueprint $table) {
             $table->integer('cast')->default(0)->after('seen');
         });

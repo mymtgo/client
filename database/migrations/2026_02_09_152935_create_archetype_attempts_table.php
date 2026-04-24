@@ -11,6 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (Schema::hasTable('archetype_match_attempts')) {
+            return;
+        }
+
         Schema::create('archetype_match_attempts', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('match_id')->nullable();

@@ -12,6 +12,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (Schema::hasTable('game_timelines')) {
+            return;
+        }
+
         Schema::create('game_timelines', function (Blueprint $table) {
             $table->id();
             $table->foreignIdFor(Game::class)->constrained();

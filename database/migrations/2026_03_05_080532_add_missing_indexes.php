@@ -9,19 +9,33 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('game_player', function (Blueprint $table) {
-            $table->index('game_id');
-            $table->index('player_id');
-            $table->index(['game_id', 'is_local']);
+            if (! Schema::hasIndex('game_player', ['game_id'])) {
+                $table->index('game_id');
+            }
+            if (! Schema::hasIndex('game_player', ['player_id'])) {
+                $table->index('player_id');
+            }
+            if (! Schema::hasIndex('game_player', ['game_id', 'is_local'])) {
+                $table->index(['game_id', 'is_local']);
+            }
         });
 
         Schema::table('match_archetypes', function (Blueprint $table) {
-            $table->index('mtgo_match_id');
-            $table->index('player_id');
-            $table->index('archetype_id');
+            if (! Schema::hasIndex('match_archetypes', ['mtgo_match_id'])) {
+                $table->index('mtgo_match_id');
+            }
+            if (! Schema::hasIndex('match_archetypes', ['player_id'])) {
+                $table->index('player_id');
+            }
+            if (! Schema::hasIndex('match_archetypes', ['archetype_id'])) {
+                $table->index('archetype_id');
+            }
         });
 
         Schema::table('game_timelines', function (Blueprint $table) {
-            $table->index('game_id');
+            if (! Schema::hasIndex('game_timelines', ['game_id'])) {
+                $table->index('game_id');
+            }
         });
     }
 

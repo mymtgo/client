@@ -11,6 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (Schema::hasTable('archetypes')) {
+            return;
+        }
+
         Schema::create('archetypes', function (Blueprint $table) {
             $table->id();
             $table->string('uuid')->unique();

@@ -8,6 +8,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (Schema::hasColumn('decks', 'archetype_id')) {
+            return;
+        }
+
         Schema::table('decks', function (Blueprint $table) {
             $table->foreignId('archetype_id')->nullable()->after('cover_id')->constrained('archetypes')->nullOnDelete();
         });

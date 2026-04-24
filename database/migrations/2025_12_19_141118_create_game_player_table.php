@@ -13,6 +13,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (Schema::hasTable('game_player')) {
+            return;
+        }
+
         Schema::create('game_player', function (Blueprint $table) {
             $table->id();
             $table->foreignIdFor(Game::class)->constrained();
