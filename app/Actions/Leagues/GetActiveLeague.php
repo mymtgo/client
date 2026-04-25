@@ -54,7 +54,7 @@ class GetActiveLeague
             'format' => MtgoMatch::displayFormat($league->format),
             'isActive' => $matches->count() < 5,
             'isTrophy' => $wins === 5,
-            'deckName' => $league->deckVersion?->deck->name ?? $matches->last()?->getRelation('deck')->getAttribute('name'),
+            'deckName' => $league->deckVersion?->deck->name ?? $matches->last()?->deck?->name,
             'versionLabel' => $versionLabel,
             'results' => $matches
                 ->map(fn ($m) => $m->isWin() ? 'W' : 'L')

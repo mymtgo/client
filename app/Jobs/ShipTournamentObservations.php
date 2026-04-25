@@ -9,6 +9,7 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -23,6 +24,15 @@ class ShipTournamentObservations implements ShouldQueue
     public const BATCH_LIMIT = 200;
 
     public const MAX_ATTEMPTS = 20;
+
+    public int $tries = 1;
+
+    public int $maxExceptions = 1;
+
+    public function middleware(): array
+    {
+        return [(new WithoutOverlapping('ship-tournament-observations'))->dontRelease()];
+    }
 
     public function handle(): void
     {

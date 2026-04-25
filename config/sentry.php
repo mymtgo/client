@@ -1,5 +1,10 @@
 <?php
 
+use Illuminate\Auth\AuthenticationException;
+use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+
 /**
  * Sentry Laravel SDK configuration file.
  *
@@ -8,7 +13,12 @@
 return [
 
     // @see https://docs.sentry.io/concepts/key-terms/dsn-explainer/
-    'dsn' => env('SENTRY_LARAVEL_DSN', env('SENTRY_DSN')),
+    // Only send to Sentry from production builds. Local dev noise (Vite reloads,
+    // missing routes during refactor, transient migrations on a wiped dev DB)
+    // floods the dashboard otherwise.
+    'dsn' => env('APP_ENV') === 'production'
+        ? env('SENTRY_LARAVEL_DSN', env('SENTRY_DSN'))
+        : null,
 
     // @see https://spotlightjs.com/
     // 'spotlight' => env('SENTRY_SPOTLIGHT', false),
@@ -50,7 +60,12 @@ return [
     'send_default_pii' => env('SENTRY_SEND_DEFAULT_PII', false),
 
     // @see: https://docs.sentry.io/platforms/php/guides/laravel/configuration/options/#ignore_exceptions
-    // 'ignore_exceptions' => [],
+    'ignore_exceptions' => [
+        ValidationException::class,
+        AuthenticationException::class,
+        NotFoundHttpException::class,
+        MethodNotAllowedHttpException::class,
+    ],
 
     // @see: https://docs.sentry.io/platforms/php/guides/laravel/configuration/options/#ignore_transactions
     'ignore_transactions' => [

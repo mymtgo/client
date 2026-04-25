@@ -22,6 +22,11 @@ const error = computed(() => errors[props.status] ?? {
     body: props.message ?? 'An unexpected error occurred.',
     icon: AlertTriangle,
 });
+
+function goBack() {
+    const back = typeof window !== 'undefined' ? window.history?.state?.back : null;
+    router.visit(back ?? '/');
+}
 </script>
 
 <template>
@@ -34,7 +39,7 @@ const error = computed(() => errors[props.status] ?? {
             </div>
             <p class="max-w-sm text-sm text-muted-foreground">{{ error.body }}</p>
             <div class="mt-2 flex gap-2">
-                <Button variant="outline" size="sm" @click="router.visit(window.history.state?.back ?? '/')">
+                <Button variant="outline" size="sm" @click="goBack">
                     <ArrowLeft class="mr-1.5 size-3.5" />
                     Go Back
                 </Button>

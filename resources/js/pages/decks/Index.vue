@@ -37,8 +37,8 @@ const activeFormat = ref(props.filters.format || 'all');
 const sortBy = ref(props.filters.sort);
 
 const hasAnyDecks = computed(() => {
-    if (props.mode === 'flat') return props.decks.total > 0;
-    return props.groups.some((g) => g.decks.length > 0);
+    if (props.mode === 'flat') return (props.decks?.total ?? 0) > 0;
+    return (props.groups ?? []).some((g) => g.decks.length > 0);
 });
 
 const showEmptyStateEmpty = computed(() => !hasAnyDecks.value && !props.filters.search && !props.filters.format);
@@ -160,7 +160,7 @@ function updatePage(page: number) {
                 </Button>
 
                 <Pagination
-                    v-if="mode === 'flat' && decks.total > decks.per_page"
+                    v-if="mode === 'flat' && decks && decks.total > decks.per_page"
                     class="mx-0 ml-auto w-auto"
                     @update:page="updatePage"
                     v-slot="{ page }"
@@ -194,7 +194,7 @@ function updatePage(page: number) {
                 />
             </template>
 
-            <template v-else>
+            <template v-else-if="mode === 'flat' && decks">
                 <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                     <DeckCard v-for="deck in decks.data" :key="deck.id" :deck="deck" />
                 </div>

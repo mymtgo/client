@@ -28,12 +28,18 @@ createInertiaApp({
         const app = createApp({ render: () => h(App, props) })
             .use(plugin);
 
-        Sentry.init({
-            app: app,
-            dsn: 'https://013633bd183642005b90b1b6ddba00a4@o4510380004802560.ingest.de.sentry.io/4511202597666896',
-            integrations: [],
-            ignoreErrors: ['Network Error'],
-        });
+        if (import.meta.env.PROD) {
+            Sentry.init({
+                app: app,
+                dsn: 'https://013633bd183642005b90b1b6ddba00a4@o4510380004802560.ingest.de.sentry.io/4511202597666896',
+                integrations: [],
+                ignoreErrors: [
+                    'Network Error',
+                    'AxiosError: Network Error',
+                    /Failed to fetch dynamically imported module/,
+                ],
+            });
+        }
 
         app.mount(el);
 

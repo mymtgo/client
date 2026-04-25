@@ -6,17 +6,17 @@ import { AlertTriangle } from 'lucide-vue-next';
 import type { VersionStats } from '@/types/decks';
 
 const props = defineProps<{
-    deck: App.Data.Front.DeckData;
-    versions: VersionStats[];
+    deck?: App.Data.Front.DeckData;
+    versions?: VersionStats[];
     currentVersionId: number | null;
-    trophies: number;
+    trophies?: number;
     currentPage: string;
     timeframe?: string;
 }>();
 </script>
 
 <template>
-    <div class="flex min-h-0 flex-1 flex-col">
+    <div v-if="deck" class="flex min-h-0 flex-1 flex-col">
         <Link
             v-if="!deck.archetype"
             :href="SettingsController.url({ deck: deck.id })"
