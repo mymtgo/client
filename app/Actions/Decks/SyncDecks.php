@@ -6,7 +6,7 @@ use App\Actions\DetermineDeckArchetype;
 use App\Actions\Matches\RelinkOrphanMatches;
 use App\Models\Account;
 use App\Models\Deck;
-use Illuminate\Support\Facades\DB;
+use App\Support\TimedTransaction;
 
 class SyncDecks
 {
@@ -87,7 +87,7 @@ class SyncDecks
         }
 
         // Batch cleanup and re-linking in a single transaction.
-        DB::transaction(function () use ($deckIds) {
+        TimedTransaction::run('SyncDecks:cleanup', function () use ($deckIds) {
             $accountId = Account::active()->value('id');
             if ($accountId) {
                 Deck::where('account_id', $accountId)->whereNotIn('id', $deckIds)->delete();

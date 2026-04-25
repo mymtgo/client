@@ -9,7 +9,6 @@ use App\Facades\Mtgo;
 use App\Models\Account;
 use App\Models\LogEvent;
 use App\Models\MtgoMatch;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class ProcessMatchEvents
@@ -98,29 +97,36 @@ class ProcessMatchEvents
         Mtgo::setUsername($username);
 
         try {
-            DB::transaction(function () use ($matchToken, $matchId) {
-                $match = AdvanceMatchState::run($matchToken, $matchId);
+            // No outer transaction here: AdvanceMatchState manages its own
+            // atomicity for the match/games create + state transition, and
+            // ResolveGameResults does file I/O (binary game log parse) which
+            // we do NOT want holding the SQLite write lock while it runs.
+            // Holding the lock during file I/O was causing queue worker
+            // `update jobs set reserved_at` queries to time out at 30s.
+            //
+            // Each step below is independently idempotent on retry: an
+            // existing match short-circuits AdvanceMatchState's create path,
+            // ResolveGameResults syncs results progressively, and
+            // markEventsProcessed only marks unprocessed rows.
+            $match = AdvanceMatchState::run($matchToken, $matchId);
 
-                if (! $match) {
-                    self::markStaleEventsProcessed($matchToken);
+            if (! $match) {
+                self::markStaleEventsProcessed($matchToken);
 
-                    return;
+                return;
+            }
+
+            if (in_array($match->state, [MatchState::InProgress, MatchState::Ended])) {
+                try {
+                    ResolveGameResults::run($match);
+                } catch (\Throwable $e) {
+                    Log::channel('pipeline')->warning("Match {$match->mtgo_id}: game log resolution failed, will retry", [
+                        'error' => $e->getMessage(),
+                    ]);
                 }
+            }
 
-                // Check game log for results inline — non-fatal, next tick retries
-                if (in_array($match->state, [MatchState::InProgress, MatchState::Ended])) {
-                    try {
-                        ResolveGameResults::run($match);
-                    } catch (\Throwable $e) {
-                        Log::channel('pipeline')->warning("Match {$match->mtgo_id}: game log resolution failed, will retry", [
-                            'error' => $e->getMessage(),
-                        ]);
-                    }
-                }
-
-                // Mark all events for this match token as processed
-                self::markEventsProcessed($matchToken);
-            });
+            self::markEventsProcessed($matchToken);
         } catch (\Throwable $e) {
             $match = $existingMatch ?? MtgoMatch::where('token', $matchToken)->first();
 

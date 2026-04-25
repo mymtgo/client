@@ -13,8 +13,8 @@ use App\Facades\Mtgo;
 use App\Jobs\SubmitMatchLogSample;
 use App\Models\LogEvent;
 use App\Models\MtgoMatch;
+use App\Support\TimedTransaction;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class AdvanceMatchState
@@ -58,7 +58,7 @@ class AdvanceMatchState
 
         // Wrap all state-advancement writes in a single transaction so
         // the SQLite write-lock is held once instead of 10–15 times.
-        return DB::transaction(function () use ($matchToken, $matchId, $events, $stateChanges, $joinedState) {
+        return TimedTransaction::run("AdvanceMatchState:{$matchId}", function () use ($matchToken, $matchId, $events, $stateChanges, $joinedState) {
             // ── Find or create the match ────────────────────────────────
             $match = MtgoMatch::where('mtgo_id', $matchId)->first();
 
