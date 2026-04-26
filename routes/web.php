@@ -50,6 +50,8 @@ use App\Http\Controllers\Matches\ShowController;
 use App\Http\Controllers\Matches\UpdateArchetypeController;
 use App\Http\Controllers\Matches\UpdateNotesController;
 use App\Http\Controllers\Settings\BrowseFolderController;
+use App\Http\Controllers\Settings\CheckApiStatusController;
+use App\Http\Controllers\Settings\ReauthenticateController;
 use App\Http\Controllers\Settings\RunIngestController;
 use App\Http\Controllers\Settings\RunPopulateCardsController;
 use App\Http\Controllers\Settings\RunSubmitMatchesController;
@@ -160,6 +162,8 @@ Route::group([], function (Router $router) {
         $group->post('overlay', UpdateOverlaySettingsController::class)->name('settings.overlay');
         $group->patch('debug-mode', UpdateDebugModeController::class)->name('settings.debug-mode');
         $group->patch('local-images', UpdateLocalImagesController::class)->name('settings.local-images');
+        $group->get('api-status', CheckApiStatusController::class)->name('settings.api-status');
+        $group->post('reauthenticate', ReauthenticateController::class)->name('settings.reauthenticate');
     });
 
     $router->group([

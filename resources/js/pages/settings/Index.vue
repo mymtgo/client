@@ -13,6 +13,7 @@ import type { LeagueData } from '@/components/leagues/LeagueTracker.vue';
 import LeagueTracker from '@/components/leagues/LeagueTracker.vue';
 import type { OpponentData } from '@/components/leagues/OpponentScout.vue';
 import OpponentScout from '@/components/leagues/OpponentScout.vue';
+import ApiStatusCard from '@/components/settings/ApiStatusCard.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -340,6 +341,9 @@ const sampleOpponent: OpponentData = {
                     </div>
                 </CardContent>
             </Card>
+
+            <!-- API Status -->
+            <ApiStatusCard />
 
             <!-- Data & Privacy -->
             <Card>
