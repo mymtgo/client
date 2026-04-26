@@ -13,6 +13,7 @@ type ArchetypeWithCount = App.Data.Front.ArchetypeData & { matchCount: number };
 defineProps<{
     matches: Paginator<App.Data.Front.MatchData>;
     archetypes: ArchetypeWithCount[];
+    unknownArchetypeCount: number;
 }>();
 
 const filterResult = ref('all');
@@ -97,7 +98,7 @@ const updateSort = (column: string) => {
                     </SelectTrigger>
                     <SelectContent>
                         <SelectItem value="all" class="text-xs">All Archetypes</SelectItem>
-                        <SelectItem value="none" class="text-xs">Unknown</SelectItem>
+                        <SelectItem v-if="unknownArchetypeCount > 0" value="none" class="text-xs">Unknown ({{ unknownArchetypeCount }})</SelectItem>
                         <SelectItem v-for="arch in archetypes.filter(a => a.matchCount > 0)" :key="arch.id" :value="String(arch.id)" class="text-xs">
                             {{ arch.name }} ({{ arch.matchCount }})
                         </SelectItem>
