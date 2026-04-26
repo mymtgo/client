@@ -10,6 +10,10 @@ class DownloadDecklistController
 {
     public function __invoke(Archetype $archetype): JsonResponse
     {
+        if ($archetype->is_fallback) {
+            abort(403, 'Fallback archetypes have no decklist to download.');
+        }
+
         try {
             DownloadArchetypeDecklist::run($archetype);
         } catch (\RuntimeException $e) {

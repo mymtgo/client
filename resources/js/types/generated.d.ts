@@ -2,11 +2,12 @@ declare namespace App.Data.Front {
 export type ArchetypeData = {
 id: number;
 name: string;
-format: string;
+format: string | null;
 colorIdentity: string | null;
 decklistDownloadedAt: string | null;
 hasDecklist: boolean;
 manual: boolean;
+isFallback: boolean;
 };
 export type ArchetypeDetailData = {
 archetype: App.Data.Front.ArchetypeData;

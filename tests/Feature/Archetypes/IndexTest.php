@@ -25,7 +25,7 @@ it('filters archetypes by format', function () {
 
     $response->assertOk();
     $response->assertInertia(fn ($page) => $page
-        ->has('archetypes.data', 5)
+        ->has('archetypes.data', 7) // 5 modern + 2 seeded fallbacks (Homebrew + Rogue)
     );
 });
 

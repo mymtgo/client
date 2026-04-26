@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, toRef } from 'vue';
 import { useForm } from '@inertiajs/vue3';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -7,12 +7,13 @@ import { Input } from '@/components/ui/input';
 import ManaSymbols from '@/components/ManaSymbols.vue';
 import UpdateArchetypeController from '@/actions/App/Http/Controllers/Matches/UpdateArchetypeController';
 import BulkUpdateArchetypeController from '@/actions/App/Http/Controllers/Matches/BulkUpdateArchetypeController';
+import { useArchetypeSplit } from '@/composables/useArchetypeSplit';
 
 const emit = defineEmits<{
     archetypeSet: [];
 }>();
 
-defineProps<{
+const props = defineProps<{
     archetypes: App.Data.Front.ArchetypeData[];
 }>();
 
@@ -24,31 +25,7 @@ const search = ref('');
 
 const isBulkMode = computed(() => matchIds.value.length > 0);
 
-const formatMap: Record<string, string> = {
-    CMODERN: 'modern',
-    CPAUPER: 'pauper',
-    CLEGACY: 'legacy',
-    CVINTAGE: 'vintage',
-    CPREMODERN: 'premodern',
-};
-
-const filteredArchetypes = computed(() => {
-    return (archetypes: App.Data.Front.ArchetypeData[]) => {
-        let filtered = archetypes;
-
-        if (matchFormat.value) {
-            const mapped = formatMap[matchFormat.value] ?? matchFormat.value.toLowerCase();
-            filtered = filtered.filter((a) => a.format === mapped);
-        }
-
-        if (search.value) {
-            const q = search.value.toLowerCase();
-            filtered = filtered.filter((a) => a.name.toLowerCase().includes(q));
-        }
-
-        return filtered;
-    };
-});
+const { fallbacks, regular } = useArchetypeSplit(toRef(props, 'archetypes'), matchFormat, search);
 
 const singleForm = useForm<{ archetype_id: number | null }>({
     archetype_id: null,
@@ -123,8 +100,23 @@ defineExpose({ openForMatch, openForMatches });
             <Input v-model="search" placeholder="Search archetypes..." class="mb-2" />
 
             <div class="flex-1 overflow-y-auto space-y-0.5">
+                <template v-if="fallbacks.length">
+                    <Button
+                        v-for="archetype in fallbacks"
+                        :key="archetype.id"
+                        variant="ghost"
+                        class="w-full justify-between italic text-muted-foreground"
+                        :disabled="singleForm.processing || bulkForm.processing"
+                        @click="selectArchetype(archetype.id)"
+                    >
+                        <span class="flex-1 text-left">{{ archetype.name }}</span>
+                        <span class="rounded bg-muted px-1.5 py-0.5 text-[10px] uppercase tracking-wide">System</span>
+                    </Button>
+                    <div class="my-1 border-t border-border" />
+                </template>
+
                 <Button
-                    v-for="archetype in filteredArchetypes(archetypes)"
+                    v-for="archetype in regular"
                     :key="archetype.id"
                     variant="ghost"
                     class="w-full justify-between"
@@ -135,7 +127,10 @@ defineExpose({ openForMatch, openForMatches });
                     <ManaSymbols :symbols="archetype.colorIdentity" />
                 </Button>
 
-                <p v-if="filteredArchetypes(archetypes).length === 0" class="py-4 text-center text-sm text-muted-foreground">
+                <p
+                    v-if="fallbacks.length === 0 && regular.length === 0"
+                    class="py-4 text-center text-sm text-muted-foreground"
+                >
                     No archetypes found.
                 </p>
             </div>

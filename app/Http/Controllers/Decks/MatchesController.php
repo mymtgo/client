@@ -60,11 +60,7 @@ class MatchesController extends Controller
             }
         }
         if ($archetype = $request->input('filter_archetype')) {
-            if ($archetype === 'unknown') {
-                $query->whereDoesntHave('opponentArchetypes');
-            } else {
-                $query->whereHas('opponentArchetypes', fn ($q) => $q->where('archetype_id', $archetype));
-            }
+            $query->whereHas('opponentArchetypes', fn ($q) => $q->where('archetype_id', $archetype));
         }
 
         $sortColumn = $request->input('sort', 'started_at');
@@ -121,7 +117,7 @@ class MatchesController extends Controller
         $archetypeFormat = $formatMap[$deck->format] ?? strtolower($deck->format);
 
         $archetypes = Archetype::query()
-            ->where('format', $archetypeFormat)
+            ->forFormat($archetypeFormat)
             ->withCount(['matchArchetypes' => fn ($q) => $q
                 ->whereIn('mtgo_match_id', $allMatchIds)
                 ->whereIn('player_id', function ($sub) {
@@ -141,13 +137,6 @@ class MatchesController extends Controller
                 'matchCount' => $a->match_archetypes_count,
             ]);
 
-        $unknownArchetypeCount = $deck->matches()
-            ->select('matches.*')
-            ->where('state', 'complete')
-            ->whereIn('matches.id', $allMatchIds)
-            ->whereDoesntHave('opponentArchetypes')
-            ->count();
-
         return Inertia::render('decks/Matches', [
             ...$shared,
             'currentVersionId' => $deckVersion?->id,
@@ -155,7 +144,6 @@ class MatchesController extends Controller
             'timeframe' => $timeframe,
             'matches' => $matches,
             'archetypes' => $archetypes,
-            'unknownArchetypeCount' => $unknownArchetypeCount,
         ]);
     }
 }

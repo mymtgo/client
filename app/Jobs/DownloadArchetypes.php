@@ -24,7 +24,7 @@ class DownloadArchetypes implements ShouldQueue
         foreach ($response->json() as $archetype) {
             $existing = Archetype::where('uuid', $archetype['uuid'])->first();
 
-            if ($existing?->manual) {
+            if ($existing?->manual || $existing?->is_fallback) {
                 continue;
             }
 
