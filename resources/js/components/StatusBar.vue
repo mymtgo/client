@@ -2,6 +2,7 @@
 import { usePage } from '@inertiajs/vue3';
 import { computed } from 'vue';
 import HelpPopover from '@/components/HelpPopover.vue';
+import SupportPopover from '@/components/SupportPopover.vue';
 
 const page = usePage();
 
@@ -9,7 +10,6 @@ const status = computed(() => page.props.status as {
     watcherRunning: boolean;
     lastIngestAt: string | null;
     lastIngestAtHuman: string | null;
-    pendingMatchCount: number;
 });
 </script>
 
@@ -35,15 +35,9 @@ const status = computed(() => page.props.status as {
         <!-- Spacer -->
         <div class="flex-1" />
 
-        <!-- Pending matches -->
-        <span v-if="status.pendingMatchCount > 0">
-            {{ status.pendingMatchCount }} match{{ status.pendingMatchCount === 1 ? '' : 'es' }} pending
-        </span>
+        <SupportPopover />
 
-        <div
-            v-if="status.pendingMatchCount > 0"
-            class="h-3 w-px bg-border"
-        />
+        <div class="h-3 w-px bg-border" />
 
         <HelpPopover />
     </footer>

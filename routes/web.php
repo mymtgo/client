@@ -66,6 +66,7 @@ use App\Http\Controllers\Settings\UpdateOverlaySettingsController;
 use App\Http\Controllers\Settings\UpdateShareStatsController;
 use App\Http\Controllers\Settings\UpdateWatcherController;
 use App\Http\Controllers\Support\DownloadReportBundleController;
+use App\Http\Controllers\Support\OpenKofiController;
 use App\Http\Controllers\Updates\InstallController;
 use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Route;
@@ -187,6 +188,7 @@ Route::group([], function (Router $router) {
         'prefix' => 'support',
     ], function (Router $group) {
         $group->get('report', DownloadReportBundleController::class)->name('support.report.download');
+        $group->post('kofi', OpenKofiController::class)->name('support.kofi.open');
     });
 
     $router->group([
