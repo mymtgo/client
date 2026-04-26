@@ -20,6 +20,8 @@ class StoreController extends Controller
             'cards.*.mtgo_id' => ['required', 'integer'],
             'cards.*.quantity' => ['required', 'integer', 'min:1'],
             'cards.*.sideboard' => ['required', 'boolean'],
+            'source_match_id' => ['nullable', 'integer', 'exists:matches,id'],
+            'incomplete' => ['boolean'],
         ]);
 
         $archetype = StoreManualArchetype::run(
@@ -27,6 +29,8 @@ class StoreController extends Controller
             format: $validated['format'],
             colorIdentity: $validated['color_identity'] ?? null,
             resolvedCards: $validated['cards'],
+            sourceMatchId: $validated['source_match_id'] ?? null,
+            incomplete: $validated['incomplete'] ?? false,
         );
 
         return to_route('archetypes.show', $archetype);

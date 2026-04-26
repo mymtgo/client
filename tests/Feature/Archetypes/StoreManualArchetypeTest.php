@@ -2,7 +2,12 @@
 
 use App\Actions\Archetypes\StoreManualArchetype;
 use App\Facades\AppSettings;
+use App\Models\Archetype;
 use App\Models\Card;
+use App\Models\Game;
+use App\Models\MatchArchetype;
+use App\Models\MtgoMatch;
+use App\Models\Player;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -44,4 +49,95 @@ it('creates a manual archetype with cards', function () {
     expect($archetype->cards)->toHaveCount(1);
     expect($archetype->cards->first()->pivot->quantity)->toBe(4);
     expect($archetype->cards->first()->pivot->sideboard)->toBeFalse();
+});
+
+it('persists source_match_id and incomplete flag when supplied', function () {
+    AppSettings::setDeviceId('abcdef1234567890');
+
+    $match = MtgoMatch::factory()->create();
+
+    $archetype = StoreManualArchetype::run(
+        name: 'From Match',
+        format: 'modern',
+        colorIdentity: 'R',
+        resolvedCards: [],
+        sourceMatchId: $match->id,
+        incomplete: true,
+    );
+
+    expect($archetype->source_match_id)->toBe($match->id);
+    expect($archetype->incomplete)->toBeTrue();
+});
+
+it('upserts MatchArchetype for opponent when created from a match', function () {
+    AppSettings::setDeviceId('abcdef1234567890');
+
+    $match = MtgoMatch::factory()->create();
+    $opponent = Player::create(['username' => 'opponent']);
+    $game = Game::factory()->create(['match_id' => $match->id]);
+    $game->players()->attach($opponent->id, [
+        'instance_id' => 2,
+        'is_local' => false,
+        'on_play' => false,
+        'starting_hand_size' => 7,
+        'deck_json' => [],
+    ]);
+
+    $archetype = StoreManualArchetype::run(
+        name: 'From Match',
+        format: 'modern',
+        colorIdentity: null,
+        resolvedCards: [],
+        sourceMatchId: $match->id,
+        incomplete: true,
+    );
+
+    $matchArchetype = MatchArchetype::where('mtgo_match_id', $match->id)
+        ->where('player_id', $opponent->id)
+        ->first();
+
+    expect($matchArchetype)->not->toBeNull();
+    expect($matchArchetype->archetype_id)->toBe($archetype->id);
+});
+
+it('overwrites an existing MatchArchetype for opponent on the source match', function () {
+    AppSettings::setDeviceId('abcdef1234567890');
+
+    $existingArchetype = Archetype::factory()->create();
+    $match = MtgoMatch::factory()->create();
+    $opponent = Player::create(['username' => 'opponent']);
+    $game = Game::factory()->create(['match_id' => $match->id]);
+    $game->players()->attach($opponent->id, [
+        'instance_id' => 2,
+        'is_local' => false,
+        'on_play' => false,
+        'starting_hand_size' => 7,
+        'deck_json' => [],
+    ]);
+
+    MatchArchetype::create([
+        'archetype_id' => $existingArchetype->id,
+        'mtgo_match_id' => $match->id,
+        'player_id' => $opponent->id,
+        'confidence' => 0.5,
+    ]);
+
+    $newArchetype = StoreManualArchetype::run(
+        name: 'New From Match',
+        format: 'modern',
+        colorIdentity: null,
+        resolvedCards: [],
+        sourceMatchId: $match->id,
+        incomplete: true,
+    );
+
+    expect(MatchArchetype::where('mtgo_match_id', $match->id)
+        ->where('player_id', $opponent->id)
+        ->count())->toBe(1);
+
+    $matchArchetype = MatchArchetype::where('mtgo_match_id', $match->id)
+        ->where('player_id', $opponent->id)
+        ->first();
+
+    expect($matchArchetype->archetype_id)->toBe($newArchetype->id);
 });

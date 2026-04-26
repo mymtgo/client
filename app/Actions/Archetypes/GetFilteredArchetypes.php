@@ -11,7 +11,7 @@ class GetFilteredArchetypes
 {
     public static function run(Request $request): array
     {
-        $query = Archetype::query()->orderBy('is_fallback', 'desc')->orderBy('name');
+        $query = Archetype::query()->where('is_fallback', false)->orderBy('name');
 
         if ($request->filled('format')) {
             $query->forFormat($request->input('format'));

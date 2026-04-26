@@ -5,6 +5,7 @@ use App\Http\Controllers\Archetypes\DownloadController;
 use App\Http\Controllers\Archetypes\DownloadDecklistController;
 use App\Http\Controllers\Archetypes\EditController;
 use App\Http\Controllers\Archetypes\ExportDekController;
+use App\Http\Controllers\Archetypes\ScanMatchController;
 use App\Http\Controllers\Archetypes\UploadDekController;
 use App\Http\Controllers\Debug\Cards\PopulateController;
 use App\Http\Controllers\Debug\Decks\SyncController;
@@ -131,6 +132,7 @@ Route::group([], function (Router $router) {
         $group->get('create', CreateController::class)->name('archetypes.create');
         $group->post('/', App\Http\Controllers\Archetypes\StoreController::class)->name('archetypes.store');
         $group->post('upload-dek', UploadDekController::class)->name('archetypes.upload-dek');
+        $group->post('scan-match/{match}', ScanMatchController::class)->name('archetypes.scan-match');
         $group->post('download', DownloadController::class)->name('archetypes.download-all');
         $group->get('{archetype}', App\Http\Controllers\Archetypes\ShowController::class)->name('archetypes.show');
         $group->get('{archetype}/edit', EditController::class)->name('archetypes.edit');
