@@ -18,6 +18,13 @@ interface MatchOption {
     started_at: string | null;
 }
 
+interface Prefill {
+    source_match_id: number;
+    format: string;
+    color_identity: string | null;
+    cards: any[];
+}
+
 const props = defineProps<{
     name?: string;
     format?: string;
@@ -25,6 +32,7 @@ const props = defineProps<{
     initialCards?: App.Data.Front.CardData[] | null;
     submitLabel: string;
     matches?: MatchOption[];
+    prefill?: Prefill | null;
 }>();
 
 const emit = defineEmits<{
@@ -40,14 +48,15 @@ const FORMATS = [
 ];
 
 const name = ref(props.name ?? '');
-const format = ref(props.format ?? '');
-const colorIdentity = ref<string | null>(props.colorIdentity ?? null);
-const resolvedCards = ref<any[] | null>(props.initialCards ?? null);
-const sourceMatchId = ref<number | null>(null);
-const incomplete = ref(false);
+const format = ref(props.prefill?.format ?? props.format ?? '');
+const colorIdentity = ref<string | null>(props.prefill?.color_identity ?? props.colorIdentity ?? null);
+const resolvedCards = ref<any[] | null>(props.prefill?.cards ?? props.initialCards ?? null);
+const sourceMatchId = ref<number | null>(props.prefill?.source_match_id ?? null);
+const incomplete = ref(props.prefill !== null && props.prefill !== undefined);
 const scanning = ref(false);
 const scanError = ref<string | null>(null);
 const submitting = ref(false);
+const skipNextScan = ref(props.prefill !== null && props.prefill !== undefined);
 
 function applyResolved(data: { cards: any[]; color_identity: string | null }) {
     resolvedCards.value = data.cards;
@@ -65,6 +74,11 @@ function onDekResolved(data: { cards: any[]; color_identity: string | null }) {
 
 watch(sourceMatchId, async (matchId) => {
     if (matchId === null) {
+        return;
+    }
+
+    if (skipNextScan.value) {
+        skipNextScan.value = false;
         return;
     }
 

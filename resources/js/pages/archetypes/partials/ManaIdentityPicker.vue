@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import ManaSymbols
-    from '../../../../../nativephp/electron/dist/win-unpacked/resources/build/app/resources/js/components/ManaSymbols.vue';
+import ManaSymbols from '@/components/ManaSymbols.vue';
 
 const SYMBOLS = [
     { key: 'W', label: 'White', bg: '#F8F6D8', glow: 'rgba(248,246,216,0.5)' },

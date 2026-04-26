@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import { useForm } from '@inertiajs/vue3';
+import { router, useForm } from '@inertiajs/vue3';
 import {
     ContextMenu,
     ContextMenuContent,
@@ -13,6 +13,7 @@ import {
     ContextMenuTrigger,
 } from '@/components/ui/context-menu';
 import ArchetypePicker from '@/components/matches/ArchetypePicker.vue';
+import CreateController from '@/actions/App/Http/Controllers/Archetypes/CreateController';
 import UpdateArchetypeController from '@/actions/App/Http/Controllers/Matches/UpdateArchetypeController';
 
 const props = defineProps<{
@@ -47,6 +48,11 @@ const selectArchetype = (archetypeId: number) => {
             rootOpen.value = false;
         },
     });
+};
+
+const createFromMatch = () => {
+    router.visit(CreateController.url({ query: { source_match_id: props.match.id } }));
+    rootOpen.value = false;
 };
 
 const clearArchetype = () => {
@@ -91,6 +97,8 @@ const clearArchetype = () => {
                     />
                 </ContextMenuSubContent>
             </ContextMenuSub>
+
+            <ContextMenuItem @select="createFromMatch">Create from match</ContextMenuItem>
 
             <ContextMenuItem :disabled="!hasArchetype" @select="clearArchetype">
                 Clear
