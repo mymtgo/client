@@ -13,6 +13,11 @@ class BuildSupportBundle
      */
     private const PIPELINE_LOG_LIMIT = 3;
 
+    /**
+     * Number of most recent laravel logs to include in the bundle.
+     */
+    private const LARAVEL_LOG_LIMIT = 3;
+
     public function __construct(
         private readonly ?string $logsDir = null,
     ) {}
@@ -28,10 +33,10 @@ class BuildSupportBundle
     public function __invoke(): string
     {
         $mtgoLog = FindMtgoLogPath::all()->last();
-        $laravelLog = $this->laravelLog();
+        $laravelLogs = $this->recentLaravelLogs();
         $pipelineLogs = $this->recentPipelineLogs();
 
-        if ($mtgoLog === null && $laravelLog === null && $pipelineLogs === []) {
+        if ($mtgoLog === null && $laravelLogs === [] && $pipelineLogs === []) {
             throw new SupportBundleEmptyException('No log files available to bundle.');
         }
 
@@ -46,8 +51,8 @@ class BuildSupportBundle
             $zip->addFile($mtgoLog, basename($mtgoLog));
         }
 
-        if ($laravelLog !== null) {
-            $zip->addFile($laravelLog, basename($laravelLog));
+        foreach ($laravelLogs as $log) {
+            $zip->addFile($log, basename($log));
         }
 
         foreach ($pipelineLogs as $log) {
@@ -59,11 +64,23 @@ class BuildSupportBundle
         return $zipPath;
     }
 
-    private function laravelLog(): ?string
+    /**
+     * Return up to LARAVEL_LOG_LIMIT most recent laravel log file paths.
+     * Matches both `laravel.log` (single channel) and `laravel-YYYY-MM-DD.log` (daily channel).
+     *
+     * @return array<int, string>
+     */
+    private function recentLaravelLogs(): array
     {
-        $path = $this->logsDirectory().'/laravel.log';
+        $candidates = glob($this->logsDirectory().'/laravel*.log') ?: [];
 
-        return file_exists($path) ? $path : null;
+        if ($candidates === []) {
+            return [];
+        }
+
+        rsort($candidates);
+
+        return array_slice($candidates, 0, self::LARAVEL_LOG_LIMIT);
     }
 
     /**

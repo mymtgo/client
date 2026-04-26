@@ -144,3 +144,41 @@ it('drops pipeline logs older than the three most recent', function () {
     $zip->close();
     File::delete($zipPath);
 });
+
+it('includes daily-rotated laravel logs', function () {
+    File::delete($this->logsDir.'/laravel.log');
+    File::put($this->logsDir.'/laravel-2026-04-26.log', "Today\n");
+    File::put($this->logsDir.'/laravel-2026-04-25.log', "Yesterday\n");
+
+    $zipPath = (new BuildSupportBundle($this->logsDir))();
+
+    $zip = new ZipArchive;
+    $zip->open($zipPath);
+
+    expect($zip->getFromName('laravel-2026-04-26.log'))->toBe("Today\n");
+    expect($zip->getFromName('laravel-2026-04-25.log'))->toBe("Yesterday\n");
+
+    $zip->close();
+    File::delete($zipPath);
+});
+
+it('drops laravel logs older than the three most recent', function () {
+    File::delete($this->logsDir.'/laravel.log');
+    File::put($this->logsDir.'/laravel-2026-04-26.log', "Day 1\n");
+    File::put($this->logsDir.'/laravel-2026-04-25.log', "Day 2\n");
+    File::put($this->logsDir.'/laravel-2026-04-24.log', "Day 3\n");
+    File::put($this->logsDir.'/laravel-2026-04-23.log', "Day 4 (excluded)\n");
+
+    $zipPath = (new BuildSupportBundle($this->logsDir))();
+
+    $zip = new ZipArchive;
+    $zip->open($zipPath);
+
+    expect($zip->getFromName('laravel-2026-04-26.log'))->toBe("Day 1\n");
+    expect($zip->getFromName('laravel-2026-04-25.log'))->toBe("Day 2\n");
+    expect($zip->getFromName('laravel-2026-04-24.log'))->toBe("Day 3\n");
+    expect($zip->getFromName('laravel-2026-04-23.log'))->toBeFalse();
+
+    $zip->close();
+    File::delete($zipPath);
+});
