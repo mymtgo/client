@@ -70,7 +70,13 @@
       "mcp__sentry__search_events",
       "Bash(xargs ls *)",
       "Bash(php *)",
-      "mcp__sentry__find_organizations"
+      "mcp__sentry__find_organizations",
+      "mcp__sentry__find_projects",
+      "mcp__sentry__analyze_issue_with_seer",
+      "mcp__sentry__search_issue_events",
+      "Bash(gh release *)",
+      "Bash(awk -F'EventId=' '{print $2}')",
+      "Bash(awk '{print $1}')"
     ]
   },
   "enableAllProjectMcpServers": true,
