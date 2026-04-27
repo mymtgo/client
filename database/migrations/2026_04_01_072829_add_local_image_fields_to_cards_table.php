@@ -11,9 +11,15 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('cards', function (Blueprint $table) {
-            $table->string('local_image')->nullable()->after('image');
-            $table->string('local_art_crop')->nullable()->after('art_crop');
+        $existing = Schema::getColumnListing('cards');
+
+        Schema::table('cards', function (Blueprint $table) use ($existing) {
+            if (! in_array('local_image', $existing, true)) {
+                $table->string('local_image')->nullable()->after('image');
+            }
+            if (! in_array('local_art_crop', $existing, true)) {
+                $table->string('local_art_crop')->nullable()->after('art_crop');
+            }
         });
     }
 

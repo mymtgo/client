@@ -22,7 +22,6 @@ export type LeagueRun = {
     startedAt: string;
     startedAtHuman: string | null;
     results: ('W' | 'L' | null)[];
-    phantom: boolean;
     state: 'active' | 'complete' | 'partial';
     matches: LeagueMatch[];
 };

@@ -57,18 +57,3 @@ it('counts league results in correct buckets', function () {
     expect($result['trophies'])->toBe(1);
     expect($result['total'])->toBe(3);
 });
-
-it('excludes phantom leagues', function () {
-    [$account, $version] = setupLeagueDistAccount();
-    createLeagueWithRecord($version, 5, 0);
-    $phantom = League::factory()->phantom()->complete()->create(['deck_version_id' => $version->id]);
-    for ($i = 0; $i < 5; $i++) {
-        MtgoMatch::factory()->won()->create([
-            'league_id' => $phantom->id,
-            'deck_version_id' => $version->id,
-            'started_at' => now()->subDay(),
-        ]);
-    }
-    $result = GetDashboardLeagueDistribution::run($account->id);
-    expect($result['total'])->toBe(1);
-});

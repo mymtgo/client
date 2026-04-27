@@ -3,14 +3,17 @@
 namespace App\Providers;
 
 use App\Actions\RegisterDevice;
+use App\Facades\AppSettings;
 use App\Managers\MtgoManager;
 use App\Models\LogCursor;
 use App\Observers\LogCursorObserver;
+use App\Settings\AppSettings as ConcreteAppSettings;
+use App\Settings\MigrateSettingsToJson;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\ServiceProvider;
-use Native\Desktop\Facades\Settings;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -22,6 +25,8 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton('mtgo', function ($app) {
             return new MtgoManager;
         });
+
+        $this->app->singleton(ConcreteAppSettings::class);
     }
 
     /**
@@ -33,6 +38,10 @@ class AppServiceProvider extends ServiceProvider
 
         LogCursor::observe(LogCursorObserver::class);
 
+        if (! Storage::disk()->exists('settings.json')) {
+            (new MigrateSettingsToJson)->run();
+        }
+
         if (! config('mymtgo_api.verify_ssl')) {
             Http::globalOptions([
                 'verify' => false,
@@ -40,13 +49,13 @@ class AppServiceProvider extends ServiceProvider
         }
 
         Http::macro('mymtgoApi', fn () => Http::withHeaders([
-            'X-Device-Id' => Settings::get('device_id'),
+            'X-Device-Id' => AppSettings::deviceId(),
             'X-Api-Key' => RegisterDevice::retrieveKey(),
         ])->baseUrl(config('mymtgo_api.url')));
 
         Carbon::macro('toLocal', function () {
             /** @var Carbon $this */
-            return $this->copy()->setTimezone(Settings::get('system_tz', 'UTC'));
+            return $this->copy()->setTimezone(AppSettings::systemTimezone());
         });
     }
 

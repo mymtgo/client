@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from '@/components/ui/context-menu';import { Checkbox } from '@/components/ui/checkbox';
+import MatchRowContextMenu from '@/components/matches/MatchRowContextMenu.vue';
+import { Checkbox } from '@/components/ui/checkbox';
 import ManaSymbols from '@/components/ManaSymbols.vue';
 import ResultBadge from '@/components/matches/ResultBadge.vue';
 import MatchNotesDialog from '@/components/matches/MatchNotesDialog.vue';
@@ -9,12 +10,10 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Button } from '@/components/ui/button';
 import { useForm, router } from '@inertiajs/vue3';
 import DeleteController from '@/actions/App/Http/Controllers/Matches/DeleteController';
-import UpdateArchetypeController from '@/actions/App/Http/Controllers/Matches/UpdateArchetypeController';
 import DetectArchetypeController from '@/actions/App/Http/Controllers/Matches/DetectArchetypeController';
 import ShowController from '@/actions/App/Http/Controllers/Matches/ShowController';
 import DeckDashboardController from '@/actions/App/Http/Controllers/Decks/DashboardController';
 import SetArchetypeDialog from '@/components/matches/SetArchetypeDialog.vue';
-import LinkTournamentDialog from '@/components/matches/LinkTournamentDialog.vue';
 import { useToast } from '@/composables/useToast';
 import { NotepadText, RefreshCw, Tags, X } from 'lucide-vue-next';
 import SortableHeader from '@/components/SortableHeader.vue';
@@ -33,7 +32,6 @@ const emit = defineEmits<{
 
 const archetypeDialog = ref<InstanceType<typeof SetArchetypeDialog> | null>(null);
 const notesDialog = ref<InstanceType<typeof MatchNotesDialog> | null>(null);
-const linkTournamentDialog = ref<InstanceType<typeof LinkTournamentDialog> | null>(null);
 const detectingMatchId = ref<number | null>(null);
 const { add: toast } = useToast();
 
@@ -88,16 +86,6 @@ const deleteMatch = (id: string | number) => {
     });
 };
 
-const clearArchetypeForm = useForm<{ archetype_id: null }>({
-    archetype_id: null,
-});
-
-const clearArchetype = (matchId: number) => {
-    clearArchetypeForm.submit(UpdateArchetypeController({ id: matchId }), {
-        onSuccess: () => clearArchetypeForm.reset(),
-    });
-};
-
 const detectArchetype = (matchId: number) => {
     detectingMatchId.value = matchId;
 
@@ -127,7 +115,6 @@ const detectArchetype = (matchId: number) => {
 <template>
     <SetArchetypeDialog ref="archetypeDialog" :archetypes="archetypes ?? []" @archetype-set="clearSelection" />
     <MatchNotesDialog ref="notesDialog" />
-    <LinkTournamentDialog ref="linkTournamentDialog" />
 
     <div v-if="selectedIds.length > 0" class="flex items-center gap-3 border-b bg-muted/50 px-4 py-2">
         <span class="text-sm font-medium">{{ selectedIds.length }} selected</span>
@@ -181,102 +168,86 @@ const detectArchetype = (matchId: number) => {
         </TableHeader>
         <TableBody>
             <template v-for="match in matches" :key="match.id">
-                <ContextMenu>
-                    <ContextMenuTrigger asChild>
-                        <TableRow
-                            class="cursor-pointer"
-                            :data-state="selectedIds.includes(match.id) ? 'selected' : undefined"
-                            @click="router.visit(ShowController({ id: match.id }).url)"
-                        >
-                            <TableCell @click.stop>
-                                <Checkbox
-                                    :model-value="selectedIds.includes(match.id)"
-                                    @update:model-value="(val) => toggleMatch(match.id, val)"
-                                />
-                            </TableCell>
-                            <TableCell>
-                                <ResultBadge :won="match.gamesWon > match.gamesLost" v-if="match.gamesWon !== match.gamesLost" :showText="true" />
-                            </TableCell>
-                            <TableCell v-if="showDeck">
-                                <span
-                                    v-if="match.deck"
-                                    class="text-primary hover:underline"
-                                    @click.stop="router.visit(DeckDashboardController({ deck: match.deck.id }).url)"
-                                >
-                                    {{ match.deck.name }}
+                <MatchRowContextMenu
+                    :match="match"
+                    :archetypes="archetypes ?? []"
+                    @detect="detectArchetype"
+                    @delete="deleteMatch"
+                    @open-notes="(id, notes) => notesDialog?.openForMatch(id, notes)"
+                >
+                    <TableRow
+                        class="cursor-pointer"
+                        :data-state="selectedIds.includes(match.id) ? 'selected' : undefined"
+                        @click="router.visit(ShowController({ id: match.id }).url)"
+                    >
+                        <TableCell @click.stop>
+                            <Checkbox
+                                :model-value="selectedIds.includes(match.id)"
+                                @update:model-value="(val) => toggleMatch(match.id, val)"
+                            />
+                        </TableCell>
+                        <TableCell>
+                            <ResultBadge :won="match.gamesWon > match.gamesLost" v-if="match.gamesWon !== match.gamesLost" :showText="true" />
+                        </TableCell>
+                        <TableCell v-if="showDeck">
+                            <span
+                                v-if="match.deck"
+                                class="text-primary hover:underline"
+                                @click.stop="router.visit(DeckDashboardController({ deck: match.deck.id }).url)"
+                            >
+                                {{ match.deck.name }}
+                            </span>
+                            <span v-else class="text-muted-foreground">Unknown</span>
+                        </TableCell>
+                        <TableCell class="font-medium">
+                            <span v-if="match.opponentName">{{ match.opponentName }}</span>
+                            <span v-else class="text-xs text-muted-foreground">&mdash;</span>
+                        </TableCell>
+                        <TableCell>
+                            <div class="flex items-center gap-1" v-if="match.opponentArchetypes?.[0]?.archetype">
+                                {{ match.opponentArchetypes[0].archetype.name }}
+                            </div>
+                            <span v-else-if="detectingMatchId === match.id" class="text-muted-foreground">
+                                <RefreshCw class="size-3.5 animate-spin" />
+                            </span>
+                            <span v-else class="text-muted-foreground">Unknown</span>
+                        </TableCell>
+                        <TableCell>
+                            <div v-if="match.opponentArchetypes?.[0]?.archetype">
+                                <ManaSymbols :symbols="match.opponentArchetypes[0].archetype.colorIdentity" />
+                            </div>
+                        </TableCell>
+                        <TableCell v-for="gameIdx in 3" :key="gameIdx" class="text-sm">
+                            <template v-if="match.gameResults?.[gameIdx - 1]">
+                                <span :class="match.gameResults[gameIdx - 1].result === 'W' ? 'text-success' : 'text-destructive'">
+                                    {{ match.gameResults[gameIdx - 1].result === 'W' ? 'Win' : 'Loss' }}
                                 </span>
-                                <span v-else class="text-muted-foreground">Unknown</span>
-                            </TableCell>
-                            <TableCell class="font-medium">
-                                <span v-if="match.opponentName">{{ match.opponentName }}</span>
-                                <span v-else class="text-xs text-muted-foreground">&mdash;</span>
-                            </TableCell>
-                            <TableCell>
-                                <div class="flex items-center gap-1" v-if="match.opponentArchetypes?.[0]?.archetype">
-                                    {{ match.opponentArchetypes[0].archetype.name }}
-                                </div>
-                                <span v-else-if="detectingMatchId === match.id" class="text-muted-foreground">
-                                    <RefreshCw class="size-3.5 animate-spin" />
+                                <span v-if="match.gameResults[gameIdx - 1].onPlay !== null" class="text-xs text-muted-foreground">
+                                    ({{ match.gameResults[gameIdx - 1].onPlay ? 'OTP' : 'OTD' }})
                                 </span>
-                                <span v-else class="text-muted-foreground">Unknown</span>
-                            </TableCell>
-                            <TableCell>
-                                <div v-if="match.opponentArchetypes?.[0]?.archetype">
-                                    <ManaSymbols :symbols="match.opponentArchetypes[0].archetype.colorIdentity" />
-                                </div>
-                            </TableCell>
-                            <TableCell v-for="gameIdx in 3" :key="gameIdx" class="text-sm">
-                                <template v-if="match.gameResults?.[gameIdx - 1]">
-                                    <span :class="match.gameResults[gameIdx - 1].result === 'W' ? 'text-success' : 'text-destructive'">
-                                        {{ match.gameResults[gameIdx - 1].result === 'W' ? 'Win' : 'Loss' }}
-                                    </span>
-                                    <span v-if="match.gameResults[gameIdx - 1].onPlay !== null" class="text-xs text-muted-foreground">
-                                        ({{ match.gameResults[gameIdx - 1].onPlay ? 'OTP' : 'OTD' }})
-                                    </span>
-                                </template>
-                                <span v-else class="text-muted-foreground">&mdash;</span>
-                            </TableCell>
-                            <TableCell>
-                                {{ match.matchTime }}
-                            </TableCell>
-                            <TableCell>
-                                {{ match.startedAtFormatted }}
-                            </TableCell>
-                            <TableCell>
-                                <TooltipProvider v-if="match.notes">
-                                    <Tooltip>
-                                        <TooltipTrigger asChild>
-                                            <NotepadText :size="14" class="text-muted-foreground" />
-                                        </TooltipTrigger>
-                                        <TooltipContent side="left" class="max-w-xs">
-                                            <p class="text-xs whitespace-pre-wrap">{{ match.notes }}</p>
-                                        </TooltipContent>
-                                    </Tooltip>
-                                </TooltipProvider>
-                            </TableCell>
-                        </TableRow>
-                    </ContextMenuTrigger>
-                    <ContextMenuContent>
-                        <ContextMenuItem @click="notesDialog?.openForMatch(match.id, match.notes ?? null)">
-                            {{ match.notes ? 'Edit notes' : 'Add notes' }}
-                        </ContextMenuItem>
-                        <ContextMenuItem @click="detectArchetype(match.id)">Detect archetype</ContextMenuItem>
-                        <ContextMenuItem @click="archetypeDialog?.openForMatch(match.id, match.format)">Set manual archetype</ContextMenuItem>
-                        <ContextMenuItem v-if="match.opponentArchetypes?.[0]?.archetype" @click="clearArchetype(match.id)">
-                            Clear archetype
-                        </ContextMenuItem>
-                        <ContextMenuItem
-                            @click="linkTournamentDialog?.openForMatch(
-                                match.id,
-                                match.tournament?.id ?? null,
-                                match.tournamentRound ?? null,
-                            )"
-                        >
-                            Link to tournament
-                        </ContextMenuItem>
-                        <ContextMenuItem @click="deleteMatch(match.id)">Remove from stats</ContextMenuItem>
-                    </ContextMenuContent>
-                </ContextMenu>
+                            </template>
+                            <span v-else class="text-muted-foreground">&mdash;</span>
+                        </TableCell>
+                        <TableCell>
+                            {{ match.matchTime }}
+                        </TableCell>
+                        <TableCell>
+                            {{ match.startedAtFormatted }}
+                        </TableCell>
+                        <TableCell>
+                            <TooltipProvider v-if="match.notes">
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <NotepadText :size="14" class="text-muted-foreground" />
+                                    </TooltipTrigger>
+                                    <TooltipContent side="left" class="max-w-xs">
+                                        <p class="text-xs whitespace-pre-wrap">{{ match.notes }}</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+                        </TableCell>
+                    </TableRow>
+                </MatchRowContextMenu>
             </template>
         </TableBody>
     </Table>

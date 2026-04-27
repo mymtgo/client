@@ -23,7 +23,6 @@ class GetDashboardLeagueDistribution
             ->join('deck_versions as dv', 'dv.id', '=', 'm.deck_version_id')
             ->join('decks as d', 'd.id', '=', 'dv.deck_id')
             ->where('d.account_id', $accountId)
-            ->where('l.phantom', false)
             ->where('l.state', 'complete')
             ->where('m.state', 'complete')
             ->when($format, fn ($q, $f) => $q->where('m.format', $f))

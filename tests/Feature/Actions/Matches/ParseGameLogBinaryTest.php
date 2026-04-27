@@ -1,8 +1,8 @@
 <?php
 
 use App\Actions\Matches\ParseGameLogBinary;
+use App\Facades\AppSettings;
 use Carbon\Carbon;
-use Native\Desktop\Facades\Settings;
 
 function fixturePath(string $name): string
 {
@@ -117,7 +117,7 @@ it('converts local wall-clock ticks to UTC when timezone is provided', function 
 });
 
 it('defaults to Settings system_tz when no timezone parameter is provided', function () {
-    Settings::set('system_tz', 'America/New_York');
+    AppSettings::setSystemTimezone('America/New_York');
 
     $raw = file_get_contents(fixturePath('clean_2_0_win.dat'));
 

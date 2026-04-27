@@ -8,10 +8,10 @@ use App\Actions\Leagues\CloseOpponentScoutWindow;
 use App\Actions\Leagues\CloseOverlayWindow;
 use App\Actions\Leagues\OpenOpponentScoutWindow;
 use App\Actions\Leagues\OpenOverlayWindow;
+use App\Facades\AppSettings;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Native\Desktop\Facades\Settings;
 
 class UpdateOverlaySettingsController extends Controller
 {
@@ -24,7 +24,7 @@ class UpdateOverlaySettingsController extends Controller
         ]);
 
         if (isset($validated['league_window'])) {
-            Settings::set('league_window', $validated['league_window'] ? 1 : 0);
+            AppSettings::setShowLeagueWindow($validated['league_window']);
 
             if ($validated['league_window']) {
                 OpenOverlayWindow::run();
@@ -34,7 +34,7 @@ class UpdateOverlaySettingsController extends Controller
         }
 
         if (isset($validated['opponent_window'])) {
-            Settings::set('opponent_window', $validated['opponent_window'] ? 1 : 0);
+            AppSettings::setShowOpponentWindow($validated['opponent_window']);
 
             if ($validated['opponent_window']) {
                 OpenOpponentScoutWindow::run();
@@ -44,7 +44,7 @@ class UpdateOverlaySettingsController extends Controller
         }
 
         if (isset($validated['deck_window'])) {
-            Settings::set('deck_window', $validated['deck_window'] ? 1 : 0);
+            AppSettings::setShowDeckWindow($validated['deck_window']);
 
             if ($validated['deck_window']) {
                 OpenMostRecentDeckPopout::run();

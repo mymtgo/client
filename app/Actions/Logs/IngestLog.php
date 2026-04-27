@@ -5,8 +5,8 @@ namespace App\Actions\Logs;
 use App\Models\Account;
 use App\Models\LogCursor;
 use App\Models\LogEvent;
+use App\Support\TimedTransaction;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class IngestLog
@@ -159,13 +159,20 @@ class IngestLog
             ]);
         }
 
-        DB::transaction(function () use ($rows, $cursor, $safeOffset) {
-            if (! empty($rows)) {
-                foreach (array_chunk($rows, 500) as $chunk) {
+        // Each chunk runs in its own transaction so the write lock is released
+        // between chunks. insertOrIgnore is idempotent — if the cursor save
+        // below fails after a partial run, re-ingestion from the prior offset
+        // skips already-stored rows. The cursor advances only once all chunks
+        // commit, in its own short transaction.
+        if (! empty($rows)) {
+            foreach (array_chunk($rows, 500) as $i => $chunk) {
+                TimedTransaction::run("IngestLog:chunk[{$i}]", function () use ($chunk) {
                     LogEvent::query()->insertOrIgnore($chunk);
-                }
+                });
             }
+        }
 
+        TimedTransaction::run('IngestLog:cursor', function () use ($cursor, $safeOffset) {
             $cursor->byte_offset = $safeOffset;
             $cursor->save();
         });
@@ -267,6 +274,7 @@ class IngestLog
             'logged_at' => $event->logged_at,
             'match_id' => $event->match_id,
             'match_token' => $event->match_token,
+            'tournament_token' => $event->tournament_token,
             'game_id' => $event->game_id,
             'created_at' => $now,
             'updated_at' => $now,

@@ -14,6 +14,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (Schema::hasTable('match_archetypes')) {
+            return;
+        }
+
         Schema::create('match_archetypes', function (Blueprint $table) {
             $table->id();
             $table->foreignIdFor(Archetype::class)->constrained();

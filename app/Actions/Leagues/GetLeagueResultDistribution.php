@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\DB;
 class GetLeagueResultDistribution
 {
     /**
-     * Get the W-L distribution of completed real leagues for a deck.
+     * Get the W-L distribution of completed leagues for a deck.
      *
      * @param  Collection  $matchIds  Match IDs belonging to this deck
      * @return array<string, int> e.g. ['5-0' => 2, '4-1' => 3, ...]
@@ -20,7 +20,6 @@ class GetLeagueResultDistribution
         $buckets = collect(['5-0' => 0, '4-1' => 0, '3-2' => 0, '2-3' => 0, '1-4' => 0, '0-5' => 0]);
 
         $leagues = League::whereHas('matches', fn ($q) => $q->whereIn('matches.id', $matchIds))
-            ->where('phantom', false)
             ->where('state', 'complete')
             ->pluck('id');
 

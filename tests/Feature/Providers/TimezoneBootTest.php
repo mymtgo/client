@@ -1,30 +1,30 @@
 <?php
 
-use Native\Desktop\Facades\Settings;
+use App\Facades\AppSettings;
 use Native\Desktop\Facades\System;
 
 it('persists system timezone to settings on boot', function () {
     System::shouldReceive('timezone')->once()->andReturn('America/Chicago');
 
     $detected = System::timezone();
-    Settings::set('system_tz', $detected ?? Settings::get('system_tz', 'UTC'));
+    AppSettings::setSystemTimezone($detected ?? AppSettings::systemTimezone());
 
-    expect(Settings::get('system_tz'))->toBe('America/Chicago');
+    expect(AppSettings::systemTimezone())->toBe('America/Chicago');
 });
 
 it('falls back to last known timezone when System::timezone() throws', function () {
-    Settings::set('system_tz', 'Europe/London');
+    AppSettings::setSystemTimezone('Europe/London');
 
     System::shouldReceive('timezone')->once()->andThrow(new RuntimeException('NativePHP not available'));
 
     try {
         $detected = System::timezone();
-        Settings::set('system_tz', $detected ?? Settings::get('system_tz', 'UTC'));
+        AppSettings::setSystemTimezone($detected ?? AppSettings::systemTimezone());
     } catch (Throwable) {
-        // NativePHP not available — Settings left unchanged
+        // NativePHP not available — AppSettings left unchanged
     }
 
-    expect(Settings::get('system_tz'))->toBe('Europe/London');
+    expect(AppSettings::systemTimezone())->toBe('Europe/London');
 });
 
 it('falls back to UTC when no timezone exists and System::timezone() throws', function () {
@@ -32,10 +32,10 @@ it('falls back to UTC when no timezone exists and System::timezone() throws', fu
 
     try {
         $detected = System::timezone();
-        Settings::set('system_tz', $detected ?? Settings::get('system_tz', 'UTC'));
+        AppSettings::setSystemTimezone($detected ?? AppSettings::systemTimezone());
     } catch (Throwable) {
-        // NativePHP not available — Settings left unchanged
+        // NativePHP not available — AppSettings left unchanged
     }
 
-    expect(Settings::get('system_tz', 'UTC'))->toBe('UTC');
+    expect(AppSettings::systemTimezone())->toBe('UTC');
 });

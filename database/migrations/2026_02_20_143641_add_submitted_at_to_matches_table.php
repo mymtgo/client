@@ -11,6 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (Schema::hasColumn('matches', 'submitted_at')) {
+            return;
+        }
+
         Schema::table('matches', function (Blueprint $table) {
             $table->dateTime('submitted_at')->nullable()->after('ended_at');
         });

@@ -71,11 +71,8 @@ function executeDelete() {
     });
 }
 
-function reprocessMatch(id: number) {
-    router.post('/debug/matches/reset', { identifier: String(id) }, {
-        preserveScroll: true,
-        onSuccess: () => toast({ type: 'success', title: 'Voided', message: `Match #${id} voided.`, duration: 2000 }),
-    });
+function voidMatch(id: number) {
+    saveField(id, 'state', 'voided');
 }
 
 const columns = [
@@ -179,7 +176,7 @@ function refresh() {
                                         </DropdownMenuItem>
                                         <DropdownMenuItem
                                             v-if="match.state !== 'voided'"
-                                            @click="reprocessMatch(match.id as number)"
+                                            @click="voidMatch(match.id as number)"
                                         >
                                             <RotateCcw class="h-4 w-4" />
                                             Void

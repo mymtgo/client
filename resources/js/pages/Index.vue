@@ -15,7 +15,6 @@ import DashboardRecentMatches from '@/pages/partials/DashboardRecentMatches.vue'
 type ActiveLeague = {
     name: string;
     format: string;
-    phantom: boolean;
     isActive: boolean;
     isTrophy: boolean;
     deckName: string | null;

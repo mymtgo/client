@@ -9,7 +9,7 @@ use Illuminate\Support\Collection;
 class GetLatestLeague
 {
     /**
-     * Get the most recent complete, non-phantom league for a deck.
+     * Get the most recent complete league for a deck.
      *
      * @param  Collection  $matchIds  Match IDs belonging to this deck
      * @return array|null Formatted league run or null

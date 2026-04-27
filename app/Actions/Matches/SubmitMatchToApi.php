@@ -3,19 +3,19 @@
 namespace App\Actions\Matches;
 
 use App\Actions\RegisterDevice;
+use App\Facades\AppSettings;
 use App\Models\Card;
 use App\Models\DeckVersion;
 use App\Models\MtgoMatch;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Native\Desktop\Facades\Settings;
 
 class SubmitMatchToApi
 {
     public static function run(int $matchId): void
     {
-        if (! Settings::get('share_stats')) {
+        if (! AppSettings::shouldTransmitMatches()) {
             return;
         }
 
@@ -41,12 +41,12 @@ class SubmitMatchToApi
             ->with('archetype')
             ->first();
 
-        if (! $playerArchetype?->archetype || ! $opponentArchetype?->archetype) {
+        if (! $playerArchetype?->archetype) {
             return;
         }
 
-        $isTournament = ! $match->league?->phantom;
-        $leagueToken = $isTournament ? $match->league?->token : null;
+        $isTournament = $match->tournament_event_id !== null;
+        $leagueToken = $match->league?->token;
 
         $deckVersion = DeckVersion::find($match->deck_version_id);
         $deck = self::buildDeckPayload($deckVersion);
@@ -64,12 +64,14 @@ class SubmitMatchToApi
             'match_token' => $match->token,
             'username' => $match->games->first()->localPlayers->first()->username,
             'player_archetype_uuid' => $playerArchetype->archetype->uuid,
-            'opponent_archetype_uuid' => $opponentArchetype->archetype->uuid,
+            'opponent_archetype_uuid' => $opponentArchetype?->archetype?->uuid,
             'result' => $match->isWin() ? 'win' : 'loss',
             'format' => $match->format,
             'is_tournament' => $isTournament,
             'league_token' => $leagueToken,
             'tournament_token' => null,
+            'challenge_token' => $match->tournament_token,
+            'tournament_round' => $match->tournament_round,
             'played_at' => $match->started_at->toIso8601String(),
             'deck' => $deck,
             'games' => $gamesPayload,
@@ -105,7 +107,7 @@ class SubmitMatchToApi
     private static function authenticatedRequest(): PendingRequest
     {
         return Http::withHeaders([
-            'X-Device-Id' => Settings::get('device_id'),
+            'X-Device-Id' => AppSettings::deviceId(),
             'X-Api-Key' => RegisterDevice::retrieveKey(),
         ]);
     }

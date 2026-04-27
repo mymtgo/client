@@ -8,9 +8,15 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('leagues', function (Blueprint $table) {
-            $table->unsignedInteger('event_id')->nullable()->after('token')->index();
-            $table->dateTime('joined_at')->nullable()->after('started_at');
+        $existing = Schema::getColumnListing('leagues');
+
+        Schema::table('leagues', function (Blueprint $table) use ($existing) {
+            if (! in_array('event_id', $existing, true)) {
+                $table->unsignedInteger('event_id')->nullable()->after('token')->index();
+            }
+            if (! in_array('joined_at', $existing, true)) {
+                $table->dateTime('joined_at')->nullable()->after('started_at');
+            }
         });
     }
 

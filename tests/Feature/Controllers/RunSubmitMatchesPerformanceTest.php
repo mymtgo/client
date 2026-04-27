@@ -1,5 +1,6 @@
 <?php
 
+use App\Facades\AppSettings;
 use App\Jobs\SubmitMatch;
 use App\Models\Account;
 use App\Models\Archetype;
@@ -11,13 +12,12 @@ use App\Models\MtgoMatch;
 use App\Models\Player;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
-use Native\Desktop\Facades\Settings;
 
 uses(RefreshDatabase::class);
 
 it('dispatches submit jobs asynchronously instead of blocking', function () {
     Queue::fake();
-    Settings::set('share_stats', true);
+    AppSettings::setShouldTransmitMatches(true);
 
     $account = Account::create(['username' => 'testplayer', 'active' => true, 'tracked' => true]);
     $deck = Deck::factory()->create(['account_id' => $account->id]);
@@ -56,7 +56,7 @@ it('dispatches submit jobs asynchronously instead of blocking', function () {
 
 it('does not dispatch when sharing is disabled', function () {
     Queue::fake();
-    Settings::set('share_stats', false);
+    AppSettings::setShouldTransmitMatches(false);
 
     $this->post('/settings/submit-matches')->assertRedirect();
 

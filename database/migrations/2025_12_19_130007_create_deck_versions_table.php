@@ -12,6 +12,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (Schema::hasTable('deck_versions')) {
+            return;
+        }
+
         Schema::create('deck_versions', function (Blueprint $table) {
             $table->id();
             $table->foreignIdFor(Deck::class)->constrained();

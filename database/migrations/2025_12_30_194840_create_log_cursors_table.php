@@ -11,6 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (Schema::hasTable('log_cursors')) {
+            return;
+        }
+
         Schema::create('log_cursors', function (Blueprint $table) {
             $table->id();
             $table->string('local_username')->nullable()->index();

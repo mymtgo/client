@@ -1,0 +1,1 @@
+16:35:24 [INF] (Game Management|Processing Registered Handler for FlsTournamentRoundResultMessage in TournamentNotJoinedRoundInProgressState) Processor: TournamentNotJoinedRoundInProgressState Message: {"Token":"32d98b9d-2af6-4cc7-a95d-cd7471d75809","Round":2,"Results":[{"LoginID":3316456,"Rank":1,"Points":6}]} Receiver: WotC.MtGO.Client.Model.Play.TournamentEvent.Tournament

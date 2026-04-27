@@ -11,6 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (Schema::hasTable('game_logs')) {
+            return;
+        }
+
         Schema::create('game_logs', function (Blueprint $table) {
             $table->id();
             $table->string('match_token')->index();

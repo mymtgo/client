@@ -1,11 +1,11 @@
 <?php
 
+use App\Facades\AppSettings;
 use App\Facades\Mtgo;
 use App\Models\LogCursor;
 use App\Models\LogEvent;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
-use Native\Desktop\Facades\Settings;
 
 uses(RefreshDatabase::class);
 
@@ -17,9 +17,9 @@ beforeEach(function () {
 
     // Satisfy MtgoManager::canRun() — needs watcher_active, a valid log path
     // (contains mtgo.log), and a valid data path (contains Match_GameLog_*).
-    Settings::set('watcher_active', true);
-    Settings::set('log_path', $this->tempDir);
-    Settings::set('log_data_path', $this->tempDir.'/data');
+    AppSettings::setWatcherActive(true);
+    AppSettings::setLogPath($this->tempDir);
+    AppSettings::setLogDataPath($this->tempDir.'/data');
     touch($this->tempDir.'/data/Match_GameLog_fake.dat');
 
     // FindMtgoLogPath caches results for 60s — flush between tests.

@@ -3,6 +3,7 @@
 namespace App\Actions\Matches;
 
 use App\Actions\Logs\ConvertMtgoTimestamp;
+use App\Actions\Matches\LinkMatchToTournament as BackfillTournamentToken;
 use App\Actions\Tournaments\LinkMatchToTournament;
 use App\Actions\Util\ExtractJson;
 use App\Actions\Util\ExtractKeyValueBlock;
@@ -12,11 +13,10 @@ use App\Events\DeckLinkedToMatch;
 use App\Events\LeagueMatchStarted;
 use App\Facades\Mtgo;
 use App\Jobs\SubmitMatchLogSample;
-use App\Jobs\SyncDecks;
 use App\Models\LogEvent;
 use App\Models\MtgoMatch;
+use App\Support\TimedTransaction;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class AdvanceMatchState
@@ -60,7 +60,7 @@ class AdvanceMatchState
 
         // Wrap all state-advancement writes in a single transaction so
         // the SQLite write-lock is held once instead of 10–15 times.
-        return DB::transaction(function () use ($matchToken, $matchId, $events, $stateChanges, $joinedState) {
+        return TimedTransaction::run("AdvanceMatchState:{$matchId}", function () use ($matchToken, $matchId, $events, $stateChanges, $joinedState) {
             // ── Find or create the match ────────────────────────────────
             $match = MtgoMatch::where('mtgo_id', $matchId)->first();
 
@@ -97,6 +97,14 @@ class AdvanceMatchState
 
                 $started = ConvertMtgoTimestamp::run($joinedState->logged_at, $joinedState->timestamp);
 
+                $tournamentEventId = null;
+                $tournamentRound = null;
+                $descriptionSource = $gameMeta['Description'] ?? $joinedState->raw_text;
+                if (preg_match('/Tournament:(\d+)\s+Round:(\d+)/', $descriptionSource, $descMatch)) {
+                    $tournamentEventId = (int) $descMatch[1];
+                    $tournamentRound = (int) $descMatch[2];
+                }
+
                 $match = MtgoMatch::create([
                     'mtgo_id' => $matchId,
                     'token' => $matchToken,
@@ -105,7 +113,17 @@ class AdvanceMatchState
                     'started_at' => $started,
                     'ended_at' => null,
                     'state' => MatchState::Started,
+                    'tournament_event_id' => $tournamentEventId,
+                    'tournament_round' => $tournamentRound,
                 ]);
+
+                // If a round_info event landed before the match did, pull the
+                // tournament_token now. Otherwise RunPipeline's backfill pass
+                // will pick it up on a later tick.
+                if ($tournamentEventId !== null) {
+                    BackfillTournamentToken::run($match);
+                    $match->refresh();
+                }
 
                 SubmitMatchLogSample::dispatch(
                     matchToken: $matchToken,
@@ -198,16 +216,14 @@ class AdvanceMatchState
         CreateOrUpdateGames::run($match, $events);
 
         // ── Link deck (if not already linked) ──
+        // If the matching DeckVersion doesn't exist yet (deck XML not synced),
+        // RelinkOrphanMatches will re-attempt on a later pipeline tick once
+        // SyncDecks creates it. We intentionally do NOT dispatch SyncDecks
+        // synchronously here — it holds the SQLite write lock across XML I/O
+        // and caused the queue worker to thrash on "database is locked".
         if (! $match->deck_version_id) {
             DetermineMatchDeck::run($match);
             $match->refresh();
-
-            // No match found — sync decks from disk and retry
-            if (! $match->deck_version_id) {
-                SyncDecks::dispatchSync();
-                DetermineMatchDeck::run($match);
-                $match->refresh();
-            }
 
             if ($match->deck_version_id) {
                 DeckLinkedToMatch::dispatch($match);

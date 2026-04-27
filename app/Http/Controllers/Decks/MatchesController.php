@@ -60,7 +60,7 @@ class MatchesController extends Controller
             }
         }
         if ($archetype = $request->input('filter_archetype')) {
-            if ($archetype === 'unknown') {
+            if ($archetype === 'none') {
                 $query->whereDoesntHave('opponentArchetypes');
             } else {
                 $query->whereHas('opponentArchetypes', fn ($q) => $q->where('archetype_id', $archetype));
@@ -121,7 +121,7 @@ class MatchesController extends Controller
         $archetypeFormat = $formatMap[$deck->format] ?? strtolower($deck->format);
 
         $archetypes = Archetype::query()
-            ->where('format', $archetypeFormat)
+            ->forFormat($archetypeFormat)
             ->withCount(['matchArchetypes' => fn ($q) => $q
                 ->whereIn('mtgo_match_id', $allMatchIds)
                 ->whereIn('player_id', function ($sub) {
@@ -142,7 +142,6 @@ class MatchesController extends Controller
             ]);
 
         $unknownArchetypeCount = $deck->matches()
-            ->select('matches.*')
             ->where('state', 'complete')
             ->whereIn('matches.id', $allMatchIds)
             ->whereDoesntHave('opponentArchetypes')

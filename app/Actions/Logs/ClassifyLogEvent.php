@@ -3,6 +3,7 @@
 namespace App\Actions\Logs;
 
 use App\Actions\Util\ExtractJson;
+use App\Enums\LogEventType;
 use App\Models\LogEvent;
 use Illuminate\Support\Facades\Log;
 
@@ -94,6 +95,57 @@ class ClassifyLogEvent
             return $event->fill([
                 'event_type' => 'deck_used',
                 'game_id' => (int) $m['game'],
+            ]);
+        }
+
+        // Tournament events. Must come BEFORE game_management_json because the
+        // tournament sync payload contains a nested MatchCreateInfo.MatchToken
+        // that would falsely match the generic JSON branch.
+
+        // tournament_state_changed — no JSON, UUID is embedded in context.
+        // Real MTGO format: "Tournament State Changed for <UUID> from X to Y"
+        if (preg_match('/Tournament State Changed for (?<token>[a-f0-9\-]{36}) from \S+ to \S+/i', $text, $m)) {
+            return $event->fill([
+                'event_type' => LogEventType::TOURNAMENT_STATE_CHANGED->value,
+                'tournament_token' => $m['token'],
+            ]);
+        }
+
+        // JSON-carrying tournament events. Marker => [event type, json key for token].
+        $tournamentJsonMarkers = [
+            'EventSyncData_t' => [LogEventType::TOURNAMENT_SYNC, 'EventToken'],
+            'FlsTournamentRoundInfoMessage' => [LogEventType::TOURNAMENT_ROUND_INFO, 'Token'],
+            'FlsTournamentRoundResultMessage' => [LogEventType::TOURNAMENT_ROUND_RESULT, 'Token'],
+            'FlsTournamentPlayerIsEliminatedMessage' => [LogEventType::TOURNAMENT_PLAYER_ELIMINATED, 'Token'],
+            'FlsTournamentEndRespMessage' => [LogEventType::TOURNAMENT_ENDED, 'Token'],
+        ];
+
+        foreach ($tournamentJsonMarkers as $marker => [$type, $tokenKey]) {
+            if (! str_contains($text, $marker)) {
+                continue;
+            }
+
+            // Extract the token via regex rather than json_decode — MTGO
+            // occasionally ships malformed/truncated JSON (e.g. FlsTournamentRoundInfoMessage
+            // with a missing outer closing brace). A direct regex on the key
+            // survives those while ExtractJson would fall through to an inner block.
+            $token = null;
+            $pattern = '/"'.preg_quote($tokenKey, '/').'"\s*:\s*"(?<token>[a-f0-9\-]{36})"/i';
+            if (preg_match($pattern, $text, $m)) {
+                $token = $m['token'];
+            }
+
+            if ($token === null) {
+                Log::warning('ClassifyLogEvent: tournament marker matched but token missing', [
+                    'marker' => $marker,
+                    'token_key' => $tokenKey,
+                    'text_preview' => mb_substr($text, 0, 200),
+                ]);
+            }
+
+            return $event->fill([
+                'event_type' => $type->value,
+                'tournament_token' => $token,
             ]);
         }
 

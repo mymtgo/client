@@ -9,8 +9,10 @@ use App\Actions\Logs\PruneProcessedLogEvents;
 use App\Actions\Pipeline\RunPipeline;
 use App\Actions\RegisterDevice;
 use App\Actions\Settings\ValidatePath;
+use App\Facades\AppSettings;
 use App\Jobs\DownloadArchetypes;
 use App\Jobs\PopulateMissingCardData;
+use App\Jobs\ShipTournamentObservations;
 use App\Jobs\SubmitMatch;
 use App\Jobs\SyncDecks;
 use App\Models\Account;
@@ -18,7 +20,7 @@ use App\Models\Archetype;
 use App\Models\Deck;
 use App\Models\MtgoMatch;
 use Illuminate\Console\Scheduling\Schedule;
-use Native\Desktop\Facades\Settings;
+use Illuminate\Support\Str;
 
 class MtgoManager
 {
@@ -46,7 +48,7 @@ class MtgoManager
     public function getLogPath(): string
     {
         try {
-            return Settings::get('log_path') ?: $this->defaultLogPath();
+            return AppSettings::logPath() ?: $this->defaultLogPath();
         } catch (\Throwable) {
             return $this->defaultLogPath();
         }
@@ -73,7 +75,7 @@ class MtgoManager
     public function getLogDataPath(): string
     {
         try {
-            return Settings::get('log_data_path') ?: $this->defaultDataPath();
+            return AppSettings::logDataPath() ?: $this->defaultDataPath();
         } catch (\Throwable) {
             return $this->defaultDataPath();
         }
@@ -118,7 +120,7 @@ class MtgoManager
 
     public function retryUnsubmittedMatches(): void
     {
-        if (! Settings::get('share_stats')) {
+        if (! AppSettings::shouldTransmitMatches()) {
             return;
         }
 
@@ -127,23 +129,49 @@ class MtgoManager
             ->each(fn (MtgoMatch $match) => SubmitMatch::dispatch($match->id));
     }
 
-    public function runInitialSetup()
+    public function runInitialSetup(): void
     {
-        // Seed default paths on first launch so most users need no configuration
-        if (! Settings::get('log_path')) {
-            Settings::set('log_path', $this->defaultLogPath());
+        if (AppSettings::logPath() === '') {
+            AppSettings::setLogPath($this->defaultLogPath());
         }
 
-        if (! Settings::get('log_data_path')) {
-            Settings::set('log_data_path', $this->defaultDataPath());
+        if (AppSettings::logDataPath() === '') {
+            AppSettings::setLogDataPath($this->defaultDataPath());
         }
 
-        $expiresAt = Settings::get('api_key_expires_at');
+        if (AppSettings::deviceId() === null) {
+            AppSettings::setDeviceId((string) Str::uuid());
+        }
+
+        // Bool settings: seed only when the key has never been written
+        // (raw get returns null). Explicit false must be preserved.
+        if (AppSettings::get('share_stats') === null) {
+            AppSettings::setShouldTransmitMatches(true);
+        }
+        if (AppSettings::get('watcher_active') === null) {
+            AppSettings::setWatcherActive(true);
+        }
+        if (AppSettings::get('debug_mode') === null) {
+            AppSettings::setDebugMode(false);
+        }
+        if (AppSettings::get('league_window') === null) {
+            AppSettings::setShowLeagueWindow(false);
+        }
+        if (AppSettings::get('opponent_window') === null) {
+            AppSettings::setShowOpponentWindow(false);
+        }
+        if (AppSettings::get('deck_window') === null) {
+            AppSettings::setShowDeckWindow(false);
+        }
+        if (AppSettings::get('local_images') === null) {
+            AppSettings::setDownloadImagesLocally(false);
+        }
+        if (AppSettings::get('system_tz') === null) {
+            AppSettings::setSystemTimezone('UTC');
+        }
+
+        $expiresAt = AppSettings::apiKeyExpiresAt();
         $expired = $expiresAt && now()->isAfter($expiresAt);
-
-        if (is_null(Settings::get('share_stats'))) {
-            Settings::set('share_stats', true);
-        }
 
         if (! RegisterDevice::retrieveKey() || $expired) {
             RegisterDevice::run();
@@ -157,7 +185,6 @@ class MtgoManager
             $this->syncDecks(sync: false);
         }
 
-        // Register account from existing cursor data (upgrade path)
         if ($this->getUsername() && ! Account::exists()) {
             $account = Account::registerAndActivate($this->getUsername());
             Deck::whereNull('account_id')->update(['account_id' => $account->id]);
@@ -167,7 +194,7 @@ class MtgoManager
     public function canRun(): bool
     {
         try {
-            return Settings::get('watcher_active', true) && $this->pathsAreValid();
+            return AppSettings::isWatcherActive() && $this->pathsAreValid();
         } catch (\Throwable) {
             return false;
         }
@@ -222,6 +249,18 @@ class MtgoManager
         $schedule->call(fn () => $this->retryUnsubmittedMatches())
             ->everyMinute()
             ->name('submit_matches')
+            ->withoutOverlapping(60);
+
+        // Pick up new/updated deck XML files so RunPipeline's orphan relinker
+        // has fresh DeckVersions to match against.
+        $schedule->call(fn () => $this->syncDecks())
+            ->everyFiveMinutes()
+            ->name('sync_decks')
+            ->withoutOverlapping(60);
+
+        $schedule->job(new ShipTournamentObservations)
+            ->everyThirtySeconds()
+            ->name('ship_tournament_observations')
             ->withoutOverlapping(60);
 
         $schedule->call(fn () => $this->downloadArchetypes())

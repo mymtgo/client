@@ -8,11 +8,21 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('game_logs', function (Blueprint $table) {
-            $table->json('decoded_entries')->nullable()->after('file_path');
-            $table->dateTime('decoded_at')->nullable()->after('decoded_entries');
-            $table->unsignedInteger('byte_offset')->default(0)->after('decoded_at');
-            $table->unsignedSmallInteger('decoded_version')->default(0)->after('byte_offset');
+        $existing = Schema::getColumnListing('game_logs');
+
+        Schema::table('game_logs', function (Blueprint $table) use ($existing) {
+            if (! in_array('decoded_entries', $existing, true)) {
+                $table->json('decoded_entries')->nullable()->after('file_path');
+            }
+            if (! in_array('decoded_at', $existing, true)) {
+                $table->dateTime('decoded_at')->nullable()->after('decoded_entries');
+            }
+            if (! in_array('byte_offset', $existing, true)) {
+                $table->unsignedInteger('byte_offset')->default(0)->after('decoded_at');
+            }
+            if (! in_array('decoded_version', $existing, true)) {
+                $table->unsignedSmallInteger('decoded_version')->default(0)->after('byte_offset');
+            }
         });
     }
 

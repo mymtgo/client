@@ -8,6 +8,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (Schema::hasColumn('matches', 'imported')) {
+            return;
+        }
+
         Schema::table('matches', function (Blueprint $table) {
             $table->boolean('imported')->default(false)->after('outcome');
         });

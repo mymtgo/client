@@ -2,8 +2,8 @@
 
 namespace App\Data\Casts;
 
+use App\Facades\AppSettings;
 use Carbon\Carbon;
-use Native\Desktop\Facades\Settings;
 use Spatie\LaravelData\Casts\Cast;
 use Spatie\LaravelData\Support\Creation\CreationContext;
 use Spatie\LaravelData\Support\DataProperty;
@@ -18,6 +18,6 @@ class LocalTimeCast implements Cast
 
         $carbon = $value instanceof Carbon ? $value : Carbon::parse($value);
 
-        return $carbon->copy()->setTimezone(Settings::get('system_tz', 'UTC'));
+        return $carbon->copy()->setTimezone(AppSettings::systemTimezone());
     }
 }

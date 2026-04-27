@@ -12,11 +12,12 @@ class ArchetypeData extends Data
     public function __construct(
         public int $id,
         public string $name,
-        public string $format,
+        public ?string $format,
         public ?string $colorIdentity,
         public ?Carbon $decklistDownloadedAt,
         public bool $hasDecklist,
         public bool $manual,
+        public bool $isFallback,
     ) {}
 
     public static function fromModel(Archetype $archetype): self
@@ -29,6 +30,7 @@ class ArchetypeData extends Data
             decklistDownloadedAt: $archetype->decklist_downloaded_at,
             hasDecklist: $archetype->decklist_downloaded_at !== null,
             manual: $archetype->manual,
+            isFallback: $archetype->is_fallback,
         );
     }
 }

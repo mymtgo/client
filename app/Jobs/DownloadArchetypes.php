@@ -19,16 +19,12 @@ class DownloadArchetypes implements ShouldQueue
 
     public function handle(): void
     {
-        $response = Http::mymtgoApi()->get('/api/archetypes');
-
-        if (! $response->successful()) {
-            throw new \RuntimeException("DownloadArchetypes: API returned {$response->status()}");
-        }
+        $response = Http::mymtgoApi()->throw()->get('/api/archetypes');
 
         foreach ($response->json() as $archetype) {
             $existing = Archetype::where('uuid', $archetype['uuid'])->first();
 
-            if ($existing?->manual) {
+            if ($existing?->manual || $existing?->is_fallback) {
                 continue;
             }
 

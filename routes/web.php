@@ -5,6 +5,7 @@ use App\Http\Controllers\Archetypes\DownloadController;
 use App\Http\Controllers\Archetypes\DownloadDecklistController;
 use App\Http\Controllers\Archetypes\EditController;
 use App\Http\Controllers\Archetypes\ExportDekController;
+use App\Http\Controllers\Archetypes\ScanMatchController;
 use App\Http\Controllers\Archetypes\UploadDekController;
 use App\Http\Controllers\Debug\Cards\PopulateController;
 use App\Http\Controllers\Debug\Decks\SyncController;
@@ -17,6 +18,7 @@ use App\Http\Controllers\Decks\CardStatsController;
 use App\Http\Controllers\Decks\CoverArtOptionsController;
 use App\Http\Controllers\Decks\DashboardController;
 use App\Http\Controllers\Decks\DecklistController;
+use App\Http\Controllers\Decks\GameStatsController;
 use App\Http\Controllers\Decks\LeaguesController;
 use App\Http\Controllers\Decks\MatchesController;
 use App\Http\Controllers\Decks\MatchupDetailController;
@@ -40,7 +42,6 @@ use App\Http\Controllers\Import\ScanMatchesController;
 use App\Http\Controllers\Import\ScanStatusController;
 use App\Http\Controllers\Import\StoreController;
 use App\Http\Controllers\IndexController;
-use App\Http\Controllers\Leagues\AbandonController;
 use App\Http\Controllers\Leagues\OpponentScoutWindowController;
 use App\Http\Controllers\Leagues\OverlayController;
 use App\Http\Controllers\Matches\BulkUpdateArchetypeController;
@@ -51,22 +52,23 @@ use App\Http\Controllers\Matches\ShowController;
 use App\Http\Controllers\Matches\UpdateArchetypeController;
 use App\Http\Controllers\Matches\UpdateNotesController;
 use App\Http\Controllers\Settings\BrowseFolderController;
+use App\Http\Controllers\Settings\CheckApiStatusController;
+use App\Http\Controllers\Settings\ReauthenticateController;
 use App\Http\Controllers\Settings\RunIngestController;
 use App\Http\Controllers\Settings\RunPopulateCardsController;
 use App\Http\Controllers\Settings\RunSubmitMatchesController;
 use App\Http\Controllers\Settings\RunSyncController;
 use App\Http\Controllers\Settings\SwitchAccountController;
 use App\Http\Controllers\Settings\UpdateAccountTrackingController;
-use App\Http\Controllers\Settings\UpdateAnonymousStatsController;
 use App\Http\Controllers\Settings\UpdateDataPathController;
 use App\Http\Controllers\Settings\UpdateDebugModeController;
-use App\Http\Controllers\Settings\UpdateHidePhantomController;
 use App\Http\Controllers\Settings\UpdateLocalImagesController;
 use App\Http\Controllers\Settings\UpdateLogPathController;
 use App\Http\Controllers\Settings\UpdateOverlaySettingsController;
 use App\Http\Controllers\Settings\UpdateShareStatsController;
 use App\Http\Controllers\Settings\UpdateWatcherController;
 use App\Http\Controllers\Support\DownloadReportBundleController;
+use App\Http\Controllers\Support\OpenKofiController;
 use App\Http\Controllers\Tournaments\CandidatesController;
 use App\Http\Controllers\Updates\InstallController;
 use Illuminate\Routing\Router;
@@ -101,7 +103,6 @@ Route::group([], function (Router $router) {
         $group->get('/', App\Http\Controllers\Leagues\IndexController::class)->name('leagues.index');
         $group->get('overlay', OverlayController::class)->name('leagues.overlay');
         $group->get('opponent-scout', OpponentScoutWindowController::class)->name('leagues.opponent-scout');
-        $group->delete('{league}', AbandonController::class)->name('leagues.abandon');
     });
 
     $router->group([
@@ -124,6 +125,7 @@ Route::group([], function (Router $router) {
         $group->get('/', App\Http\Controllers\Decks\IndexController::class)->name('decks.index');
         $group->get('{deck:id}', DashboardController::class)->name('decks.show');
         $group->get('{deck:id}/card-stats', CardStatsController::class)->name('decks.card-stats');
+        $group->get('{deck:id}/game-stats', GameStatsController::class)->name('decks.game-stats');
         $group->get('{deck:id}/matches', MatchesController::class)->name('decks.matches');
         $group->get('{deck:id}/leagues', LeaguesController::class)->name('decks.leagues');
         $group->get('{deck:id}/tournaments', TournamentsController::class)->name('decks.tournaments');
@@ -147,6 +149,7 @@ Route::group([], function (Router $router) {
         $group->get('create', CreateController::class)->name('archetypes.create');
         $group->post('/', App\Http\Controllers\Archetypes\StoreController::class)->name('archetypes.store');
         $group->post('upload-dek', UploadDekController::class)->name('archetypes.upload-dek');
+        $group->post('scan-match/{match}', ScanMatchController::class)->name('archetypes.scan-match');
         $group->post('download', DownloadController::class)->name('archetypes.download-all');
         $group->get('{archetype}', App\Http\Controllers\Archetypes\ShowController::class)->name('archetypes.show');
         $group->get('{archetype}/edit', EditController::class)->name('archetypes.edit');
@@ -167,15 +170,15 @@ Route::group([], function (Router $router) {
         $group->post('ingest', RunIngestController::class)->name('settings.ingest');
         $group->post('sync', RunSyncController::class)->name('settings.sync');
         $group->post('populate-cards', RunPopulateCardsController::class)->name('settings.populate-cards');
-        $group->patch('anonymous-stats', UpdateAnonymousStatsController::class)->name('settings.anonymous-stats');
         $group->patch('share-stats', UpdateShareStatsController::class)->name('settings.share-stats');
-        $group->patch('hide-phantom', UpdateHidePhantomController::class)->name('settings.hide-phantom');
         $group->post('submit-matches', RunSubmitMatchesController::class)->name('settings.submit-matches');
         $group->patch('switch-account', SwitchAccountController::class)->name('settings.switch-account');
         $group->patch('account-tracking', UpdateAccountTrackingController::class)->name('settings.account-tracking');
         $group->post('overlay', UpdateOverlaySettingsController::class)->name('settings.overlay');
         $group->patch('debug-mode', UpdateDebugModeController::class)->name('settings.debug-mode');
         $group->patch('local-images', UpdateLocalImagesController::class)->name('settings.local-images');
+        $group->get('api-status', CheckApiStatusController::class)->name('settings.api-status');
+        $group->post('reauthenticate', ReauthenticateController::class)->name('settings.reauthenticate');
     });
 
     $router->group([
@@ -199,6 +202,7 @@ Route::group([], function (Router $router) {
         'prefix' => 'support',
     ], function (Router $group) {
         $group->get('report', DownloadReportBundleController::class)->name('support.report.download');
+        $group->post('kofi', OpenKofiController::class)->name('support.kofi.open');
     });
 
     $router->group([

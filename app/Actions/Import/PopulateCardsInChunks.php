@@ -3,10 +3,10 @@
 namespace App\Actions\Import;
 
 use App\Actions\RegisterDevice;
+use App\Facades\AppSettings;
 use App\Models\Card;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Native\Desktop\Facades\Settings;
 
 class PopulateCardsInChunks
 {
@@ -21,7 +21,7 @@ class PopulateCardsInChunks
             return;
         }
 
-        $deviceId = Settings::get('device_id');
+        $deviceId = AppSettings::deviceId();
         $apiKey = RegisterDevice::retrieveKey();
 
         if (! $deviceId || ! $apiKey) {

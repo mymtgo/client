@@ -11,6 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (Schema::hasColumn('matches', 'state')) {
+            return;
+        }
+
         Schema::table('matches', function (Blueprint $table) {
             $table->string('state')->default('complete')->index()->after('match_type');
         });

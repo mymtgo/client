@@ -3,10 +3,10 @@
 namespace App\Http\Controllers\Settings;
 
 use App\Actions\Settings\ValidatePath;
+use App\Facades\AppSettings;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Native\Desktop\Facades\Settings;
 
 class UpdateWatcherController extends Controller
 {
@@ -19,15 +19,15 @@ class UpdateWatcherController extends Controller
         $active = $request->boolean('active');
 
         if ($active) {
-            $logOk = ValidatePath::forLogs(Settings::get('log_path', ''));
-            $dataOk = ValidatePath::forData(Settings::get('log_data_path', ''));
+            $logOk = ValidatePath::forLogs(AppSettings::logPath());
+            $dataOk = ValidatePath::forData(AppSettings::logDataPath());
 
             if (! $logOk['valid'] || ! $dataOk['valid']) {
                 return back();
             }
         }
 
-        Settings::set('watcher_active', $active ? 1 : 0);
+        AppSettings::setWatcherActive($active);
 
         return back();
     }

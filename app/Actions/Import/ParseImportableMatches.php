@@ -5,11 +5,11 @@ namespace App\Actions\Import;
 use App\Actions\Matches\ExtractGameResults;
 use App\Actions\Matches\ParseGameHistory;
 use App\Actions\RegisterDevice;
+use App\Facades\AppSettings;
 use App\Models\Card;
 use App\Models\MtgoMatch;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Native\Desktop\Facades\Settings;
 
 class ParseImportableMatches
 {
@@ -171,7 +171,7 @@ class ParseImportableMatches
             return;
         }
 
-        $deviceId = Settings::get('device_id');
+        $deviceId = AppSettings::deviceId();
         $apiKey = RegisterDevice::retrieveKey();
 
         if (! $deviceId || ! $apiKey) {

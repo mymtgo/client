@@ -98,7 +98,7 @@ const updateSort = (column: string) => {
                     </SelectTrigger>
                     <SelectContent>
                         <SelectItem value="all" class="text-xs">All Archetypes</SelectItem>
-                        <SelectItem value="unknown" class="text-xs">Unknown ({{ unknownArchetypeCount }})</SelectItem>
+                        <SelectItem v-if="unknownArchetypeCount > 0" value="none" class="text-xs">Unknown ({{ unknownArchetypeCount }})</SelectItem>
                         <SelectItem v-for="arch in archetypes.filter(a => a.matchCount > 0)" :key="arch.id" :value="String(arch.id)" class="text-xs">
                             {{ arch.name }} ({{ arch.matchCount }})
                         </SelectItem>

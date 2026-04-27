@@ -3,6 +3,7 @@ import DashboardController from '@/actions/App/Http/Controllers/IndexController'
 import ImportIndexController from '@/actions/App/Http/Controllers/Import/IndexController';
 import SettingsIndexController from '@/actions/App/Http/Controllers/Settings/IndexController';
 import SwitchAccountController from '@/actions/App/Http/Controllers/Settings/SwitchAccountController';
+import { ButtonLink } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Link, router, usePage } from '@inertiajs/vue3';
 import { ChevronDown, FileUp, Settings } from 'lucide-vue-next';
@@ -51,21 +52,15 @@ function switchAccount(username: string) {
                 {{ page.props.activeAccount }}
             </span>
 
-            <Link
-                :href="ImportIndexController.url()"
-                class="inline-flex items-center gap-1.5 rounded-md border border-sidebar-border px-2.5 py-1 text-sm text-sidebar-foreground/70 transition-colors hover:text-sidebar-foreground"
-            >
+            <ButtonLink :href="ImportIndexController.url()" size="sm">
                 <FileUp class="size-4" />
                 Import
-            </Link>
+            </ButtonLink>
 
-            <Link
-                :href="SettingsIndexController.url()"
-                class="inline-flex items-center gap-1.5 rounded-md border border-sidebar-border px-2.5 py-1 text-sm text-sidebar-foreground/70 transition-colors hover:text-sidebar-foreground"
-            >
+            <ButtonLink :href="SettingsIndexController.url()" size="sm">
                 <Settings class="size-4" />
                 Settings
-            </Link>
+            </ButtonLink>
         </div>
     </header>
 </template>

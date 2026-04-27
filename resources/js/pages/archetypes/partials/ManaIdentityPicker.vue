@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
+import ManaSymbols from '@/components/ManaSymbols.vue';
 
 const SYMBOLS = [
     { key: 'W', label: 'White', bg: '#F8F6D8', glow: 'rgba(248,246,216,0.5)' },
@@ -33,17 +34,13 @@ function toggle(key: string) {
                 v-for="symbol in SYMBOLS"
                 :key="symbol.key"
                 type="button"
-                class="flex size-9 items-center justify-center rounded-full border-2 text-sm font-bold text-black/80 transition-all"
-                :class="selected.has(symbol.key) ? 'opacity-100' : 'opacity-35 border-transparent'"
-                :style="{
-                    backgroundColor: symbol.bg,
-                    borderColor: selected.has(symbol.key) ? symbol.glow : 'transparent',
-                    boxShadow: selected.has(symbol.key) ? `0 0 8px ${symbol.glow}` : 'none',
-                }"
+                class="flex items-center justify-center rounded-full  text-sm font-bold cursor-pointer text-black/80 transition-all"
+                :class="selected.has(symbol.key) ? 'opacity-100' : 'border-transparent opacity-35'"
                 :title="symbol.label"
                 @click="toggle(symbol.key)"
             >
-                {{ symbol.key }}
+                <ManaSymbols :symbols="symbol.key" />
+                <span class="sr-only">{{ symbol.key }}</span>
             </button>
         </div>
     </div>

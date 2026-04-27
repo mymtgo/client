@@ -1,0 +1,1 @@
+16:35:24 [INF] (Game Management|Processing Registered Handler for FlsTournamentPlayerIsEliminatedMessage in TournamentNotJoinedRoundInProgressState) Processor: TournamentNotJoinedRoundInProgressState Message: {"Token":"32d98b9d-2af6-4cc7-a95d-cd7471d75809","ID":12839833,"LoginID":2320156,"EliminationReason":1} Receiver: WotC.MtGO.Client.Model.Play.TournamentEvent.Tournament

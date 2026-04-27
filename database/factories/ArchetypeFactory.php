@@ -42,4 +42,13 @@ class ArchetypeFactory extends Factory
             'decklist_downloaded_at' => now()->subDays(8),
         ]);
     }
+
+    public function fallback(): static
+    {
+        return $this->state(fn () => [
+            'format' => null,
+            'is_fallback' => true,
+            'color_identity' => null,
+        ]);
+    }
 }

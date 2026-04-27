@@ -2,8 +2,8 @@
 
 namespace App\Actions\Matches;
 
+use App\Facades\AppSettings;
 use Carbon\Carbon;
-use Native\Desktop\Facades\Settings;
 
 class ParseGameLogBinary
 {
@@ -104,7 +104,7 @@ class ParseGameLogBinary
 
             // Convert .NET ticks to UTC via local wall-clock interpretation
             $unixSeconds = ($ticks - self::DOTNET_EPOCH_OFFSET) / 10_000_000;
-            $tz ??= Settings::get('system_tz', 'UTC');
+            $tz ??= AppSettings::systemTimezone();
             $wallClock = gmdate('Y-m-d H:i:s', (int) $unixSeconds);
             $timestamp = Carbon::parse($wallClock, $tz)->utc()->toIso8601String();
 

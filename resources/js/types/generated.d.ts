@@ -2,10 +2,12 @@ declare namespace App.Data.Front {
 export type ArchetypeData = {
 id: number;
 name: string;
-format: string;
+format: string | null;
 colorIdentity: string | null;
 decklistDownloadedAt: string | null;
 hasDecklist: boolean;
+manual: boolean;
+isFallback: boolean;
 };
 export type ArchetypeDetailData = {
 archetype: App.Data.Front.ArchetypeData;
@@ -47,7 +49,7 @@ cards: any;
 export type DeckGroupData = {
 archetype: App.Data.Front.ArchetypeData | null;
 stats: App.Data.Front.DeckGroupStatsData;
-decks: Array<App.Data.Front.DeckData>;
+decks: { [key: number]: App.Data.Front.DeckData };
 };
 export type DeckGroupStatsData = {
 totalMatches: number;
@@ -60,6 +62,10 @@ id: number;
 players: any | Array<any>;
 timeline: any | Array<any>;
 };
+export type GameResultSummaryData = {
+result: string;
+onPlay: boolean | null;
+};
 export type GameTimelineData = {
 timestamp: string;
 content: Array<any>;
@@ -67,7 +73,6 @@ content: Array<any>;
 export type LeagueData = {
 name: string;
 startedAt: string;
-phantom: boolean;
 format: string;
 matches: Array<any>;
 };
@@ -86,16 +91,25 @@ result: string;
 startedAt: string;
 since: string;
 startedAtFormatted: string;
-matchTime: string;
+matchTime: string | null;
 notes: string | null;
 deck: any | App.Data.Front.DeckData;
 opponentArchetypes: any;
 opponentName: any | string | null;
 leagueName: any | string | null;
 games: any | Array<any>;
-gameResults: Array<{ result: 'W' | 'L'; onPlay: boolean | null }>;
-tournament: any | App.Data.Front.TournamentSummaryData | null;
-tournamentRound: number | null;
+gameResults: any | { [key: number]: App.Data.Front.GameResultSummaryData };
+};
+export type MatchDeckData = {
+deck: any | App.Data.Front.DeckData;
+};
+export type PlayerData = {
+id: number;
+username: string;
+isLocal: boolean;
+onPlay: boolean;
+startingHandSize: number;
+deck: Array<any>;
 };
 export type TournamentCandidateData = {
 id: number;
@@ -110,16 +124,5 @@ export type TournamentSummaryData = {
 id: number;
 eventId: number | null;
 format: string | null;
-};
-export type MatchDeckData = {
-deck: any | App.Data.Front.DeckData;
-};
-export type PlayerData = {
-id: number;
-username: string;
-isLocal: boolean;
-onPlay: boolean;
-startingHandSize: number;
-deck: Array<any>;
 };
 }

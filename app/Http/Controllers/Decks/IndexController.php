@@ -6,13 +6,13 @@ use App\Data\Front\ArchetypeData;
 use App\Data\Front\DeckData;
 use App\Data\Front\DeckGroupData;
 use App\Data\Front\DeckGroupStatsData;
+use App\Facades\AppSettings;
 use App\Models\Deck;
 use App\Models\MtgoMatch;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
-use Native\Desktop\Facades\Settings;
 use Spatie\LaravelData\DataCollection;
 
 class IndexController
@@ -52,7 +52,7 @@ class IndexController
             'sort' => $sort,
         ];
 
-        $grouped = (bool) Settings::get('decks_grouped_by_archetype', false);
+        $grouped = AppSettings::decksGroupedByArchetype();
 
         if ($grouped) {
             $decks = $query->get();

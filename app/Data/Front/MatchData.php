@@ -29,10 +29,8 @@ class MatchData extends Data
         public Lazy|string|null $opponentName,
         public Lazy|string|null $leagueName,
         public Lazy|Collection $games,
-        /** @var array<int, array{result: string, onPlay: bool|null}> */
+        /** @var Lazy|list<GameResultSummaryData> */
         public Lazy|array $gameResults,
-        public Lazy|TournamentSummaryData|null $tournament,
-        public ?int $tournamentRound,
     ) {}
 
     public static function fromModel(MtgoMatch $match): self
@@ -41,7 +39,7 @@ class MatchData extends Data
             id: $match->id,
             format: MtgoMatch::displayFormat($match->format),
             matchType: $match->match_type,
-            leagueGame: $match->league_id !== null && ! ($match->league->phantom ?? true),
+            leagueGame: $match->league_id !== null,
             gamesWon: $match->gamesWon(),
             gamesLost: $match->gamesLost(),
             result: $match->isWin() ? 'won' : 'lost',
@@ -59,12 +57,10 @@ class MatchData extends Data
                 ->filter(fn ($g) => $g->won !== null)
                 ->sortBy('started_at')
                 ->values()
-                ->map(fn ($g) => [
-                    'result' => $g->won ? 'W' : 'L',
-                    'onPlay' => $g->players->first(fn ($p) => $p->pivot->is_local)?->pivot->on_play,
-                ])->all()),
-            tournament: Lazy::whenLoaded('tournament', $match, fn () => $match->tournament ? TournamentSummaryData::from($match->tournament) : null),
-            tournamentRound: $match->tournament_round,
+                ->map(fn ($g) => new GameResultSummaryData(
+                    result: $g->won ? 'W' : 'L',
+                    onPlay: $g->players->first(fn ($p) => $p->pivot->is_local)?->pivot->on_play,
+                ))->all()),
         );
     }
 }

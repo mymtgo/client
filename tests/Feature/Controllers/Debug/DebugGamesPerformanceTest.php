@@ -1,16 +1,16 @@
 <?php
 
+use App\Facades\AppSettings;
 use App\Models\Game;
 use App\Models\MtgoMatch;
 use App\Models\Player;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
-use Native\Desktop\Facades\Settings;
 
 uses(RefreshDatabase::class);
 
 beforeEach(function () {
-    Settings::set('debug_mode', true);
+    AppSettings::set('debug_mode', true);
 });
 
 function createMatchWithGamesAndOpponent(int $count = 5): void

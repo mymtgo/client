@@ -9,9 +9,11 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('leagues', function (Blueprint $table) {
-            $table->foreignId('deck_version_id')->nullable()->after('state')->constrained('deck_versions')->nullOnDelete();
-        });
+        if (! Schema::hasColumn('leagues', 'deck_version_id')) {
+            Schema::table('leagues', function (Blueprint $table) {
+                $table->foreignId('deck_version_id')->nullable()->after('state')->constrained('deck_versions')->nullOnDelete();
+            });
+        }
 
         // Backfill: set each league's deck_version_id from its first match.
         // Note: existing multi-run leagues are NOT retroactively split —

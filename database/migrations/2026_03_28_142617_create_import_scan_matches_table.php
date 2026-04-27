@@ -11,6 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (Schema::hasTable('import_scan_matches')) {
+            return;
+        }
+
         Schema::create('import_scan_matches', function (Blueprint $table) {
             $table->id();
             $table->foreignId('import_scan_id')->constrained()->cascadeOnDelete();

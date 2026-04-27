@@ -1,31 +1,44 @@
 <script setup lang="ts">
 import DeckSidebar from '@/components/decks/DeckSidebar.vue';
+import SettingsController from '@/actions/App/Http/Controllers/Decks/SettingsController';
+import { Link } from '@inertiajs/vue3';
+import { AlertTriangle } from 'lucide-vue-next';
 import type { VersionStats } from '@/types/decks';
 
-defineProps<{
-    deck: App.Data.Front.DeckData;
-    versions: VersionStats[];
+const props = defineProps<{
+    deck?: App.Data.Front.DeckData;
+    versions?: VersionStats[];
     currentVersionId: number | null;
-    trophies: number;
+    trophies?: number;
     currentPage: string;
     timeframe?: string;
 }>();
 </script>
 
 <template>
-    <div class="flex min-h-0 flex-1">
-        <div class="w-56 shrink-0">
-            <DeckSidebar
-                :deck="deck"
-                :versions="versions"
-                :current-version-id="currentVersionId"
-                :trophies="trophies"
-                :current-page="currentPage"
-                :timeframe="timeframe"
-            />
-        </div>
-        <div class="flex min-h-0 flex-1 flex-col border-l border-white/5 overflow-y-auto">
-            <slot />
+    <div v-if="deck" class="flex min-h-0 flex-1 flex-col">
+        <Link
+            v-if="!deck.archetype"
+            :href="SettingsController.url({ deck: deck.id })"
+            class="flex items-center justify-center gap-2 border-b border-white/5 bg-white/5 px-4 py-1.5 text-xs text-white transition hover:bg-white/10"
+        >
+            <AlertTriangle class="size-3.5 shrink-0 text-amber-400" />
+            <span>This deck is an unknown archetype. Click here to set it.</span>
+        </Link>
+        <div class="flex min-h-0 flex-1">
+            <div class="w-56 shrink-0">
+                <DeckSidebar
+                    :deck="deck"
+                    :versions="versions"
+                    :current-version-id="currentVersionId"
+                    :trophies="trophies"
+                    :current-page="currentPage"
+                    :timeframe="timeframe"
+                />
+            </div>
+            <div class="flex min-h-0 flex-1 flex-col border-l border-white/5 overflow-y-auto">
+                <slot />
+            </div>
         </div>
     </div>
 </template>

@@ -11,10 +11,10 @@ class GetFilteredArchetypes
 {
     public static function run(Request $request): array
     {
-        $query = Archetype::query()->orderBy('name');
+        $query = Archetype::query()->where('is_fallback', false)->orderBy('name');
 
         if ($request->filled('format')) {
-            $query->where('format', $request->input('format'));
+            $query->forFormat($request->input('format'));
         }
 
         if ($request->filled('search')) {
@@ -24,6 +24,7 @@ class GetFilteredArchetypes
         $paginated = $query->paginate(25)->withQueryString();
 
         $formats = Archetype::query()
+            ->whereNotNull('format')
             ->distinct()
             ->pluck('format')
             ->mapWithKeys(fn ($f) => [$f => Str::title($f)])

@@ -1,7 +1,12 @@
 <?php
 
+use App\Actions\Decks\GenerateDeckSignature;
 use App\Enums\MatchState;
 use App\Managers\MtgoManager;
+use App\Models\Account;
+use App\Models\Card;
+use App\Models\Deck;
+use App\Models\DeckVersion;
 use App\Models\LogCursor;
 use App\Models\LogEvent;
 use App\Models\MtgoMatch;
@@ -91,6 +96,51 @@ it('filters complete vs incomplete matches correctly via scopes', function () {
     expect(MtgoMatch::complete()->count())->toBe(1);
     expect(MtgoMatch::incomplete()->count())->toBe(3);
     expect(MtgoMatch::count())->toBe(4);
+});
+
+it('relinks orphan matches on each pipeline tick', function () {
+    $account = Account::create([
+        'username' => 'LocalPlayer',
+        'active' => true,
+        'tracked' => true,
+    ]);
+
+    $card = Card::factory()->create(['mtgo_id' => 100, 'oracle_id' => 'oracle-pipeline']);
+
+    $signature = GenerateDeckSignature::run(collect([[
+        'mtgo_id' => $card->mtgo_id,
+        'quantity' => 4,
+        'sideboard' => 'false',
+    ]]));
+
+    $deck = Deck::factory()->create(['account_id' => $account->id]);
+    DeckVersion::factory()->create(['deck_id' => $deck->id, 'signature' => $signature]);
+
+    $match = MtgoMatch::factory()->create([
+        'state' => MatchState::Complete,
+        'deck_version_id' => null,
+        'ended_at' => now()->subMinutes(5),
+    ]);
+
+    $game = $match->games()->create([
+        'mtgo_id' => 88888,
+        'started_at' => now()->subMinutes(10),
+    ]);
+
+    LogEvent::factory()->create([
+        'event_type' => 'deck_used',
+        'game_id' => $game->mtgo_id,
+        'raw_text' => '12:00:00 [INF] (Deck|Used) '.json_encode([[
+            'CatalogId' => $card->mtgo_id,
+            'Quantity' => 4,
+            'InSideboard' => false,
+        ]]),
+        'logged_at' => now()->subMinutes(10),
+    ]);
+
+    Artisan::call('mtgo:process-matches');
+
+    expect($match->fresh()->deck_version_id)->not->toBeNull();
 });
 
 it('includes state filter in submittable scope', function () {

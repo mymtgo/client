@@ -1,16 +1,16 @@
 <?php
 
 use App\Enums\LeagueState;
+use App\Facades\AppSettings;
 use App\Models\Deck;
 use App\Models\DeckVersion;
 use App\Models\League;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Native\Desktop\Facades\Settings;
 
 uses(RefreshDatabase::class);
 
 beforeEach(function () {
-    Settings::set('debug_mode', true);
+    AppSettings::set('debug_mode', true);
 });
 
 it('lists leagues with pagination', function () {

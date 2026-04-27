@@ -1,20 +1,17 @@
 <script lang="ts" setup>
-import AbandonController from '@/actions/App/Http/Controllers/Leagues/AbandonController';
 import DeckShowController from '@/actions/App/Http/Controllers/Decks/DashboardController';
 import MatchShowController from '@/actions/App/Http/Controllers/Matches/ShowController';
 import { Button } from '@/components/ui/button';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { router } from '@inertiajs/vue3';
 import { useScreenshot } from '@/composables/useScreenshot';
-import { Camera, Ellipsis, Trash2, Trophy } from 'lucide-vue-next';
+import { Camera, Trophy } from 'lucide-vue-next';
 import { nextTick, ref } from 'vue';
 import LeagueScreenshot from './LeagueScreenshot.vue';
 import ResultBadge from '../matches/ResultBadge.vue';
 import { Badge } from '../ui/badge';
 import { Card } from '../ui/card';
 import type { LeagueRun } from '@/types/leagues';
-import PhantomBadge from './PhantomBadge.vue';
 
 const props = defineProps<{
     league: LeagueRun;
@@ -25,11 +22,7 @@ const runLosses = (r: LeagueRun) => r.results.filter((x) => x === 'L').length;
 const isComplete = (r: LeagueRun) => r.state === 'complete';
 const isPartial = (r: LeagueRun) => r.state === 'partial';
 const isActive = (r: LeagueRun) => r.state === 'active';
-const isTrophy = (r: LeagueRun) => runWins(r) === 5 && isComplete(r) && !r.phantom;
-
-function abandonLeague(league: LeagueRun) {
-    router.delete(AbandonController.url(league.id), { preserveScroll: true });
-}
+const isTrophy = (r: LeagueRun) => runWins(r) === 5 && isComplete(r);
 
 const screenshotRef = ref<InstanceType<typeof LeagueScreenshot> | null>(null);
 const showScreenshot = ref(false);
@@ -64,7 +57,6 @@ async function copyScreenshot() {
                     {{ league.deck.name }}
                 </span>
                 <span v-if="league.versionLabel" class="text-xs text-muted-foreground">{{ league.versionLabel }}</span>
-                <PhantomBadge v-if="league.phantom" />
             </div>
 
             <!-- Right: record + pips -->
@@ -92,20 +84,6 @@ async function copyScreenshot() {
                 >
                     <Camera class="size-4" />
                 </Button>
-
-                <DropdownMenu v-if="league.phantom">
-                    <DropdownMenuTrigger as-child>
-                        <Button variant="ghost" size="icon" class="size-7 shrink-0" @click.stop>
-                            <Ellipsis class="size-4" />
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                        <DropdownMenuItem class="text-destructive" @click="abandonLeague(league)">
-                            <Trash2 class="size-4" />
-                            Abandon
-                        </DropdownMenuItem>
-                    </DropdownMenuContent>
-                </DropdownMenu>
             </div>
         </div>
 

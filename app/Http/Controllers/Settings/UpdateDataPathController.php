@@ -3,10 +3,10 @@
 namespace App\Http\Controllers\Settings;
 
 use App\Actions\Settings\ValidatePath;
+use App\Facades\AppSettings;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Native\Desktop\Facades\Settings;
 
 class UpdateDataPathController extends Controller
 {
@@ -18,12 +18,12 @@ class UpdateDataPathController extends Controller
 
         $path = $request->input('path');
 
-        Settings::set('log_data_path', $path);
+        AppSettings::setLogDataPath($path);
 
         $status = ValidatePath::forData($path);
 
         if (! $status['valid']) {
-            Settings::set('watcher_active', false);
+            AppSettings::setWatcherActive(false);
         }
 
         return back();

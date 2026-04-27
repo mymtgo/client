@@ -11,12 +11,24 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('cards', function (Blueprint $table) {
-            $table->string('colors')->nullable()->after('color_identity');
-            $table->decimal('cmc', 4, 1)->nullable()->after('colors');
-            $table->string('set_name')->nullable()->after('cmc');
-            $table->string('set_code')->nullable()->after('set_name');
-            $table->string('art_crop')->nullable()->after('set_code');
+        $existing = Schema::getColumnListing('cards');
+
+        Schema::table('cards', function (Blueprint $table) use ($existing) {
+            if (! in_array('colors', $existing, true)) {
+                $table->string('colors')->nullable()->after('color_identity');
+            }
+            if (! in_array('cmc', $existing, true)) {
+                $table->decimal('cmc', 4, 1)->nullable()->after('colors');
+            }
+            if (! in_array('set_name', $existing, true)) {
+                $table->string('set_name')->nullable()->after('cmc');
+            }
+            if (! in_array('set_code', $existing, true)) {
+                $table->string('set_code')->nullable()->after('set_name');
+            }
+            if (! in_array('art_crop', $existing, true)) {
+                $table->string('art_crop')->nullable()->after('set_code');
+            }
         });
     }
 

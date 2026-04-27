@@ -1,10 +1,10 @@
 <?php
 
+use App\Facades\AppSettings;
 use Carbon\Carbon;
-use Native\Desktop\Facades\Settings;
 
 it('converts UTC carbon to local timezone via toLocal macro', function () {
-    Settings::set('system_tz', 'America/New_York');
+    AppSettings::setSystemTimezone('America/New_York');
 
     $utc = Carbon::parse('2026-04-01 16:00:00', 'UTC');
     $local = $utc->toLocal();
@@ -14,7 +14,7 @@ it('converts UTC carbon to local timezone via toLocal macro', function () {
 });
 
 it('does not mutate the original carbon instance', function () {
-    Settings::set('system_tz', 'America/New_York');
+    AppSettings::setSystemTimezone('America/New_York');
 
     $utc = Carbon::parse('2026-04-01 16:00:00', 'UTC');
     $utc->toLocal();

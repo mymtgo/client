@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Settings;
 
 use App\Actions\Settings\ValidatePath;
+use App\Facades\AppSettings;
 use App\Facades\Mtgo;
 use App\Http\Controllers\Controller;
 use App\Models\Account;
@@ -10,7 +11,6 @@ use App\Models\MtgoMatch;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
-use Native\Desktop\Facades\Settings;
 
 class IndexController extends Controller
 {
@@ -36,21 +36,20 @@ class IndexController extends Controller
         return Inertia::render('settings/Index', [
             'logPath' => $logPath,
             'dataPath' => $dataPath,
-            'watcherActive' => Settings::get('watcher_active') === null ? true : (bool) Settings::get('watcher_active'),
+            'watcherActive' => AppSettings::isWatcherActive(),
             'logPathStatus' => ValidatePath::forLogs($logPath),
             'dataPathStatus' => ValidatePath::forData($dataPath),
-            'shareStats' => Settings::get('share_stats') === null ? false : (bool) Settings::get('share_stats'),
+            'shareStats' => AppSettings::shouldTransmitMatches(),
             'pendingMatches' => MtgoMatch::submittable()
                 ->latest('started_at')
                 ->get(['id', 'format', 'outcome', 'started_at']),
-            'hidePhantomLeagues' => (bool) Settings::get('hide_phantom_leagues'),
             'accounts' => Account::orderBy('username')->get(['id', 'username', 'tracked', 'active']),
-            'debugMode' => (bool) Settings::get('debug_mode'),
+            'debugMode' => AppSettings::isDebugMode(),
             'appVersion' => config('nativephp.version'),
-            'leagueWindowEnabled' => (bool) Settings::get('league_window'),
-            'opponentWindowEnabled' => (bool) Settings::get('opponent_window'),
-            'deckWindowEnabled' => (bool) Settings::get('deck_window'),
-            'localImages' => (bool) Settings::get('local_images'),
+            'leagueWindowEnabled' => AppSettings::showLeagueWindow(),
+            'opponentWindowEnabled' => AppSettings::showOpponentWindow(),
+            'deckWindowEnabled' => AppSettings::showDeckWindow(),
+            'localImages' => AppSettings::downloadImagesLocally(),
             'localImagesSize' => $this->getLocalImagesSize(),
         ]);
     }

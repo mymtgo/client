@@ -3,6 +3,7 @@
 namespace App\Actions;
 
 use App\Jobs\DownloadArchetypeDecklists;
+use App\Models\Archetype;
 use App\Models\MtgoMatch;
 use App\Models\Player;
 
@@ -21,7 +22,6 @@ class DetermineMatchArchetypes
         $player = $firstGame->localPlayers->first();
 
         if ($player) {
-            // Use deck-level archetype if available, skip estimate API
             $deckArchetypeId = $match->deckVersion?->deck?->archetype_id;
 
             if ($deckArchetypeId) {
@@ -63,6 +63,8 @@ class DetermineMatchArchetypes
             }
         }
 
+        $homebrewId = null;
+
         foreach ($opponentDecks as $opponentId => $opponentCards) {
             $cards = collect($opponentCards)->groupBy('mtgo_id')->map(function ($cards) {
                 return [
@@ -73,13 +75,23 @@ class DetermineMatchArchetypes
 
             $archetype = DetermineDeckArchetype::run($cards, $match->format, $match->id, $opponentId);
 
-            if ($archetype) {
-                $matchArchetypes[] = [
-                    'archetype_id' => $archetype['archetype_id'],
-                    'confidence' => $archetype['confidence'],
-                    'player_id' => $opponentId,
-                ];
+            if (! $archetype) {
+                $homebrewId ??= Archetype::query()
+                    ->where('uuid', Archetype::HOMEBREW_UUID)
+                    ->value('id');
+
+                if ($homebrewId === null) {
+                    continue;
+                }
+
+                $archetype = ['archetype_id' => $homebrewId, 'confidence' => 0];
             }
+
+            $matchArchetypes[] = [
+                'archetype_id' => $archetype['archetype_id'],
+                'confidence' => $archetype['confidence'],
+                'player_id' => $opponentId,
+            ];
         }
 
         $match->archetypes()->delete();
@@ -87,6 +99,12 @@ class DetermineMatchArchetypes
         $match->archetypes()->createMany($matchArchetypes);
 
         foreach ($matchArchetypes as $matchArchetype) {
+            $archetypeModel = Archetype::query()->find($matchArchetype['archetype_id']);
+
+            if ($archetypeModel?->is_fallback) {
+                continue;
+            }
+
             DownloadArchetypeDecklists::dispatch($matchArchetype['archetype_id']);
         }
     }

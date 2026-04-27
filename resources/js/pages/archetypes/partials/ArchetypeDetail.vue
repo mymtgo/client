@@ -85,14 +85,15 @@ const sideboard = computed(() => {
                 <div>
                     <h1 class="text-lg font-bold text-foreground">{{ detail.archetype.name }}</h1>
                     <div class="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
-                        <span>{{ detail.archetype.format }}</span>
-                        <span>&middot;</span>
+                        <span v-if="detail.archetype.format">{{ detail.archetype.format }}</span>
+                        <span v-if="detail.archetype.format && detail.archetype.colorIdentity">&middot;</span>
                         <ManaSymbols v-if="detail.archetype.colorIdentity" :symbols="detail.archetype.colorIdentity" class="inline-flex" />
+                        <span v-if="detail.archetype.isFallback" class="rounded bg-muted px-1.5 py-0.5 text-xs uppercase tracking-wide">System</span>
                     </div>
                 </div>
                 <div class="flex gap-2">
                     <Button
-                        v-if="detail.archetype.hasDecklist"
+                        v-if="detail.archetype.hasDecklist && !detail.archetype.isFallback"
                         variant="outline"
                         size="sm"
                         :disabled="exporting"
@@ -101,7 +102,7 @@ const sideboard = computed(() => {
                         <Download class="mr-1.5 size-3.5" />
                         Download .dek
                     </Button>
-                    <Button variant="outline" size="sm" as-child>
+                    <Button v-if="!detail.archetype.isFallback" variant="outline" size="sm" as-child>
                         <Link :href="EditController.url({ archetype: detail.archetype.id })">
                             <Pencil class="mr-1.5 size-3.5" />
                             Edit
@@ -134,7 +135,7 @@ const sideboard = computed(() => {
 
         <!-- Stale notice -->
         <div
-            v-if="detail.isStale && !detail.archetype.manual"
+            v-if="detail.isStale && !detail.archetype.manual && !detail.archetype.isFallback"
             class="mx-4 mt-3 flex items-center justify-between rounded-md border border-yellow-500/30 bg-yellow-500/10 px-3 py-2"
         >
             <span class="text-sm text-yellow-500">
@@ -148,8 +149,18 @@ const sideboard = computed(() => {
 
         <!-- Body -->
         <div class="flex-1 overflow-y-auto p-4">
+            <!-- Fallback description -->
+            <div v-if="detail.archetype.isFallback" class="flex h-full flex-col items-center justify-center gap-2 text-center">
+                <p class="max-w-md text-sm text-muted-foreground">
+                    System fallback for unidentified opponent decks. Auto-assigned when no archetype matches.
+                </p>
+            </div>
+
             <!-- Not downloaded -->
-            <div v-if="!detail.archetype.hasDecklist && !detail.archetype.manual && !downloading" class="flex h-full flex-col items-center justify-center gap-3">
+            <div
+                v-else-if="!detail.archetype.hasDecklist && !detail.archetype.manual && !downloading"
+                class="flex h-full flex-col items-center justify-center gap-3"
+            >
                 <p class="text-sm text-muted-foreground">Decklist not yet downloaded</p>
                 <Button @click="downloadDecklist">
                     Download Decklist

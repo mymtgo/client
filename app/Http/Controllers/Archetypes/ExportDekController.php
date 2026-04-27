@@ -13,6 +13,10 @@ class ExportDekController
 {
     public function __invoke(Archetype $archetype): JsonResponse
     {
+        if ($archetype->is_fallback) {
+            abort(403, 'Fallback archetypes have no decklist to export.');
+        }
+
         $xml = GenerateDekFile::run($archetype);
         $suggestedName = Str::slug($archetype->name).'.dek';
 

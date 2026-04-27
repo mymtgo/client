@@ -11,6 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (Schema::hasTable('log_events')) {
+            return;
+        }
+
         Schema::create('log_events', function (Blueprint $table) {
             $table->id();
             $table->string('file_path', length: 1024);

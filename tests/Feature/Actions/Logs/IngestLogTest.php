@@ -143,6 +143,19 @@ it('classifies match state changed events correctly', function () {
         ->and($matchEvent->match_token)->toBe('1b60d302-5391-4947-bff5-70a8108dc509');
 });
 
+it('preserves tournament_token when ingesting tournament state changed events', function () {
+    $logPath = $this->tempDir.'/test.log';
+    $content = file_get_contents(base_path('tests/Fixtures/log_samples/tournament_state_changed.txt'));
+    file_put_contents($logPath, rtrim($content)."\n");
+
+    IngestLog::run($logPath);
+
+    $event = LogEvent::where('event_type', 'tournament_state_changed')->first();
+
+    expect($event)->not->toBeNull()
+        ->and($event->tournament_token)->toBe('b197b9e8-0d08-4227-aa17-ba38cb4c1731');
+});
+
 it('handles incomplete events at end of file', function () {
     $logPath = $this->tempDir.'/test.log';
     // Write a complete classifiable event + an incomplete one (no newline at end)

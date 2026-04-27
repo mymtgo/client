@@ -22,46 +22,55 @@ class MtgoMatchObserver
      */
     public function updated(MtgoMatch $match): void
     {
-        if (! $match->isDirty('state') || $match->state !== MatchState::Complete) {
+        if ($match->isDirty('state') && $match->state === MatchState::Complete) {
+            // Each enrichment is independent — failure in one doesn't block others
+            try {
+                DetermineMatchArchetypes::run($match);
+            } catch (\Throwable $e) {
+                Log::warning("Enrichment failed: archetypes for match {$match->id}: {$e->getMessage()}");
+            }
+
+            try {
+                SubmitMatch::dispatch($match->id);
+            } catch (\Throwable $e) {
+                Log::warning("Enrichment failed: submit for match {$match->id}: {$e->getMessage()}");
+            }
+
+            try {
+                ComputeCardGameStats::dispatch($match->id);
+            } catch (\Throwable $e) {
+                Log::warning("Enrichment failed: card stats for match {$match->id}: {$e->getMessage()}");
+            }
+
+            // Notification
+            $won = $match->outcome === MatchOutcome::Win;
+            $opponentArchetype = $match->opponentArchetypes()
+                ->with('archetype')
+                ->first()?->archetype->name ?? 'Unknown';
+
+            AppNotification::dispatch(
+                type: $won ? 'match_win' : 'match_loss',
+                title: ($won ? 'Win' : 'Loss').' vs '.$opponentArchetype,
+                message: $match->gameRecord(),
+                route: '/matches/'.$match->id,
+            );
+
+            // League completion check
+            if (($league = $match->league) && $league->state === LeagueState::Active
+                && $league->matches()->where('state', MatchState::Complete)->count() >= 5) {
+                $league->update(['state' => LeagueState::Complete]);
+            }
+
             return;
         }
 
-        // Each enrichment is independent — failure in one doesn't block others
-        try {
-            DetermineMatchArchetypes::run($match);
-        } catch (\Throwable $e) {
-            Log::warning("Enrichment failed: archetypes for match {$match->id}: {$e->getMessage()}");
-        }
-
-        try {
-            SubmitMatch::dispatch($match->id);
-        } catch (\Throwable $e) {
-            Log::warning("Enrichment failed: submit for match {$match->id}: {$e->getMessage()}");
-        }
-
-        try {
+        // Deck linked (or swapped) on an already-complete match. Recompute card stats.
+        if (
+            $match->isDirty('deck_version_id')
+            && $match->deck_version_id !== null
+            && $match->state === MatchState::Complete
+        ) {
             ComputeCardGameStats::dispatch($match->id);
-        } catch (\Throwable $e) {
-            Log::warning("Enrichment failed: card stats for match {$match->id}: {$e->getMessage()}");
-        }
-
-        // Notification
-        $won = $match->outcome === MatchOutcome::Win;
-        $opponentArchetype = $match->opponentArchetypes()
-            ->with('archetype')
-            ->first()?->archetype->name ?? 'Unknown';
-
-        AppNotification::dispatch(
-            type: $won ? 'match_win' : 'match_loss',
-            title: ($won ? 'Win' : 'Loss').' vs '.$opponentArchetype,
-            message: $match->gameRecord(),
-            route: '/matches/'.$match->id,
-        );
-
-        // League completion check
-        if (($league = $match->league) && $league->state === LeagueState::Active
-            && $league->matches()->where('state', MatchState::Complete)->count() >= 5) {
-            $league->update(['state' => LeagueState::Complete]);
         }
     }
 

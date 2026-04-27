@@ -3,12 +3,12 @@
 namespace App\Actions\Pipeline;
 
 use App\Actions\Matches\AdvanceMatchState;
+use App\Enums\LogEventType;
 use App\Enums\MatchState;
 use App\Facades\Mtgo;
 use App\Models\Account;
 use App\Models\LogEvent;
 use App\Models\MtgoMatch;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class ProcessMatchEvents
@@ -32,7 +32,11 @@ class ProcessMatchEvents
         $tokenToMatchId = LogEvent::whereNotNull('match_id')
             ->whereNotNull('match_token')
             ->whereNull('processed_at')
-            ->whereNotIn('event_type', ['league_joined', 'league_join_request'])
+            ->whereNotIn('event_type', [
+                'league_joined',
+                'league_join_request',
+                ...LogEventType::tournamentValues(),
+            ])
             ->distinct()
             ->pluck('match_id', 'match_token');
 
@@ -41,6 +45,7 @@ class ProcessMatchEvents
             ->whereNull('match_id')
             ->whereNull('processed_at')
             ->whereNotIn('match_token', $tokenToMatchId->keys())
+            ->whereNotIn('event_type', LogEventType::tournamentValues())
             ->distinct()
             ->pluck('match_token')
             ->each(function (string $token) use ($tokenToMatchId) {
@@ -92,29 +97,36 @@ class ProcessMatchEvents
         Mtgo::setUsername($username);
 
         try {
-            DB::transaction(function () use ($matchToken, $matchId) {
-                $match = AdvanceMatchState::run($matchToken, $matchId);
+            // No outer transaction here: AdvanceMatchState manages its own
+            // atomicity for the match/games create + state transition, and
+            // ResolveGameResults does file I/O (binary game log parse) which
+            // we do NOT want holding the SQLite write lock while it runs.
+            // Holding the lock during file I/O was causing queue worker
+            // `update jobs set reserved_at` queries to time out at 30s.
+            //
+            // Each step below is independently idempotent on retry: an
+            // existing match short-circuits AdvanceMatchState's create path,
+            // ResolveGameResults syncs results progressively, and
+            // markEventsProcessed only marks unprocessed rows.
+            $match = AdvanceMatchState::run($matchToken, $matchId);
 
-                if (! $match) {
-                    self::markStaleEventsProcessed($matchToken);
+            if (! $match) {
+                self::markStaleEventsProcessed($matchToken);
 
-                    return;
+                return;
+            }
+
+            if (in_array($match->state, [MatchState::InProgress, MatchState::Ended])) {
+                try {
+                    ResolveGameResults::run($match);
+                } catch (\Throwable $e) {
+                    Log::channel('pipeline')->warning("Match {$match->mtgo_id}: game log resolution failed, will retry", [
+                        'error' => $e->getMessage(),
+                    ]);
                 }
+            }
 
-                // Check game log for results inline — non-fatal, next tick retries
-                if (in_array($match->state, [MatchState::InProgress, MatchState::Ended])) {
-                    try {
-                        ResolveGameResults::run($match);
-                    } catch (\Throwable $e) {
-                        Log::channel('pipeline')->warning("Match {$match->mtgo_id}: game log resolution failed, will retry", [
-                            'error' => $e->getMessage(),
-                        ]);
-                    }
-                }
-
-                // Mark all events for this match token as processed
-                self::markEventsProcessed($matchToken);
-            });
+            self::markEventsProcessed($matchToken);
         } catch (\Throwable $e) {
             $match = $existingMatch ?? MtgoMatch::where('token', $matchToken)->first();
 
@@ -130,9 +142,15 @@ class ProcessMatchEvents
 
     private static function handleMatchFailure(MtgoMatch $match, \Throwable $e): void
     {
-        // SQLite lock errors are transient — don't count them as failures
-        if (str_contains($e->getMessage(), 'database is locked')) {
-            Log::channel('pipeline')->info("Match {$match->mtgo_id}: skipped due to database lock, will retry");
+        // Transient SQLite write errors (BUSY, LOCKED, READONLY, IOERR, and
+        // their extended codes) are retried on the next pipeline tick rather
+        // than consuming the per-match retry budget. Otherwise a brief burst
+        // of readonly/locked state during an active session can exhaust the
+        // 5-attempt budget and permanently abandon live matches.
+        if (IsTransientWriteError::run($e)) {
+            Log::channel('pipeline')->info("Match {$match->mtgo_id}: skipped due to transient write error, will retry", [
+                'error' => $e->getMessage(),
+            ]);
 
             return;
         }

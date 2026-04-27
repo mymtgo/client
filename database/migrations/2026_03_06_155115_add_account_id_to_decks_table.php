@@ -11,6 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (Schema::hasColumn('decks', 'account_id')) {
+            return;
+        }
+
         Schema::table('decks', function (Blueprint $table) {
             $table->foreignId('account_id')->nullable()->after('format')->constrained()->nullOnDelete();
         });

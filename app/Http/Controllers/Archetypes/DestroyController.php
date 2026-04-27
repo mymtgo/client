@@ -10,6 +10,10 @@ class DestroyController extends Controller
 {
     public function __invoke(Archetype $archetype): RedirectResponse
     {
+        if ($archetype->is_fallback) {
+            abort(403, 'Fallback archetypes cannot be deleted.');
+        }
+
         if (! $archetype->manual) {
             abort(403, 'Only manual archetypes can be deleted.');
         }

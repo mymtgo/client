@@ -1,11 +1,11 @@
 <?php
 
 use App\Enums\MatchState;
+use App\Facades\AppSettings;
 use App\Models\LogCursor;
 use App\Models\MtgoMatch;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
-use Native\Desktop\Facades\Settings;
 
 uses(RefreshDatabase::class);
 
@@ -52,7 +52,7 @@ it('resolves incomplete matches from match history on cursor reset', function ()
     }
 
     // Point Mtgo::getLogDataPath() at the fixtures directory so ParseGameHistory finds the file
-    Settings::set('log_data_path', base_path('tests/fixtures'));
+    AppSettings::setLogDataPath(base_path('tests/fixtures'));
     Cache::forget('mtgo.game_history');
 
     $cursor = LogCursor::create(['file_path' => '/fake/log.txt', 'byte_offset' => 5000]);
@@ -74,7 +74,7 @@ it('leaves matches unchanged when not in match history', function () {
         $this->markTestSkipped('mtgo_game_history fixture not available');
     }
 
-    Settings::set('log_data_path', base_path('tests/fixtures'));
+    AppSettings::setLogDataPath(base_path('tests/fixtures'));
     Cache::forget('mtgo.game_history');
 
     $cursor = LogCursor::create(['file_path' => '/fake/log.txt', 'byte_offset' => 5000]);

@@ -6,10 +6,10 @@ use App\Actions\Decks\OpenMostRecentDeckPopout;
 use App\Actions\Leagues\OpenOpponentScoutWindow;
 use App\Actions\Leagues\OpenOverlayWindow;
 use App\Actions\Updates\RunAppUpdates;
+use App\Facades\AppSettings;
 use App\Facades\Mtgo;
 use Native\Desktop\Contracts\ProvidesPhpIni;
 use Native\Desktop\Facades\Menu;
-use Native\Desktop\Facades\Settings;
 use Native\Desktop\Facades\System;
 use Native\Desktop\Facades\Window;
 
@@ -22,7 +22,7 @@ class NativeAppServiceProvider implements ProvidesPhpIni
     public function boot(): void
     {
         $detected = System::timezone();
-        Settings::set('system_tz', $detected ?? Settings::get('system_tz', 'UTC'));
+        AppSettings::setSystemTimezone($detected ?? AppSettings::systemTimezone());
 
         RunAppUpdates::run();
 
@@ -42,15 +42,15 @@ class NativeAppServiceProvider implements ProvidesPhpIni
         Mtgo::runInitialSetup();
         Mtgo::retryUnsubmittedMatches();
 
-        if (Settings::get('league_window')) {
+        if (AppSettings::showLeagueWindow()) {
             OpenOverlayWindow::run();
         }
 
-        if (Settings::get('opponent_window')) {
+        if (AppSettings::showOpponentWindow()) {
             OpenOpponentScoutWindow::run();
         }
 
-        if (Settings::get('deck_window')) {
+        if (AppSettings::showDeckWindow()) {
             OpenMostRecentDeckPopout::run();
         }
     }
@@ -61,7 +61,7 @@ class NativeAppServiceProvider implements ProvidesPhpIni
     public function phpIni(): array
     {
         return [
-            'memory_limit' => '512M',
+            'memory_limit' => '2056M',
         ];
     }
 }
