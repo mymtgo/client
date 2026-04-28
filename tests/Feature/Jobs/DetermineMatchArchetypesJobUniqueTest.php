@@ -20,7 +20,7 @@ it('clears archetype_detection_queued_at after running', function () {
 
     try {
         (new DetermineMatchArchetypesJob($match->id))->handle();
-    } catch (\Throwable) {
+    } catch (Throwable) {
         // expected if detection action fails on minimal fixture
     }
 
@@ -32,7 +32,7 @@ it('clears archetype_detection_queued_at on failure', function () {
         'archetype_detection_queued_at' => now(),
     ]);
 
-    (new DetermineMatchArchetypesJob($match->id))->failed(new \RuntimeException('boom'));
+    (new DetermineMatchArchetypesJob($match->id))->failed(new RuntimeException('boom'));
 
     expect($match->fresh()->archetype_detection_queued_at)->toBeNull();
 });
