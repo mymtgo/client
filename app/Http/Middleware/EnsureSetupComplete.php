@@ -16,10 +16,16 @@ class EnsureSetupComplete
             return $next($request);
         }
 
-        if (! AppSettings::setupCompleted() || Archetype::query()->count() === 0) {
-            return redirect('/setup');
+        try {
+            $archetypesExist = Archetype::query()->exists();
+        } catch (\Throwable) {
+            $archetypesExist = false;
         }
 
-        return $next($request);
+        if (AppSettings::setupCompleted() && $archetypesExist) {
+            return $next($request);
+        }
+
+        return redirect('/setup');
     }
 }

@@ -31,3 +31,19 @@ it('always allows /setup itself', function () {
 
     $this->get('/setup')->assertOk();
 });
+
+it('always allows /up health check', function () {
+    AppSettings::setSetupCompleted(false);
+
+    $this->get('/up')->assertOk();
+});
+
+it('always allows /_native/* paths', function () {
+    AppSettings::setSetupCompleted(false);
+
+    // Use GET — the assertion is that the gate did NOT redirect us to /setup.
+    // The route may still 404 in the test environment; that is acceptable.
+    $response = $this->get('/_native/non-existent-route');
+
+    expect($response->isRedirect('/setup'))->toBeFalse();
+});
