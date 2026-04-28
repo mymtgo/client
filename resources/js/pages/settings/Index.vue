@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import BrowseFolderController from '@/actions/App/Http/Controllers/Settings/BrowseFolderController';
 import RunSubmitMatchesController from '@/actions/App/Http/Controllers/Settings/RunSubmitMatchesController';
 import UpdateAccountTrackingController from '@/actions/App/Http/Controllers/Settings/UpdateAccountTrackingController';
 import UpdateDataPathController from '@/actions/App/Http/Controllers/Settings/UpdateDataPathController';
@@ -9,6 +8,7 @@ import UpdateShareStatsController from '@/actions/App/Http/Controllers/Settings/
 import UpdateDebugModeController from '@/actions/App/Http/Controllers/Settings/UpdateDebugModeController';
 import UpdateLocalImagesController from '@/actions/App/Http/Controllers/Settings/UpdateLocalImagesController';
 import UpdateWatcherController from '@/actions/App/Http/Controllers/Settings/UpdateWatcherController';
+import { useLogPathSync } from '@/composables/useLogPathSync';
 import type { LeagueData } from '@/components/leagues/LeagueTracker.vue';
 import LeagueTracker from '@/components/leagues/LeagueTracker.vue';
 import type { OpponentData } from '@/components/leagues/OpponentScout.vue';
@@ -43,8 +43,8 @@ leagueWindowEnabled: boolean;
     appVersion: string;
 }>();
 
-const logPathInput = ref(props.logPath);
-const dataPathInput = ref(props.dataPath);
+const logSync = useLogPathSync({ initial: props.logPath, saveUrl: UpdateLogPathController.url() });
+const dataSync = useLogPathSync({ initial: props.dataPath, saveUrl: UpdateDataPathController.url() });
 
 const pathsValid = computed(() => props.logPathStatus.valid && props.dataPathStatus.valid);
 
@@ -60,36 +60,6 @@ function withProcessing(key: string, method: 'patch' | 'post', url: string, data
             processing.value = null;
         },
     });
-}
-
-function saveLogPath() {
-    withProcessing('logPath', 'patch', UpdateLogPathController.url(), { path: logPathInput.value });
-}
-
-function saveDataPath() {
-    withProcessing('dataPath', 'patch', UpdateDataPathController.url(), { path: dataPathInput.value });
-}
-
-async function browseFolder(key: 'logPath' | 'dataPath') {
-    const currentPath = key === 'logPath' ? logPathInput.value : dataPathInput.value;
-    const updateUrl = key === 'logPath' ? UpdateLogPathController.url() : UpdateDataPathController.url();
-    const inputRef = key === 'logPath' ? logPathInput : dataPathInput;
-
-    processing.value = key;
-
-    try {
-        const response = await fetch(BrowseFolderController.url({ query: { default: currentPath } }));
-        const { path } = await response.json();
-
-        if (path) {
-            inputRef.value = path;
-            withProcessing(key, 'patch', updateUrl, { path });
-        } else {
-            processing.value = null;
-        }
-    } catch {
-        processing.value = null;
-    }
 }
 
 function toggleWatcher() {
@@ -278,11 +248,11 @@ const sampleOpponent: OpponentData = {
                         <Label>Log File Directory</Label>
                         <p class="text-sm text-muted-foreground">Contains <code>mtgo.log</code> files</p>
                         <div class="flex gap-2">
-                            <Input v-model="logPathInput" @keydown.enter="saveLogPath" :disabled="processing === 'logPath'" />
-                            <Button variant="outline" :disabled="processing === 'logPath'" @click="browseFolder('logPath')">Browse</Button>
-                            <Button variant="outline" :disabled="processing === 'logPath' || logPathInput === logPath" @click="saveLogPath">
-                                <Spinner v-if="processing === 'logPath'" />
-                                {{ processing === 'logPath' ? 'Saving...' : 'Save' }}
+                            <Input v-model="logSync.input" @keydown.enter="logSync.save" :disabled="logSync.processing" />
+                            <Button variant="outline" :disabled="logSync.processing" @click="logSync.browse">Browse</Button>
+                            <Button variant="outline" :disabled="logSync.processing || logSync.input === logPath" @click="logSync.save">
+                                <Spinner v-if="logSync.processing" />
+                                {{ logSync.processing ? 'Saving...' : 'Save' }}
                             </Button>
                         </div>
                         <div v-if="logPath" class="flex items-center gap-2">
@@ -299,11 +269,11 @@ const sampleOpponent: OpponentData = {
                         <Label>Game Data Directory</Label>
                         <p class="text-sm text-muted-foreground">Contains <code>Match_GameLog_*</code> and deck XML files</p>
                         <div class="flex gap-2">
-                            <Input v-model="dataPathInput" @keydown.enter="saveDataPath" :disabled="processing === 'dataPath'" />
-                            <Button variant="outline" :disabled="processing === 'dataPath'" @click="browseFolder('dataPath')">Browse</Button>
-                            <Button variant="outline" :disabled="processing === 'dataPath' || dataPathInput === dataPath" @click="saveDataPath">
-                                <Spinner v-if="processing === 'dataPath'" />
-                                {{ processing === 'dataPath' ? 'Saving...' : 'Save' }}
+                            <Input v-model="dataSync.input" @keydown.enter="dataSync.save" :disabled="dataSync.processing" />
+                            <Button variant="outline" :disabled="dataSync.processing" @click="dataSync.browse">Browse</Button>
+                            <Button variant="outline" :disabled="dataSync.processing || dataSync.input === dataPath" @click="dataSync.save">
+                                <Spinner v-if="dataSync.processing" />
+                                {{ dataSync.processing ? 'Saving...' : 'Save' }}
                             </Button>
                         </div>
                         <div v-if="dataPath" class="flex items-center gap-2">
