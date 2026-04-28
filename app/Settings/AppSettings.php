@@ -263,6 +263,36 @@ class AppSettings
         $this->set('system_tz', $tz);
     }
 
+    public function setupCompleted(): bool
+    {
+        return (bool) $this->get('setup_completed', false);
+    }
+
+    public function setSetupCompleted(bool $value): void
+    {
+        $this->set('setup_completed', $value);
+    }
+
+    public function setupSkippedArchetypes(): bool
+    {
+        return (bool) $this->get('setup_skipped_archetypes', false);
+    }
+
+    public function setSetupSkippedArchetypes(bool $value): void
+    {
+        $this->set('setup_skipped_archetypes', $value);
+    }
+
+    public function setupSkippedDecks(): bool
+    {
+        return (bool) $this->get('setup_skipped_decks', false);
+    }
+
+    public function setSetupSkippedDecks(bool $value): void
+    {
+        $this->set('setup_skipped_decks', $value);
+    }
+
     public function deviceId(): ?string
     {
         $value = $this->get('device_id');

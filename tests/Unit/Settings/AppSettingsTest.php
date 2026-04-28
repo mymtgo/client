@@ -156,6 +156,29 @@ it('quarantines a corrupt file from within set() without a prior read', function
         ->withArgs(fn ($msg) => str_contains($msg, 'settings.json corrupt'));
 });
 
+it('defaults setupCompleted to false', function () {
+    expect($this->settings->setupCompleted())->toBeFalse();
+});
+
+it('persists setupCompleted', function () {
+    $this->settings->setSetupCompleted(true);
+
+    expect($this->settings->setupCompleted())->toBeTrue();
+});
+
+it('defaults setup skip flags to false', function () {
+    expect($this->settings->setupSkippedArchetypes())->toBeFalse()
+        ->and($this->settings->setupSkippedDecks())->toBeFalse();
+});
+
+it('persists setup skip flags', function () {
+    $this->settings->setSetupSkippedArchetypes(true);
+    $this->settings->setSetupSkippedDecks(true);
+
+    expect($this->settings->setupSkippedArchetypes())->toBeTrue()
+        ->and($this->settings->setupSkippedDecks())->toBeTrue();
+});
+
 it('reader does not see truncated bytes during a concurrent write', function () {
     // Prime the file with valid content.
     $this->settings->set('api_key', 'secret-token');
