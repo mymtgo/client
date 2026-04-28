@@ -13,7 +13,7 @@ class UpdatePathsController extends Controller
     {
         $request->validate(['path' => 'required|string']);
 
-        AppSettings::setLogPath($request->string('path')->toString());
+        AppSettings::setLogPath($request->input('path'));
 
         return redirect()->route('setup.index');
     }
@@ -22,7 +22,7 @@ class UpdatePathsController extends Controller
     {
         $request->validate(['path' => 'required|string']);
 
-        AppSettings::setLogDataPath($request->string('path')->toString());
+        AppSettings::setLogDataPath($request->input('path'));
 
         return redirect()->route('setup.index');
     }
