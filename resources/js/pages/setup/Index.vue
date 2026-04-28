@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import StepArchetypes from '@/pages/setup/partials/StepArchetypes.vue';
+import StepDecks from '@/pages/setup/partials/StepDecks.vue';
 import StepPaths from '@/pages/setup/partials/StepPaths.vue';
 import { type PathStatus } from '@/composables/useLogPathSync';
 import { ref } from 'vue';
@@ -32,6 +34,20 @@ const step = ref<'paths' | 'archetypes' | 'decks' | 'finish'>('paths');
                 :log-path-status="props.logPathStatus"
                 :data-path-status="props.dataPathStatus"
                 @continue="step = 'archetypes'"
+            />
+
+            <StepArchetypes
+                v-else-if="step === 'archetypes'"
+                :archetype-count="props.archetypeCount"
+                :skipped="props.setupSkippedArchetypes"
+                @continue="step = 'decks'"
+            />
+
+            <StepDecks
+                v-else-if="step === 'decks'"
+                :deck-count="props.deckCount"
+                :skipped="props.setupSkippedDecks"
+                @continue="step = 'finish'"
             />
         </div>
     </div>
