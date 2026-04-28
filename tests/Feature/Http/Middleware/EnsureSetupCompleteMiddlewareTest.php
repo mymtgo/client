@@ -14,12 +14,18 @@ it('redirects to /setup when setup is not complete', function () {
 
 it('redirects to /setup when there are no archetypes even after setup completed', function () {
     AppSettings::setSetupCompleted(true);
-    // Enable the archetype-existence check that is bypassed in testing by
-    // default to avoid breaking unrelated tests that don't seed archetypes.
-    AppSettings::set('enforce_archetype_check', true);
+    AppSettings::setSetupSkippedArchetypes(false);
     Archetype::query()->delete();
 
     $this->get('/')->assertRedirect('/setup');
+});
+
+it('allows the request when setup is complete and user skipped archetypes', function () {
+    AppSettings::setSetupCompleted(true);
+    AppSettings::setSetupSkippedArchetypes(true);
+    Archetype::query()->delete();
+
+    $this->get('/')->assertOk();
 });
 
 it('allows the request when setup is complete and archetypes exist', function () {

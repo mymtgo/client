@@ -33,11 +33,11 @@ const canContinue = () => props.logPathStatus.valid && props.dataPathStatus.vali
         <div class="space-y-2">
             <Label>MTGO log folder</Label>
             <div class="flex gap-2">
-                <Input v-model="logSync.input.value" :disabled="logSync.processing.value" />
-                <Button variant="outline" :disabled="logSync.processing.value" @click="logSync.browse">Browse</Button>
-                <Button variant="outline" :disabled="logSync.processing.value || logSync.input.value === logPath" @click="logSync.save">
-                    <Spinner v-if="logSync.processing.value" />
-                    {{ logSync.processing.value ? 'Saving…' : 'Save' }}
+                <Input v-model="logSync.input" :disabled="logSync.processing" />
+                <Button variant="outline" :disabled="logSync.processing" @click="logSync.browse">Browse</Button>
+                <Button variant="outline" :disabled="logSync.processing || logSync.input === logPath" @click="logSync.save">
+                    <Spinner v-if="logSync.processing" />
+                    {{ logSync.processing ? 'Saving…' : 'Save' }}
                 </Button>
             </div>
             <div v-if="logPath" class="flex items-center gap-2">
@@ -51,11 +51,11 @@ const canContinue = () => props.logPathStatus.valid && props.dataPathStatus.vali
         <div class="space-y-2">
             <Label>MTGO game data folder</Label>
             <div class="flex gap-2">
-                <Input v-model="dataSync.input.value" :disabled="dataSync.processing.value" />
-                <Button variant="outline" :disabled="dataSync.processing.value" @click="dataSync.browse">Browse</Button>
-                <Button variant="outline" :disabled="dataSync.processing.value || dataSync.input.value === dataPath" @click="dataSync.save">
-                    <Spinner v-if="dataSync.processing.value" />
-                    {{ dataSync.processing.value ? 'Saving…' : 'Save' }}
+                <Input v-model="dataSync.input" :disabled="dataSync.processing" />
+                <Button variant="outline" :disabled="dataSync.processing" @click="dataSync.browse">Browse</Button>
+                <Button variant="outline" :disabled="dataSync.processing || dataSync.input === dataPath" @click="dataSync.save">
+                    <Spinner v-if="dataSync.processing" />
+                    {{ dataSync.processing ? 'Saving…' : 'Save' }}
                 </Button>
             </div>
             <div v-if="dataPath" class="flex items-center gap-2">

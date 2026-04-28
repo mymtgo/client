@@ -1,6 +1,6 @@
 import BrowseFolderController from '@/actions/App/Http/Controllers/Settings/BrowseFolderController';
 import { router } from '@inertiajs/vue3';
-import { ref, type Ref } from 'vue';
+import { reactive, ref } from 'vue';
 
 export type PathStatus = { valid: boolean; fileCount: number; message: string };
 
@@ -12,8 +12,8 @@ export interface UseLogPathSyncOptions {
 }
 
 export interface UseLogPathSync {
-    input: Ref<string>;
-    processing: Ref<boolean>;
+    input: string;
+    processing: boolean;
     save: () => void;
     browse: () => Promise<void>;
 }
@@ -62,5 +62,5 @@ export function useLogPathSync(options: UseLogPathSyncOptions): UseLogPathSync {
         }
     };
 
-    return { input, processing, save, browse };
+    return reactive({ input, processing, save, browse });
 }
