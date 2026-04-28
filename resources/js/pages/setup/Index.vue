@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import StepArchetypes from '@/pages/setup/partials/StepArchetypes.vue';
 import StepDecks from '@/pages/setup/partials/StepDecks.vue';
+import StepFinish from '@/pages/setup/partials/StepFinish.vue';
 import StepPaths from '@/pages/setup/partials/StepPaths.vue';
 import { type PathStatus } from '@/composables/useLogPathSync';
 import { ref } from 'vue';
@@ -49,6 +50,8 @@ const step = ref<'paths' | 'archetypes' | 'decks' | 'finish'>('paths');
                 :skipped="props.setupSkippedDecks"
                 @continue="step = 'finish'"
             />
+
+            <StepFinish v-else-if="step === 'finish'" />
         </div>
     </div>
 </template>
