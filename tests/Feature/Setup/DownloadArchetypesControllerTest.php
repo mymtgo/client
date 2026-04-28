@@ -22,3 +22,12 @@ it('skips archetype download', function () {
 
     expect(AppSettings::setupSkippedArchetypes())->toBeTrue();
 });
+
+it('flashes error when download throws', function () {
+    config(['mymtgo_api.url' => 'http://127.0.0.1:1']);
+
+    $response = $this->post('/setup/archetypes/download');
+
+    $response->assertRedirect('/setup');
+    $response->assertSessionHas('setup_error_archetypes');
+});

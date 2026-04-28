@@ -24,7 +24,7 @@ class DownloadArchetypesController extends Controller
 
             return redirect()
                 ->route('setup.index')
-                ->with('setup_error.archetypes', 'Could not download archetypes. Check your internet connection and try again.');
+                ->with('setup_error_archetypes', 'Could not download archetypes. Check your internet connection and try again.');
         }
     }
 

@@ -29,6 +29,8 @@ class HandleInertiaRequests extends Middleware
             ...parent::share($request),
             'flash' => fn () => [
                 'error' => $request->session()->get('error'),
+                'setupArchetypeError' => $request->session()->get('setup_error_archetypes'),
+                'setupDeckError' => $request->session()->get('setup_error_decks'),
             ],
             'status' => fn () => [
                 'watcherRunning' => AppSettings::isWatcherActive(),
