@@ -4,6 +4,7 @@ use App\Enums\MatchOutcome;
 use App\Enums\MatchState;
 use App\Events\AppNotification;
 use App\Jobs\ComputeCardGameStats;
+use App\Jobs\DetermineMatchArchetypesJob;
 use App\Jobs\SubmitMatch;
 use App\Models\DeckVersion;
 use App\Models\MtgoMatch;
@@ -25,6 +26,7 @@ it('dispatches enrichment jobs when match state changes to Complete', function (
 
     Queue::assertPushed(SubmitMatch::class);
     Queue::assertPushed(ComputeCardGameStats::class);
+    Queue::assertPushed(DetermineMatchArchetypesJob::class);
 });
 
 it('dispatches AppNotification when match completes', function () {
@@ -40,7 +42,8 @@ it('dispatches AppNotification when match completes', function () {
 
     Event::assertDispatched(AppNotification::class, function (AppNotification $event) {
         return $event->type === 'match_win'
-            && str_contains($event->title, 'Win');
+            && str_contains($event->title, 'Match recorded')
+            && $event->message === 'Win';
     });
 });
 

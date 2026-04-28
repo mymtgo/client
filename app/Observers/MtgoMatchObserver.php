@@ -2,12 +2,12 @@
 
 namespace App\Observers;
 
-use App\Actions\DetermineMatchArchetypes;
 use App\Enums\LeagueState;
 use App\Enums\MatchOutcome;
 use App\Enums\MatchState;
 use App\Events\AppNotification;
 use App\Jobs\ComputeCardGameStats;
+use App\Jobs\DetermineMatchArchetypesJob;
 use App\Jobs\SubmitMatch;
 use App\Models\Game;
 use App\Models\LogEvent;
@@ -25,7 +25,7 @@ class MtgoMatchObserver
         if ($match->isDirty('state') && $match->state === MatchState::Complete) {
             // Each enrichment is independent — failure in one doesn't block others
             try {
-                DetermineMatchArchetypes::run($match);
+                DetermineMatchArchetypesJob::dispatch($match->id)->onQueue('match_archetypes');
             } catch (\Throwable $e) {
                 Log::warning("Enrichment failed: archetypes for match {$match->id}: {$e->getMessage()}");
             }
@@ -42,16 +42,12 @@ class MtgoMatchObserver
                 Log::warning("Enrichment failed: card stats for match {$match->id}: {$e->getMessage()}");
             }
 
-            // Notification
             $won = $match->outcome === MatchOutcome::Win;
-            $opponentArchetype = $match->opponentArchetypes()
-                ->with('archetype')
-                ->first()?->archetype->name ?? 'Unknown';
 
             AppNotification::dispatch(
                 type: $won ? 'match_win' : 'match_loss',
-                title: ($won ? 'Win' : 'Loss').' vs '.$opponentArchetype,
-                message: $match->gameRecord(),
+                title: 'Match recorded '.$match->gameRecord(),
+                message: $won ? 'Win' : 'Loss',
                 route: '/matches/'.$match->id,
             );
 

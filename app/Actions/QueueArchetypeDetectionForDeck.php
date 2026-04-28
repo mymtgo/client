@@ -24,7 +24,7 @@ class QueueArchetypeDetectionForDeck
             ->whereIn('id', $matchIds)
             ->update(['archetype_detection_queued_at' => now()]);
 
-        $matchIds->each(fn (int $id) => DetermineMatchArchetypesJob::dispatch($id));
+        $matchIds->each(fn (int $id) => DetermineMatchArchetypesJob::dispatch($id)->onQueue('match_archetypes'));
 
         return $matchIds->count();
     }
