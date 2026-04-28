@@ -7,10 +7,12 @@ use App\Actions\Matches\ExtractGameResults;
 use App\Actions\Matches\ParseGameLogBinary;
 use App\Enums\MatchState;
 use App\Facades\Mtgo;
+use App\Models\Game;
 use App\Models\GameLog;
 use App\Models\LogEvent;
 use App\Models\MtgoMatch;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class ResolveGameResults
@@ -62,7 +64,7 @@ class ResolveGameResults
         $extracted = ExtractGameResults::run($entries, $username);
 
         // Sync game results progressively
-        self::syncGameResults($match, $extracted['results'], $extracted['games']);
+        self::syncGameResults($match, $extracted['results'], $extracted['games'], $username);
 
         // Check if decisive
         $stateChanges = LogEvent::where('match_token', $match->token)
@@ -106,23 +108,21 @@ class ResolveGameResults
     }
 
     /**
-     * Sync individual game win/loss results and ended_at timestamps.
+     * Sync individual game win/loss results, ended_at timestamps, and on_play pivots.
      *
      * @param  array<int, bool>  $results
      * @param  array<int, array<string, mixed>>  $gameData
      */
-    private static function syncGameResults(MtgoMatch $match, array $results, array $gameData): void
+    private static function syncGameResults(MtgoMatch $match, array $results, array $gameData, string $username): void
     {
-        $games = $match->games()->orderBy('started_at')->get();
+        $games = $match->games()->with('players')->orderBy('started_at')->get();
 
         foreach ($games as $index => $game) {
-            if (! isset($results[$index])) {
-                continue;
-            }
-
             $updates = [];
 
-            if ($game->won === null || (bool) $game->won !== $results[$index]) {
+            if (isset($results[$index])
+                && ($game->won === null || (bool) $game->won !== $results[$index])
+            ) {
                 $updates['won'] = $results[$index];
             }
 
@@ -133,6 +133,46 @@ class ResolveGameResults
             if (! empty($updates)) {
                 $game->update($updates);
             }
+
+            // CreateGames may set on_play=false during early ingestion when the
+            // binary game log file is empty. Re-derive on_play once the log
+            // contains the "chooses to play" line for this game.
+            $onPlayName = $gameData[$index]['on_play'] ?? null;
+
+            if ($onPlayName !== null) {
+                self::syncOnPlay($game, $username, $onPlayName);
+            }
+        }
+    }
+
+    /**
+     * Update the on_play pivot for both players of a game based on the
+     * authoritative player name parsed from the game log.
+     */
+    private static function syncOnPlay(Game $game, string $username, string $onPlayName): void
+    {
+        $localPlayer = $game->players->first(fn ($p) => $p->username === $username);
+        $opponent = $game->players->first(fn ($p) => $p->username !== $username);
+
+        if (! $localPlayer || ! $opponent) {
+            return;
+        }
+
+        $localOnPlay = $onPlayName === $username;
+        $opponentOnPlay = $onPlayName === $opponent->username;
+
+        if ((bool) $localPlayer->pivot->on_play !== $localOnPlay) {
+            DB::table('game_player')
+                ->where('game_id', $game->id)
+                ->where('player_id', $localPlayer->id)
+                ->update(['on_play' => $localOnPlay]);
+        }
+
+        if ((bool) $opponent->pivot->on_play !== $opponentOnPlay) {
+            DB::table('game_player')
+                ->where('game_id', $game->id)
+                ->where('player_id', $opponent->id)
+                ->update(['on_play' => $opponentOnPlay]);
         }
     }
 }
