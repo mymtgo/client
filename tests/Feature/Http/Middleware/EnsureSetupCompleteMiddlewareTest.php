@@ -14,6 +14,9 @@ it('redirects to /setup when setup is not complete', function () {
 
 it('redirects to /setup when there are no archetypes even after setup completed', function () {
     AppSettings::setSetupCompleted(true);
+    // Enable the archetype-existence check that is bypassed in testing by
+    // default to avoid breaking unrelated tests that don't seed archetypes.
+    AppSettings::set('enforce_archetype_check', true);
     Archetype::query()->delete();
 
     $this->get('/')->assertRedirect('/setup');

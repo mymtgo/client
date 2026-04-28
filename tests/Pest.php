@@ -83,6 +83,12 @@ pest()->extend(TestCase::class)
                 unset($this->store[$key]);
             }
         });
+
+        // Mark setup as complete by default so pre-existing Feature tests that
+        // are unrelated to the setup flow are not redirected to /setup.
+        // Tests that exercise the middleware's redirect behaviour must explicitly
+        // call AppSettings::setSetupCompleted(false) to opt back in.
+        AppSettings::setSetupCompleted(true);
     })
     ->in('Feature');
 
