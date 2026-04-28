@@ -67,6 +67,7 @@ use App\Http\Controllers\Settings\UpdateOverlaySettingsController;
 use App\Http\Controllers\Settings\UpdateShareStatsController;
 use App\Http\Controllers\Settings\UpdateWatcherController;
 use App\Http\Controllers\Setup\DownloadArchetypesController;
+use App\Http\Controllers\Setup\SyncDecksController;
 use App\Http\Controllers\Setup\UpdatePathsController;
 use App\Http\Controllers\Support\DownloadReportBundleController;
 use App\Http\Controllers\Support\OpenKofiController;
@@ -179,6 +180,8 @@ Route::group([], function (Router $router) {
         $group->patch('data-path', [UpdatePathsController::class, 'dataPath'])->name('setup.data-path');
         $group->post('archetypes/download', [DownloadArchetypesController::class, 'download'])->name('setup.archetypes.download');
         $group->post('archetypes/skip', [DownloadArchetypesController::class, 'skip'])->name('setup.archetypes.skip');
+        $group->post('decks/sync', [SyncDecksController::class, 'sync'])->name('setup.decks.sync');
+        $group->post('decks/skip', [SyncDecksController::class, 'skip'])->name('setup.decks.skip');
     });
 
     $router->group([
