@@ -14,7 +14,7 @@ class GetActiveLeague
      */
     public static function run(): ?array
     {
-        $accountId = Account::active()->value('id');
+        $accountId = Account::currentId();
 
         $league = League::whereHas('matches', function ($q) use ($accountId) {
             $q->where('state', MatchState::Complete);

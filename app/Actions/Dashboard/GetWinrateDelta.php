@@ -14,22 +14,24 @@ class GetWinrateDelta
      */
     public static function run(?int $accountId, Carbon $currentStart, Carbon $currentEnd, string $timeframe, ?string $format = null): array
     {
-        if (! $accountId) {
-            return ['matchDelta' => 0, 'gameDelta' => 0];
-        }
+        return once(function () use ($accountId, $currentStart, $currentEnd, $timeframe, $format) {
+            if (! $accountId) {
+                return ['matchDelta' => 0, 'gameDelta' => 0];
+            }
 
-        [$previousStart, $previousEnd] = self::getPreviousTimeRange($timeframe, $currentStart);
+            [$previousStart, $previousEnd] = self::getPreviousTimeRange($timeframe, $currentStart);
 
-        $currentMatchWinrate = self::matchWinrate($accountId, $currentStart, $currentEnd, $format);
-        $previousMatchWinrate = self::matchWinrate($accountId, $previousStart, $previousEnd, $format);
+            $currentMatchWinrate = self::matchWinrate($accountId, $currentStart, $currentEnd, $format);
+            $previousMatchWinrate = self::matchWinrate($accountId, $previousStart, $previousEnd, $format);
 
-        $currentGameWinrate = self::gameWinrate($accountId, $currentStart, $currentEnd, $format);
-        $previousGameWinrate = self::gameWinrate($accountId, $previousStart, $previousEnd, $format);
+            $currentGameWinrate = self::gameWinrate($accountId, $currentStart, $currentEnd, $format);
+            $previousGameWinrate = self::gameWinrate($accountId, $previousStart, $previousEnd, $format);
 
-        return [
-            'matchDelta' => $currentMatchWinrate - $previousMatchWinrate,
-            'gameDelta' => $currentGameWinrate - $previousGameWinrate,
-        ];
+            return [
+                'matchDelta' => $currentMatchWinrate - $previousMatchWinrate,
+                'gameDelta' => $currentGameWinrate - $previousGameWinrate,
+            ];
+        });
     }
 
     private static function matchWinrate(int $accountId, Carbon $from, Carbon $to, ?string $format = null): int

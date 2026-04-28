@@ -33,6 +33,8 @@ const isActive = (href: string) => {
             v-for="item in nav"
             :key="item.label"
             :href="item.href"
+            prefetch="hover"
+            cache-for="10s"
             class="relative inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm font-medium transition-colors"
             :class="{
                 'text-background-accent border-black shadow-inner shadow-black outline-[1px] outline-white/10': isActive(item.href),
@@ -45,6 +47,8 @@ const isActive = (href: string) => {
         <Link
             v-if="debugMode"
             href="/debug/matches"
+            prefetch="hover"
+            cache-for="10s"
             class="relative inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm font-medium text-white transition-colors"
             :class="{
                 'text-background-accent border-black shadow-inner shadow-black outline-[1px] outline-white/10': isActive('/debug'),

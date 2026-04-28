@@ -17,7 +17,7 @@ const props = defineProps<{
     currentPage: string;
     timeframe: string;
     matches: any;
-    archetypes: any[];
+    archetypes?: any[];
     unknownArchetypeCount: number;
     pendingArchetypeCount: number;
 }>();
@@ -35,7 +35,7 @@ function setTimeframe(value: string) {
         <DeckMatches
             :deck-id="deck.id"
             :matches="matches"
-            :archetypes="archetypes"
+            :archetypes="archetypes ?? []"
             :unknown-archetype-count="unknownArchetypeCount"
             :pending-archetype-count="pendingArchetypeCount"
         />

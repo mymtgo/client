@@ -20,6 +20,10 @@ class Account extends Model
         'tracked' => 'boolean',
     ];
 
+    protected static ?Account $cachedCurrent = null;
+
+    protected static bool $cachedCurrentLoaded = false;
+
     public function decks(): HasMany
     {
         return $this->hasMany(Deck::class);
@@ -28,6 +32,30 @@ class Account extends Model
     public function scopeActive(Builder $query): Builder
     {
         return $query->where('active', true);
+    }
+
+    /**
+     * Memoized current active account for the lifetime of the request.
+     */
+    public static function current(): ?self
+    {
+        if (! static::$cachedCurrentLoaded) {
+            static::$cachedCurrent = static::query()->where('active', true)->first();
+            static::$cachedCurrentLoaded = true;
+        }
+
+        return static::$cachedCurrent;
+    }
+
+    public static function currentId(): ?int
+    {
+        return static::current()?->id;
+    }
+
+    public static function flushCurrent(): void
+    {
+        static::$cachedCurrent = null;
+        static::$cachedCurrentLoaded = false;
     }
 
     public function scopeTracked(Builder $query): Builder
@@ -59,10 +87,14 @@ class Account extends Model
         });
 
         static::saved(function () {
+            static::flushCurrent();
+
             if (! static::where('active', true)->exists()) {
                 static::first()?->update(['active' => true]);
             }
         });
+
+        static::deleted(fn () => static::flushCurrent());
     }
 
     /**

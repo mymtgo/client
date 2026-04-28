@@ -15,7 +15,7 @@ class IndexController extends Controller
 {
     public function __invoke(Request $request): Response
     {
-        $activeAccountId = Account::active()->value('id');
+        $activeAccountId = Account::currentId();
         $search = $request->input('search');
         $sort = $request->input('sort', 'most_played');
         $format = $request->input('format');

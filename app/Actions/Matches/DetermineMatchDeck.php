@@ -48,7 +48,7 @@ class DetermineMatchDeck
 
         $signature = GenerateDeckSignature::run($firstGameDeckCards);
 
-        $accountId = Account::active()->value('id');
+        $accountId = Account::currentId();
 
         $deckVersion = DeckVersion::where('signature', $signature)
             ->when($accountId, fn ($q) => $q->whereHas('deck', fn ($q2) => $q2->where('account_id', $accountId)))

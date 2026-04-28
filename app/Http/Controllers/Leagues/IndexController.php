@@ -14,7 +14,7 @@ class IndexController extends Controller
 {
     public function __invoke(Request $request): Response
     {
-        $activeAccountId = Account::active()->value('id');
+        $activeAccountId = Account::currentId();
         $format = $request->input('format');
 
         $leagues = League::query()

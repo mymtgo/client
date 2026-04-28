@@ -76,7 +76,7 @@ class Deck extends Model
 
     public function scopeForActiveAccount(Builder $query): Builder
     {
-        $accountId = Account::active()->value('id');
+        $accountId = Account::currentId();
 
         if ($accountId) {
             return $query->where('account_id', $accountId);

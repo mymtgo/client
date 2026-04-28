@@ -29,22 +29,9 @@ class IndexController extends Controller
         $timeframe = $request->input('timeframe', 'alltime');
         $format = $request->input('format');
         [$start, $end] = $this->getTimeRange($timeframe);
-        $accountId = Account::active()->value('id');
+        $accountId = Account::currentId();
 
-        // Available formats for the dropdown
-        $formats = MtgoMatch::complete()
-            ->when($accountId, fn ($q, $id) => $q->forAccount($id))
-            ->distinct()
-            ->pluck('format')
-            ->sort()
-            ->values()
-            ->map(fn (string $f) => [
-                'value' => $f,
-                'label' => MtgoMatch::displayFormat($f),
-            ])
-            ->all();
-
-        // Consolidated match + game stats (single joined query)
+        // Consolidated match + game stats (single joined query, kept eager — fast and primary card data)
         $stats = MtgoMatch::complete()
             ->when($accountId, fn ($q, $id) => $q->forAccount($id))
             ->when($format, fn ($q, $f) => $q->where('format', $f))
@@ -65,37 +52,42 @@ class IndexController extends Controller
         $gamesWon = (int) ($stats->games_won ?? 0);
         $gamesLost = (int) ($stats->games_lost ?? 0);
 
-        // Deck performance summary
-        $deckStats = Deck::forActiveAccount()->with(['cover', 'archetype'])->withCount([
-            'wonMatches' => fn ($query) => $query->when($format, fn ($q, $f) => $q->where('format', $f))->whereBetween('started_at', [$start, $end]),
-            'lostMatches' => fn ($query) => $query->when($format, fn ($q, $f) => $q->where('format', $f))->whereBetween('started_at', [$start, $end]),
-            'matches' => fn ($query) => $query->when($format, fn ($q, $f) => $q->where('format', $f))->whereBetween('started_at', [$start, $end]),
-        ])
-            ->whereHas('matches', fn ($q) => $q->when($format, fn ($q, $f) => $q->where('format', $f))->whereBetween('started_at', [$start, $end]))
-            ->get()
-            ->map(fn ($deck) => DeckData::from($deck));
-
-        $winrateDelta = GetWinrateDelta::run($accountId, $start, $end, $timeframe, $format);
-
         return Inertia::render('Index', [
-            // Eager props
+            // Eager props — primary KPIs only
             'matchesWon' => $wins,
             'matchesLost' => $losses,
             'gamesWon' => $gamesWon,
             'gamesLost' => $gamesLost,
             'matchWinrate' => Winrate::percentage($wins, $losses),
             'gameWinrate' => Winrate::percentage($gamesWon, $gamesLost),
-            'deckStats' => $deckStats,
             'timeframe' => $timeframe,
             'format' => $format,
-            'formats' => $formats,
             'activeLeague' => GetActiveLeague::run(),
-            'streak' => GetStreak::run($accountId, $start, $end, $format),
-            'matchWinrateDelta' => $winrateDelta['matchDelta'],
-            'gameWinrateDelta' => $winrateDelta['gameDelta'],
-            'playDrawSplit' => GetPlayDrawSplit::run($accountId, $start, $end, $format),
 
-            // Deferred props
+            // Deferred props — render dashboard immediately, hydrate widgets after
+            'formats' => Inertia::defer(fn () => MtgoMatch::complete()
+                ->when($accountId, fn ($q, $id) => $q->forAccount($id))
+                ->distinct()
+                ->pluck('format')
+                ->sort()
+                ->values()
+                ->map(fn (string $f) => [
+                    'value' => $f,
+                    'label' => MtgoMatch::displayFormat($f),
+                ])
+                ->all()),
+            'deckStats' => Inertia::defer(fn () => Deck::forActiveAccount()->with(['cover', 'archetype'])->withCount([
+                'wonMatches' => fn ($query) => $query->when($format, fn ($q, $f) => $q->where('format', $f))->whereBetween('started_at', [$start, $end]),
+                'lostMatches' => fn ($query) => $query->when($format, fn ($q, $f) => $q->where('format', $f))->whereBetween('started_at', [$start, $end]),
+                'matches' => fn ($query) => $query->when($format, fn ($q, $f) => $q->where('format', $f))->whereBetween('started_at', [$start, $end]),
+            ])
+                ->whereHas('matches', fn ($q) => $q->when($format, fn ($q, $f) => $q->where('format', $f))->whereBetween('started_at', [$start, $end]))
+                ->get()
+                ->map(fn ($deck) => DeckData::from($deck))),
+            'streak' => Inertia::defer(fn () => GetStreak::run($accountId, $start, $end, $format)),
+            'matchWinrateDelta' => Inertia::defer(fn () => GetWinrateDelta::run($accountId, $start, $end, $timeframe, $format)['matchDelta']),
+            'gameWinrateDelta' => Inertia::defer(fn () => GetWinrateDelta::run($accountId, $start, $end, $timeframe, $format)['gameDelta']),
+            'playDrawSplit' => Inertia::defer(fn () => GetPlayDrawSplit::run($accountId, $start, $end, $format)),
             'lastSession' => Inertia::defer(fn () => GetLastSession::run($accountId, $format)),
             'matchupSpread' => Inertia::defer(fn () => GetDashboardMatchupSpread::run($accountId, $start, $end, $format)),
             'rollingForm' => Inertia::defer(fn () => GetRollingForm::run($accountId, $format)),

@@ -79,16 +79,16 @@ const props = defineProps<{
     gamesLost: number;
     matchWinrate: number;
     gameWinrate: number;
-    deckStats: App.Data.Front.DeckData[];
     timeframe: string;
     format: string | null;
-    formats: { value: string; label: string }[];
     activeLeague: ActiveLeague | null;
-    streak: Streak;
-    matchWinrateDelta: number;
-    gameWinrateDelta: number;
-    playDrawSplit: PlayDrawSplit;
     // Deferred props
+    deckStats?: App.Data.Front.DeckData[];
+    formats?: { value: string; label: string }[];
+    streak?: Streak;
+    matchWinrateDelta?: number;
+    gameWinrateDelta?: number;
+    playDrawSplit?: PlayDrawSplit;
     lastSession?: LastSession | null;
     matchupSpread?: MatchupEntry[];
     rollingForm?: RollingForm;
@@ -139,7 +139,7 @@ function setFormat(value: string) {
         <div class="flex items-center gap-3">
             <TimeframeFilter :model-value="timeframe" @update:model-value="setTimeframe" />
 
-            <Select :modelValue="format ?? 'all'" @update:modelValue="setFormat" v-if="formats.length > 1">
+            <Select :modelValue="format ?? 'all'" @update:modelValue="setFormat" v-if="formats && formats.length > 1">
                 <SelectTrigger class="h-9 w-40">
                     <SelectValue placeholder="All formats" />
                 </SelectTrigger>
@@ -188,7 +188,12 @@ function setFormat(value: string) {
 
             <!-- Row 2: Deck Performance + Matchup Spread -->
             <div class="grid grid-cols-2 gap-4">
-                <DashboardDecks :deck-stats="deckStats" />
+                <Deferred :data="['deckStats']">
+                    <template #fallback>
+                        <div class="h-48 animate-pulse rounded-xl bg-muted" />
+                    </template>
+                    <DashboardDecks :deck-stats="deckStats ?? []" />
+                </Deferred>
                 <Deferred :data="['matchupSpread']">
                     <template #fallback>
                         <div class="h-48 animate-pulse rounded-xl bg-muted" />

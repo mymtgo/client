@@ -28,12 +28,12 @@ type PlayDrawSplit = {
 };
 
 const props = defineProps<{
-    streak: Streak;
+    streak?: Streak;
     matchWinrate: number;
-    matchWinrateDelta: number;
+    matchWinrateDelta?: number;
     gameWinrate: number;
-    gameWinrateDelta: number;
-    playDrawSplit: PlayDrawSplit;
+    gameWinrateDelta?: number;
+    playDrawSplit?: PlayDrawSplit;
     activeLeague: ActiveLeague | null;
     matchesWon: number;
     matchesLost: number;
@@ -41,8 +41,10 @@ const props = defineProps<{
     gamesLost: number;
 }>();
 
-const streakIsWin = computed(() => props.streak.current?.endsWith('W') ?? false);
-const streakIsLoss = computed(() => props.streak.current?.endsWith('L') ?? false);
+const streakIsWin = computed(() => props.streak?.current?.endsWith('W') ?? false);
+const streakIsLoss = computed(() => props.streak?.current?.endsWith('L') ?? false);
+const matchDelta = computed(() => props.matchWinrateDelta ?? 0);
+const gameDelta = computed(() => props.gameWinrateDelta ?? 0);
 </script>
 
 <template>
@@ -55,13 +57,13 @@ const streakIsLoss = computed(() => props.streak.current?.endsWith('L') ?? false
                     :class="{
                         'text-success': streakIsWin,
                         'text-destructive': streakIsLoss,
-                        'text-muted-foreground': !streak.current,
+                        'text-muted-foreground': !streak?.current,
                     }"
                 >
-                    {{ streak.current ?? '—' }}
+                    {{ streak?.current ?? '—' }}
                 </span>
                 <span class="text-xs text-muted-foreground">Current Streak</span>
-                <span v-if="streak.bestWin > 0 || streak.bestLoss > 0" class="text-xs text-muted-foreground/60 tabular-nums">
+                <span v-if="streak && (streak.bestWin > 0 || streak.bestLoss > 0)" class="text-xs text-muted-foreground/60 tabular-nums">
                     Best: {{ streak.bestWin }}W / {{ streak.bestLoss }}L
                 </span>
             </div>
@@ -75,18 +77,18 @@ const streakIsLoss = computed(() => props.streak.current?.endsWith('L') ?? false
                     >
                         {{ matchWinrate }}%
                     </span>
-                    <TrendingUp v-if="matchWinrateDelta > 0" class="size-4 text-success" />
-                    <TrendingDown v-else-if="matchWinrateDelta < 0" class="size-4 text-destructive" />
+                    <TrendingUp v-if="matchDelta > 0" class="size-4 text-success" />
+                    <TrendingDown v-else-if="matchDelta < 0" class="size-4 text-destructive" />
                     <Minus v-else class="size-4 text-muted-foreground" />
                 </div>
                 <span class="text-xs text-muted-foreground">Match Win Rate</span>
                 <span class="text-xs tabular-nums text-muted-foreground/60">
                     {{ matchesWon }}W – {{ matchesLost }}L
                     <span
-                        v-if="matchWinrateDelta !== 0"
-                        :class="matchWinrateDelta > 0 ? 'text-success' : 'text-destructive'"
+                        v-if="matchDelta !== 0"
+                        :class="matchDelta > 0 ? 'text-success' : 'text-destructive'"
                     >
-                        ({{ matchWinrateDelta > 0 ? '+' : '' }}{{ matchWinrateDelta }}%)
+                        ({{ matchDelta > 0 ? '+' : '' }}{{ matchDelta }}%)
                     </span>
                 </span>
             </div>
@@ -100,18 +102,18 @@ const streakIsLoss = computed(() => props.streak.current?.endsWith('L') ?? false
                     >
                         {{ gameWinrate }}%
                     </span>
-                    <TrendingUp v-if="gameWinrateDelta > 0" class="size-4 text-success" />
-                    <TrendingDown v-else-if="gameWinrateDelta < 0" class="size-4 text-destructive" />
+                    <TrendingUp v-if="gameDelta > 0" class="size-4 text-success" />
+                    <TrendingDown v-else-if="gameDelta < 0" class="size-4 text-destructive" />
                     <Minus v-else class="size-4 text-muted-foreground" />
                 </div>
                 <span class="text-xs text-muted-foreground">Game Win Rate</span>
                 <span class="text-xs tabular-nums text-muted-foreground/60">
                     {{ gamesWon }}W – {{ gamesLost }}L
                     <span
-                        v-if="gameWinrateDelta !== 0"
-                        :class="gameWinrateDelta > 0 ? 'text-success' : 'text-destructive'"
+                        v-if="gameDelta !== 0"
+                        :class="gameDelta > 0 ? 'text-success' : 'text-destructive'"
                     >
-                        ({{ gameWinrateDelta > 0 ? '+' : '' }}{{ gameWinrateDelta }}%)
+                        ({{ gameDelta > 0 ? '+' : '' }}{{ gameDelta }}%)
                     </span>
                 </span>
             </div>
@@ -120,12 +122,12 @@ const streakIsLoss = computed(() => props.streak.current?.endsWith('L') ?? false
             <div class="flex flex-col items-center gap-1 px-4 py-3">
                 <div class="flex items-center gap-3 tabular-nums">
                     <div class="flex flex-col items-center">
-                        <span class="text-2xl font-bold">{{ playDrawSplit.otpWinrate }}%</span>
+                        <span class="text-2xl font-bold">{{ playDrawSplit?.otpWinrate ?? '—' }}%</span>
                         <span class="text-xs text-muted-foreground">On Play</span>
                     </div>
                     <span class="text-muted-foreground/40 text-lg">/</span>
                     <div class="flex flex-col items-center">
-                        <span class="text-2xl font-bold">{{ playDrawSplit.otdWinrate }}%</span>
+                        <span class="text-2xl font-bold">{{ playDrawSplit?.otdWinrate ?? '—' }}%</span>
                         <span class="text-xs text-muted-foreground">On Draw</span>
                     </div>
                 </div>

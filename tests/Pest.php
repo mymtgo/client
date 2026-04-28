@@ -1,6 +1,7 @@
 <?php
 
 use App\Facades\AppSettings;
+use App\Models\Account;
 use Illuminate\Support\Facades\Http;
 use Native\Desktop\Facades\Settings;
 use Native\Desktop\Facades\Window;
@@ -21,6 +22,9 @@ pest()->extend(TestCase::class)
  // ->use(Illuminate\Foundation\Testing\RefreshDatabase::class)
     ->beforeEach(function () {
         $this->withoutVite();
+
+        // Reset request-scoped Account cache between tests.
+        Account::flushCurrent();
 
         // NativePHP facades make HTTP calls to localhost:4000 (the Electron
         // backend) which doesn't exist in CI or during testing.

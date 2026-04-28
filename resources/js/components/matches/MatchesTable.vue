@@ -86,6 +86,13 @@ const deleteMatch = (id: string | number) => {
     });
 };
 
+const prefetchedIds = new Set<number>();
+const prefetchMatch = (matchId: number) => {
+    if (prefetchedIds.has(matchId)) return;
+    prefetchedIds.add(matchId);
+    router.prefetch(ShowController({ id: matchId }).url, {}, { cacheFor: '10s' });
+};
+
 const detectArchetype = (matchId: number) => {
     detectingMatchId.value = matchId;
 
@@ -179,6 +186,7 @@ const detectArchetype = (matchId: number) => {
                         class="cursor-pointer"
                         :data-state="selectedIds.includes(match.id) ? 'selected' : undefined"
                         @click="router.visit(ShowController({ id: match.id }).url)"
+                        @mouseenter="prefetchMatch(match.id)"
                     >
                         <TableCell @click.stop>
                             <Checkbox

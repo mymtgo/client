@@ -32,12 +32,12 @@ class HandleInertiaRequests extends Middleware
             ],
             'status' => fn () => [
                 'watcherRunning' => AppSettings::isWatcherActive(),
-                'lastIngestAt' => LogCursor::max('updated_at'),
-                'lastIngestAtHuman' => ($ts = LogCursor::max('updated_at')) ? Carbon::parse($ts)->toLocal()->diffForHumans() : null,
+                'lastIngestAt' => $ts = LogCursor::max('updated_at'),
+                'lastIngestAtHuman' => $ts ? Carbon::parse($ts)->toLocal()->diffForHumans() : null,
                 'pendingMatchCount' => MtgoMatch::submittable()->count(),
             ],
             'debugMode' => fn () => AppSettings::isDebugMode(),
-            'activeAccount' => fn () => Account::active()->first()?->username,
+            'activeAccount' => fn () => Account::current()?->username,
             'accounts' => fn () => Account::tracked()->orderBy('username')->get(['id', 'username', 'active']),
             'availableUpdate' => fn () => Cache::get('available_update'),
             'support' => [

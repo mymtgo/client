@@ -116,27 +116,6 @@ class MatchesController extends Controller
         ];
         $archetypeFormat = $formatMap[$deck->format] ?? strtolower($deck->format);
 
-        $archetypes = Archetype::query()
-            ->forFormat($archetypeFormat)
-            ->withCount(['matchArchetypes' => fn ($q) => $q
-                ->whereIn('mtgo_match_id', $allMatchIds)
-                ->whereIn('player_id', function ($sub) {
-                    $sub->select('gp.player_id')
-                        ->from('game_player as gp')
-                        ->join('games as g', 'g.id', '=', 'gp.game_id')
-                        ->whereColumn('g.match_id', 'match_archetypes.mtgo_match_id')
-                        ->where('gp.is_local', false)
-                        ->distinct();
-                }),
-            ])
-            ->orderByDesc('match_archetypes_count')
-            ->orderBy('name')
-            ->get()
-            ->map(fn (Archetype $a) => [
-                ...ArchetypeData::from($a)->toArray(),
-                'matchCount' => $a->match_archetypes_count,
-            ]);
-
         $unknownArchetypeCount = $deck->matches()
             ->where('state', 'complete')
             ->whereIn('matches.id', $allMatchIds)
@@ -153,9 +132,30 @@ class MatchesController extends Controller
             'currentPage' => 'matches',
             'timeframe' => $timeframe,
             'matches' => $matches,
-            'archetypes' => $archetypes,
             'unknownArchetypeCount' => $unknownArchetypeCount,
             'pendingArchetypeCount' => $pendingArchetypeCount,
+
+            // Deferred — heavy filter dropdown data (per-archetype match counts)
+            'archetypes' => Inertia::defer(fn () => Archetype::query()
+                ->forFormat($archetypeFormat)
+                ->withCount(['matchArchetypes' => fn ($q) => $q
+                    ->whereIn('mtgo_match_id', $allMatchIds)
+                    ->whereIn('player_id', function ($sub) {
+                        $sub->select('gp.player_id')
+                            ->from('game_player as gp')
+                            ->join('games as g', 'g.id', '=', 'gp.game_id')
+                            ->whereColumn('g.match_id', 'match_archetypes.mtgo_match_id')
+                            ->where('gp.is_local', false)
+                            ->distinct();
+                    }),
+                ])
+                ->orderByDesc('match_archetypes_count')
+                ->orderBy('name')
+                ->get()
+                ->map(fn (Archetype $a) => [
+                    ...ArchetypeData::from($a)->toArray(),
+                    'matchCount' => $a->match_archetypes_count,
+                ])),
         ]);
     }
 }
