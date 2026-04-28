@@ -6,8 +6,10 @@ use App\Actions\Import\ComputeImportedCardGameStats;
 use App\Actions\Import\ExtractCardsFromGameLog;
 use App\Jobs\ComputeCardGameStats;
 use App\Models\CardGameStat;
+use App\Models\Deck;
 use App\Models\GameLog;
 use App\Models\MtgoMatch;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Log;
 
 class RegenerateCardGameStats
@@ -23,31 +25,64 @@ class RegenerateCardGameStats
      */
     public static function run(): array
     {
+        return self::regenerate();
+    }
+
+    /**
+     * Recompute card_game_stats for every complete match tied to this deck.
+     *
+     * @return array{live: int, imported: int}
+     */
+    public static function forDeck(Deck $deck): array
+    {
+        $deckVersionIds = $deck->versions()->pluck('id')->all();
+
+        if (empty($deckVersionIds)) {
+            return ['live' => 0, 'imported' => 0];
+        }
+
+        $result = self::regenerate(fn (Builder $query) => $query->whereIn('deck_version_id', $deckVersionIds));
+
+        Log::info("RegenerateCardGameStats: scoped to deck {$deck->id} — queued {$result['live']} live, processed {$result['imported']} imported");
+
+        return $result;
+    }
+
+    /**
+     * @param  callable(Builder): Builder|null  $scope
+     * @return array{live: int, imported: int}
+     */
+    private static function regenerate(?callable $scope = null): array
+    {
         $live = 0;
         $imported = 0;
 
-        // Live matches — dispatch as jobs (they need timeline data loaded)
-        $liveMatchIds = MtgoMatch::query()
+        $liveQuery = MtgoMatch::query()
             ->where('imported', false)
             ->where('state', 'complete')
             ->whereNotNull('deck_version_id')
-            ->whereHas('games')
-            ->pluck('id');
+            ->whereHas('games');
 
-        foreach ($liveMatchIds as $matchId) {
+        if ($scope) {
+            $scope($liveQuery);
+        }
+
+        foreach ($liveQuery->pluck('id') as $matchId) {
             ComputeCardGameStats::dispatch($matchId)->onQueue('default');
             $live++;
         }
 
-        // Imported matches — process inline (no timeline, simpler)
-        $importedMatches = MtgoMatch::query()
+        $importedQuery = MtgoMatch::query()
             ->where('imported', true)
             ->whereNotNull('deck_version_id')
             ->whereHas('games')
-            ->with(['games.players'])
-            ->get();
+            ->with(['games.players']);
 
-        foreach ($importedMatches as $match) {
+        if ($scope) {
+            $scope($importedQuery);
+        }
+
+        foreach ($importedQuery->get() as $match) {
             try {
                 self::reprocessImportedMatch($match);
                 $imported++;
@@ -55,8 +90,6 @@ class RegenerateCardGameStats
                 Log::warning("RegenerateCardGameStats: failed imported match {$match->id}: {$e->getMessage()}");
             }
         }
-
-        Log::info("RegenerateCardGameStats: truncated + queued {$live} live, processed {$imported} imported");
 
         return ['live' => $live, 'imported' => $imported];
     }

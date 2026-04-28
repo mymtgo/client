@@ -29,6 +29,6 @@ function setTimeframe(value: string) {
 <template>
     <div class="space-y-4 p-3 lg:p-4">
         <TimeframeFilter :model-value="timeframe" @update:model-value="setTimeframe" />
-        <DeckCardStats :card-stats="cardStats" />
+        <DeckCardStats :card-stats="cardStats" :deck-id="deck.id" />
     </div>
 </template>

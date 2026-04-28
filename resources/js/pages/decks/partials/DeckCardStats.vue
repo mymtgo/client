@@ -1,7 +1,11 @@
 <script setup lang="ts">
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Spinner } from '@/components/ui/spinner';
 import SegmentedControl from '@/components/SegmentedControl.vue';
+import RegenerateCardStatsController from '@/actions/App/Http/Controllers/Decks/RegenerateCardStatsController';
+import { useToast } from '@/composables/useToast';
 import {
     DropdownMenu,
     DropdownMenuCheckboxItem,
@@ -37,6 +41,7 @@ import {
     MountainSnow,
     Origami,
     PanelRightOpen,
+    RefreshCw,
     ScrollText,
     Zap,
 } from 'lucide-vue-next';
@@ -84,6 +89,7 @@ type CardStat = {
 };
 
 const props = defineProps<{
+    deckId: number;
     cardStats?: {
         stats: CardStat[];
         archetypes: { id: number; name: string; colorIdentity: string | null }[];
@@ -92,6 +98,46 @@ const props = defineProps<{
 
 const stats = computed(() => props.cardStats?.stats ?? []);
 const archetypes = computed(() => props.cardStats?.archetypes ?? []);
+
+const { add: toast } = useToast();
+const regenerateOpen = ref(false);
+const regenerating = ref(false);
+
+function regenerateCardStats() {
+    regenerating.value = true;
+    router.post(
+        RegenerateCardStatsController.url({ deck: props.deckId }),
+        {},
+        {
+            preserveScroll: true,
+            preserveState: true,
+            onSuccess: (page) => {
+                regenerateOpen.value = false;
+                const flash = (page.props.flash as Record<string, unknown> | undefined) ?? {};
+                const count = flash.cardStatsRegenerated;
+                if (typeof count === 'number') {
+                    toast({
+                        type: 'success',
+                        title: 'Card stats regenerating',
+                        message: count === 0
+                            ? 'No matches needed regeneration.'
+                            : `Queued regeneration for ${count} match${count === 1 ? '' : 'es'}. Stats will refresh shortly.`,
+                    });
+                }
+            },
+            onError: () => {
+                toast({
+                    type: 'error',
+                    title: 'Failed',
+                    message: 'Could not regenerate card stats.',
+                });
+            },
+            onFinish: () => {
+                regenerating.value = false;
+            },
+        },
+    );
+}
 
 const selectedArchetype = ref<string>('__all__');
 const selectedPlayDraw = ref<string>('__all__');
@@ -489,6 +535,17 @@ function sortIcon(key: SortKey) {
                         </DropdownMenuContent>
                     </DropdownMenu>
 
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        class="bevel py-4 gap-1.5 border border-black/60 px-2.5 text-xs text-muted-foreground"
+                        :disabled="regenerating"
+                        @click="regenerateOpen = true"
+                    >
+                        <RefreshCw class="size-3.5" :class="regenerating ? 'animate-spin' : ''" />
+                        <span class="hidden lg:inline">Regenerate</span>
+                    </Button>
+
                     <Sheet>
                         <SheetTrigger as-child>
                             <Button variant="ghost" size="sm" class="bevel py-4 gap-1.5 border border-black/60 px-2.5 text-xs text-muted-foreground">
@@ -807,4 +864,24 @@ function sortIcon(key: SortKey) {
             :style="{ top: `${mouseY - 160}px`, left: `${mouseX + 16}px` }"
         />
     </Teleport>
+
+    <Dialog v-model:open="regenerateOpen">
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle>Regenerate card stats?</DialogTitle>
+                <DialogDescription>
+                    This will recompute card stats for every game across all matches in this deck.
+                    Existing card stat rows will be replaced. Live matches process in the background and
+                    may take a moment to finish.
+                </DialogDescription>
+            </DialogHeader>
+            <DialogFooter class="gap-2 sm:gap-0">
+                <Button variant="outline" :disabled="regenerating" @click="regenerateOpen = false">Cancel</Button>
+                <Button :disabled="regenerating" @click="regenerateCardStats">
+                    <Spinner v-if="regenerating" class="mr-2 size-4" />
+                    {{ regenerating ? 'Queuing...' : 'Regenerate' }}
+                </Button>
+            </DialogFooter>
+        </DialogContent>
+    </Dialog>
 </template>
