@@ -170,6 +170,12 @@ Route::group([], function (Router $router) {
     });
 
     $router->group([
+        'prefix' => 'setup',
+    ], function (Router $group) {
+        $group->get('/', App\Http\Controllers\Setup\IndexController::class)->name('setup.index');
+    });
+
+    $router->group([
         'prefix' => 'import',
     ], function (Router $group) {
         $group->get('/', ImportIndexController::class)->name('import.index');
