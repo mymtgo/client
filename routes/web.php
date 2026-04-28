@@ -66,6 +66,7 @@ use App\Http\Controllers\Settings\UpdateLogPathController;
 use App\Http\Controllers\Settings\UpdateOverlaySettingsController;
 use App\Http\Controllers\Settings\UpdateShareStatsController;
 use App\Http\Controllers\Settings\UpdateWatcherController;
+use App\Http\Controllers\Setup\CompleteController;
 use App\Http\Controllers\Setup\DownloadArchetypesController;
 use App\Http\Controllers\Setup\SyncDecksController;
 use App\Http\Controllers\Setup\UpdatePathsController;
@@ -182,6 +183,7 @@ Route::group([], function (Router $router) {
         $group->post('archetypes/skip', [DownloadArchetypesController::class, 'skip'])->name('setup.archetypes.skip');
         $group->post('decks/sync', [SyncDecksController::class, 'sync'])->name('setup.decks.sync');
         $group->post('decks/skip', [SyncDecksController::class, 'skip'])->name('setup.decks.skip');
+        $group->post('complete', CompleteController::class)->name('setup.complete');
     });
 
     $router->group([
