@@ -66,6 +66,7 @@ use App\Http\Controllers\Settings\UpdateLogPathController;
 use App\Http\Controllers\Settings\UpdateOverlaySettingsController;
 use App\Http\Controllers\Settings\UpdateShareStatsController;
 use App\Http\Controllers\Settings\UpdateWatcherController;
+use App\Http\Controllers\Setup\UpdatePathsController;
 use App\Http\Controllers\Support\DownloadReportBundleController;
 use App\Http\Controllers\Support\OpenKofiController;
 use App\Http\Controllers\Updates\InstallController;
@@ -173,6 +174,8 @@ Route::group([], function (Router $router) {
         'prefix' => 'setup',
     ], function (Router $group) {
         $group->get('/', App\Http\Controllers\Setup\IndexController::class)->name('setup.index');
+        $group->patch('log-path', [UpdatePathsController::class, 'logPath'])->name('setup.log-path');
+        $group->patch('data-path', [UpdatePathsController::class, 'dataPath'])->name('setup.data-path');
     });
 
     $router->group([
