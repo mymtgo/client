@@ -2,6 +2,7 @@
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { TableCell, TableRow } from '@/components/ui/table';
 import { Check, Image } from 'lucide-vue-next';
+import { DEFAULT_CARD_STATS_VISIBILITY, type CardStatsVisibility } from '@/pages/decks/partials/cardStatsColumns';
 
 type CardStat = {
     name: string;
@@ -41,9 +42,15 @@ type CardStat = {
     pregameLost: number;
 };
 
-defineProps<{
-    stat: CardStat;
-}>();
+withDefaults(
+    defineProps<{
+        stat: CardStat;
+        visibleColumns?: CardStatsVisibility;
+    }>(),
+    {
+        visibleColumns: () => ({ ...DEFAULT_CARD_STATS_VISIBILITY }),
+    },
+);
 
 const emit = defineEmits<{
     imageEnter: [stat: CardStat];
@@ -77,18 +84,18 @@ function winRateClass(pctVal: number | null): string {
                 {{ stat.name ?? 'Unknown' }}
             </span>
         </TableCell>
-        <TableCell class="text-muted-foreground">{{ stat.type ?? '-' }}</TableCell>
-        <TableCell class="text-center">
+        <TableCell v-if="visibleColumns.type" class="text-muted-foreground">{{ stat.type ?? '-' }}</TableCell>
+        <TableCell v-if="visibleColumns.sb" class="text-center">
             <Check v-if="stat.isSideboard" class="mx-auto size-3.5 text-muted-foreground" />
         </TableCell>
-        <TableCell class="text-right tabular-nums">
+        <TableCell v-if="visibleColumns.keptPct" class="text-right tabular-nums">
             <template v-if="pct(stat.keptGames, stat.totalGames) !== null">
                 {{ pct(stat.keptGames, stat.totalGames) }}%
                 <span class="text-[10px] text-muted-foreground">({{ stat.keptGames }})</span>
             </template>
             <span v-else class="text-muted-foreground">-</span>
         </TableCell>
-        <TableCell class="text-right tabular-nums">
+        <TableCell v-if="visibleColumns.keptWinPct" class="text-right tabular-nums">
             <template v-if="pct(stat.keptWon, stat.keptWon + stat.keptLost) !== null">
                 <span class="font-medium" :class="winRateClass(pct(stat.keptWon, stat.keptWon + stat.keptLost))">
                     {{ pct(stat.keptWon, stat.keptWon + stat.keptLost) }}%
@@ -97,7 +104,7 @@ function winRateClass(pctVal: number | null): string {
             </template>
             <span v-else class="text-muted-foreground">-</span>
         </TableCell>
-        <TableCell class="text-right tabular-nums">
+        <TableCell v-if="visibleColumns.castPct" class="text-right tabular-nums">
             <template v-if="pct(stat.castGames, stat.totalGames) !== null">
                 <TooltipProvider v-if="stat.totalFlashback > 0 || stat.totalMadness > 0 || stat.totalEvoked > 0">
                     <Tooltip>
@@ -121,7 +128,7 @@ function winRateClass(pctVal: number | null): string {
             </template>
             <span v-else class="text-muted-foreground">-</span>
         </TableCell>
-        <TableCell class="text-right tabular-nums">
+        <TableCell v-if="visibleColumns.castWinPct" class="text-right tabular-nums">
             <template v-if="pct(stat.castWon, stat.castWon + stat.castLost) !== null">
                 <span class="font-medium" :class="winRateClass(pct(stat.castWon, stat.castWon + stat.castLost))">
                     {{ pct(stat.castWon, stat.castWon + stat.castLost) }}%
@@ -130,26 +137,26 @@ function winRateClass(pctVal: number | null): string {
             </template>
             <span v-else class="text-muted-foreground">-</span>
         </TableCell>
-        <TableCell class="text-right tabular-nums">
+        <TableCell v-if="visibleColumns.playedPct" class="text-right tabular-nums">
             <template v-if="pct(stat.playedGames, stat.totalGames) !== null">
                 {{ pct(stat.playedGames, stat.totalGames) }}%
                 <span class="text-[10px] text-muted-foreground">({{ stat.playedGames }})</span>
             </template>
             <span v-else class="text-muted-foreground">-</span>
         </TableCell>
-        <TableCell class="text-right tabular-nums">
+        <TableCell v-if="visibleColumns.kicked" class="text-right tabular-nums">
             <template v-if="stat.totalKicked > 0">
                 {{ stat.totalKicked }}
             </template>
             <span v-else class="text-muted-foreground">-</span>
         </TableCell>
-        <TableCell class="text-right tabular-nums">
+        <TableCell v-if="visibleColumns.activated" class="text-right tabular-nums">
             <template v-if="stat.totalActivated > 0">
                 {{ stat.totalActivated }}
             </template>
             <span v-else class="text-muted-foreground">-</span>
         </TableCell>
-        <TableCell class="text-right tabular-nums">
+        <TableCell v-if="visibleColumns.pregamePct" class="text-right tabular-nums">
             <template v-if="stat.pregameGames > 0 && pct(stat.pregameGames, stat.totalGames) !== null">
                 <TooltipProvider v-if="stat.pregameRevealedGames > 0 && stat.pregamePlayedGames > 0">
                     <Tooltip>
@@ -171,7 +178,7 @@ function winRateClass(pctVal: number | null): string {
             </template>
             <span v-else class="text-muted-foreground">-</span>
         </TableCell>
-        <TableCell class="text-right tabular-nums">
+        <TableCell v-if="visibleColumns.pregameWinPct" class="text-right tabular-nums">
             <template v-if="pct(stat.pregameWon, stat.pregameWon + stat.pregameLost) !== null">
                 <span class="font-medium" :class="winRateClass(pct(stat.pregameWon, stat.pregameWon + stat.pregameLost))">
                     {{ pct(stat.pregameWon, stat.pregameWon + stat.pregameLost) }}%
@@ -180,14 +187,14 @@ function winRateClass(pctVal: number | null): string {
             </template>
             <span v-else class="text-muted-foreground">-</span>
         </TableCell>
-        <TableCell class="text-right tabular-nums">
+        <TableCell v-if="visibleColumns.seenPct" class="text-right tabular-nums">
             <template v-if="pct(stat.seenGames, stat.totalGames) !== null">
                 {{ pct(stat.seenGames, stat.totalGames) }}%
                 <span class="text-[10px] text-muted-foreground">({{ stat.seenGames }})</span>
             </template>
             <span v-else class="text-muted-foreground">-</span>
         </TableCell>
-        <TableCell class="text-right tabular-nums">
+        <TableCell v-if="visibleColumns.seenWinPct" class="text-right tabular-nums">
             <template v-if="pct(stat.seenWon, stat.seenWon + stat.seenLost) !== null">
                 <span class="font-medium" :class="winRateClass(pct(stat.seenWon, stat.seenWon + stat.seenLost))">
                     {{ pct(stat.seenWon, stat.seenWon + stat.seenLost) }}%
@@ -196,21 +203,21 @@ function winRateClass(pctVal: number | null): string {
             </template>
             <span v-else class="text-muted-foreground">-</span>
         </TableCell>
-        <TableCell class="text-right tabular-nums">
+        <TableCell v-if="visibleColumns.sbOutPct" class="text-right tabular-nums">
             <template v-if="pct(stat.sidedOutGames, stat.postboardGames) !== null">
                 {{ pct(stat.sidedOutGames, stat.postboardGames) }}%
                 <span class="text-[10px] text-muted-foreground">({{ stat.sidedOutGames }})</span>
             </template>
             <span v-else class="text-muted-foreground">-</span>
         </TableCell>
-        <TableCell class="text-right tabular-nums">
+        <TableCell v-if="visibleColumns.sbInPct" class="text-right tabular-nums">
             <template v-if="pct(stat.sidedInGames, stat.postboardGames) !== null">
                 {{ pct(stat.sidedInGames, stat.postboardGames) }}%
                 <span class="text-[10px] text-muted-foreground">({{ stat.sidedInGames }})</span>
             </template>
             <span v-else class="text-muted-foreground">-</span>
         </TableCell>
-        <TableCell class="text-right text-muted-foreground tabular-nums">
+        <TableCell v-if="visibleColumns.games" class="text-right text-muted-foreground tabular-nums">
             {{ stat.totalGames }}
         </TableCell>
     </TableRow>

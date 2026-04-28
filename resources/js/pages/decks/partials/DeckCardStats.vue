@@ -14,6 +14,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import DeckCardStatsRow from '@/pages/decks/partials/DeckCardStatsRow.vue';
+import {
+    CARD_STATS_COLUMNS,
+    loadCardStatsVisibility,
+    saveCardStatsVisibility,
+    type CardStatsColumnKey,
+    type CardStatsVisibility,
+} from '@/pages/decks/partials/cardStatsColumns';
 import { Deferred, router } from '@inertiajs/vue3';
 import {
     BarChart3,
@@ -21,10 +28,12 @@ import {
     ChevronDown,
     ChevronUp,
     ChevronsUpDown,
+    Columns3,
     Filter,
     Flame,
     Gem,
     HandFist,
+    Lock,
     MountainSnow,
     Origami,
     PanelRightOpen,
@@ -218,6 +227,29 @@ function passesFilter(stat: CardStat): boolean {
 
     return true;
 }
+
+// ── Column visibility ───────────────────────────────────────────────────────
+
+const visibleColumns = ref<CardStatsVisibility>(loadCardStatsVisibility());
+
+function setColumnVisible(key: CardStatsColumnKey, value: boolean): void {
+    visibleColumns.value[key] = value;
+    saveCardStatsVisibility(visibleColumns.value);
+}
+
+const allColumnsVisible = computed(() => CARD_STATS_COLUMNS.every((c) => visibleColumns.value[c.key]));
+
+function toggleAllColumns(): void {
+    const newVal = !allColumnsVisible.value;
+    for (const col of CARD_STATS_COLUMNS) {
+        visibleColumns.value[col.key] = newVal;
+    }
+    saveCardStatsVisibility(visibleColumns.value);
+}
+
+const visibleColumnCount = computed(() => 1 + CARD_STATS_COLUMNS.filter((c) => visibleColumns.value[c.key]).length);
+
+const hiddenColumnCount = computed(() => CARD_STATS_COLUMNS.length - (visibleColumnCount.value - 1));
 
 // ── Sorting ──────────────────────────────────────────────────────────────────
 
@@ -421,6 +453,42 @@ function sortIcon(key: SortKey) {
                         </DropdownMenuContent>
                     </DropdownMenu>
 
+                    <DropdownMenu>
+                        <DropdownMenuTrigger as-child>
+                            <Button variant="ghost" class="bevel py-2 gap-1.5 rounded-md border border-black/60 px-3 text-xs">
+                                <Columns3 class="size-3.5" />
+                                <span v-if="hiddenColumnCount > 0">{{ hiddenColumnCount }} hidden</span>
+                                <span v-else>Columns</span>
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" class="w-52">
+                            <div class="flex items-center justify-between px-2 py-1.5">
+                                <span class="text-xs font-semibold">Visible columns</span>
+                                <button class="text-xs text-muted-foreground hover:text-foreground" @click="toggleAllColumns">
+                                    {{ allColumnsVisible ? 'Hide all' : 'Show all' }}
+                                </button>
+                            </div>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuLabel class="flex items-center gap-2 text-xs font-normal text-muted-foreground">
+                                <Lock class="size-3" />
+                                Card <span class="ml-auto text-[10px]">locked</span>
+                            </DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuCheckboxItem
+                                v-for="col in CARD_STATS_COLUMNS"
+                                :key="col.key"
+                                :modelValue="visibleColumns[col.key]"
+                                @update:modelValue="(val: boolean) => setColumnVisible(col.key, val)"
+                                @select.prevent
+                            >
+                                <template #indicator-icon>
+                                    <Check class="size-4 text-success" />
+                                </template>
+                                {{ col.label }}
+                            </DropdownMenuCheckboxItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+
                     <Sheet>
                         <SheetTrigger as-child>
                             <Button variant="ghost" size="sm" class="bevel py-4 gap-1.5 border border-black/60 px-2.5 text-xs text-muted-foreground">
@@ -620,74 +688,74 @@ function sortIcon(key: SortKey) {
                             <TableHead class="cursor-pointer select-none" @click="toggleSort('name')">
                                 <span class="inline-flex items-center gap-1">Card <component :is="sortIcon('name')" class="size-3" /></span>
                             </TableHead>
-                            <TableHead>Type</TableHead>
-                            <TableHead class="w-10 text-center">SB</TableHead>
-                            <TableHead class="cursor-pointer text-right select-none" @click="toggleSort('keptPct')">
+                            <TableHead v-if="visibleColumns.type">Type</TableHead>
+                            <TableHead v-if="visibleColumns.sb" class="w-10 text-center">SB</TableHead>
+                            <TableHead v-if="visibleColumns.keptPct" class="cursor-pointer text-right select-none" @click="toggleSort('keptPct')">
                                 <span class="inline-flex items-center justify-end gap-1"
                                     >Kept % <component :is="sortIcon('keptPct')" class="size-3"
                                 /></span>
                             </TableHead>
-                            <TableHead class="cursor-pointer text-right select-none" @click="toggleSort('keptWinPct')">
+                            <TableHead v-if="visibleColumns.keptWinPct" class="cursor-pointer text-right select-none" @click="toggleSort('keptWinPct')">
                                 <span class="inline-flex items-center justify-end gap-1"
                                     >Kept Win % <component :is="sortIcon('keptWinPct')" class="size-3"
                                 /></span>
                             </TableHead>
-                            <TableHead class="cursor-pointer text-right select-none" @click="toggleSort('castPct')">
+                            <TableHead v-if="visibleColumns.castPct" class="cursor-pointer text-right select-none" @click="toggleSort('castPct')">
                                 <span class="inline-flex items-center justify-end gap-1"
                                     >Cast % <component :is="sortIcon('castPct')" class="size-3"
                                 /></span>
                             </TableHead>
-                            <TableHead class="cursor-pointer text-right select-none" @click="toggleSort('castWinPct')">
+                            <TableHead v-if="visibleColumns.castWinPct" class="cursor-pointer text-right select-none" @click="toggleSort('castWinPct')">
                                 <span class="inline-flex items-center justify-end gap-1"
                                     >Cast Win % <component :is="sortIcon('castWinPct')" class="size-3"
                                 /></span>
                             </TableHead>
-                            <TableHead class="cursor-pointer text-right select-none" @click="toggleSort('playedPct')">
+                            <TableHead v-if="visibleColumns.playedPct" class="cursor-pointer text-right select-none" @click="toggleSort('playedPct')">
                                 <span class="inline-flex items-center justify-end gap-1"
                                     >Played % <component :is="sortIcon('playedPct')" class="size-3"
                                 /></span>
                             </TableHead>
-                            <TableHead class="cursor-pointer text-right select-none" @click="toggleSort('kicked')">
+                            <TableHead v-if="visibleColumns.kicked" class="cursor-pointer text-right select-none" @click="toggleSort('kicked')">
                                 <span class="inline-flex items-center justify-end gap-1"
                                     >Kicked <component :is="sortIcon('kicked')" class="size-3"
                                 /></span>
                             </TableHead>
-                            <TableHead class="cursor-pointer text-right select-none" @click="toggleSort('activated')">
+                            <TableHead v-if="visibleColumns.activated" class="cursor-pointer text-right select-none" @click="toggleSort('activated')">
                                 <span class="inline-flex items-center justify-end gap-1"
                                     >Activated <component :is="sortIcon('activated')" class="size-3"
                                 /></span>
                             </TableHead>
-                            <TableHead class="cursor-pointer text-right select-none" @click="toggleSort('pregamePct')">
+                            <TableHead v-if="visibleColumns.pregamePct" class="cursor-pointer text-right select-none" @click="toggleSort('pregamePct')">
                                 <span class="inline-flex items-center justify-end gap-1"
                                     >Pregame % <component :is="sortIcon('pregamePct')" class="size-3"
                                 /></span>
                             </TableHead>
-                            <TableHead class="cursor-pointer text-right select-none" @click="toggleSort('pregameWinPct')">
+                            <TableHead v-if="visibleColumns.pregameWinPct" class="cursor-pointer text-right select-none" @click="toggleSort('pregameWinPct')">
                                 <span class="inline-flex items-center justify-end gap-1"
                                     >Pregame Win % <component :is="sortIcon('pregameWinPct')" class="size-3"
                                 /></span>
                             </TableHead>
-                            <TableHead class="cursor-pointer text-right select-none" @click="toggleSort('seenPct')">
+                            <TableHead v-if="visibleColumns.seenPct" class="cursor-pointer text-right select-none" @click="toggleSort('seenPct')">
                                 <span class="inline-flex items-center justify-end gap-1"
                                     >Seen % <component :is="sortIcon('seenPct')" class="size-3"
                                 /></span>
                             </TableHead>
-                            <TableHead class="cursor-pointer text-right select-none" @click="toggleSort('seenWinPct')">
+                            <TableHead v-if="visibleColumns.seenWinPct" class="cursor-pointer text-right select-none" @click="toggleSort('seenWinPct')">
                                 <span class="inline-flex items-center justify-end gap-1"
                                     >Seen Win % <component :is="sortIcon('seenWinPct')" class="size-3"
                                 /></span>
                             </TableHead>
-                            <TableHead class="cursor-pointer text-right select-none" @click="toggleSort('sbOutPct')">
+                            <TableHead v-if="visibleColumns.sbOutPct" class="cursor-pointer text-right select-none" @click="toggleSort('sbOutPct')">
                                 <span class="inline-flex items-center justify-end gap-1"
                                     >SB Out % <component :is="sortIcon('sbOutPct')" class="size-3"
                                 /></span>
                             </TableHead>
-                            <TableHead class="cursor-pointer text-right select-none" @click="toggleSort('sbInPct')">
+                            <TableHead v-if="visibleColumns.sbInPct" class="cursor-pointer text-right select-none" @click="toggleSort('sbInPct')">
                                 <span class="inline-flex items-center justify-end gap-1"
                                     >SB In % <component :is="sortIcon('sbInPct')" class="size-3"
                                 /></span>
                             </TableHead>
-                            <TableHead class="cursor-pointer text-right select-none" @click="toggleSort('games')">
+                            <TableHead v-if="visibleColumns.games" class="cursor-pointer text-right select-none" @click="toggleSort('games')">
                                 <span class="inline-flex items-center justify-end gap-1"
                                     >Games <component :is="sortIcon('games')" class="size-3"
                                 /></span>
@@ -699,13 +767,14 @@ function sortIcon(key: SortKey) {
                             v-for="stat in filteredAndSortedStats.main"
                             :key="stat.oracleId"
                             :stat="stat"
+                            :visible-columns="visibleColumns"
                             @image-enter="onRowEnter"
                             @image-move="onRowMove"
                             @image-leave="onRowLeave"
                         />
 
                         <TableRow v-if="filteredAndSortedStats.lowData.length" class="pointer-events-none">
-                            <TableCell :colspan="17" class="py-1.5">
+                            <TableCell :colspan="visibleColumnCount" class="py-1.5">
                                 <div class="flex items-center gap-3">
                                     <div class="h-px flex-1 bg-border" />
                                     <span class="text-xs text-muted-foreground/60">Low sample size</span>
@@ -718,6 +787,7 @@ function sortIcon(key: SortKey) {
                             v-for="stat in filteredAndSortedStats.lowData"
                             :key="stat.oracleId"
                             :stat="stat"
+                            :visible-columns="visibleColumns"
                             class="opacity-60"
                             @image-enter="onRowEnter"
                             @image-move="onRowMove"
