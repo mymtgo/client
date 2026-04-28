@@ -1,20 +1,35 @@
 <script setup lang="ts">
 import { Pagination, PaginationContent, PaginationItem, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 import { Card, CardContent } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { router } from '@inertiajs/vue3';
 import MatchesTable from '@/components/matches/MatchesTable.vue';
-import { ref, watch } from 'vue';
+import ArchetypeDetectionBanner from '@/pages/decks/partials/ArchetypeDetectionBanner.vue';
+import { computed, ref, watch } from 'vue';
 
 type Paginator<T> = { data: T[]; total: number; per_page: number; current_page: number };
 
 type ArchetypeWithCount = App.Data.Front.ArchetypeData & { matchCount: number };
 
-defineProps<{
+const props = defineProps<{
+    deckId: number;
     matches: Paginator<App.Data.Front.MatchData>;
     archetypes: ArchetypeWithCount[];
     unknownArchetypeCount: number;
+    pendingArchetypeCount: number;
 }>();
+
+const fallbackArchetypes = computed(() =>
+    props.archetypes.filter((a) => a.isFallback).sort((a, b) => a.name.localeCompare(b.name)),
+);
+
+const regularArchetypes = computed(() =>
+    props.archetypes.filter((a) => !a.isFallback && a.matchCount > 0),
+);
+
+const showSeparator = computed(
+    () => (props.unknownArchetypeCount > 0 || fallbackArchetypes.value.length > 0) && regularArchetypes.value.length > 0,
+);
 
 const filterResult = ref('all');
 const filterType = ref('all');
@@ -65,6 +80,13 @@ const updateSort = (column: string) => {
 
 <template>
     <div class="flex flex-col gap-4">
+        <ArchetypeDetectionBanner
+            v-if="filterArchetype !== 'all'"
+            :deck-id="deckId"
+            :filter-archetype="filterArchetype"
+            :pending-count="pendingArchetypeCount"
+        />
+
         <!-- Filters -->
         <div class="flex flex-wrap items-center justify-between gap-3">
             <p v-if="matches.total" class="text-muted-foreground text-xs">
@@ -99,7 +121,11 @@ const updateSort = (column: string) => {
                     <SelectContent>
                         <SelectItem value="all" class="text-xs">All Archetypes</SelectItem>
                         <SelectItem v-if="unknownArchetypeCount > 0" value="none" class="text-xs">Unknown ({{ unknownArchetypeCount }})</SelectItem>
-                        <SelectItem v-for="arch in archetypes.filter(a => a.matchCount > 0)" :key="arch.id" :value="String(arch.id)" class="text-xs">
+                        <SelectItem v-for="arch in fallbackArchetypes" :key="arch.id" :value="String(arch.id)" class="text-xs">
+                            {{ arch.name }} ({{ arch.matchCount }})
+                        </SelectItem>
+                        <SelectSeparator v-if="showSeparator" />
+                        <SelectItem v-for="arch in regularArchetypes" :key="arch.id" :value="String(arch.id)" class="text-xs">
                             {{ arch.name }} ({{ arch.matchCount }})
                         </SelectItem>
                     </SelectContent>

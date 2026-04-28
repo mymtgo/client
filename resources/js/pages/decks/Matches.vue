@@ -19,6 +19,7 @@ const props = defineProps<{
     matches: any;
     archetypes: any[];
     unknownArchetypeCount: number;
+    pendingArchetypeCount: number;
 }>();
 
 function setTimeframe(value: string) {
@@ -31,6 +32,12 @@ function setTimeframe(value: string) {
 <template>
     <div class="space-y-4 p-3 lg:p-4">
         <TimeframeFilter :model-value="timeframe" @update:model-value="setTimeframe" />
-        <DeckMatches :matches="matches" :archetypes="archetypes" :unknown-archetype-count="unknownArchetypeCount" />
+        <DeckMatches
+            :deck-id="deck.id"
+            :matches="matches"
+            :archetypes="archetypes"
+            :unknown-archetype-count="unknownArchetypeCount"
+            :pending-archetype-count="pendingArchetypeCount"
+        />
     </div>
 </template>

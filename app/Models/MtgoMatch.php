@@ -38,6 +38,7 @@ class MtgoMatch extends Model
         'ended_at' => 'datetime',
         'submitted_at' => 'datetime',
         'failed_at' => 'datetime',
+        'archetype_detection_queued_at' => 'datetime',
         'attempts' => 'integer',
         'state' => MatchState::class,
         'outcome' => MatchOutcome::class,
@@ -198,6 +199,20 @@ class MtgoMatch extends Model
                 ->select('players.username')
                 ->limit(1),
         ]);
+    }
+
+    /**
+     * Filter matches by the same semantics as the matches list filter:
+     *  - 'none'  → matches with no detected opponent archetype
+     *  - numeric → matches where the opponent has that archetype
+     */
+    public function scopeFilteredByArchetype(Builder $query, string $value): Builder
+    {
+        if ($value === 'none') {
+            return $query->whereDoesntHave('opponentArchetypes');
+        }
+
+        return $query->whereHas('opponentArchetypes', fn ($q) => $q->where('archetype_id', $value));
     }
 
     public function isWin(): bool

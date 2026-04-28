@@ -28,6 +28,7 @@ use App\Http\Controllers\Decks\PopoutController;
 use App\Http\Controllers\Decks\ScreenshotDataController;
 use App\Http\Controllers\Decks\SettingsController;
 use App\Http\Controllers\Decks\ToggleGroupingController;
+use App\Http\Controllers\Decks\TriggerArchetypeDetectionController;
 use App\Http\Controllers\Decks\UpdateCoverArtController;
 use App\Http\Controllers\Decks\UpdateDeckArchetypeController;
 use App\Http\Controllers\Games\OpenReplayController;
@@ -117,6 +118,7 @@ Route::group([], function (Router $router) {
         $group->get('{deck:id}/leagues', LeaguesController::class)->name('decks.leagues');
         $group->get('{deck:id}/matchups', MatchupsController::class)->name('decks.matchups');
         $group->get('{deck:id}/matchups/{archetype}', MatchupDetailController::class)->name('decks.matchup-detail');
+        $group->post('{deck:id}/archetypes/detect', TriggerArchetypeDetectionController::class)->name('decks.archetypes.detect');
         $group->get('{deck:id}/decklist', DecklistController::class)->name('decks.decklist');
         $group->get('{deck:id}/screenshot-data', ScreenshotDataController::class)->name('decks.screenshot-data');
         $group->get('{deck:id}/popout', PopoutController::class)->name('decks.popout');
