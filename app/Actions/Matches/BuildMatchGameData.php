@@ -161,6 +161,12 @@ class BuildMatchGameData
 
     /**
      * Compute sideboard changes relative to the registered deck version.
+     *
+     * Keyed on mtgo_id rather than oracle_id: oracle_id can be null on a Card
+     * row when the row was created mid-pipeline before identity backfill ran,
+     * which previously produced spurious in/out entries on both sides.
+     * Legacy registered-card rows (no mtgo_id, oracle_id only) resolve via
+     * cardsByOracleId.
      */
     private static function computeSideboardChanges(array $gameDeckJson, array $registeredCards, Collection $cardsByMtgoId, Collection $cardsByOracleId): array
     {
@@ -170,45 +176,51 @@ class BuildMatchGameData
 
         $gameMains = [];
         foreach ($gameDeckJson as $item) {
-            if (! ($item['sideboard'] ?? false)) {
-                $resolved = $cardsByMtgoId->get($item['mtgo_id']);
-                $oracleId = $resolved->oracle_id ?? "mtgo_{$item['mtgo_id']}";
-                $gameMains[$oracleId] = ($gameMains[$oracleId] ?? 0) + (int) ($item['quantity'] ?? 1);
+            if ($item['sideboard'] ?? false) {
+                continue;
             }
+
+            $mtgoId = (int) ($item['mtgo_id'] ?? 0);
+            if ($mtgoId === 0) {
+                continue;
+            }
+
+            $gameMains[$mtgoId] = ($gameMains[$mtgoId] ?? 0) + (int) ($item['quantity'] ?? 1);
         }
 
         $registeredMains = [];
         foreach ($registeredCards as $item) {
-            if (($item['sideboard'] ?? 'false') === 'false') {
-                $registeredMains[$item['oracle_id']] = (int) $item['quantity'];
+            if (($item['sideboard'] ?? 'false') !== 'false') {
+                continue;
             }
+
+            $mtgoId = isset($item['mtgo_id']) ? (int) $item['mtgo_id'] : null;
+
+            if (! $mtgoId && ! empty($item['oracle_id'])) {
+                $resolved = $cardsByOracleId->get($item['oracle_id']);
+                $mtgoId = $resolved?->mtgo_id !== null ? (int) $resolved->mtgo_id : null;
+            }
+
+            if (! $mtgoId) {
+                continue;
+            }
+
+            $registeredMains[$mtgoId] = (int) $item['quantity'];
         }
 
         $changes = [];
 
-        foreach ($gameMains as $oracleId => $gameQty) {
-            $registeredQty = $registeredMains[$oracleId] ?? 0;
+        foreach ($gameMains as $mtgoId => $gameQty) {
+            $registeredQty = $registeredMains[$mtgoId] ?? 0;
             if ($gameQty > $registeredQty) {
-                $card = self::resolveCardByOracleId($oracleId, $cardsByMtgoId, $cardsByOracleId);
-                $changes[] = [
-                    'name' => $card->name ?? 'Unknown',
-                    'image' => $card->image_url ?? null,
-                    'quantity' => $gameQty - $registeredQty,
-                    'type' => 'in',
-                ];
+                $changes[] = self::buildSideboardChange($mtgoId, $gameQty - $registeredQty, 'in', $cardsByMtgoId);
             }
         }
 
-        foreach ($registeredMains as $oracleId => $registeredQty) {
-            $gameQty = $gameMains[$oracleId] ?? 0;
+        foreach ($registeredMains as $mtgoId => $registeredQty) {
+            $gameQty = $gameMains[$mtgoId] ?? 0;
             if ($registeredQty > $gameQty) {
-                $card = self::resolveCardByOracleId($oracleId, $cardsByMtgoId, $cardsByOracleId);
-                $changes[] = [
-                    'name' => $card->name ?? 'Unknown',
-                    'image' => $card->image_url ?? null,
-                    'quantity' => $registeredQty - $gameQty,
-                    'type' => 'out',
-                ];
+                $changes[] = self::buildSideboardChange($mtgoId, $registeredQty - $gameQty, 'out', $cardsByMtgoId);
             }
         }
 
@@ -216,14 +228,17 @@ class BuildMatchGameData
     }
 
     /**
-     * Resolve a card by oracle_id from the available collections.
-     *
-     * Returns a stub object with name/image_url when not found.
+     * Build a single sideboard change entry.
      */
-    private static function resolveCardByOracleId(string $oracleId, Collection $cardsByMtgoId, Collection $cardsByOracleId): object
+    private static function buildSideboardChange(int $mtgoId, int $quantity, string $type, Collection $cardsByMtgoId): array
     {
-        return $cardsByOracleId->get($oracleId)
-            ?? $cardsByMtgoId->first(fn ($c) => $c->oracle_id === $oracleId)
-            ?? (object) ['name' => null, 'image_url' => null];
+        $card = $cardsByMtgoId->get($mtgoId);
+
+        return [
+            'name' => $card->name ?? 'Unknown',
+            'image' => $card->image_url ?? null,
+            'quantity' => $quantity,
+            'type' => $type,
+        ];
     }
 }

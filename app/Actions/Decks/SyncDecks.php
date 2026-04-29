@@ -7,6 +7,7 @@ use App\Actions\Matches\RelinkOrphanMatches;
 use App\Models\Account;
 use App\Models\Deck;
 use App\Support\TimedTransaction;
+use Illuminate\Support\Facades\Log;
 
 class SyncDecks
 {
@@ -51,9 +52,9 @@ class SyncDecks
                 $attrs = $item['@attributes'] ?? $item;
 
                 return [
-                    'mtgo_id' => $attrs['CatId'],
-                    'quantity' => $attrs['Quantity'],
-                    'sideboard' => $attrs['IsSideboard'],
+                    'mtgo_id' => (int) $attrs['CatId'],
+                    'quantity' => (int) $attrs['Quantity'],
+                    'sideboard' => filter_var($attrs['IsSideboard'], FILTER_VALIDATE_BOOL) ? 'true' : 'false',
                 ];
             });
 
@@ -80,7 +81,13 @@ class SyncDecks
                 'modified_at' => $fileModified,
             ]);
 
-            ComputeDeckIdentity::run($deck);
+            try {
+                ComputeDeckIdentity::run($deck);
+            } catch (\Throwable $e) {
+                Log::warning('Failed to compute deck identity: '.$e->getMessage(), [
+                    'deck_id' => $deck->id,
+                ]);
+            }
             static::prefillArchetype($deck);
 
             $deckIds[] = $deck->id;
@@ -141,7 +148,7 @@ class SyncDecks
                 $deck->update(['archetype_id' => $result['archetype_id']]);
             }
         } catch (\Throwable $e) {
-            \Log::warning('Failed to prefill deck archetype: '.$e->getMessage());
+            Log::warning('Failed to prefill deck archetype: '.$e->getMessage());
         }
     }
 }

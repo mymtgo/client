@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Decks;
 
+use App\Actions\Decks\GenerateDeckSignature;
 use App\Actions\Decks\GetDeckFiles;
 use App\Actions\Decks\SyncDecks;
 use App\Facades\Mtgo;
@@ -131,5 +132,48 @@ XML;
 
         // Should be soft deleted because it's not in the active directory
         $this->assertSoftDeleted($deck);
+    }
+
+    public function test_it_produces_canonical_signature_regardless_of_xml_sideboard_capitalization()
+    {
+        $deckId = 'caab1001-0000-0000-0000-000000002001';
+        Card::factory()->create(['mtgo_id' => 1001, 'oracle_id' => 'oracle-1001']);
+        Card::factory()->create(['mtgo_id' => 2001, 'oracle_id' => 'oracle-2001']);
+
+        $path = storage_path('framework/testing/disks/user_home/AppData/Local/Apps/2.0');
+        $randomHash = 'capstest123456';
+        $activePath = $path.'/'.$randomHash;
+        $activeDataPath = $path.'/Data/'.$randomHash;
+
+        if (! file_exists($activePath)) {
+            mkdir($activePath, 0777, true);
+        }
+        if (! file_exists($activeDataPath)) {
+            mkdir($activeDataPath, 0777, true);
+        }
+
+        file_put_contents($activePath.'/mtgo.log', 'dummy log content');
+        file_put_contents($activeDataPath.'/user_settings', '');
+
+        $xmlContent = <<<XML
+<Grouping Name="Caps Test" NetDeckId="{$deckId}" GroupingType="Deck" Timestamp="2026-04-29T10:00:00" FormatCode="Standard">
+  <Item CatId="1001" Quantity="4" IsSideboard="False" />
+  <Item CatId="2001" Quantity="3" IsSideboard="True" />
+</Grouping>
+XML;
+        $deckFile = $activeDataPath.'/grouping '.$deckId.'.xml';
+        file_put_contents($deckFile, $xmlContent);
+
+        SyncDecks::run();
+
+        $deck = Deck::where('mtgo_id', $deckId)->first();
+        $version = $deck->versions()->first();
+
+        $expected = GenerateDeckSignature::run(collect([
+            ['mtgo_id' => 1001, 'quantity' => 4, 'sideboard' => 'false'],
+            ['mtgo_id' => 2001, 'quantity' => 3, 'sideboard' => 'true'],
+        ]));
+
+        $this->assertSame($expected, $version->signature);
     }
 }

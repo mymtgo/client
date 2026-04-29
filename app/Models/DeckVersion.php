@@ -33,21 +33,50 @@ class DeckVersion extends Model
             return [];
         }
 
-        return collect(
-            explode('|', $decoded)
-        )->filter()->map(function (string $cardSig) {
-            $parts = explode(':', $cardSig);
+        $segments = collect(explode('|', $decoded))
+            ->filter()
+            ->map(function (string $cardSig) {
+                $parts = explode(':', $cardSig);
 
-            if (count($parts) < 3) {
-                return null;
-            }
+                if (count($parts) < 3) {
+                    return null;
+                }
 
-            return [
+                return $parts;
+            })
+            ->filter()
+            ->values();
+
+        if ($segments->isEmpty()) {
+            return [];
+        }
+
+        $isNewFormat = is_numeric($segments->first()[0]);
+
+        if (! $isNewFormat) {
+            return $segments->map(fn ($parts) => [
                 'oracle_id' => $parts[0],
                 'quantity' => $parts[1],
                 'sideboard' => $parts[2],
+            ])->values()->toArray();
+        }
+
+        $mtgoIds = $segments->map(fn ($parts) => (int) $parts[0])->unique()->values();
+
+        $oracleByMtgoId = Card::whereIn('mtgo_id', $mtgoIds)
+            ->get(['mtgo_id', 'oracle_id'])
+            ->keyBy('mtgo_id');
+
+        return $segments->map(function ($parts) use ($oracleByMtgoId) {
+            $mtgoId = (int) $parts[0];
+
+            return [
+                'oracle_id' => $oracleByMtgoId->get($mtgoId)?->oracle_id,
+                'mtgo_id' => $mtgoId,
+                'quantity' => $parts[1],
+                'sideboard' => $parts[2],
             ];
-        })->filter()->values()->toArray();
+        })->values()->toArray();
     }
 
     /** @return BelongsTo<Deck, $this> */

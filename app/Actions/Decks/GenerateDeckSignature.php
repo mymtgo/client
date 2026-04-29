@@ -3,30 +3,28 @@
 namespace App\Actions\Decks;
 
 use App\Actions\Cards\CreateMissingCards;
-use App\Models\Card;
 use Illuminate\Support\Collection;
 
 class GenerateDeckSignature
 {
     public static function run(Collection $cards): string
     {
-        $cardIds = $cards->pluck('mtgo_id')->unique();
+        $cardIds = $cards->pluck('mtgo_id')->map(fn ($id) => (int) $id)->unique();
 
         CreateMissingCards::run($cardIds->toArray());
 
-        $cardModels = Card::whereIn('mtgo_id', $cardIds)->get();
+        $normalized = $cards->map(fn ($card) => [
+            'mtgo_id' => (int) $card['mtgo_id'],
+            'quantity' => (int) $card['quantity'],
+            'sideboard' => filter_var($card['sideboard'], FILTER_VALIDATE_BOOL) ? 'true' : 'false',
+        ])->sortBy([
+            ['mtgo_id', 'asc'],
+            ['sideboard', 'asc'],
+        ])->values();
 
-        $cardSig = $cards->map(function ($card) use ($cardModels) {
-            $model = $cardModels->first(
-                fn ($c) => $c->mtgo_id == $card['mtgo_id']
-            );
-
-            return collect([
-                'oracle_id' => $model->oracle_id,
-                'quantity' => $card['quantity'],
-                'sideboard' => $card['sideboard'],
-            ])->join(':');
-        })->join('|');
+        $cardSig = $normalized
+            ->map(fn ($card) => "{$card['mtgo_id']}:{$card['quantity']}:{$card['sideboard']}")
+            ->join('|');
 
         return base64_encode($cardSig);
     }

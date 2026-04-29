@@ -8,6 +8,7 @@ use App\Models\Account;
 use App\Models\DeckVersion;
 use App\Models\LogEvent;
 use App\Models\MtgoMatch;
+use Illuminate\Support\Facades\Log;
 
 class DetermineMatchDeck
 {
@@ -50,9 +51,23 @@ class DetermineMatchDeck
 
         $accountId = Account::currentId();
 
-        $deckVersion = DeckVersion::where('signature', $signature)
-            ->when($accountId, fn ($q) => $q->whereHas('deck', fn ($q2) => $q2->where('account_id', $accountId)))
-            ->first();
+        $applyAccountScope = fn ($query) => $query->when(
+            $accountId,
+            fn ($q) => $q->whereHas('deck', fn ($q2) => $q2->where('account_id', $accountId))
+        );
+
+        $deckVersion = $applyAccountScope(DeckVersion::where('signature', $signature))->first();
+
+        if (! $deckVersion) {
+            Log::channel('pipeline')->info('DetermineMatchDeck: no deck version match', [
+                'match_id' => $match->id,
+                'mtgo_id' => $match->mtgo_id,
+                'account_id' => $accountId,
+                'card_count' => $firstGameDeckCards->count(),
+                'computed_signature' => $signature,
+                'candidate_versions' => $applyAccountScope(DeckVersion::query())->count(),
+            ]);
+        }
 
         $match->update([
             'deck_version_id' => $deckVersion?->id,

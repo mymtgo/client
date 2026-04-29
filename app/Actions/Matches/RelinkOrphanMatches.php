@@ -8,22 +8,22 @@ use App\Models\MtgoMatch;
 class RelinkOrphanMatches
 {
     /**
-     * Re-attempt deck linking for matches that reached Complete without a deck_version_id.
+     * Re-attempt deck linking for matches that lack deck_version_id.
      *
-     * A match can be orphaned when its deck XML file lands after the Started → InProgress
-     * transition — DetermineMatchDeck only fires once at that boundary and the match can
-     * advance all the way to Complete with deck_version_id = null.
-     *
-     * RunPipeline calls this each tick so orphans re-link as soon as SyncDecks creates
-     * the matching DeckVersion. The recency window caps the work for matches that will
-     * never link (e.g. decks the user has since deleted).
+     * Covers matches in InProgress, Ended, and Complete states. Recency is
+     * scoped by started_at so pre-Complete matches (which may not have
+     * ended_at yet) are still considered.
      */
     public static function run(int $limit = 20, int $withinDays = 7): void
     {
-        MtgoMatch::where('state', MatchState::Complete)
+        MtgoMatch::whereIn('state', [
+            MatchState::InProgress,
+            MatchState::Ended,
+            MatchState::Complete,
+        ])
             ->whereNull('deck_version_id')
-            ->where('ended_at', '>', now()->subDays($withinDays))
-            ->orderByDesc('ended_at')
+            ->where('started_at', '>', now()->subDays($withinDays))
+            ->orderByDesc('started_at')
             ->limit($limit)
             ->get()
             ->each(fn (MtgoMatch $match) => DetermineMatchDeck::run($match));

@@ -62,3 +62,60 @@ it('handles empty card list', function () {
 
     expect($signature)->toBeString();
 });
+
+it('produces the same signature regardless of card order', function () {
+    Card::factory()->create(['mtgo_id' => 1001, 'oracle_id' => 'oracle-1001']);
+    Card::factory()->create(['mtgo_id' => 1002, 'oracle_id' => 'oracle-1002']);
+    Card::factory()->create(['mtgo_id' => 1003, 'oracle_id' => 'oracle-1003']);
+
+    $orderA = collect([
+        ['mtgo_id' => 1001, 'quantity' => 4, 'sideboard' => 'false'],
+        ['mtgo_id' => 1002, 'quantity' => 4, 'sideboard' => 'false'],
+        ['mtgo_id' => 1003, 'quantity' => 2, 'sideboard' => 'true'],
+    ]);
+
+    $orderB = collect([
+        ['mtgo_id' => 1003, 'quantity' => 2, 'sideboard' => 'true'],
+        ['mtgo_id' => 1001, 'quantity' => 4, 'sideboard' => 'false'],
+        ['mtgo_id' => 1002, 'quantity' => 4, 'sideboard' => 'false'],
+    ]);
+
+    expect(GenerateDeckSignature::run($orderA))
+        ->toBe(GenerateDeckSignature::run($orderB));
+});
+
+it('normalizes sideboard cast variants to the same signature', function () {
+    Card::factory()->create(['mtgo_id' => 1001, 'oracle_id' => 'oracle-1001']);
+
+    $variants = [
+        true,
+        'true',
+        'True',
+        1,
+        '1',
+    ];
+
+    $signatures = collect($variants)->map(
+        fn ($value) => GenerateDeckSignature::run(collect([
+            ['mtgo_id' => 1001, 'quantity' => 4, 'sideboard' => $value],
+        ]))
+    );
+
+    expect($signatures->unique()->count())->toBe(1);
+});
+
+it('produces stable signature when oracle_id is null', function () {
+    Card::factory()->create(['mtgo_id' => 1001, 'oracle_id' => null]);
+
+    $cards = collect([
+        ['mtgo_id' => 1001, 'quantity' => 4, 'sideboard' => 'false'],
+    ]);
+
+    $first = GenerateDeckSignature::run($cards);
+
+    Card::where('mtgo_id', 1001)->update(['oracle_id' => 'oracle-1001']);
+
+    $second = GenerateDeckSignature::run($cards);
+
+    expect($first)->toBe($second);
+});

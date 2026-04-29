@@ -169,3 +169,142 @@ it('resolves card names when cards exist in collection', function () {
 
     expect($result['keptHand'][0]['name'])->toBe('Lightning Bolt');
 });
+
+/**
+ * Build minimal Game with one local player whose deck_json mirrors $deckJson.
+ */
+function makeGameWithLocalDeck(array $deckJson, ?array $opponentDeckJson = null): Game
+{
+    $match = MtgoMatch::create([
+        'token' => 'tok-'.uniqid(),
+        'mtgo_id' => (string) fake()->unique()->numberBetween(100000, 999999),
+        'format' => 'modern',
+        'match_type' => 'league',
+        'outcome' => 'win',
+        'started_at' => now()->subMinutes(30),
+        'ended_at' => now(),
+    ]);
+
+    $game = Game::create([
+        'match_id' => $match->id,
+        'mtgo_id' => 'game-'.uniqid(),
+        'won' => true,
+        'started_at' => now()->subMinutes(20),
+        'ended_at' => now()->subMinutes(10),
+    ]);
+
+    $localPlayer = Player::create(['username' => 'local-'.uniqid()]);
+    $opponentPlayer = Player::create(['username' => 'opp-'.uniqid()]);
+
+    $game->players()->attach($localPlayer->id, [
+        'instance_id' => 1,
+        'is_local' => true,
+        'on_play' => true,
+        'starting_hand_size' => 7,
+        'deck_json' => $deckJson,
+    ]);
+
+    $game->players()->attach($opponentPlayer->id, [
+        'instance_id' => 2,
+        'is_local' => false,
+        'on_play' => false,
+        'starting_hand_size' => 7,
+        'deck_json' => $opponentDeckJson ?? [],
+    ]);
+
+    return $game->fresh()->load(['players', 'timeline']);
+}
+
+it('reports no sideboard changes when game deck matches registered deck (canonical accessor output)', function () {
+    $cardA = Card::factory()->create(['mtgo_id' => 1001, 'oracle_id' => 'oracle-1001']);
+    $cardB = Card::factory()->create(['mtgo_id' => 1002, 'oracle_id' => 'oracle-1002']);
+
+    $game = makeGameWithLocalDeck([
+        ['mtgo_id' => 1001, 'quantity' => 4, 'sideboard' => false],
+        ['mtgo_id' => 1002, 'quantity' => 3, 'sideboard' => false],
+    ]);
+
+    $registeredCards = [
+        ['oracle_id' => 'oracle-1001', 'mtgo_id' => 1001, 'quantity' => '4', 'sideboard' => 'false'],
+        ['oracle_id' => 'oracle-1002', 'mtgo_id' => 1002, 'quantity' => '3', 'sideboard' => 'false'],
+    ];
+
+    $cardsByMtgoId = collect([1001 => $cardA, 1002 => $cardB]);
+    $cardsByOracleId = collect(['oracle-1001' => $cardA, 'oracle-1002' => $cardB]);
+
+    $result = BuildMatchGameData::run($game, 1, $cardsByMtgoId, $cardsByOracleId, $registeredCards);
+
+    expect($result['sideboardChanges'])->toBe([]);
+});
+
+it('reports no sideboard changes when oracle_id is null but mtgo_id matches', function () {
+    // Reproduces the oracle_id resolution race: Card row exists with null
+    // oracle_id (e.g. created mid-pipeline). Both registered and game deck
+    // anchor on mtgo_id 1001 — should NOT report spurious in/out.
+    $card = Card::factory()->create(['mtgo_id' => 1001, 'oracle_id' => null]);
+
+    $game = makeGameWithLocalDeck([
+        ['mtgo_id' => 1001, 'quantity' => 4, 'sideboard' => false],
+    ]);
+
+    $registeredCards = [
+        ['oracle_id' => null, 'mtgo_id' => 1001, 'quantity' => '4', 'sideboard' => 'false'],
+    ];
+
+    $cardsByMtgoId = collect([1001 => $card]);
+    $cardsByOracleId = collect();
+
+    $result = BuildMatchGameData::run($game, 1, $cardsByMtgoId, $cardsByOracleId, $registeredCards);
+
+    expect($result['sideboardChanges'])->toBe([]);
+});
+
+it('detects sideboard swap (one card in, one card out) keyed by mtgo_id', function () {
+    $cardMain = Card::factory()->create(['mtgo_id' => 1001, 'oracle_id' => 'oracle-1001', 'name' => 'Main Card']);
+    $cardSwap = Card::factory()->create(['mtgo_id' => 1002, 'oracle_id' => 'oracle-1002', 'name' => 'Swap Card']);
+
+    // Registered: 4x cardMain
+    $registeredCards = [
+        ['oracle_id' => 'oracle-1001', 'mtgo_id' => 1001, 'quantity' => '4', 'sideboard' => 'false'],
+    ];
+
+    // Played: 3x cardMain + 1x cardSwap maindeck
+    $game = makeGameWithLocalDeck([
+        ['mtgo_id' => 1001, 'quantity' => 3, 'sideboard' => false],
+        ['mtgo_id' => 1002, 'quantity' => 1, 'sideboard' => false],
+    ]);
+
+    $cardsByMtgoId = collect([1001 => $cardMain, 1002 => $cardSwap]);
+    $cardsByOracleId = collect(['oracle-1001' => $cardMain, 'oracle-1002' => $cardSwap]);
+
+    $result = BuildMatchGameData::run($game, 1, $cardsByMtgoId, $cardsByOracleId, $registeredCards);
+
+    expect($result['sideboardChanges'])->toHaveCount(2);
+
+    $byType = collect($result['sideboardChanges'])->keyBy('type');
+    expect($byType['in']['name'])->toBe('Swap Card');
+    expect($byType['in']['quantity'])->toBe(1);
+    expect($byType['out']['name'])->toBe('Main Card');
+    expect($byType['out']['quantity'])->toBe(1);
+});
+
+it('compares correctly when registered cards are legacy (oracle_id only, no mtgo_id)', function () {
+    // Legacy DeckVersion accessor output: oracle_id present, mtgo_id absent.
+    // cardsByOracleId provides the mtgo_id resolution path.
+    $card = Card::factory()->create(['mtgo_id' => 1001, 'oracle_id' => 'oracle-1001']);
+
+    $game = makeGameWithLocalDeck([
+        ['mtgo_id' => 1001, 'quantity' => 4, 'sideboard' => false],
+    ]);
+
+    $registeredCards = [
+        ['oracle_id' => 'oracle-1001', 'quantity' => '4', 'sideboard' => 'false'],
+    ];
+
+    $cardsByMtgoId = collect([1001 => $card]);
+    $cardsByOracleId = collect(['oracle-1001' => $card]);
+
+    $result = BuildMatchGameData::run($game, 1, $cardsByMtgoId, $cardsByOracleId, $registeredCards);
+
+    expect($result['sideboardChanges'])->toBe([]);
+});

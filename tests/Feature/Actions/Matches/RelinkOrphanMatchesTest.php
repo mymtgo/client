@@ -94,10 +94,9 @@ it('does not touch matches that already have a deck linked', function () {
     expect($match->fresh()->deck_version_id)->toBe($linkedId);
 });
 
-it('ignores matches that are not in complete state', function () {
-    $match = MtgoMatch::factory()->inProgress()->create([
+it('ignores matches in Started state', function () {
+    $match = MtgoMatch::factory()->started()->create([
         'deck_version_id' => null,
-        'ended_at' => now(),
     ]);
 
     RelinkOrphanMatches::run();
@@ -107,10 +106,47 @@ it('ignores matches that are not in complete state', function () {
 
 it('ignores orphans outside the recency window', function () {
     $match = makeOrphanMatch(linkable: true, matchOverrides: [
+        'started_at' => now()->subDays(30),
         'ended_at' => now()->subDays(30),
     ]);
 
     RelinkOrphanMatches::run(withinDays: 7);
+
+    expect($match->fresh()->deck_version_id)->toBeNull();
+});
+
+it('relinks an orphan match in InProgress state', function () {
+    $match = makeOrphanMatch(linkable: true, matchOverrides: [
+        'state' => MatchState::InProgress,
+        'started_at' => now()->subMinutes(5),
+        'ended_at' => null,
+    ]);
+
+    RelinkOrphanMatches::run();
+
+    expect($match->fresh()->deck_version_id)->not->toBeNull();
+});
+
+it('relinks an orphan match in Ended state', function () {
+    $match = makeOrphanMatch(linkable: true, matchOverrides: [
+        'state' => MatchState::Ended,
+        'started_at' => now()->subMinutes(5),
+        'ended_at' => now()->subMinutes(1),
+    ]);
+
+    RelinkOrphanMatches::run();
+
+    expect($match->fresh()->deck_version_id)->not->toBeNull();
+});
+
+it('skips matches outside the recency window by started_at', function () {
+    $match = makeOrphanMatch(linkable: true, matchOverrides: [
+        'state' => MatchState::Complete,
+        'started_at' => now()->subDays(30),
+        'ended_at' => now()->subDays(30),
+    ]);
+
+    RelinkOrphanMatches::run();
 
     expect($match->fresh()->deck_version_id)->toBeNull();
 });
