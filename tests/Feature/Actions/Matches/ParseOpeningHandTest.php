@@ -283,6 +283,118 @@ it('detects opponent mulligans via library count difference', function () {
     expect($result['opponent_mulligans'])->toBe(1);
 });
 
+it('only counts the final bottomed card when player swaps bottom selection', function () {
+    // Mulligan to 6: original 7, swap to second 7, then transient bottoming UI
+    // user clicks card A to bottom (hand drops to 6), then changes mind and
+    // selects card B (hand may briefly drop to 5 before settling at 6).
+    $game = createGameForHandTest(timelineSnapshots: [
+        [
+            'Players' => [
+                ['Id' => 1, 'HandCount' => 0, 'LibraryCount' => 60],
+                ['Id' => 2, 'HandCount' => 0, 'LibraryCount' => 60],
+            ],
+            'Cards' => [],
+        ],
+        // First hand of 7
+        [
+            'Players' => [
+                ['Id' => 1, 'HandCount' => 7, 'LibraryCount' => 53],
+                ['Id' => 2, 'HandCount' => 7, 'LibraryCount' => 53],
+            ],
+            'Cards' => [
+                ['Id' => 101, 'CatalogID' => 1001, 'Owner' => 1, 'Zone' => 'Hand'],
+                ['Id' => 102, 'CatalogID' => 1002, 'Owner' => 1, 'Zone' => 'Hand'],
+                ['Id' => 103, 'CatalogID' => 1003, 'Owner' => 1, 'Zone' => 'Hand'],
+                ['Id' => 104, 'CatalogID' => 1004, 'Owner' => 1, 'Zone' => 'Hand'],
+                ['Id' => 105, 'CatalogID' => 1005, 'Owner' => 1, 'Zone' => 'Hand'],
+                ['Id' => 106, 'CatalogID' => 1006, 'Owner' => 1, 'Zone' => 'Hand'],
+                ['Id' => 107, 'CatalogID' => 1007, 'Owner' => 1, 'Zone' => 'Hand'],
+            ],
+        ],
+        // Mulligan — entirely new 7
+        [
+            'Players' => [
+                ['Id' => 1, 'HandCount' => 7, 'LibraryCount' => 53],
+                ['Id' => 2, 'HandCount' => 7, 'LibraryCount' => 53],
+            ],
+            'Cards' => [
+                ['Id' => 201, 'CatalogID' => 2001, 'Owner' => 1, 'Zone' => 'Hand'],
+                ['Id' => 202, 'CatalogID' => 2002, 'Owner' => 1, 'Zone' => 'Hand'],
+                ['Id' => 203, 'CatalogID' => 2003, 'Owner' => 1, 'Zone' => 'Hand'],
+                ['Id' => 204, 'CatalogID' => 2004, 'Owner' => 1, 'Zone' => 'Hand'],
+                ['Id' => 205, 'CatalogID' => 2005, 'Owner' => 1, 'Zone' => 'Hand'],
+                ['Id' => 206, 'CatalogID' => 2006, 'Owner' => 1, 'Zone' => 'Hand'],
+                ['Id' => 207, 'CatalogID' => 2007, 'Owner' => 1, 'Zone' => 'Hand'],
+            ],
+        ],
+        // Click card 207 to bottom — hand shrinks to 6
+        [
+            'Players' => [
+                ['Id' => 1, 'HandCount' => 6, 'LibraryCount' => 54],
+                ['Id' => 2, 'HandCount' => 7, 'LibraryCount' => 53],
+            ],
+            'Cards' => [
+                ['Id' => 201, 'CatalogID' => 2001, 'Owner' => 1, 'Zone' => 'Hand'],
+                ['Id' => 202, 'CatalogID' => 2002, 'Owner' => 1, 'Zone' => 'Hand'],
+                ['Id' => 203, 'CatalogID' => 2003, 'Owner' => 1, 'Zone' => 'Hand'],
+                ['Id' => 204, 'CatalogID' => 2004, 'Owner' => 1, 'Zone' => 'Hand'],
+                ['Id' => 205, 'CatalogID' => 2005, 'Owner' => 1, 'Zone' => 'Hand'],
+                ['Id' => 206, 'CatalogID' => 2006, 'Owner' => 1, 'Zone' => 'Hand'],
+            ],
+        ],
+        // Click 202 to swap bottom selection — transient drop (207 still out, 202 also out)
+        [
+            'Players' => [
+                ['Id' => 1, 'HandCount' => 5, 'LibraryCount' => 55],
+                ['Id' => 2, 'HandCount' => 7, 'LibraryCount' => 53],
+            ],
+            'Cards' => [
+                ['Id' => 201, 'CatalogID' => 2001, 'Owner' => 1, 'Zone' => 'Hand'],
+                ['Id' => 203, 'CatalogID' => 2003, 'Owner' => 1, 'Zone' => 'Hand'],
+                ['Id' => 204, 'CatalogID' => 2004, 'Owner' => 1, 'Zone' => 'Hand'],
+                ['Id' => 205, 'CatalogID' => 2005, 'Owner' => 1, 'Zone' => 'Hand'],
+                ['Id' => 206, 'CatalogID' => 2006, 'Owner' => 1, 'Zone' => 'Hand'],
+            ],
+        ],
+        // Final settled hand of 6 — 207 returned, 202 stays bottomed
+        [
+            'Players' => [
+                ['Id' => 1, 'HandCount' => 6, 'LibraryCount' => 54],
+                ['Id' => 2, 'HandCount' => 7, 'LibraryCount' => 53],
+            ],
+            'Cards' => [
+                ['Id' => 201, 'CatalogID' => 2001, 'Owner' => 1, 'Zone' => 'Hand'],
+                ['Id' => 203, 'CatalogID' => 2003, 'Owner' => 1, 'Zone' => 'Hand'],
+                ['Id' => 204, 'CatalogID' => 2004, 'Owner' => 1, 'Zone' => 'Hand'],
+                ['Id' => 205, 'CatalogID' => 2005, 'Owner' => 1, 'Zone' => 'Hand'],
+                ['Id' => 206, 'CatalogID' => 2006, 'Owner' => 1, 'Zone' => 'Hand'],
+                ['Id' => 207, 'CatalogID' => 2007, 'Owner' => 1, 'Zone' => 'Hand'],
+            ],
+        ],
+        // Game starts
+        [
+            'Players' => [
+                ['Id' => 1, 'HandCount' => 5, 'LibraryCount' => 54],
+                ['Id' => 2, 'HandCount' => 7, 'LibraryCount' => 53],
+            ],
+            'Cards' => [
+                ['Id' => 201, 'CatalogID' => 2001, 'Owner' => 1, 'Zone' => 'Battlefield'],
+            ],
+        ],
+    ]);
+
+    $result = ParseOpeningHand::run($game, 1, 2);
+
+    expect($result['mulliganed_hands'])->toHaveCount(1);
+    // Only 202 should be bottomed — 207 was returned to hand
+    expect($result['bottomed_instance_ids'])->toBe([202]);
+    expect($result['hand_before_bottoming'])->toHaveCount(7);
+    expect($result['hand_before_bottoming'][202])->toBe(2002);
+    expect($result['kept_hand'])->toHaveCount(6);
+    expect($result['kept_hand'])->not->toHaveKey(202);
+    expect($result['kept_hand'])->toHaveKey(207);
+});
+
 it('returns empty structure for game with no timeline', function () {
     $game = createGameForHandTest(timelineSnapshots: []);
 

@@ -1,13 +1,10 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed } from 'vue';
 import { router } from '@inertiajs/vue3';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import ResultBadge from '@/components/matches/ResultBadge.vue';
 import GameLogPanel from '@/components/matches/GameLogPanel.vue';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { SwordsIcon, ChevronRight, Play, ScrollText } from 'lucide-vue-next';
+import { Clock, Coins, Hand, Layers, Play, ScrollText, Undo2 } from 'lucide-vue-next';
 import OpenReplayController from '@/actions/App/Http/Controllers/Games/OpenReplayController';
 
 const props = defineProps<{
@@ -29,134 +26,218 @@ const props = defineProps<{
     imported?: boolean;
 }>();
 
-const handOpen = ref(true);
-const mulligansOpen = ref(false);
-const sideboardOpen = ref(false);
+const sideboardCount = computed(() =>
+    props.game.sideboardChanges.reduce((sum, c) => sum + c.quantity, 0),
+);
+
+const expectedKeptSize = computed(() => 7 - props.game.localMulligans);
+
+const drawnIndex = computed(() => {
+    if (props.game.onThePlay) return -1;
+    if (props.game.keptHand.length > expectedKeptSize.value) {
+        return props.game.keptHand.length - 1;
+    }
+    return -1;
+});
+
+const handGridClass = computed(() =>
+    props.game.keptHand.length >= 8 ? 'grid-cols-8' : 'grid-cols-7',
+);
 </script>
 
 <template>
-    <Card class="gap-0 overflow-hidden p-0">
-        <!-- Game header -->
-        <CardHeader class="flex flex-row flex-wrap items-center gap-2 bg-muted px-3 py-2">
-            <div class="flex items-center gap-1.5">
-                <span class="text-sm font-semibold">Game {{ game.number }}</span>
-                <ResultBadge :won="game.won" />
-            </div>
-            <div class="flex items-center gap-2 text-xs text-muted-foreground">
-                <span class="flex items-center gap-1">
-                    <SwordsIcon :size="13" />
+    <div class="flex flex-col gap-5">
+        <!-- Meta strip -->
+        <div class="flex flex-wrap items-center gap-x-5 gap-y-2 border-b pb-4 font-mono text-xs text-muted-foreground">
+            <span class="inline-flex items-center gap-1.5">
+                <span class="text-muted-foreground/60">Result</span>
+                <strong
+                    class="font-medium"
+                    :class="game.won ? 'text-success' : 'text-destructive'"
+                >
+                    {{ game.won ? 'Win' : 'Loss' }}
+                </strong>
+            </span>
+            <span class="inline-flex items-center gap-1.5">
+                <Coins :size="12" class="text-muted-foreground/70" />
+                <strong class="font-medium text-foreground">
                     {{ game.onThePlay ? 'On the play' : 'On the draw' }}
-                </span>
-                <span v-if="game.duration">{{ game.duration }}</span>
-                <span v-if="game.turns !== null">{{ game.turns }} turns</span>
-            </div>
-            <div class="ml-auto flex items-center gap-2 text-xs text-muted-foreground">
-                <span v-if="game.localMulligans > 0">You mulliganed {{ game.localMulligans }}x</span>
-                <span v-if="game.opponentMulligans > 0">{{ opponentName }} mulliganed {{ game.opponentMulligans }}x</span>
+                </strong>
+            </span>
+            <span v-if="game.duration" class="inline-flex items-center gap-1.5">
+                <Clock :size="12" class="text-muted-foreground/70" />
+                <strong class="font-medium text-foreground">{{ game.duration }}</strong>
+            </span>
+            <span v-if="game.turns !== null" class="inline-flex items-center gap-1.5">
+                <span class="text-muted-foreground/60">Turns</span>
+                <strong class="font-medium text-foreground">{{ game.turns }}</strong>
+            </span>
+            <span v-if="game.localMulligans > 0" class="inline-flex items-center gap-1.5">
+                <span class="text-muted-foreground/60">You mull</span>
+                <strong class="font-medium text-foreground">×{{ game.localMulligans }}</strong>
+            </span>
+            <span v-if="game.opponentMulligans > 0" class="inline-flex items-center gap-1.5">
+                <span class="text-muted-foreground/60">{{ opponentName }} mull</span>
+                <strong class="font-medium text-foreground">×{{ game.opponentMulligans }}</strong>
+            </span>
+
+            <div class="ml-auto flex items-center gap-1">
                 <Dialog v-if="gameLog.length">
                     <DialogTrigger as-child>
-                        <Button variant="ghost" size="sm" class="h-6 px-2 text-xs">
-                            <ScrollText :size="11" />
-                            Game Log
+                        <Button variant="ghost" size="sm" class="h-7 px-2 text-xs">
+                            <ScrollText :size="12" />
+                            Game log
                         </Button>
                     </DialogTrigger>
                     <DialogContent class="max-h-[80vh] max-w-lg p-0">
                         <DialogHeader class="px-4 pt-4">
-                            <DialogTitle>Game {{ game.number }} Log</DialogTitle>
+                            <DialogTitle>Game {{ game.number }} log</DialogTitle>
                         </DialogHeader>
                         <div class="h-[60vh]">
                             <GameLogPanel :entries="gameLog" />
                         </div>
                     </DialogContent>
                 </Dialog>
-                <Button v-if="!imported" variant="ghost" size="sm" class="h-6 px-2 text-xs" @click="router.post(OpenReplayController.url({ id: game.id }))">
-                    <Play :size="11" />
+                <Button
+                    v-if="!imported"
+                    variant="ghost"
+                    size="sm"
+                    class="h-7 px-2 text-xs"
+                    @click="router.post(OpenReplayController.url({ id: game.id }))"
+                >
+                    <Play :size="12" />
                     Replay
                 </Button>
             </div>
-        </CardHeader>
+        </div>
 
-        <CardContent v-if="!imported" class="flex flex-col gap-1.5 px-3 py-2">
-            <!-- Kept hand (open by default) -->
-            <Collapsible v-model:open="handOpen">
-                <CollapsibleTrigger class="flex w-full items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium tracking-wide text-muted-foreground uppercase transition-colors hover:bg-muted">
-                    <ChevronRight class="size-3 transition-transform" :class="{ 'rotate-90': handOpen }" />
-                    {{ game.localMulligans > 0 ? `Kept Hand (mulligan to ${7 - game.localMulligans})` : 'Opening Hand' }}
-                </CollapsibleTrigger>
-                <CollapsibleContent>
-                    <div class="grid grid-cols-12 gap-0.5 px-2 pt-1.5">
-                        <div v-for="(card, i) in game.keptHand" :key="`kept_${i}`" class="relative shrink-0">
-                            <div
-                                class="overflow-hidden rounded-[7px] border shadow-sm"
-                                :class="card.bottomed ? 'border-destructive' : 'border-transparent'"
-                            >
-                                <img v-if="card.image" :src="card.image" :alt="card.name" class="h-full w-full object-cover" />
-                                <div v-else class="flex h-full w-full items-center justify-center bg-muted p-1.5 text-center">
-                                    <span class="text-xs leading-tight text-muted-foreground">{{ card.name }}</span>
-                                </div>
-                            </div>
-                            <div
-                                v-if="card.bottomed"
-                                class="absolute right-0 bottom-0 left-0 rounded-b-lg bg-destructive/85 py-0.5 text-center text-xs font-medium text-destructive-foreground"
-                            >
-                                Bottomed
-                            </div>
-                        </div>
-                    </div>
-                </CollapsibleContent>
-            </Collapsible>
+        <template v-if="!imported">
+            <!-- Opening hand -->
+            <section class="flex flex-col gap-3">
+                <header class="flex items-baseline gap-3">
+                    <Hand :size="13" class="text-muted-foreground" />
+                    <h3 class="text-[11px] font-semibold tracking-widest uppercase">
+                        {{ game.localMulligans > 0 ? `Kept hand (mulligan to ${7 - game.localMulligans})` : 'Opening hand' }}
+                    </h3>
+                    <span class="font-mono text-[11px] text-muted-foreground">({{ game.keptHand.length }})</span>
+                    <span class="ml-2 h-px flex-1 bg-border" />
+                </header>
 
-            <!-- Mulliganed hands (collapsed by default, only if mulligans happened) -->
-            <Collapsible v-if="game.mulliganedHands.length" v-model:open="mulligansOpen">
-                <CollapsibleTrigger class="flex w-full items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium tracking-wide text-muted-foreground uppercase transition-colors hover:bg-muted">
-                    <ChevronRight class="size-3 transition-transform" :class="{ 'rotate-90': mulligansOpen }" />
-                    Mulliganed Hands ({{ game.mulliganedHands.length }})
-                </CollapsibleTrigger>
-                <CollapsibleContent>
-                    <div v-for="(hand, hi) in game.mulliganedHands" :key="`mull_${hi}`" class="px-2 pt-1.5">
-                        <p v-if="game.mulliganedHands.length > 1" class="mb-1.5 text-xs text-muted-foreground">Hand {{ hi + 1 }}</p>
-                        <div class="grid grid-cols-12 gap-0.5">
-                            <div v-for="(card, ci) in hand" :key="`mull_${hi}_${ci}`" class="shrink-0 overflow-hidden rounded-[7px] border border-transparent">
-                                <img v-if="card.image" :src="card.image" :alt="card.name" class="h-full w-full object-cover" />
-                                <div v-else class="flex h-full w-full items-center justify-center bg-muted p-1.5 text-center">
-                                    <span class="text-xs leading-tight text-muted-foreground">{{ card.name }}</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </CollapsibleContent>
-            </Collapsible>
-
-            <!-- Sideboard changes (collapsed by default, only games 2+) -->
-            <Collapsible v-if="game.number > 1" v-model:open="sideboardOpen">
-                <CollapsibleTrigger class="flex w-full items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium tracking-wide text-muted-foreground uppercase transition-colors hover:bg-muted">
-                    <ChevronRight class="size-3 transition-transform" :class="{ 'rotate-90': sideboardOpen }" />
-                    Sideboard Changes
-                    <span v-if="game.sideboardChanges.length" class="normal-case">({{ game.sideboardChanges.length }})</span>
-                </CollapsibleTrigger>
-                <CollapsibleContent>
-                    <div v-if="game.sideboardChanges.length" class="grid grid-cols-12 gap-0.5 px-2 pt-1.5">
+                <div class="grid gap-1.5" :class="handGridClass">
+                    <div v-for="(card, i) in game.keptHand" :key="`kept_${i}`" class="relative shrink-0">
                         <div
-                            v-for="change in game.sideboardChanges"
-                            :key="`${change.type}_${change.name}`"
-                            class="relative overflow-hidden rounded-[7px] border"
-                            :class="change.type === 'in' ? 'border-success' : 'border-destructive'"
+                            class="aspect-[63/88] overflow-hidden rounded-md border shadow-sm"
+                            :class="[
+                                card.bottomed
+                                    ? 'border-destructive'
+                                    : i === drawnIndex
+                                      ? 'border-sky-400/70 ring-1 ring-sky-400/40'
+                                      : 'border-transparent',
+                            ]"
                         >
-                            <img v-if="change.image" :src="change.image" :alt="change.name" class="h-full w-full object-cover" />
+                            <img
+                                v-if="card.image"
+                                :src="card.image"
+                                :alt="card.name"
+                                class="h-full w-full object-cover"
+                            />
                             <div v-else class="flex h-full w-full items-center justify-center bg-muted p-1.5 text-center">
-                                <span class="text-xs leading-tight text-muted-foreground">{{ change.name }}</span>
+                                <span class="text-xs leading-tight text-muted-foreground">{{ card.name }}</span>
                             </div>
-                            <div
-                                class="absolute right-0 bottom-0 left-0 py-0.5 text-center text-xs font-bold"
-                                :class="change.type === 'in' ? 'bg-success/85 text-success-foreground' : 'bg-destructive/85 text-destructive-foreground'"
-                            >
-                                {{ change.type === 'in' ? '+' : '−' }}{{ change.quantity }}
+                        </div>
+                        <div
+                            v-if="card.bottomed"
+                            class="absolute right-0 bottom-0 left-0 rounded-b-md bg-destructive/85 py-0.5 text-center text-[10px] font-medium text-destructive-foreground"
+                        >
+                            Bottomed
+                        </div>
+                        <div
+                            v-else-if="i === drawnIndex"
+                            class="absolute right-0 bottom-0 left-0 rounded-b-md bg-sky-500/85 py-0.5 text-center font-mono text-[10px] font-semibold tracking-widest text-white uppercase"
+                        >
+                            T1 Draw
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Mulliganed hands -->
+            <section v-if="game.mulliganedHands.length" class="flex flex-col gap-3">
+                <header class="flex items-baseline gap-3">
+                    <Undo2 :size="13" class="text-muted-foreground" />
+                    <h3 class="text-[11px] font-semibold tracking-widest uppercase">
+                        Mulliganed hands
+                    </h3>
+                    <span class="font-mono text-[11px] text-muted-foreground">({{ game.mulliganedHands.length }})</span>
+                    <span class="ml-2 h-px flex-1 bg-border" />
+                </header>
+
+                <div v-for="(hand, hi) in game.mulliganedHands" :key="`mull_${hi}`" class="flex flex-col gap-1.5">
+                    <p v-if="game.mulliganedHands.length > 1" class="font-mono text-[11px] text-muted-foreground">
+                        Hand {{ hi + 1 }}
+                    </p>
+                    <div class="grid grid-cols-7 gap-1.5">
+                        <div
+                            v-for="(card, ci) in hand"
+                            :key="`mull_${hi}_${ci}`"
+                            class="aspect-[63/88] shrink-0 overflow-hidden rounded-md border border-transparent"
+                        >
+                            <img
+                                v-if="card.image"
+                                :src="card.image"
+                                :alt="card.name"
+                                class="h-full w-full object-cover"
+                            />
+                            <div v-else class="flex h-full w-full items-center justify-center bg-muted p-1.5 text-center">
+                                <span class="text-xs leading-tight text-muted-foreground">{{ card.name }}</span>
                             </div>
                         </div>
                     </div>
-                    <p v-else class="px-2 pt-1.5 text-xs text-muted-foreground">No changes</p>
-                </CollapsibleContent>
-            </Collapsible>
-        </CardContent>
-    </Card>
+                </div>
+            </section>
+
+            <!-- Sideboard changes -->
+            <section v-if="game.number > 1" class="flex flex-col gap-3">
+                <header class="flex items-baseline gap-3">
+                    <Layers :size="13" class="text-muted-foreground" />
+                    <h3 class="text-[11px] font-semibold tracking-widest uppercase">
+                        Sideboard changes
+                    </h3>
+                    <span v-if="sideboardCount" class="font-mono text-[11px] text-muted-foreground">({{ sideboardCount }})</span>
+                    <span class="ml-2 h-px flex-1 bg-border" />
+                </header>
+
+                <div v-if="game.sideboardChanges.length" class="grid grid-cols-10 gap-1.5">
+                    <div
+                        v-for="change in game.sideboardChanges"
+                        :key="`${change.type}_${change.name}`"
+                        class="relative aspect-[63/88] overflow-hidden rounded-md border"
+                        :class="change.type === 'in' ? 'border-success ring-1 ring-success/30' : 'border-destructive ring-1 ring-destructive/30'"
+                    >
+                        <img
+                            v-if="change.image"
+                            :src="change.image"
+                            :alt="change.name"
+                            class="h-full w-full object-cover"
+                        />
+                        <div v-else class="flex h-full w-full items-center justify-center bg-muted p-1.5 text-center">
+                            <span class="text-xs leading-tight text-muted-foreground">{{ change.name }}</span>
+                        </div>
+                        <div
+                            class="absolute right-0 bottom-0 left-0 py-0.5 text-center font-mono text-[10px] font-bold"
+                            :class="change.type === 'in' ? 'bg-success/85 text-success-foreground' : 'bg-destructive/85 text-destructive-foreground'"
+                        >
+                            {{ change.type === 'in' ? '+' : '−' }}{{ change.quantity }}
+                        </div>
+                    </div>
+                </div>
+                <p
+                    v-else
+                    class="rounded-md border border-dashed px-4 py-5 text-center text-xs text-muted-foreground italic"
+                >
+                    Pre-sideboard game — no changes made yet.
+                </p>
+            </section>
+        </template>
+    </div>
 </template>

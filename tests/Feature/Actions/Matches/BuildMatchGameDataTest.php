@@ -288,6 +288,29 @@ it('detects sideboard swap (one card in, one card out) keyed by mtgo_id', functi
     expect($byType['out']['quantity'])->toBe(1);
 });
 
+it('treats different printings of the same card as identical (oracle_id match)', function () {
+    // Same oracle card has two printings with different mtgo_ids. Registered
+    // deck stores one printing's mtgo_id, game deck_json reports the other.
+    // Should NOT report spurious in/out changes.
+    $printingA = Card::factory()->create(['mtgo_id' => 2001, 'oracle_id' => 'oracle-urzas-mine', 'name' => "Urza's Mine"]);
+    $printingB = Card::factory()->create(['mtgo_id' => 2002, 'oracle_id' => 'oracle-urzas-mine', 'name' => "Urza's Mine"]);
+
+    $game = makeGameWithLocalDeck([
+        ['mtgo_id' => 2002, 'quantity' => 4, 'sideboard' => false],
+    ]);
+
+    $registeredCards = [
+        ['oracle_id' => 'oracle-urzas-mine', 'mtgo_id' => 2001, 'quantity' => '4', 'sideboard' => 'false'],
+    ];
+
+    $cardsByMtgoId = collect([2001 => $printingA, 2002 => $printingB]);
+    $cardsByOracleId = collect(['oracle-urzas-mine' => $printingA]);
+
+    $result = BuildMatchGameData::run($game, 1, $cardsByMtgoId, $cardsByOracleId, $registeredCards);
+
+    expect($result['sideboardChanges'])->toBe([]);
+});
+
 it('compares correctly when registered cards are legacy (oracle_id only, no mtgo_id)', function () {
     // Legacy DeckVersion accessor output: oracle_id present, mtgo_id absent.
     // cardsByOracleId provides the mtgo_id resolution path.

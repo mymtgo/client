@@ -27,8 +27,7 @@ class ParseOpeningHand
 
         $mulliganedHands = [];       // Each entry: [instanceId => catalogId]
         $currentHandInstances = [];  // [instanceId => catalogId]
-        $handBeforeBottoming = [];   // [instanceId => catalogId]
-        $bottomedInstanceIds = [];
+        $latestFullHand = [];        // Largest hand seen since last mulligan, used to derive bottoms
         $openingPhase = true;
 
         // Opponent mulligan tracking via library count
@@ -87,6 +86,7 @@ class ParseOpeningHand
 
             if (empty($currentHandInstances)) {
                 $currentHandInstances = $handCardsNow;
+                $latestFullHand = $handCardsNow;
 
                 continue;
             }
@@ -97,21 +97,33 @@ class ParseOpeningHand
                 $overlap = array_intersect($currentIds, $newIds);
 
                 if (empty($overlap) && count($newIds) >= 4) {
-                    // Complete replacement → mulligan
+                    // Complete replacement → mulligan. Reset full-hand watermark.
                     $mulliganedHands[] = $currentHandInstances;
                     $currentHandInstances = $handCardsNow;
-                } elseif (count($newIds) < count($currentIds)) {
-                    // Hand shrank → card(s) bottomed
-                    $handBeforeBottoming = $currentHandInstances;
-                    foreach (array_diff($currentIds, $newIds) as $removedId) {
-                        $bottomedInstanceIds[] = $removedId;
-                    }
-                    $currentHandInstances = $handCardsNow;
+                    $latestFullHand = $handCardsNow;
                 } else {
                     $currentHandInstances = $handCardsNow;
+                    // Track the largest hand seen since the last mulligan. Bottoming
+                    // selection swaps can shrink the hand transiently (e.g. 7→6→5→6);
+                    // the high-water mark plus union of any cards that come back gives
+                    // the true pre-bottom hand.
+                    foreach ($handCardsNow as $instanceId => $catalogId) {
+                        if (! array_key_exists($instanceId, $latestFullHand)) {
+                            $latestFullHand[$instanceId] = $catalogId;
+                        }
+                    }
                 }
             }
         }
+
+        // Derive bottomed cards by diffing the pre-bottom high-water hand against the
+        // settled hand at end of opening phase. Robust to transient mid-bottoming
+        // snapshots that briefly remove and re-add cards as the user swaps selection.
+        $bottomedInstanceIds = array_values(array_diff(
+            array_keys($latestFullHand),
+            array_keys($currentHandInstances)
+        ));
+        $handBeforeBottoming = ! empty($bottomedInstanceIds) ? $latestFullHand : [];
 
         // Opponent mulligans: library after first hand > (startLibrary - 7) means shuffled back
         $opponentMulligans = 0;
