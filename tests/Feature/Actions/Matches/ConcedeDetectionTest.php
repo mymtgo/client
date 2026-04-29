@@ -26,14 +26,29 @@ function makeStateChangeEvent(string $context): LogEvent
     ]);
 }
 
+/**
+ * Build a games array where each entry is [winner, loser] pair.
+ *
+ * @param  array<int, array{0: ?string, 1: ?string}>  $pairs
+ * @return array<int, array{winner: ?string, loser: ?string}>
+ */
+function gamePairs(array $pairs): array
+{
+    return array_map(fn ($g) => ['winner' => $g[0], 'loser' => $g[1] ?? null], $pairs);
+}
+
+const ME = 'me';
+const OPP = 'opp';
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Normal completed matches — full game results, no early termination
 // ─────────────────────────────────────────────────────────────────────────────
 
 it('returns correct result for a normal 2-1 win', function () {
     $result = DetermineMatchResult::run(
-        [true, false, true],
-        collect(),
+        games: gamePairs([[ME, OPP], [OPP, ME], [ME, OPP]]),
+        localPlayer: ME,
+        stateChanges: collect(),
     );
 
     expect($result)->toBe(['wins' => 2, 'losses' => 1, 'decided' => true]);
@@ -41,8 +56,9 @@ it('returns correct result for a normal 2-1 win', function () {
 
 it('returns correct result for a normal 2-0 win', function () {
     $result = DetermineMatchResult::run(
-        [true, true],
-        collect(),
+        games: gamePairs([[ME, OPP], [ME, OPP]]),
+        localPlayer: ME,
+        stateChanges: collect(),
     );
 
     expect($result)->toBe(['wins' => 2, 'losses' => 0, 'decided' => true]);
@@ -50,8 +66,9 @@ it('returns correct result for a normal 2-0 win', function () {
 
 it('returns correct result for a normal 1-2 loss', function () {
     $result = DetermineMatchResult::run(
-        [false, true, false],
-        collect(),
+        games: gamePairs([[OPP, ME], [ME, OPP], [OPP, ME]]),
+        localPlayer: ME,
+        stateChanges: collect(),
     );
 
     expect($result)->toBe(['wins' => 1, 'losses' => 2, 'decided' => true]);
@@ -59,8 +76,9 @@ it('returns correct result for a normal 1-2 loss', function () {
 
 it('returns correct result for a normal 0-2 loss', function () {
     $result = DetermineMatchResult::run(
-        [false, false],
-        collect(),
+        games: gamePairs([[OPP, ME], [OPP, ME]]),
+        localPlayer: ME,
+        stateChanges: collect(),
     );
 
     expect($result)->toBe(['wins' => 0, 'losses' => 2, 'decided' => true]);
@@ -68,20 +86,21 @@ it('returns correct result for a normal 0-2 loss', function () {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Non-league (casual) concede — uses Match* prefixed states
-// Based on real match 26: MatchConcedeReqState → MatchNotJoinedEventUnderwayState
 // ─────────────────────────────────────────────────────────────────────────────
 
 it('detects casual concede as a loss after winning game 1', function () {
-    // Match 26: won game 1 ([true]), then conceded match during sideboarding
     $stateChanges = collect([
         makeStateChangeEvent('Match State Changed from MatchJoinedSideboardingState to MatchConcedeReqState'),
         makeStateChangeEvent('Match State Changed from MatchConcedeReqState to MatchNotJoinedEventUnderwayState'),
         makeStateChangeEvent('Match State Changed from MatchNotJoinedEventUnderwayState to MatchJoinedCompletedState'),
     ]);
 
-    $result = DetermineMatchResult::run([true], $stateChanges);
+    $result = DetermineMatchResult::run(
+        games: gamePairs([[ME, OPP]]),
+        localPlayer: ME,
+        stateChanges: $stateChanges,
+    );
 
-    // Actual game count preserved (1-0), decided because concession detected
     expect($result)->toBe(['wins' => 1, 'losses' => 0, 'decided' => true]);
 });
 
@@ -91,26 +110,31 @@ it('detects casual concede as a loss after losing game 1', function () {
         makeStateChangeEvent('Match State Changed from MatchConcedeReqState to MatchNotJoinedEventUnderwayState'),
     ]);
 
-    $result = DetermineMatchResult::run([false], $stateChanges);
+    $result = DetermineMatchResult::run(
+        games: gamePairs([[OPP, ME]]),
+        localPlayer: ME,
+        stateChanges: $stateChanges,
+    );
 
-    // Actual game count preserved (0-1), decided because concession detected
     expect($result)->toBe(['wins' => 0, 'losses' => 1, 'decided' => true]);
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
 // League concede — uses LeagueMatch* prefixed states
-// Based on real match 27: LeagueMatchConcedeReqState → LeagueMatchNotJoinedCatchAllState
 // ─────────────────────────────────────────────────────────────────────────────
 
 it('detects league concede as a loss after losing game 1', function () {
-    // Match 27: lost game 1 ([false]), then conceded match
     $stateChanges = collect([
         makeStateChangeEvent('Match State Changed from LeagueMatchSideboardingDeckAcceptedState to LeagueMatchConcedeReqState'),
         makeStateChangeEvent('Match State Changed from LeagueMatchConcedeReqState to LeagueMatchNotJoinedCatchAllState'),
         makeStateChangeEvent('Match State Changed from LeagueMatchNotJoinedCatchAllState to LeagueMatchClosedState'),
     ]);
 
-    $result = DetermineMatchResult::run([false], $stateChanges);
+    $result = DetermineMatchResult::run(
+        games: gamePairs([[OPP, ME]]),
+        localPlayer: ME,
+        stateChanges: $stateChanges,
+    );
 
     expect($result)->toBe(['wins' => 0, 'losses' => 1, 'decided' => true]);
 });
@@ -121,7 +145,11 @@ it('detects league concede as a loss after winning game 1', function () {
         makeStateChangeEvent('Match State Changed from LeagueMatchConcedeReqState to LeagueMatchNotJoinedCatchAllState'),
     ]);
 
-    $result = DetermineMatchResult::run([true], $stateChanges);
+    $result = DetermineMatchResult::run(
+        games: gamePairs([[ME, OPP]]),
+        localPlayer: ME,
+        stateChanges: $stateChanges,
+    );
 
     expect($result)->toBe(['wins' => 1, 'losses' => 0, 'decided' => true]);
 });
@@ -132,7 +160,11 @@ it('detects league concede with no games played', function () {
         makeStateChangeEvent('Match State Changed from LeagueMatchConcedeReqState to LeagueMatchNotJoinedCatchAllState'),
     ]);
 
-    $result = DetermineMatchResult::run([], $stateChanges);
+    $result = DetermineMatchResult::run(
+        games: [],
+        localPlayer: ME,
+        stateChanges: $stateChanges,
+    );
 
     expect($result)->toBe(['wins' => 0, 'losses' => 0, 'decided' => true]);
 });
@@ -146,9 +178,13 @@ it('marks decided when opponent disconnects and disconnectDetected is passed', f
         makeStateChangeEvent('Match State Changed from MatchJoinedEventUnderwayState to MatchClosedState'),
     ]);
 
-    $result = DetermineMatchResult::run([true], $stateChanges, disconnectDetected: true);
+    $result = DetermineMatchResult::run(
+        games: gamePairs([[ME, OPP]]),
+        localPlayer: ME,
+        stateChanges: $stateChanges,
+        disconnectDetected: true,
+    );
 
-    // Actual counts preserved, decided because disconnect flag passed
     expect($result)->toBe(['wins' => 1, 'losses' => 0, 'decided' => true]);
 });
 
@@ -157,7 +193,12 @@ it('marks decided when opponent disconnects in league match', function () {
         makeStateChangeEvent('Match State Changed from LeagueMatchJoinedEventUnderwayState to LeagueMatchClosedState'),
     ]);
 
-    $result = DetermineMatchResult::run([true], $stateChanges, disconnectDetected: true);
+    $result = DetermineMatchResult::run(
+        games: gamePairs([[ME, OPP]]),
+        localPlayer: ME,
+        stateChanges: $stateChanges,
+        disconnectDetected: true,
+    );
 
     expect($result)->toBe(['wins' => 1, 'losses' => 0, 'decided' => true]);
 });
@@ -167,7 +208,12 @@ it('marks decided when opponent disconnects with no games played', function () {
         makeStateChangeEvent('Match State Changed from MatchJoinedEventUnderwayState to MatchClosedState'),
     ]);
 
-    $result = DetermineMatchResult::run([], $stateChanges, disconnectDetected: true);
+    $result = DetermineMatchResult::run(
+        games: [],
+        localPlayer: ME,
+        stateChanges: $stateChanges,
+        disconnectDetected: true,
+    );
 
     expect($result)->toBe(['wins' => 0, 'losses' => 0, 'decided' => true]);
 });

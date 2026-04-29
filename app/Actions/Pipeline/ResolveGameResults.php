@@ -5,6 +5,7 @@ namespace App\Actions\Pipeline;
 use App\Actions\Matches\DetermineMatchResult;
 use App\Actions\Matches\ExtractGameResults;
 use App\Actions\Matches\ParseGameLogBinary;
+use App\Actions\Matches\SyncGamePivots;
 use App\Enums\MatchState;
 use App\Facades\Mtgo;
 use App\Models\GameLog;
@@ -34,7 +35,6 @@ class ResolveGameResults
             return;
         }
 
-        // Parse fresh every tick
         $raw = file_get_contents($gameLog->file_path);
 
         if ($raw === false || $raw === '') {
@@ -48,8 +48,6 @@ class ResolveGameResults
         }
 
         $entries = $decoded['entries'];
-
-        // Persist decoded entries so CreateGames and GetGameLogEntries can use them
         $gameLog->update(['decoded_entries' => $entries]);
 
         $players = ExtractGameResults::detectPlayers($entries);
@@ -61,10 +59,8 @@ class ResolveGameResults
 
         $extracted = ExtractGameResults::run($entries, $username);
 
-        // Sync game results progressively
-        self::syncGameResults($match, $extracted['results'], $extracted['games']);
+        self::syncGames($match, $extracted['games'], $username);
 
-        // Check if decisive
         $stateChanges = LogEvent::where('match_token', $match->token)
             ->where('event_type', 'match_state_changed')
             ->get();
@@ -73,8 +69,10 @@ class ResolveGameResults
             ->contains(fn ($g) => ($g['end_reason'] ?? '') === 'disconnect');
 
         $result = DetermineMatchResult::run(
-            logResults: $extracted['results'],
+            games: $extracted['games'],
+            localPlayer: $username,
             stateChanges: $stateChanges,
+            matchScore: $extracted['match_score'],
             matchScoreExists: $extracted['match_decided'],
             disconnectDetected: $disconnectDetected,
         );
@@ -106,33 +104,16 @@ class ResolveGameResults
     }
 
     /**
-     * Sync individual game win/loss results and ended_at timestamps.
+     * Sync per-game results onto each Game model in match-order.
      *
-     * @param  array<int, bool>  $results
-     * @param  array<int, array<string, mixed>>  $gameData
+     * @param  array<int, array<string, mixed>>  $games
      */
-    private static function syncGameResults(MtgoMatch $match, array $results, array $gameData): void
+    private static function syncGames(MtgoMatch $match, array $games, string $username): void
     {
-        $games = $match->games()->orderBy('started_at')->get();
+        $persistedGames = $match->games()->with('players')->orderBy('started_at')->get();
 
-        foreach ($games as $index => $game) {
-            if (! isset($results[$index])) {
-                continue;
-            }
-
-            $updates = [];
-
-            if ($game->won === null || (bool) $game->won !== $results[$index]) {
-                $updates['won'] = $results[$index];
-            }
-
-            if ($game->ended_at === null && ! empty($gameData[$index]['ended_at'])) {
-                $updates['ended_at'] = Carbon::parse($gameData[$index]['ended_at']);
-            }
-
-            if (! empty($updates)) {
-                $game->update($updates);
-            }
+        foreach ($persistedGames as $index => $game) {
+            SyncGamePivots::forGame($game, $games[$index] ?? null, $username);
         }
     }
 }
