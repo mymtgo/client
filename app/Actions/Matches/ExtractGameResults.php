@@ -2,8 +2,6 @@
 
 namespace App\Actions\Matches;
 
-use Illuminate\Support\Facades\Log;
-
 class ExtractGameResults
 {
     /**
@@ -23,31 +21,26 @@ class ExtractGameResults
     /**
      * Extract per-game results from decoded game log entries.
      *
+     * The `games` array is the canonical per-game source of truth. Indices
+     * are stable and match `game_index`. Consumers MUST NOT derive flat
+     * `[true, false, ...]` arrays for per-game lookups — they are lossy
+     * when intermediate games lack a winner or "chooses to play" line.
+     *
      * @param  array<int, array{timestamp: string, message: string}>  $entries
      * @param  string  $localPlayer  The local player's username (without @P prefix)
-     * @return array{games: array, players: array, match_score: ?array, results: array, on_play: array, starting_hands: array, match_decided: bool}
+     * @return array{games: array<int, array<string, mixed>>, players: array<int, string>, match_score: ?array{0: int, 1: int}, match_decided: bool, starting_hands: array<int, array{player: string, starting_hand: int}>}
      */
     public static function run(array $entries, string $localPlayer): array
     {
-        $games = self::splitIntoGames($entries);
         $players = self::detectPlayers($entries);
+        $rawGames = self::splitIntoGames($entries);
 
-        $gameResults = [];
-        $results = [];
-        $onPlay = [];
+        $games = [];
         $startingHands = [];
 
-        foreach ($games as $index => $gameEntries) {
-            $game = self::analyzeGame($gameEntries, $index, $localPlayer, $players);
-            $gameResults[] = $game;
-
-            if ($game['winner'] !== null) {
-                $results[] = ($game['winner'] === $localPlayer);
-            }
-
-            if ($game['on_play'] !== null) {
-                $onPlay[] = ($game['on_play'] === $localPlayer);
-            }
+        foreach ($rawGames as $index => $gameEntries) {
+            $game = self::analyzeGame($gameEntries, $index, $players);
+            $games[] = $game;
 
             foreach ($game['starting_hands'] as $player => $handSize) {
                 $startingHands[] = [
@@ -57,36 +50,11 @@ class ExtractGameResults
             }
         }
 
-        // Extract match score from "leads the match" / "wins the match" lines
-        $matchScore = self::extractMatchScore($entries, $localPlayer, $players);
-
-        // Cross-check: if match score disagrees with counted results, trust MTGO's tally
-        if ($matchScore !== null) {
-            $countedWins = count(array_filter($results, fn ($r) => $r === true));
-            $countedLosses = count(array_filter($results, fn ($r) => $r === false));
-
-            if ($countedWins !== $matchScore[0] || $countedLosses !== $matchScore[1]) {
-                Log::channel('pipeline')->warning('ExtractGameResults: match score cross-check failed', [
-                    'counted' => [$countedWins, $countedLosses],
-                    'mtgo_score' => $matchScore,
-                    'local_player' => $localPlayer,
-                ]);
-
-                // Rebuild results from MTGO's authoritative score
-                $results = array_merge(
-                    array_fill(0, $matchScore[0], true),
-                    array_fill(0, $matchScore[1], false),
-                );
-            }
-        }
-
         return [
-            'games' => $gameResults,
+            'games' => $games,
             'players' => $players,
-            'match_score' => $matchScore,
+            'match_score' => self::extractMatchScore($entries, $localPlayer),
             'match_decided' => self::hasMatchWinLine($entries),
-            'results' => $results,
-            'on_play' => $onPlay,
             'starting_hands' => $startingHands,
         ];
     }
@@ -108,13 +76,10 @@ class ExtractGameResults
         foreach ($entries as $entry) {
             $msg = $entry['message'];
 
-            // Detect game-end signals
             if (preg_match('/wins the game|has conceded from the game|has lost connection to the game/', $msg)) {
                 $gameEndSeen = true;
             }
 
-            // Detect new game boundary: roll events or join events after a game end
-            // Game 1 starts with rolls; games 2+ may start directly with @P@P joins
             if ($gameEndSeen && (preg_match('/^@P'.self::PLAYER_PATTERN.' rolled a \d/', $msg) || preg_match('/^@P@P'.self::PLAYER_PATTERN.' joined the game/', $msg))) {
                 $games[] = $current;
                 $current = [];
@@ -154,9 +119,9 @@ class ExtractGameResults
     /**
      * Analyze a single game's entries.
      *
-     * @return array{game_index: int, winner: ?string, loser: ?string, end_reason: string, on_play: ?string, starting_hands: array, started_at: ?string, ended_at: ?string}
+     * @return array{game_index: int, winner: ?string, loser: ?string, end_reason: string, on_play: ?string, starting_hands: array<string, int>, started_at: ?string, ended_at: ?string}
      */
-    private static function analyzeGame(array $entries, int $index, string $localPlayer, array $players): array
+    private static function analyzeGame(array $entries, int $index, array $players): array
     {
         $winner = null;
         $loser = null;
@@ -175,14 +140,12 @@ class ExtractGameResults
             }
             $endedAt = $ts;
 
-            // On play: "@P{player} chooses to play first/second."
             if (preg_match('/^@P('.self::PLAYER_PATTERN.') chooses to play first/', $msg, $m)) {
                 $onPlay = $m[1];
             } elseif (preg_match('/^@P('.self::PLAYER_PATTERN.') chooses to play second/', $msg, $m)) {
                 $onPlay = self::otherPlayer($m[1], $players);
             }
 
-            // Starting hand: "@P{player} begins the game with {N} cards in hand."
             if (preg_match('/^@P('.self::PLAYER_PATTERN.') begins the game with (\w+) cards? in hand/', $msg, $m)) {
                 $handRaw = strtolower($m[2]);
                 $handSize = ctype_digit($handRaw)
@@ -194,14 +157,12 @@ class ExtractGameResults
                 }
             }
 
-            // Win: "@P{player} wins the game."
             if (preg_match('/^@P('.self::PLAYER_PATTERN.') wins the game/', $msg, $m)) {
                 $winner = $m[1];
                 $loser = self::otherPlayer($m[1], $players);
                 $endReason = 'win';
             }
 
-            // Concede: "@P{player} has conceded from the game."
             if (preg_match('/^@P('.self::PLAYER_PATTERN.') has conceded from the game/', $msg, $m)) {
                 if ($winner === null) {
                     $loser = $m[1];
@@ -210,7 +171,6 @@ class ExtractGameResults
                 }
             }
 
-            // Disconnect: "@P{player} has lost connection to the game."
             if (preg_match('/^@P('.self::PLAYER_PATTERN.') has lost connection to the game/', $msg, $m)) {
                 if ($winner === null) {
                     $loser = $m[1];
@@ -267,7 +227,7 @@ class ExtractGameResults
      *
      * @return array{0: int, 1: int}|null
      */
-    private static function extractMatchScore(array $entries, string $localPlayer, array $players): ?array
+    private static function extractMatchScore(array $entries, string $localPlayer): ?array
     {
         $lastScore = null;
 
@@ -277,14 +237,11 @@ class ExtractGameResults
                 $scorerWins = (int) $m[2];
                 $scorerLosses = (int) $m[3];
 
-                if ($scorer === $localPlayer) {
-                    $lastScore = [$scorerWins, $scorerLosses];
-                } else {
-                    $lastScore = [$scorerLosses, $scorerWins];
-                }
+                $lastScore = $scorer === $localPlayer
+                    ? [$scorerWins, $scorerLosses]
+                    : [$scorerLosses, $scorerWins];
             }
 
-            // "Match Tied X-Y" — no @P prefix, both players have equal score
             if (preg_match('/^Match Tied (\d+)-(\d+)/', $entry['message'], $m)) {
                 $lastScore = [(int) $m[1], (int) $m[2]];
             }

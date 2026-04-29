@@ -24,42 +24,30 @@ class CreateGames
             fn (LogEvent $event) => $event->event_type == 'game_state_update'
         );
 
-        // Read structured results directly from the stored GameLog
-        $gameLog = null;
-        $storedLog = GameLog::where('match_token', $match->token)->first();
-        $candidates = ($storedLog && ! empty($storedLog->decoded_entries))
-            ? ExtractGameResults::detectPlayers($storedLog->decoded_entries)
-            : [];
-
-        $username = Mtgo::resolveUsername($candidates);
-
-        if ($storedLog && ! empty($storedLog->decoded_entries) && $username) {
-            $gameLog = ExtractGameResults::run($storedLog->decoded_entries, $username);
-        }
+        // Pull per-game data from the stored decoded game log when available.
+        // SyncGamePivots applies these values; CreateGames is responsible
+        // only for the existence of the Game and its pivot rows.
+        [$gameData, $username] = self::extractPerGameData($match, $gameIndex);
 
         $firstStateEvent = $gameStateEvents->first();
         $lastStateEvent = $gameStateEvents->last();
 
-        // Always create the game record, even with incomplete data
         $gameModel = Game::where('mtgo_id', $gameId)->firstOrCreate([
             'match_id' => $match->id,
             'mtgo_id' => $gameId,
         ], [
-            'won' => $gameLog['results'][$gameIndex] ?? null,
             'started_at' => $firstStateEvent
                 ? ConvertMtgoTimestamp::run($firstStateEvent->logged_at, $firstStateEvent->timestamp)
                 : null,
             'ended_at' => null,
         ]);
 
-        // Update fields that may have been unavailable at creation time
-        $gameModel->update([
-            'won' => $gameLog['results'][$gameIndex] ?? $gameModel->won,
-        ]);
-
-        // If we have no state events yet, the game record exists for later backfill
         if (! $firstStateEvent) {
             Log::channel('pipeline')->info("CreateGames: no state events yet for game {$gameId} in match {$match->mtgo_id}");
+
+            if ($username) {
+                SyncGamePivots::forGame($gameModel, $gameData, $username);
+            }
 
             return;
         }
@@ -80,77 +68,150 @@ class CreateGames
             return;
         }
 
-        $playerModelMapping = [];
+        self::upsertPlayerPivots($gameModel, $players, $parsedState, $lastStateEvent, $playerDeck, $username);
+
+        if ($username) {
+            SyncGamePivots::forGame($gameModel, $gameData, $username);
+        }
+
+        Log::channel('pipeline')->info("Match {$match->mtgo_id}: game {$gameId} — ".($gameModel->wasRecentlyCreated ? 'created' : 'updated').", {$gameModel->players()->count()} players synced");
+
+        self::replaceTimeline($gameModel, $gameStateEvents);
+    }
+
+    /**
+     * @return array{0: array<string, mixed>|null, 1: ?string}
+     */
+    private static function extractPerGameData(MtgoMatch $match, int $gameIndex): array
+    {
+        $storedLog = GameLog::where('match_token', $match->token)->first();
+
+        if (! $storedLog || empty($storedLog->decoded_entries)) {
+            return [null, Mtgo::resolveUsername()];
+        }
+
+        $candidates = ExtractGameResults::detectPlayers($storedLog->decoded_entries);
+        $username = Mtgo::resolveUsername($candidates);
+
+        if (! $username) {
+            return [null, null];
+        }
+
+        $extracted = ExtractGameResults::run($storedLog->decoded_entries, $username);
+        $gameData = $extracted['games'][$gameIndex] ?? null;
+
+        return [$gameData, $username];
+    }
+
+    /**
+     * Attach missing pivot rows and refresh deck_json / instance_id / is_local
+     * on existing rows. Never touches `on_play` — that is owned by SyncGamePivots.
+     *
+     * @param  array<int, array<string, mixed>>  $players
+     * @param  array<int, array<string, mixed>>  $playerDeck
+     */
+    private static function upsertPlayerPivots(
+        Game $game,
+        array $players,
+        array $parsedState,
+        ?LogEvent $lastStateEvent,
+        array $playerDeck,
+        ?string $username,
+    ): void {
+        $existingPlayerIds = $game->players()->pluck('player_id')->all();
 
         foreach ($players as $player) {
             $playerModel = Player::where('username', $player['Name'])->firstOrCreate([
                 'username' => $player['Name'],
             ]);
-            $deck = [];
 
-            $isYou = $playerModel->username == $username;
+            $isYou = $username !== null && $playerModel->username === $username;
+            $deck = $isYou
+                ? self::buildLocalDeck($parsedState, $player, $playerDeck)
+                : self::buildOpponentDeck($lastStateEvent, $player);
 
-            if ($isYou && ! empty($playerDeck)) {
-                // Build total quantities per CatalogId from DeckUsedInGame (the full 75)
-                $totalQuantities = [];
-                foreach ($playerDeck as $card) {
-                    $catalogId = $card['CatalogId'];
-                    $totalQuantities[$catalogId] = ($totalQuantities[$catalogId] ?? 0) + $card['Quantity'];
-                }
-
-                // Count actual sideboard cards from first game snapshot
-                $sideboardCounts = [];
-                foreach ($parsedState['Cards'] ?? [] as $snapshotCard) {
-                    if ((int) $snapshotCard['Owner'] === (int) $player['Id'] && ($snapshotCard['Zone'] ?? '') === 'Sideboard') {
-                        $catalogId = $snapshotCard['CatalogID'];
-                        $sideboardCounts[$catalogId] = ($sideboardCounts[$catalogId] ?? 0) + 1;
-                    }
-                }
-
-                // Build deck_json with sideboard flags reflecting actual game state
-                $deck = [];
-                foreach ($totalQuantities as $catalogId => $total) {
-                    $sbQty = $sideboardCounts[$catalogId] ?? 0;
-                    $mbQty = $total - $sbQty;
-
-                    if ($mbQty > 0) {
-                        $deck[] = ['mtgo_id' => $catalogId, 'quantity' => $mbQty, 'sideboard' => false];
-                    }
-                    if ($sbQty > 0) {
-                        $deck[] = ['mtgo_id' => $catalogId, 'quantity' => $sbQty, 'sideboard' => true];
-                    }
-                }
-            }
-
-            if (! $isYou) {
-                $lastParsedState = ExtractJson::run($lastStateEvent->raw_text)->first();
-
-                $deck = collect($lastParsedState ? ($lastParsedState['Cards'] ?? []) : [])
-                    ->filter(fn ($card) => $card['Owner'] == $player['Id'])
-                    ->groupBy('CatalogID')
-                    ->map(function ($cards) {
-                        return [
-                            'mtgo_id' => $cards[0]['CatalogID'],
-                            'quantity' => $cards->count(),
-                            'sideboard' => false,
-                        ];
-                    })->values()->toArray();
-            }
-
-            $onPlay = $gameLog['on_play'][$gameIndex] ?? false;
-
-            $playerModelMapping[$playerModel->id] = [
+            $payload = [
                 'instance_id' => $player['Id'],
-                'on_play' => ($onPlay && $isYou) || (! $onPlay && ! $isYou),
                 'is_local' => $isYou,
                 'deck_json' => $deck,
             ];
+
+            if (in_array($playerModel->id, $existingPlayerIds, true)) {
+                $game->players()->updateExistingPivot($playerModel->id, $payload);
+            } else {
+                $game->players()->attach($playerModel->id, $payload + ['on_play' => false]);
+            }
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $parsedState
+     * @param  array<string, mixed>  $player
+     * @param  array<int, array<string, mixed>>  $playerDeck
+     * @return array<int, array{mtgo_id: int|string, quantity: int, sideboard: bool}>
+     */
+    private static function buildLocalDeck(array $parsedState, array $player, array $playerDeck): array
+    {
+        if (empty($playerDeck)) {
+            return [];
         }
 
-        $gameModel->players()->sync($playerModelMapping);
+        $totalQuantities = [];
+        foreach ($playerDeck as $card) {
+            $catalogId = $card['CatalogId'];
+            $totalQuantities[$catalogId] = ($totalQuantities[$catalogId] ?? 0) + $card['Quantity'];
+        }
 
-        Log::channel('pipeline')->info("Match {$match->mtgo_id}: game {$gameId} — ".($gameModel->wasRecentlyCreated ? 'created' : 'updated').", {$gameModel->players()->count()} players synced");
+        $sideboardCounts = [];
+        foreach ($parsedState['Cards'] ?? [] as $snapshotCard) {
+            if ((int) $snapshotCard['Owner'] === (int) $player['Id'] && ($snapshotCard['Zone'] ?? '') === 'Sideboard') {
+                $catalogId = $snapshotCard['CatalogID'];
+                $sideboardCounts[$catalogId] = ($sideboardCounts[$catalogId] ?? 0) + 1;
+            }
+        }
 
+        $deck = [];
+        foreach ($totalQuantities as $catalogId => $total) {
+            $sbQty = $sideboardCounts[$catalogId] ?? 0;
+            $mbQty = $total - $sbQty;
+
+            if ($mbQty > 0) {
+                $deck[] = ['mtgo_id' => $catalogId, 'quantity' => $mbQty, 'sideboard' => false];
+            }
+            if ($sbQty > 0) {
+                $deck[] = ['mtgo_id' => $catalogId, 'quantity' => $sbQty, 'sideboard' => true];
+            }
+        }
+
+        return $deck;
+    }
+
+    /**
+     * @return array<int, array{mtgo_id: int|string, quantity: int, sideboard: bool}>
+     */
+    private static function buildOpponentDeck(?LogEvent $lastStateEvent, array $player): array
+    {
+        if (! $lastStateEvent) {
+            return [];
+        }
+
+        $lastParsedState = ExtractJson::run($lastStateEvent->raw_text)->first();
+
+        return collect($lastParsedState ? ($lastParsedState['Cards'] ?? []) : [])
+            ->filter(fn ($card) => $card['Owner'] == $player['Id'])
+            ->groupBy('CatalogID')
+            ->map(fn ($cards) => [
+                'mtgo_id' => $cards[0]['CatalogID'],
+                'quantity' => $cards->count(),
+                'sideboard' => false,
+            ])->values()->toArray();
+    }
+
+    /**
+     * @param  Collection<int, LogEvent>  $gameStateEvents
+     */
+    private static function replaceTimeline(Game $game, Collection $gameStateEvents): void
+    {
         $events = [];
         $timelineCatalogIds = [];
 
@@ -166,7 +227,7 @@ class CreateGames
             }
 
             $events[] = [
-                'game_id' => $gameModel->id,
+                'game_id' => $game->id,
                 'content' => json_encode($content),
                 'timestamp' => $event->timestamp,
             ];
@@ -178,10 +239,10 @@ class CreateGames
         // Non-critical: if the DB is locked by concurrent ingestion, skip
         // and let the next pass fill them in.
         try {
-            GameTimeline::where('game_id', $gameModel->id)->delete();
+            GameTimeline::where('game_id', $game->id)->delete();
             GameTimeline::insert($events);
         } catch (QueryException $e) {
-            Log::channel('pipeline')->info("CreateGames: timeline update skipped for game {$gameModel->id}: {$e->getMessage()}");
+            Log::channel('pipeline')->info("CreateGames: timeline update skipped for game {$game->id}: {$e->getMessage()}");
         }
     }
 }
