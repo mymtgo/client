@@ -27,6 +27,7 @@ class GetCardGameStats
         $sideboardOracles = collect($sideboardSource->cards)
             ->filter(fn ($card) => $card['sideboard'] === 'true' || $card['sideboard'] === true)
             ->pluck('oracle_id')
+            ->filter(fn ($id) => $id !== null)
             ->flip();
 
         $versionIds = $deckVersion

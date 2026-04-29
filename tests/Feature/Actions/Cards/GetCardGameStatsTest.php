@@ -205,6 +205,41 @@ it('aggregates pregame revealed and played counts per card', function () {
     expect($row['pregameLost'])->toBe(1); // game2 lost
 });
 
+it('does not blow up when a sideboard card has no oracle_id mapping', function () {
+    $deck = Deck::factory()->create();
+
+    // New-format signature (numeric MTGO IDs): mainboard 1234, sideboard 5678
+    $version = DeckVersion::factory()->for($deck)->create([
+        'signature' => base64_encode('1234:4:false|5678:1:true'),
+    ]);
+
+    // Mainboard card is mapped — sideboard MTGO id 5678 deliberately has no Card row,
+    // so DeckVersion::getCardsAttribute() emits oracle_id => null for it.
+    Card::factory()->create([
+        'mtgo_id' => 1234,
+        'oracle_id' => 'mainboard-oracle',
+        'name' => 'Mainboard Card',
+        'type' => 'Instant',
+        'color_identity' => 'R',
+        'image' => null,
+    ]);
+
+    $match = MtgoMatch::factory()->create(['deck_version_id' => $version->id]);
+    $game = Game::factory()->for($match, 'match')->create(['won' => true]);
+
+    insertCardGameStat([
+        'deck_version_id' => $version->id,
+        'game_id' => $game->id,
+        'oracle_id' => 'mainboard-oracle',
+    ]);
+
+    $results = GetCardGameStats::run($deck);
+
+    expect($results)->toHaveCount(1);
+    expect($results->first()['oracleId'])->toBe('mainboard-oracle');
+    expect($results->first()['isSideboard'])->toBeFalse();
+});
+
 it('filters by on_play', function () {
     $deck = Deck::factory()->create();
     $v1 = DeckVersion::factory()->for($deck)->create();
