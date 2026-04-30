@@ -141,7 +141,7 @@ it('includes game results for the active match', function () {
     );
 });
 
-it('excludes completed leagues with 5 matches', function () {
+it('falls back to most recent completed league when no active league exists', function () {
     $league = League::create([
         'token' => 'completed-league-token',
         'format' => 'Modern',
@@ -169,6 +169,58 @@ it('excludes completed leagues with 5 matches', function () {
     $response->assertOk();
     $response->assertInertia(fn ($page) => $page
         ->component('leagues/Overlay')
-        ->where('league', null)
+        ->where('league.id', $league->id)
+        ->where('league.wins', 5)
+        ->where('league.losses', 0)
+        ->where('league.hasActiveMatch', false)
+    );
+});
+
+it('prefers active league over completed when both exist', function () {
+    $completed = League::create([
+        'token' => 'old-completed-league',
+        'format' => 'Modern',
+        'name' => 'Old League',
+        'state' => 'complete',
+        'started_at' => now()->subDay(),
+    ]);
+
+    MtgoMatch::create([
+        'mtgo_id' => '600001',
+        'token' => 'old-match',
+        'league_id' => $completed->id,
+        'format' => 'Modern',
+        'match_type' => 'League',
+        'state' => MatchState::Complete,
+        'outcome' => 'win',
+        'started_at' => now()->subDay(),
+        'ended_at' => now()->subDay(),
+    ]);
+
+    $active = League::create([
+        'token' => 'new-active-league',
+        'format' => 'Modern',
+        'name' => 'New League',
+        'started_at' => now(),
+    ]);
+
+    MtgoMatch::create([
+        'mtgo_id' => '600002',
+        'token' => 'new-match',
+        'league_id' => $active->id,
+        'format' => 'Modern',
+        'match_type' => 'League',
+        'state' => MatchState::Complete,
+        'outcome' => 'loss',
+        'started_at' => now(),
+        'ended_at' => now(),
+    ]);
+
+    $response = $this->get(route('leagues.overlay'));
+
+    $response->assertOk();
+    $response->assertInertia(fn ($page) => $page
+        ->component('leagues/Overlay')
+        ->where('league.id', $active->id)
     );
 });

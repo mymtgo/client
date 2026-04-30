@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import BrowseFolderController from '@/actions/App/Http/Controllers/Settings/BrowseFolderController';
+import DeleteOverlayBackgroundController from '@/actions/App/Http/Controllers/Settings/DeleteOverlayBackgroundController';
 import RunSubmitMatchesController from '@/actions/App/Http/Controllers/Settings/RunSubmitMatchesController';
+import UploadOverlayBackgroundController from '@/actions/App/Http/Controllers/Settings/UploadOverlayBackgroundController';
 import UpdateAccountTrackingController from '@/actions/App/Http/Controllers/Settings/UpdateAccountTrackingController';
 import UpdateDataPathController from '@/actions/App/Http/Controllers/Settings/UpdateDataPathController';
 import UpdateLogPathController from '@/actions/App/Http/Controllers/Settings/UpdateLogPathController';
@@ -37,6 +39,7 @@ const props = defineProps<{
 leagueWindowEnabled: boolean;
     opponentWindowEnabled: boolean;
     deckWindowEnabled: boolean;
+    overlayBackgroundUrl: string | null;
     debugMode: boolean;
     localImages: boolean;
     localImagesSize: string;
@@ -128,6 +131,42 @@ function toggleLocalImages(val: boolean) {
     withProcessing('localImages', 'patch', UpdateLocalImagesController.url(), { enabled: val });
 }
 
+const overlayBackgroundInput = ref<HTMLInputElement | null>(null);
+
+function pickOverlayBackground() {
+    overlayBackgroundInput.value?.click();
+}
+
+function uploadOverlayBackground(event: Event) {
+    const file = (event.target as HTMLInputElement).files?.[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('image', file);
+
+    processing.value = 'overlayBackground';
+    router.post(UploadOverlayBackgroundController.url(), formData, {
+        preserveScroll: true,
+        forceFormData: true,
+        onFinish: () => {
+            processing.value = null;
+            if (overlayBackgroundInput.value) {
+                overlayBackgroundInput.value.value = '';
+            }
+        },
+    });
+}
+
+function removeOverlayBackground() {
+    processing.value = 'overlayBackground';
+    router.delete(DeleteOverlayBackgroundController.url(), {
+        preserveScroll: true,
+        onFinish: () => {
+            processing.value = null;
+        },
+    });
+}
+
 const sampleLeague: LeagueData = {
     id: 0,
     name: 'Friendly League',
@@ -135,7 +174,9 @@ const sampleLeague: LeagueData = {
     wins: 3,
     losses: 1,
     totalMatches: 4,
+    deckId: null,
     deckName: 'Mono Green Tron',
+    backgroundUrl: props.overlayBackgroundUrl,
     hasActiveMatch: true,
     games: [
         { won: true, ended: true },
@@ -200,6 +241,40 @@ const sampleOpponent: OpponentData = {
 
                     <div class="mx-auto w-64 overflow-hidden rounded-md border border-border">
                         <LeagueTracker :league="sampleLeague" />
+                    </div>
+
+                    <div class="flex flex-col gap-2 rounded-md border border-border bg-muted/30 p-3">
+                        <div class="flex items-center justify-between gap-3">
+                            <div>
+                                <Label>Custom overlay background</Label>
+                                <p class="text-sm text-muted-foreground">
+                                    Upload an image (e.g. channel art, brand logo). Falls back to your deck cover when empty. Recommended: ~1200×400, max 5MB.
+                                </p>
+                            </div>
+                            <div class="flex shrink-0 items-center gap-2">
+                                <Button type="button" variant="outline" size="sm" :disabled="processing === 'overlayBackground'" @click="pickOverlayBackground">
+                                    {{ props.overlayBackgroundUrl ? 'Replace' : 'Upload' }}
+                                </Button>
+                                <Button
+                                    v-if="props.overlayBackgroundUrl"
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    :disabled="processing === 'overlayBackground'"
+                                    @click="removeOverlayBackground"
+                                >
+                                    Remove
+                                </Button>
+                            </div>
+                        </div>
+                        <input
+                            ref="overlayBackgroundInput"
+                            type="file"
+                            accept="image/jpeg,image/png,image/webp,image/gif"
+                            class="hidden"
+                            @change="uploadOverlayBackground"
+                        />
+                        <p v-if="errors['image']" class="text-sm text-destructive">{{ errors['image'] }}</p>
                     </div>
 
                     <Separator />

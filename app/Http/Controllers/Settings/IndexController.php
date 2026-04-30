@@ -33,6 +33,12 @@ class IndexController extends Controller
         $logPath = Mtgo::getLogPath();
         $dataPath = Mtgo::getLogDataPath();
 
+        $overlayDisk = Storage::disk('overlay');
+        $overlayBackgroundPath = AppSettings::overlayBackgroundPath();
+        $overlayBackgroundUrl = $overlayBackgroundPath && $overlayDisk->exists($overlayBackgroundPath)
+            ? $overlayDisk->url($overlayBackgroundPath)
+            : null;
+
         return Inertia::render('settings/Index', [
             'logPath' => $logPath,
             'dataPath' => $dataPath,
@@ -49,6 +55,7 @@ class IndexController extends Controller
             'leagueWindowEnabled' => AppSettings::showLeagueWindow(),
             'opponentWindowEnabled' => AppSettings::showOpponentWindow(),
             'deckWindowEnabled' => AppSettings::showDeckWindow(),
+            'overlayBackgroundUrl' => $overlayBackgroundUrl,
             'localImages' => AppSettings::downloadImagesLocally(),
             'localImagesSize' => $this->getLocalImagesSize(),
         ]);

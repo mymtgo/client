@@ -243,6 +243,24 @@ class AppSettings
         $this->set('local_images', $value);
     }
 
+    public function overlayBackgroundPath(): ?string
+    {
+        $value = $this->get('overlay_background_path');
+
+        return is_string($value) && $value !== '' ? $value : null;
+    }
+
+    public function setOverlayBackgroundPath(?string $path): void
+    {
+        if ($path === null || $path === '') {
+            $this->forget('overlay_background_path');
+
+            return;
+        }
+
+        $this->set('overlay_background_path', $path);
+    }
+
     public function decksGroupedByArchetype(): bool
     {
         return (bool) $this->get('decks_grouped_by_archetype', false);

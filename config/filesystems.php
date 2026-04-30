@@ -47,6 +47,15 @@ return [
             'report' => false,
         ],
 
+        'overlay' => [
+            'driver' => 'local',
+            'root' => storage_path('app/overlay'),
+            'serve' => true,
+            'visibility' => 'public',
+            'throw' => false,
+            'report' => false,
+        ],
+
         'public' => [
             'driver' => 'local',
             'root' => storage_path('app/public'),

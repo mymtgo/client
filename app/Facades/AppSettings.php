@@ -26,6 +26,8 @@ use Illuminate\Support\Facades\Facade;
  * @method static void setShowDeckWindow(bool $value)
  * @method static bool downloadImagesLocally()
  * @method static void setDownloadImagesLocally(bool $value)
+ * @method static ?string overlayBackgroundPath()
+ * @method static void setOverlayBackgroundPath(?string $path)
  * @method static bool decksGroupedByArchetype()
  * @method static void setDecksGroupedByArchetype(bool $value)
  * @method static string systemTimezone()
