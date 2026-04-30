@@ -32,6 +32,7 @@ sideboard: boolean;
 export type DeckData = {
 id: number;
 name: string;
+originalName: string | null;
 format: string;
 matchesCount: number;
 matchesWon: number;

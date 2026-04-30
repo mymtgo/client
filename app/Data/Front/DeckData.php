@@ -14,6 +14,7 @@ class DeckData extends Data
     public function __construct(
         public int $id,
         public string $name,
+        public ?string $originalName,
         public string $format,
         public int $matchesCount,
         public int $matchesWon,
@@ -40,6 +41,7 @@ class DeckData extends Data
         return new self(
             id: $deck->id,
             name: $deck->name,
+            originalName: $deck->original_name,
             format: MtgoMatch::displayFormat($deck->format),
             matchesCount: $deck->matches_count ?: 0,
             matchesWon: $deck->won_matches_count ?: 0,

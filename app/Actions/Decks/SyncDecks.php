@@ -62,13 +62,21 @@ class SyncDecks
 
             $accountId = Account::active()->value('id');
 
-            $deck->fill([
+            $fill = [
                 'mtgo_id' => $attributes['NetDeckId'],
-                'name' => $attributes['Name'],
                 'format' => $attributes['FormatCode'],
                 'account_id' => $deck->account_id ?? $accountId,
                 'updated_at' => $attributes['Timestamp'],
-            ]);
+            ];
+
+            // Preserve user-set custom names. `original_name` is only populated
+            // once the user has manually renamed the deck, so its presence
+            // signals that the MTGO XML name should not overwrite ours.
+            if (! $deck->original_name) {
+                $fill['name'] = $attributes['Name'];
+            }
+
+            $deck->fill($fill);
 
             $deck->save();
 

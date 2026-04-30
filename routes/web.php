@@ -32,6 +32,7 @@ use App\Http\Controllers\Decks\ToggleGroupingController;
 use App\Http\Controllers\Decks\TriggerArchetypeDetectionController;
 use App\Http\Controllers\Decks\UpdateCoverArtController;
 use App\Http\Controllers\Decks\UpdateDeckArchetypeController;
+use App\Http\Controllers\Decks\UpdateNameController;
 use App\Http\Controllers\Games\OpenReplayController;
 use App\Http\Controllers\Import\CancelScanController;
 use App\Http\Controllers\Import\DestroyController as ImportDestroyController;
@@ -131,6 +132,7 @@ Route::group([], function (Router $router) {
         $group->get('{deck:id}/cover-art-options', CoverArtOptionsController::class)->name('decks.cover-art-options');
         $group->patch('{deck:id}/cover-art', UpdateCoverArtController::class)->name('decks.update-cover-art');
         $group->patch('{deck:id}/archetype', UpdateDeckArchetypeController::class)->name('decks.update-archetype');
+        $group->patch('{deck:id}/name', UpdateNameController::class)->name('decks.update-name');
         $group->post('grouping', ToggleGroupingController::class)->name('decks.toggle-grouping');
     });
 

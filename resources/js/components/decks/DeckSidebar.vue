@@ -3,6 +3,7 @@ import { Link, router } from '@inertiajs/vue3';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import ManaSymbols from '@/components/ManaSymbols.vue';
+import EditableDeckName from '@/components/decks/EditableDeckName.vue';
 import DashboardController from '@/actions/App/Http/Controllers/Decks/DashboardController';
 import CardStatsController from '@/actions/App/Http/Controllers/Decks/CardStatsController';
 import GameStatsController from '@/actions/App/Http/Controllers/Decks/GameStatsController';
@@ -74,7 +75,12 @@ const navItems = computed(() => [
                 :class="deck.coverArt ? '[text-shadow:_0_1px_4px_rgb(0_0_0_/_80%)]' : ''"
             >
                 <ManaSymbols v-if="deck.colorIdentity" :symbols="deck.colorIdentity" class="shrink-0" />
-                <h2 class="truncate text-base leading-tight font-semibold">{{ deck.name }}</h2>
+                <EditableDeckName
+                    :deck-id="deck.id"
+                    :name="deck.name"
+                    :original-name="deck.originalName"
+                    class="w-full"
+                />
             </div>
         </div>
 

@@ -134,6 +134,39 @@ XML;
         $this->assertSoftDeleted($deck);
     }
 
+    public function test_it_does_not_overwrite_name_when_original_name_is_populated()
+    {
+        $deckId = '75d11598-f222-488b-a249-14a09e075727';
+        $deck = Deck::factory()->create([
+            'mtgo_id' => $deckId,
+            'name' => 'Custom Name',
+            'original_name' => 'MTGO Name',
+        ]);
+        Card::factory()->create(['mtgo_id' => 123]);
+
+        $path = storage_path('framework/testing/disks/user_home/AppData/Local/Apps/2.0');
+        $randomHash = 'preserve123456';
+        $activePath = $path.'/'.$randomHash;
+        $activeDataPath = $path.'/Data/'.$randomHash;
+        mkdir($activePath, 0777, true);
+        mkdir($activeDataPath, 0777, true);
+        file_put_contents($activePath.'/mtgo.log', 'dummy');
+        file_put_contents($activeDataPath.'/user_settings', '');
+
+        $xmlContent = <<<XML
+<Grouping Name="Updated MTGO Name" NetDeckId="{$deckId}" GroupingType="Deck" Timestamp="2026-04-29T10:00:00" FormatCode="Standard">
+    <Item CatId="123" Quantity="4" IsSideboard="false" />
+</Grouping>
+XML;
+        file_put_contents($activeDataPath.'/grouping '.$deckId.'.xml', $xmlContent);
+
+        SyncDecks::run();
+
+        $deck->refresh();
+        $this->assertSame('Custom Name', $deck->name);
+        $this->assertSame('MTGO Name', $deck->original_name);
+    }
+
     public function test_it_produces_canonical_signature_regardless_of_xml_sideboard_capitalization()
     {
         $deckId = 'caab1001-0000-0000-0000-000000002001';
