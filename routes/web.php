@@ -7,6 +7,7 @@ use App\Http\Controllers\Archetypes\EditController;
 use App\Http\Controllers\Archetypes\ExportDekController;
 use App\Http\Controllers\Archetypes\ScanMatchController;
 use App\Http\Controllers\Archetypes\UploadDekController;
+use App\Http\Controllers\Cards\ImageBase64Controller;
 use App\Http\Controllers\Debug\Cards\PopulateController;
 use App\Http\Controllers\Debug\Decks\SyncController;
 use App\Http\Controllers\Debug\LogEvents\IngestController;
@@ -109,6 +110,12 @@ Route::group([], function (Router $router) {
         'prefix' => 'opponents',
     ], function (Router $group) {
         $group->get('/', App\Http\Controllers\Opponents\IndexController::class)->name('opponents.index');
+    });
+
+    $router->group([
+        'prefix' => 'cards',
+    ], function (Router $group) {
+        $group->get('{oracleId}/image-base64', ImageBase64Controller::class)->name('cards.image-base64');
     });
 
     $router->group([

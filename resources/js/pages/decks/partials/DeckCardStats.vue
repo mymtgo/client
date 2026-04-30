@@ -1,11 +1,16 @@
 <script setup lang="ts">
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from '@/components/ui/context-menu';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Spinner } from '@/components/ui/spinner';
 import SegmentedControl from '@/components/SegmentedControl.vue';
+import CardStatScreenshot from '@/components/cards/CardStatScreenshot.vue';
+import ImageBase64Controller from '@/actions/App/Http/Controllers/Cards/ImageBase64Controller';
 import RegenerateCardStatsController from '@/actions/App/Http/Controllers/Decks/RegenerateCardStatsController';
+import { useScreenshot } from '@/composables/useScreenshot';
 import { useToast } from '@/composables/useToast';
+import { timeframeLabel } from '@/lib/timeframes';
 import {
     DropdownMenu,
     DropdownMenuCheckboxItem,
@@ -48,7 +53,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { CircleHelp, Search } from 'lucide-vue-next';
-import { computed, ref, watch, type Component } from 'vue';
+import { computed, nextTick, ref, watch, type Component } from 'vue';
 
 type CardStat = {
     name: string;
@@ -90,6 +95,7 @@ type CardStat = {
 
 const props = defineProps<{
     deckId: number;
+    timeframe?: string;
     cardStats?: {
         stats: CardStat[];
         archetypes: { id: number; name: string; colorIdentity: string | null }[];
@@ -404,6 +410,77 @@ function onRowMove(e: MouseEvent) {
 }
 function onRowLeave() {
     hoveredImage.value = null;
+}
+
+// ── Screenshot ───────────────────────────────────────────────────────────────
+
+const screenshotStat = ref<CardStat | null>(null);
+const screenshotImageDataUrl = ref<string | null>(null);
+const screenshotRef = ref<InstanceType<typeof CardStatScreenshot> | null>(null);
+
+const { capture } = useScreenshot();
+
+const selectedArchetypeRecord = computed(() => {
+    if (selectedArchetype.value === '__all__') return null;
+    return archetypes.value.find((a) => String(a.id) === selectedArchetype.value) ?? null;
+});
+
+const archetypeName = computed<string | null>(() => selectedArchetypeRecord.value?.name ?? null);
+const archetypeColorIdentity = computed<string | null>(() => selectedArchetypeRecord.value?.colorIdentity ?? null);
+
+const boardLabel = computed<string | null>(() => {
+    if (selectedBoard.value === 'preboard') return 'Game 1';
+    if (selectedBoard.value === 'postboard') return 'Postboard';
+    return null;
+});
+
+const playDrawLabel = computed<string | null>(() => {
+    if (selectedPlayDraw.value === 'play') return 'On the play';
+    if (selectedPlayDraw.value === 'draw') return 'On the draw';
+    return null;
+});
+
+const screenshotTimeframeLabel = computed<string>(() => timeframeLabel(props.timeframe ?? 'alltime'));
+
+async function fetchImageDataUrl(oracleId: string): Promise<string | null> {
+    try {
+        const response = await fetch(ImageBase64Controller.url({ oracleId }));
+        if (!response.ok) return null;
+        const data = (await response.json()) as { dataUrl?: string | null };
+        return data.dataUrl ?? null;
+    } catch {
+        return null;
+    }
+}
+
+async function copyScreenshot(stat: CardStat) {
+    if (screenshotStat.value) return;
+    if (stat.oracleId) {
+        screenshotImageDataUrl.value = await fetchImageDataUrl(stat.oracleId);
+    } else {
+        screenshotImageDataUrl.value = null;
+    }
+    screenshotStat.value = stat;
+    try {
+        await nextTick();
+        const el = screenshotRef.value?.$el as HTMLElement | undefined;
+        if (el) {
+            const img = el.querySelector('img');
+            if (img && !img.complete) {
+                await new Promise<void>((resolve) => {
+                    img.addEventListener('load', () => resolve(), { once: true });
+                    img.addEventListener('error', () => resolve(), { once: true });
+                });
+            }
+            if (img && typeof img.decode === 'function') {
+                await img.decode().catch(() => undefined);
+            }
+            await capture(el);
+        }
+    } finally {
+        screenshotStat.value = null;
+        screenshotImageDataUrl.value = null;
+    }
 }
 
 function sortIcon(key: SortKey) {
@@ -820,15 +897,20 @@ function sortIcon(key: SortKey) {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        <DeckCardStatsRow
-                            v-for="stat in filteredAndSortedStats.main"
-                            :key="stat.oracleId"
-                            :stat="stat"
-                            :visible-columns="visibleColumns"
-                            @image-enter="onRowEnter"
-                            @image-move="onRowMove"
-                            @image-leave="onRowLeave"
-                        />
+                        <ContextMenu v-for="stat in filteredAndSortedStats.main" :key="stat.oracleId">
+                            <ContextMenuTrigger asChild>
+                                <DeckCardStatsRow
+                                    :stat="stat"
+                                    :visible-columns="visibleColumns"
+                                    @image-enter="onRowEnter"
+                                    @image-move="onRowMove"
+                                    @image-leave="onRowLeave"
+                                />
+                            </ContextMenuTrigger>
+                            <ContextMenuContent>
+                                <ContextMenuItem @click="copyScreenshot(stat)">Copy screenshot</ContextMenuItem>
+                            </ContextMenuContent>
+                        </ContextMenu>
 
                         <TableRow v-if="filteredAndSortedStats.lowData.length" class="pointer-events-none">
                             <TableCell :colspan="visibleColumnCount" class="py-1.5">
@@ -840,16 +922,21 @@ function sortIcon(key: SortKey) {
                             </TableCell>
                         </TableRow>
 
-                        <DeckCardStatsRow
-                            v-for="stat in filteredAndSortedStats.lowData"
-                            :key="stat.oracleId"
-                            :stat="stat"
-                            :visible-columns="visibleColumns"
-                            class="opacity-60"
-                            @image-enter="onRowEnter"
-                            @image-move="onRowMove"
-                            @image-leave="onRowLeave"
-                        />
+                        <ContextMenu v-for="stat in filteredAndSortedStats.lowData" :key="stat.oracleId">
+                            <ContextMenuTrigger asChild>
+                                <DeckCardStatsRow
+                                    :stat="stat"
+                                    :visible-columns="visibleColumns"
+                                    class="opacity-60"
+                                    @image-enter="onRowEnter"
+                                    @image-move="onRowMove"
+                                    @image-leave="onRowLeave"
+                                />
+                            </ContextMenuTrigger>
+                            <ContextMenuContent>
+                                <ContextMenuItem @click="copyScreenshot(stat)">Copy screenshot</ContextMenuItem>
+                            </ContextMenuContent>
+                        </ContextMenu>
                     </TableBody>
                 </Table>
             </CardContent>
@@ -864,6 +951,23 @@ function sortIcon(key: SortKey) {
             :style="{ top: `${mouseY - 160}px`, left: `${mouseX + 16}px` }"
         />
     </Teleport>
+
+    <div
+        v-if="screenshotStat"
+        style="position: fixed; top: -9999px; left: -9999px; pointer-events: none;"
+    >
+        <CardStatScreenshot
+            ref="screenshotRef"
+            :stat="screenshotStat"
+            :visible-columns="visibleColumns"
+            :timeframe-label="screenshotTimeframeLabel"
+            :archetype-name="archetypeName"
+            :archetype-color-identity="archetypeColorIdentity"
+            :board-label="boardLabel"
+            :play-draw-label="playDrawLabel"
+            :image-data-url="screenshotImageDataUrl"
+        />
+    </div>
 
     <Dialog v-model:open="regenerateOpen">
         <DialogContent>
