@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import SegmentedControl from '@/components/SegmentedControl.vue';
+import { TIMEFRAME_OPTIONS } from '@/lib/timeframes';
 
 defineProps<{
     modelValue: string;
@@ -8,16 +9,8 @@ defineProps<{
 const emit = defineEmits<{
     'update:modelValue': [value: string];
 }>();
-
-const options = [
-    { value: 'alltime', label: 'All time' },
-    { value: 'year', label: 'This year' },
-    { value: 'monthly', label: '30 days' },
-    { value: 'biweekly', label: '2 weeks' },
-    { value: 'week', label: '7 days' },
-];
 </script>
 
 <template>
-    <SegmentedControl :modelValue="modelValue" :options="options" @update:modelValue="emit('update:modelValue', $event)" />
+    <SegmentedControl :modelValue="modelValue" :options="TIMEFRAME_OPTIONS" @update:modelValue="emit('update:modelValue', $event)" />
 </template>
