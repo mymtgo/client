@@ -1,19 +1,22 @@
 <script setup lang="ts">
 import MatchShowController from '@/actions/App/Http/Controllers/Matches/ShowController';
+import LeagueResultBadge from '@/components/leagues/LeagueResultBadge.vue';
+import LeagueScreenshot from '@/components/leagues/LeagueScreenshot.vue';
 import ResultBadge from '@/components/matches/ResultBadge.vue';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import LeagueScreenshot from '@/components/leagues/LeagueScreenshot.vue';
 import { useScreenshot } from '@/composables/useScreenshot';
-import { Badge } from '@/components/ui/badge';
-import { Camera } from 'lucide-vue-next';
-import { router } from '@inertiajs/vue3';
-import { nextTick, ref } from 'vue';
 import type { LeagueRun } from '@/types/leagues';
+import { router } from '@inertiajs/vue3';
+import { Camera } from 'lucide-vue-next';
+import { computed, nextTick, ref } from 'vue';
 
-defineProps<{
+const props = defineProps<{
     league: LeagueRun;
 }>();
+
+const wins = computed(() => props.league.results.filter((r) => r === 'W').length);
+const losses = computed(() => props.league.results.filter((r) => r === 'L').length);
 
 const screenshotRef = ref<InstanceType<typeof LeagueScreenshot> | null>(null);
 const showScreenshot = ref(false);
@@ -33,18 +36,21 @@ async function copyScreenshot() {
 <template>
     <Card class="gap-0 overflow-hidden p-0">
         <CardContent class="p-4">
-            <div class="mb-3 flex items-center justify-between">
+            <div class="mb-3 flex items-center justify-between gap-3">
                 <p class="text-xs font-medium tracking-wide text-muted-foreground uppercase">Latest League</p>
                 <div class="flex items-center gap-2">
-                    <Badge variant="outline" class="text-xs">{{ league.format }}</Badge>
-                    <span class="text-sm font-semibold tabular-nums">
-                        {{ league.results.filter((r) => r === 'W').length }}-{{ league.results.filter((r) => r === 'L').length }}
-                    </span>
+                    <LeagueResultBadge
+                        :classification="league.classification"
+                        :wins="wins"
+                        :losses="losses"
+                        :live-round="league.liveRound"
+                    />
                     <Button
                         variant="ghost"
                         size="icon"
                         class="size-6 shrink-0"
                         :disabled="capturing"
+                        aria-label="Copy screenshot of league"
                         @click.stop="copyScreenshot"
                     >
                         <Camera class="size-3.5" />

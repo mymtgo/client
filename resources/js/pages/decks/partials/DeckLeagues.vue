@@ -1,36 +1,23 @@
 <script setup lang="ts">
-import LeagueTable from '@/components/leagues/LeagueTable.vue';
+import LeagueCard from '@/components/leagues/LeagueCard.vue';
+import type { LeagueRun } from '@/types/leagues';
 
-type LeagueMatch = {
-    id: number;
-    result: 'W' | 'L';
-    opponentName: string | null;
-    opponentArchetype: string | null;
-    games: string;
-    startedAt: string;
-};
-
-type LeagueRun = {
-    id: number;
-    name: string;
-    format: string;
-    deck: { id: number; name: string } | null;
-    startedAt: string;
-    results: ('W' | 'L' | null)[];
-    state: 'active' | 'complete' | 'partial' | 'dropped';
-    matches: LeagueMatch[];
-};
-
-defineProps<{
-    leagues: LeagueRun[];
-}>();
+defineProps<{ leagues: LeagueRun[] }>();
 </script>
 
 <template>
-    <div class="space-y-3">
-        <p v-if="!leagues.length" class="py-8 text-center text-sm text-muted-foreground">
+    <div class="flex flex-col gap-3">
+        <p
+            v-if="!leagues.length"
+            class="py-8 text-center text-sm text-muted-foreground"
+        >
             No league runs found for this deck.
         </p>
-        <LeagueTable v-for="league in leagues" :key="league.id" :league="league" />
+        <LeagueCard
+            v-for="league in leagues"
+            :key="league.id"
+            :league="league"
+            hide-deck-identity
+        />
     </div>
 </template>

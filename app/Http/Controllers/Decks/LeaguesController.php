@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Decks;
 use App\Actions\Decks\GetDeckStats;
 use App\Actions\Decks\GetDeckViewSharedProps;
 use App\Actions\Leagues\FormatLeagueRuns;
+use App\Actions\Leagues\GetLeagueKpis;
 use App\Concerns\HasTimeframeFilter;
 use App\Http\Controllers\Controller;
 use App\Models\Deck;
@@ -31,9 +32,11 @@ class LeaguesController extends Controller
         $stats = GetDeckStats::run($deck, $from, $to, $deckVersion);
         $allMatchIds = $stats['allMatchIds'];
 
-        $leagues = League::whereHas('matches', fn ($q) => $q->whereIn('matches.id', $allMatchIds))
+        $kpisQuery = League::whereHas('matches', fn ($q) => $q->whereIn('matches.id', $allMatchIds))
+            ->whereBetween('started_at', [$from, $to]);
+
+        $leagues = (clone $kpisQuery)
             ->with(['deckVersion.deck.cover'])
-            ->whereBetween('started_at', [$from, $to])
             ->orderByDesc('started_at')
             ->get();
 
@@ -43,6 +46,7 @@ class LeaguesController extends Controller
             'currentPage' => 'leagues',
             'timeframe' => $timeframe,
             'leagues' => FormatLeagueRuns::run($leagues, deckId: $deck->id),
+            'kpis' => GetLeagueKpis::run($kpisQuery),
         ]);
     }
 }
