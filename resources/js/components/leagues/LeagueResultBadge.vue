@@ -47,6 +47,5 @@ const tone = computed(() => {
             class="absolute -top-2 -right-2 size-4 fill-yellow-500 text-yellow-500"
         />
         <span class="text-2xl leading-none font-bold">{{ score }}</span>
-        <span class="mt-1 text-[10px] font-medium tracking-widest uppercase">{{ label }}</span>
     </div>
 </template>

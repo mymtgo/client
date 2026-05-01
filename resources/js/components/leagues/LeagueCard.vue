@@ -145,7 +145,7 @@ function formatDuration(seconds: number | null) {
                     >
                         {{ league.deck.name }}
                     </span>
-                    <Badge variant="outline" class="shrink-0 text-[10px] tracking-wider uppercase">
+                    <Badge variant="outline" class="shrink-0 text-[10px] tracking-wider uppercase" v-if="!hideDeckIdentity && league.deck">
                         {{ league.format }}
                     </Badge>
                     <span v-if="league.versionLabel" class="text-xs text-muted-foreground">
