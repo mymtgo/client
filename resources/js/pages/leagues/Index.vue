@@ -78,9 +78,10 @@ function handleFilterChange(next: LeagueFiltersState) {
 
         <div v-else class="flex flex-col gap-3">
             <LeagueCard
-                v-for="league in displayed"
+                v-for="(league, index) in displayed"
                 :key="league.id"
                 :league="league"
+                :default-expanded="index === 0"
             />
         </div>
 

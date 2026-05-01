@@ -7,70 +7,83 @@ defineProps<{ kpis: LeagueKpis }>();
 </script>
 
 <template>
-    <Card>
-        <CardContent
-            class="grid grid-cols-2 divide-x divide-y divide-border p-0 md:grid-cols-3 lg:grid-cols-6"
-        >
-            <div class="flex flex-col gap-1 p-4">
-                <div class="inline-flex items-center gap-1 text-[10px] font-medium tracking-widest text-muted-foreground uppercase">
+    <div class="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
+        <Card class="gap-0 py-0">
+            <CardContent class="flex flex-col gap-0.5 p-3">
+                <span class="inline-flex items-center gap-1 text-xs tracking-wide text-muted-foreground uppercase">
                     <Activity class="size-3" /> Runs
-                </div>
-                <div class="text-2xl font-bold tabular-nums">{{ kpis.runs.total }}</div>
-                <div class="text-xs text-muted-foreground">
+                </span>
+                <span class="text-3xl font-bold tabular-nums">{{ kpis.runs.total }}</span>
+                <span class="text-sm text-muted-foreground">
                     {{ kpis.runs.completed }} completed · {{ kpis.runs.live }} live
-                </div>
-            </div>
+                </span>
+            </CardContent>
+        </Card>
 
-            <div class="flex flex-col gap-1 p-4">
-                <div class="inline-flex items-center gap-1 text-[10px] font-medium tracking-widest text-muted-foreground uppercase">
+        <Card class="gap-0 py-0">
+            <CardContent class="flex flex-col gap-0.5 p-3">
+                <span class="inline-flex items-center gap-1 text-xs tracking-wide text-muted-foreground uppercase">
                     <Trophy class="size-3" /> Trophies
-                </div>
-                <div class="text-2xl font-bold tabular-nums">{{ kpis.trophies }}</div>
-                <div class="text-xs text-muted-foreground">5-0 finishes</div>
-            </div>
+                </span>
+                <span class="text-3xl font-bold tabular-nums">{{ kpis.trophies }}</span>
+                <span class="text-sm text-muted-foreground">5-0 finishes</span>
+            </CardContent>
+        </Card>
 
-            <div class="flex flex-col gap-1 p-4">
-                <div class="inline-flex items-center gap-1 text-[10px] font-medium tracking-widest text-muted-foreground uppercase">
-                    <Target class="size-3" /> Trophy rate
-                </div>
-                <div class="text-2xl font-bold tabular-nums">
+        <Card class="gap-0 py-0">
+            <CardContent class="flex flex-col gap-0.5 p-3">
+                <span class="inline-flex items-center gap-1 text-xs tracking-wide text-muted-foreground uppercase">
+                    <Target class="size-3" /> Trophy Rate
+                </span>
+                <span class="text-3xl font-bold tabular-nums">
                     {{ kpis.trophyRate !== null ? kpis.trophyRate + '%' : '—' }}
-                </div>
-                <div class="text-xs text-muted-foreground">across {{ kpis.runs.completed }} runs</div>
-            </div>
+                </span>
+                <span class="text-sm text-muted-foreground">across {{ kpis.runs.completed }} runs</span>
+            </CardContent>
+        </Card>
 
-            <div class="flex flex-col gap-1 p-4">
-                <div class="inline-flex items-center gap-1 text-[10px] font-medium tracking-widest text-muted-foreground uppercase">
-                    <Coins class="size-3" /> Cash rate
-                </div>
-                <div class="text-2xl font-bold tabular-nums">
+        <Card class="gap-0 py-0">
+            <CardContent class="flex flex-col gap-0.5 p-3">
+                <span class="inline-flex items-center gap-1 text-xs tracking-wide text-muted-foreground uppercase">
+                    <Coins class="size-3" /> Cash Rate
+                </span>
+                <span class="text-3xl font-bold tabular-nums">
                     {{ kpis.cashRate !== null ? kpis.cashRate + '%' : '—' }}
-                </div>
-                <div class="text-xs text-muted-foreground">4-1 or better</div>
-            </div>
+                </span>
+                <span class="text-sm text-muted-foreground">4-1 or better</span>
+            </CardContent>
+        </Card>
 
-            <div class="flex flex-col gap-1 p-4">
-                <div class="inline-flex items-center gap-1 text-[10px] font-medium tracking-widest text-muted-foreground uppercase">
-                    <Users class="size-3" /> Avg finish
-                </div>
-                <div class="text-2xl font-bold tabular-nums">
-                    {{ kpis.avgFinish !== null ? kpis.avgFinish + ' wins' : '—' }}
-                </div>
-                <div class="text-xs text-muted-foreground">across {{ kpis.runs.completed }} runs</div>
-            </div>
+        <Card class="gap-0 py-0">
+            <CardContent class="flex flex-col gap-0.5 p-3">
+                <span class="inline-flex items-center gap-1 text-xs tracking-wide text-muted-foreground uppercase">
+                    <Users class="size-3" /> Avg Finish
+                </span>
+                <span class="text-3xl font-bold tabular-nums">
+                    {{ kpis.avgFinish !== null ? kpis.avgFinish : '—' }}
+                </span>
+                <span class="text-sm text-muted-foreground">
+                    {{ kpis.avgFinish !== null ? 'wins per run' : 'no completed runs' }}
+                </span>
+            </CardContent>
+        </Card>
 
-            <div class="flex flex-col gap-1 p-4">
-                <div class="inline-flex items-center gap-1 text-[10px] font-medium tracking-widest text-muted-foreground uppercase">
-                    <Swords class="size-3" /> Top matchup
-                </div>
-                <div v-if="kpis.topMatchup" class="truncate text-base font-semibold">
-                    {{ kpis.topMatchup.archetype }}
-                </div>
-                <div v-else class="text-base font-semibold text-muted-foreground">—</div>
-                <div v-if="kpis.topMatchup" class="text-xs text-muted-foreground">
-                    {{ kpis.topMatchup.wins }}-{{ kpis.topMatchup.losses }} · {{ kpis.topMatchup.count }} played
-                </div>
-            </div>
-        </CardContent>
-    </Card>
+        <Card class="gap-0 py-0">
+            <CardContent class="flex flex-col gap-0.5 p-3">
+                <span class="inline-flex items-center gap-1 text-xs tracking-wide text-muted-foreground uppercase">
+                    <Swords class="size-3" /> Top Matchup
+                </span>
+                <template v-if="kpis.topMatchup">
+                    <span class="truncate text-base font-semibold leading-9">{{ kpis.topMatchup.archetype }}</span>
+                    <span class="text-sm text-muted-foreground tabular-nums">
+                        {{ kpis.topMatchup.wins }}-{{ kpis.topMatchup.losses }} · {{ kpis.topMatchup.count }} played
+                    </span>
+                </template>
+                <template v-else>
+                    <span class="text-base font-semibold leading-9 text-muted-foreground">—</span>
+                    <span class="text-sm text-muted-foreground">Not enough data</span>
+                </template>
+            </CardContent>
+        </Card>
+    </div>
 </template>
