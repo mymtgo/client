@@ -145,8 +145,12 @@ class ProcessLeagueEvents
             return;
         }
 
+        // Defense in depth: pick the most recently started Active league when
+        // multiple share the same event_id (legacy data where AssignLeague
+        // created a duplicate before the format-filter fix).
         $league = League::where('event_id', (int) $panelView->match_id)
             ->where('state', LeagueState::Active)
+            ->latest('started_at')
             ->first();
 
         if (! $league) {

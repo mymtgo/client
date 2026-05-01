@@ -42,7 +42,14 @@ class AssignLeague
                 ->first();
         }
 
-        // 2. Fallback: find by token + format + Active.
+        // 2. Fallback: find by token + Active.
+        //    Format is intentionally not part of the filter: MTGO emits
+        //    different PlayFormatCd codes for the same league across log
+        //    contexts (panel view: "Modern"; match log: "CMODERN"), and
+        //    ProcessLeagueEvents stores the panel-view value while this
+        //    action sees the match-log value. Token alone is unique per
+        //    league run.
+        //
         //    deck_version_id distinguishes runs across the app-not-watching
         //    re-entry case (drop + re-enter with a new deck while the app
         //    is closed): A's deck v1 ≠ match's v2 → step 2 misses, step 3
@@ -50,12 +57,7 @@ class AssignLeague
         //    ProcessLeagueEvents creates leagues at join time without deck
         //    context — the first match backfills it.
         if (! $league) {
-            // When the match has a deck context, accept either a league with
-            // the same deck or a league with no deck context yet (created by
-            // ProcessLeagueEvents at join time). When the match has no deck
-            // context, fall back to plain token+format+Active.
             $league = League::where('token', $gameMeta['League Token'])
-                ->where('format', $gameMeta['PlayFormatCd'])
                 ->where('state', LeagueState::Active)
                 ->when($match->deck_version_id, fn ($q, $deckVersionId) => $q->where(
                     fn ($inner) => $inner->whereNull('deck_version_id')
@@ -95,9 +97,9 @@ class AssignLeague
         }
 
         if ($isNew) {
-            // Mark older active leagues with the same token as partial
+            // Mark older active leagues with the same token as partial.
+            // Format intentionally excluded — see step 2.
             League::where('token', $gameMeta['League Token'])
-                ->where('format', $gameMeta['PlayFormatCd'])
                 ->where('state', LeagueState::Active)
                 ->where('id', '!=', $league->id)
                 ->where('started_at', '<=', $league->started_at)

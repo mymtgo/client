@@ -327,6 +327,33 @@ it('creates league reactively when no pre-existing league found', function () {
     expect($match->league->token)->toBe('league-token-123');
 });
 
+it('attaches match to a ProcessLeagueEvents-created league when format codes diverge', function () {
+    // Regression: MTGO emits PlayFormatCd=Modern in panel-view logs but
+    // PlayFormatCd=CMODERN in match logs. ProcessLeagueEvents stored the
+    // panel-view value; AssignLeague step 2 used to filter by format and
+    // miss the existing league, creating a duplicate.
+    $deckVersion = DeckVersion::factory()->create();
+
+    $league = League::factory()->create([
+        'token' => 'league-token-123',
+        'format' => 'Modern', // panel-view code
+        'event_id' => 10628,
+        'deck_version_id' => null,
+        'state' => LeagueState::Active,
+    ]);
+
+    $match = makeMatchWithDeck($deckVersion);
+
+    callAssignLeague($match, [
+        'League Token' => 'league-token-123',
+        'PlayFormatCd' => 'CMODERN', // match-log code
+        'GameStructureCd' => 'Modern',
+    ]);
+
+    expect($match->fresh()->league_id)->toBe($league->id);
+    expect(League::count())->toBe(1);
+});
+
 it('leaves match unassigned when no league token is present', function () {
     $deckVersion = DeckVersion::factory()->create();
     $match = makeMatchWithDeck($deckVersion);

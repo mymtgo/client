@@ -15,7 +15,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useScreenshot } from '@/composables/useScreenshot';
 import type { LeagueRun, LeagueTimeOfDay } from '@/types/leagues';
 import { router } from '@inertiajs/vue3';
-import { Calendar, ChevronDown, Clock, Moon, PencilLine, Sun, Sunrise, Sunset } from 'lucide-vue-next';
+import { Calendar, ChevronDown, CircleX, Clock, Moon, PencilLine, Sun, Sunrise, Sunset } from 'lucide-vue-next';
 import { computed, nextTick, ref } from 'vue';
 
 const props = withDefaults(
@@ -142,6 +142,15 @@ function formatDuration(seconds: number | null) {
                     <span v-if="league.versionLabel" class="text-xs text-muted-foreground">
                         {{ league.versionLabel }}
                     </span>
+                    <Badge
+                        v-if="league.state === 'dropped'"
+                        variant="outline"
+                        class="shrink-0 gap-1 border-destructive/40 bg-destructive/10 text-[10px] tracking-wider text-destructive uppercase"
+                        :title="league.droppedAtHuman ? `Dropped ${league.droppedAtHuman}` : 'Dropped before completion'"
+                    >
+                        <CircleX class="size-3" />
+                        Dropped
+                    </Badge>
                     <div class="flex items-center gap-1">
                         <template v-for="(r, i) in league.results" :key="i">
                             <div v-if="r === null" class="size-2 rounded-full border border-muted-foreground/40" />

@@ -342,6 +342,33 @@ it('does nothing on a league_dropped event when no panel view precedes it', func
     expect($league->fresh()->state)->toBe(LeagueState::Active);
 });
 
+it('attributes drop to the most recently started Active league when two share an event_id', function () {
+    // Defense-in-depth: legacy data had two Active leagues with the same
+    // event_id (caused by AssignLeague duplicate-creation bug, since fixed).
+    // The drop must hit the newer league, not the older orphan.
+    $orphan = League::factory()->create([
+        'token' => 'test-league-token',
+        'event_id' => 10397,
+        'state' => LeagueState::Active,
+        'started_at' => now()->subHour(),
+    ]);
+
+    $real = League::factory()->create([
+        'token' => 'test-league-token',
+        'event_id' => 10397,
+        'state' => LeagueState::Active,
+        'started_at' => now()->subMinutes(10),
+    ]);
+
+    createLeaguePanelView(10397, 'test-league-token', now()->subSeconds(5));
+    createLeagueDropEvent();
+
+    ProcessLeagueEvents::run();
+
+    expect($real->fresh()->state)->toBe(LeagueState::Dropped);
+    expect($orphan->fresh()->state)->toBe(LeagueState::Active);
+});
+
 it('extracts format from raw_text', function () {
     createLeagueJoinEvent([
         'raw_text' => "12:24:23 [INF] (UI|Creating GameDetailsView) League\nEventToken=abc\nEventId=555\nPlayFormatCd=CPauper",
