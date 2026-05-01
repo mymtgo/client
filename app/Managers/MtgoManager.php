@@ -177,7 +177,7 @@ class MtgoManager
             RegisterDevice::run();
         }
 
-        if (! Archetype::count()) {
+        if (! Archetype::query()->where('is_fallback', false)->exists()) {
             $this->downloadArchetypes(sync: false);
         }
 

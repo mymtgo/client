@@ -35,6 +35,7 @@ class OverlayController extends Controller
 
         if (! $league) {
             $league = $baseQuery()
+                ->whereHas('matches', fn ($q) => $q->where('matches.created_at', '>=', now()->subMinutes(5)))
                 ->latest('started_at')
                 ->first();
         }

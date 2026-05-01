@@ -1,7 +1,9 @@
 <?php
 
 use App\Facades\AppSettings;
+use App\Jobs\DownloadArchetypes;
 use App\Managers\MtgoManager;
+use App\Models\Archetype;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
 
@@ -26,4 +28,25 @@ it('seeds all defaults on first run and leaves existing values untouched', funct
     expect(AppSettings::downloadImagesLocally())->toBeFalse();         // seeded (new)
     expect(AppSettings::systemTimezone())->toBeString();               // seeded (new)
     expect(AppSettings::deviceId())->toBeString();                     // seeded (new, uuid)
+});
+
+it('dispatches DownloadArchetypes when only fallback archetypes exist', function () {
+    Queue::fake();
+
+    expect(Archetype::count())->toBeGreaterThan(0)
+        ->and(Archetype::where('is_fallback', false)->exists())->toBeFalse();
+
+    (new MtgoManager)->runInitialSetup();
+
+    Queue::assertPushed(DownloadArchetypes::class);
+});
+
+it('does not dispatch DownloadArchetypes when non-fallback archetypes exist', function () {
+    Queue::fake();
+
+    Archetype::factory()->create(['is_fallback' => false]);
+
+    (new MtgoManager)->runInitialSetup();
+
+    Queue::assertNotPushed(DownloadArchetypes::class);
 });

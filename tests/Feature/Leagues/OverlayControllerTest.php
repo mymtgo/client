@@ -176,6 +176,68 @@ it('falls back to most recent completed league when no active league exists', fu
     );
 });
 
+it('hides completed league fallback when its last match is older than 5 minutes', function () {
+    $league = League::create([
+        'token' => 'stale-completed-league',
+        'format' => 'Modern',
+        'name' => 'Stale League',
+        'state' => 'complete',
+        'started_at' => now()->subHours(2),
+    ]);
+
+    $match = MtgoMatch::create([
+        'mtgo_id' => '700001',
+        'token' => 'stale-match',
+        'league_id' => $league->id,
+        'format' => 'Modern',
+        'match_type' => 'League',
+        'state' => MatchState::Complete,
+        'outcome' => 'win',
+        'started_at' => now()->subHours(2),
+        'ended_at' => now()->subHours(2),
+    ]);
+
+    $match->forceFill(['created_at' => now()->subMinutes(10)])->save();
+
+    $response = $this->get(route('leagues.overlay'));
+
+    $response->assertOk();
+    $response->assertInertia(fn ($page) => $page
+        ->component('leagues/Overlay')
+        ->where('league', null)
+    );
+});
+
+it('shows completed league fallback when its last match is within 5 minutes', function () {
+    $league = League::create([
+        'token' => 'fresh-completed-league',
+        'format' => 'Modern',
+        'name' => 'Fresh League',
+        'state' => 'complete',
+        'started_at' => now()->subHour(),
+    ]);
+
+    MtgoMatch::create([
+        'mtgo_id' => '700002',
+        'token' => 'fresh-match',
+        'league_id' => $league->id,
+        'format' => 'Modern',
+        'match_type' => 'League',
+        'state' => MatchState::Complete,
+        'outcome' => 'win',
+        'started_at' => now()->subMinutes(2),
+        'ended_at' => now()->subMinutes(1),
+    ]);
+
+    $response = $this->get(route('leagues.overlay'));
+
+    $response->assertOk();
+    $response->assertInertia(fn ($page) => $page
+        ->component('leagues/Overlay')
+        ->where('league.id', $league->id)
+    );
+});
+
 it('prefers active league over completed when both exist', function () {
     $completed = League::create([
         'token' => 'old-completed-league',
