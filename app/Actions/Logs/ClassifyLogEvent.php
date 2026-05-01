@@ -113,11 +113,27 @@ class ClassifyLogEvent
             ]);
         }
 
-        // League view — fired when MTGO displays the league details panel.
-        // Two variants: "Creating GameDetailsView) League" (first join) and
-        // "Join Event) League" (re-entry). Both carry EventToken and EventId.
-        // ProcessLeagueEvents correlates with a preceding league_join_request.
-        if (preg_match('/(?:Creating GameDetailsView|Join Event)\) League\b/', $text)) {
+        // League drop — the authoritative signal that the user typed "Drop"
+        // in the confirmation modal. Carries no league token; correlation to
+        // a specific league is by "the only Active league at this moment".
+        if (str_contains($text, 'FlsLeagueUserDropReqMessage')) {
+            return $event->fill([
+                'event_type' => 'league_dropped',
+            ]);
+        }
+
+        // League panel view — fired when MTGO displays/switches to a league
+        // details panel. Variants:
+        //   "Creating GameDetailsView) League" — first join
+        //   "Join Event) League"               — re-entry
+        //   "Flip To Details Side) League"     — switching back to an
+        //                                         already-loaded panel
+        // All carry EventToken and EventId. The "league_joined" event type
+        // is a misnomer — it's really "panel view"; ProcessLeagueEvents
+        // distinguishes a real join from a re-display via the presence of a
+        // preceding league_join_request, and uses any panel view to attribute
+        // a subsequent drop signal.
+        if (preg_match('/(?:Creating GameDetailsView|Join Event|Flip To Details Side)\) League\b/', $text)) {
             $eventToken = null;
             $eventId = null;
 

@@ -35,6 +35,7 @@ class ProcessMatchEvents
             ->whereNotIn('event_type', [
                 'league_joined',
                 'league_join_request',
+                'league_dropped',
                 ...LogEventType::tournamentValues(),
             ])
             ->distinct()

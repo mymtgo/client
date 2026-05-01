@@ -230,6 +230,118 @@ it('accepts join request within 10 seconds before league view', function () {
     expect(League::where('event_id', 10397)->count())->toBe(1);
 });
 
+function createLeaguePanelView(int $eventId, string $eventToken, ?DateTimeInterface $loggedAt = null): LogEvent
+{
+    return LogEvent::create([
+        'file_path' => '/test/log.txt',
+        'byte_offset_start' => rand(1, 999999),
+        'byte_offset_end' => rand(1, 999999),
+        'timestamp' => now(),
+        'level' => 'INF',
+        'category' => 'UI',
+        'context' => 'Creating GameDetailsView',
+        'raw_text' => "12:24:23 [INF] (UI|Creating GameDetailsView) League\nEventToken={$eventToken}\nEventId={$eventId}\nPlayFormatCd=Modern",
+        'event_type' => 'league_joined',
+        'match_token' => $eventToken,
+        'match_id' => (string) $eventId,
+        'ingested_at' => now(),
+        'logged_at' => $loggedAt ?? now(),
+        'processed_at' => now(), // already-processed view from a prior tick
+    ]);
+}
+
+function createLeagueDropEvent(?DateTimeInterface $loggedAt = null): LogEvent
+{
+    return LogEvent::create([
+        'file_path' => '/test/log.txt',
+        'byte_offset_start' => rand(1, 999999),
+        'byte_offset_end' => rand(1, 999999),
+        'timestamp' => now(),
+        'level' => 'INF',
+        'category' => 'DEFAULT',
+        'context' => '',
+        'raw_text' => '12:28:15 [INF] (DEFAULT|) Send Class: FlsLeagueUserDropReqMessage',
+        'event_type' => 'league_dropped',
+        'ingested_at' => now(),
+        'logged_at' => $loggedAt ?? now(),
+    ]);
+}
+
+it('marks the viewed league Partial and stamps dropped_at on a league_dropped event', function () {
+    $league = League::factory()->create([
+        'token' => 'test-league-token',
+        'event_id' => 10397,
+        'state' => LeagueState::Active,
+    ]);
+
+    createLeaguePanelView(10397, 'test-league-token', now()->subSeconds(5));
+    createLeagueDropEvent();
+
+    ProcessLeagueEvents::run();
+
+    $league->refresh();
+    expect($league->state)->toBe(LeagueState::Dropped);
+    expect($league->dropped_at)->not->toBeNull();
+});
+
+it('attributes drop to the most recently viewed league when multiple are active', function () {
+    // Pioneer was joined first, Modern joined later — so a naive
+    // "latest active league" attribution would pick Modern. We verify that
+    // attribution follows the panel view, not the started_at timestamp.
+    $pioneer = League::factory()->create([
+        'token' => 'pioneer-token',
+        'event_id' => 11111,
+        'state' => LeagueState::Active,
+        'started_at' => now()->subHours(2),
+    ]);
+
+    $modern = League::factory()->create([
+        'token' => 'modern-token',
+        'event_id' => 22222,
+        'state' => LeagueState::Active,
+        'started_at' => now()->subMinutes(10),
+    ]);
+
+    // User views Modern panel, then Pioneer panel, then clicks Drop.
+    createLeaguePanelView(22222, 'modern-token', now()->subSeconds(30));
+    createLeaguePanelView(11111, 'pioneer-token', now()->subSeconds(5));
+    createLeagueDropEvent();
+
+    ProcessLeagueEvents::run();
+
+    expect($pioneer->fresh()->state)->toBe(LeagueState::Dropped);
+    expect($modern->fresh()->state)->toBe(LeagueState::Active);
+});
+
+it('marks league_dropped events as processed', function () {
+    League::factory()->create([
+        'token' => 'test-league-token',
+        'event_id' => 10397,
+        'state' => LeagueState::Active,
+    ]);
+
+    createLeaguePanelView(10397, 'test-league-token', now()->subSeconds(5));
+    $event = createLeagueDropEvent();
+
+    ProcessLeagueEvents::run();
+
+    expect($event->fresh()->processed_at)->not->toBeNull();
+});
+
+it('does nothing on a league_dropped event when no panel view precedes it', function () {
+    $league = League::factory()->create([
+        'token' => 'test-league-token',
+        'event_id' => 10397,
+        'state' => LeagueState::Active,
+    ]);
+
+    createLeagueDropEvent();
+
+    ProcessLeagueEvents::run();
+
+    expect($league->fresh()->state)->toBe(LeagueState::Active);
+});
+
 it('extracts format from raw_text', function () {
     createLeagueJoinEvent([
         'raw_text' => "12:24:23 [INF] (UI|Creating GameDetailsView) League\nEventToken=abc\nEventId=555\nPlayFormatCd=CPauper",

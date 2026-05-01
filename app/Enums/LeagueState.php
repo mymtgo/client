@@ -7,4 +7,5 @@ enum LeagueState: string
     case Active = 'active';
     case Complete = 'complete';
     case Partial = 'partial';
+    case Dropped = 'dropped';
 }

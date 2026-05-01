@@ -21,7 +21,9 @@ export type LeagueRun = {
     versionLabel?: string | null;
     startedAt: string;
     startedAtHuman: string | null;
+    droppedAt: string | null;
+    droppedAtHuman: string | null;
     results: ('W' | 'L' | null)[];
-    state: 'active' | 'complete' | 'partial';
+    state: 'active' | 'complete' | 'partial' | 'dropped';
     matches: LeagueMatch[];
 };

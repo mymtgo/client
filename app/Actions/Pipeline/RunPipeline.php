@@ -2,6 +2,7 @@
 
 namespace App\Actions\Pipeline;
 
+use App\Actions\Leagues\ProcessLeagueEvents;
 use App\Actions\Matches\LinkMatchToTournament;
 use App\Actions\Matches\RelinkOrphanMatches;
 use App\Actions\Tournaments\EnqueueTournamentObservations;
@@ -20,6 +21,11 @@ class RunPipeline
 
         // Phase 1: Ingest main log
         app('mtgo')->ingestLogs();
+
+        // Phase 1.5: Process league join/drop events. Runs before
+        // ProcessMatchEvents so League rows (with event_id) exist before
+        // AssignLeague needs to find them.
+        ProcessLeagueEvents::run();
 
         // Phase 2: Process matches
         $processedTokens = ProcessMatchEvents::run();

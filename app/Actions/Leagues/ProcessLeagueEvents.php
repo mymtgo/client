@@ -3,6 +3,7 @@
 namespace App\Actions\Leagues;
 
 use App\Enums\LeagueState;
+use App\Enums\LogEventType;
 use App\Models\League;
 use App\Models\LogEvent;
 use Carbon\Carbon;
@@ -19,6 +20,16 @@ class ProcessLeagueEvents
 
         foreach ($joinEvents as $event) {
             self::processJoin($event);
+            $event->update(['processed_at' => now()]);
+        }
+
+        $dropEvents = LogEvent::where('event_type', 'league_dropped')
+            ->whereNull('processed_at')
+            ->orderBy('timestamp')
+            ->get();
+
+        foreach ($dropEvents as $event) {
+            self::processDrop($event);
             $event->update(['processed_at' => now()]);
         }
 
@@ -104,6 +115,52 @@ class ProcessLeagueEvents
             'event_id' => $eventId,
             'token' => $leagueToken,
             'format' => $format,
+        ]);
+    }
+
+    /**
+     * Drop signals carry no league token. We attribute the drop to the most
+     * recently viewed league panel — the user must navigate to a league's
+     * details panel to click "Drop", so the most recent league_joined event
+     * (which captures EventToken/EventId from the panel view) preceding the
+     * drop identifies the dropped league. This works correctly when multiple
+     * leagues are concurrently Active (e.g. Pioneer + Modern).
+     *
+     * If no panel view precedes the drop, we do nothing — false positives
+     * (marking the wrong league Partial) are worse than false negatives.
+     */
+    private static function processDrop(LogEvent $event): void
+    {
+        $panelView = LogEvent::where('event_type', LogEventType::LEAGUE_JOINED->value)
+            ->where('logged_at', '<=', $event->logged_at)
+            ->whereNotNull('match_id')
+            ->orderByDesc('logged_at')
+            ->first();
+
+        if (! $panelView) {
+            Log::channel('pipeline')->warning('ProcessLeagueEvents: drop signal with no preceding panel view, skipping', [
+                'dropped_at' => $event->logged_at,
+            ]);
+
+            return;
+        }
+
+        $league = League::where('event_id', (int) $panelView->match_id)
+            ->where('state', LeagueState::Active)
+            ->first();
+
+        if (! $league) {
+            return;
+        }
+
+        $league->update([
+            'state' => LeagueState::Dropped,
+            'dropped_at' => $event->logged_at,
+        ]);
+
+        Log::channel('pipeline')->info("ProcessLeagueEvents: marked league #{$league->id} as dropped", [
+            'dropped_at' => $event->logged_at,
+            'event_id' => $panelView->match_id,
         ]);
     }
 }

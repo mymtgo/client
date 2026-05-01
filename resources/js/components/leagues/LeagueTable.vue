@@ -11,6 +11,7 @@ import LeagueScreenshot from './LeagueScreenshot.vue';
 import ResultBadge from '../matches/ResultBadge.vue';
 import { Badge } from '../ui/badge';
 import { Card } from '../ui/card';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { LeagueRun } from '@/types/leagues';
 
 const props = defineProps<{
@@ -21,6 +22,7 @@ const runWins = (r: LeagueRun) => r.results.filter((x) => x === 'W').length;
 const runLosses = (r: LeagueRun) => r.results.filter((x) => x === 'L').length;
 const isComplete = (r: LeagueRun) => r.state === 'complete';
 const isPartial = (r: LeagueRun) => r.state === 'partial';
+const isDropped = (r: LeagueRun) => r.state === 'dropped';
 const isActive = (r: LeagueRun) => r.state === 'active';
 const isTrophy = (r: LeagueRun) => runWins(r) === 5 && isComplete(r);
 
@@ -64,6 +66,16 @@ async function copyScreenshot() {
                 <div class="flex items-center gap-1.5">
                     <Trophy v-if="isTrophy(league)" class="size-4 text-yellow-400" />
                     <Badge v-if="isActive(league)" variant="outline" class="text-xs text-muted-foreground"> In progress </Badge>
+                    <TooltipProvider v-else-if="isDropped(league)" :delay-duration="100">
+                        <Tooltip>
+                            <TooltipTrigger as-child>
+                                <Badge variant="secondary" class="text-xs text-muted-foreground"> Dropped </Badge>
+                            </TooltipTrigger>
+                            <TooltipContent v-if="league.droppedAtHuman">
+                                Dropped {{ league.droppedAtHuman }}
+                            </TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
                     <Badge v-else-if="isPartial(league)" variant="secondary" class="text-xs text-muted-foreground"> Partial </Badge>
                     <span v-else class="text-sm font-semibold tabular-nums"> {{ runWins(league) }}-{{ runLosses(league) }} </span>
                 </div>

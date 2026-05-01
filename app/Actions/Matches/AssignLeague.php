@@ -42,21 +42,43 @@ class AssignLeague
                 ->first();
         }
 
-        // 2. Fallback: find by token + deck_version_id
+        // 2. Fallback: find by token + format + Active.
+        //    deck_version_id distinguishes runs across the app-not-watching
+        //    re-entry case (drop + re-enter with a new deck while the app
+        //    is closed): A's deck v1 ≠ match's v2 → step 2 misses, step 3
+        //    splits correctly. We accept NULL on the league side because
+        //    ProcessLeagueEvents creates leagues at join time without deck
+        //    context — the first match backfills it.
         if (! $league) {
-            $leagueKey = [
-                'token' => $gameMeta['League Token'],
-                'format' => $gameMeta['PlayFormatCd'],
-            ];
-
-            if ($match->deck_version_id) {
-                $leagueKey['deck_version_id'] = $match->deck_version_id;
-            }
-
-            $league = League::where($leagueKey)
+            // When the match has a deck context, accept either a league with
+            // the same deck or a league with no deck context yet (created by
+            // ProcessLeagueEvents at join time). When the match has no deck
+            // context, fall back to plain token+format+Active.
+            $league = League::where('token', $gameMeta['League Token'])
+                ->where('format', $gameMeta['PlayFormatCd'])
                 ->where('state', LeagueState::Active)
+                ->when($match->deck_version_id, fn ($q, $deckVersionId) => $q->where(
+                    fn ($inner) => $inner->whereNull('deck_version_id')
+                        ->orWhere('deck_version_id', $deckVersionId),
+                ))
                 ->latest('started_at')
                 ->first();
+
+            if ($league && ! $league->deck_version_id && $match->deck_version_id) {
+                $league->update(['deck_version_id' => $match->deck_version_id]);
+            }
+        }
+
+        // 2.5. Reject the match if the candidate league is already at the
+        //      5-match cap. Backstops the unwatched re-entry edge: if app
+        //      missed both the drop and re-join events, the next match for
+        //      the new run must not glue onto the full prior run. Five
+        //      matches = full MTGO league run, so the prior run is Complete
+        //      (not Partial). The safety-net branch below mints a fresh
+        //      league for the new run.
+        if ($league && $league->matches()->count() >= 5) {
+            $league->update(['state' => LeagueState::Complete]);
+            $league = null;
         }
 
         // 3. Safety net: create reactively

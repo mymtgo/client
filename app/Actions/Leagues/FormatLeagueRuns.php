@@ -199,6 +199,8 @@ class FormatLeagueRuns
             'state' => $league->state->value,
             'startedAt' => $league->started_at,
             'startedAtHuman' => $league->started_at ? Carbon::parse($league->started_at)->toLocal()->diffForHumans() : null,
+            'droppedAt' => $league->dropped_at,
+            'droppedAtHuman' => $league->dropped_at ? Carbon::parse($league->dropped_at)->toLocal()->diffForHumans() : null,
             'deck' => $deck,
             'versionLabel' => $versionLabel,
             'results' => $results,

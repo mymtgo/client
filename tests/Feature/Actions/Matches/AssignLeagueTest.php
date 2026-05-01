@@ -68,6 +68,9 @@ it('reuses existing league for same token + same deck version', function () {
 });
 
 it('creates a new league for same token + different deck version', function () {
+    // Distinguishes the app-not-watching re-entry case: user dropped run A
+    // (deck v1) and re-joined run B (deck v2) while the app was closed.
+    // No join event was seen, so AssignLeague must still split on deck.
     $deck1Version = DeckVersion::factory()->create();
     $deck2Version = DeckVersion::factory()->create();
     $match1 = makeMatchWithDeck($deck1Version);
@@ -94,6 +97,46 @@ it('marks previous run as partial when new run created for same token', function
 
     $match1->refresh();
     expect($match1->league->state)->toBe(LeagueState::Partial);
+});
+
+it('attaches first match to a ProcessLeagueEvents-created league with null deck_version_id', function () {
+    // ProcessLeagueEvents creates the League at join time without a deck
+    // context (deck_version_id is null until the first match arrives).
+    // AssignLeague must reuse that league instead of minting a duplicate.
+    $deckV1 = DeckVersion::factory()->create();
+
+    $league = League::factory()->create([
+        'token' => 'league-token-123',
+        'format' => 'CStandard',
+        'event_id' => 10397,
+        'deck_version_id' => null,
+        'state' => LeagueState::Active,
+    ]);
+
+    $match = makeMatchWithDeck($deckV1);
+
+    callAssignLeague($match, defaultGameMeta());
+
+    expect($match->fresh()->league_id)->toBe($league->id);
+    expect(League::count())->toBe(1);
+});
+
+it('backfills deck_version_id on a ProcessLeagueEvents-created league on first match', function () {
+    $deckV1 = DeckVersion::factory()->create();
+
+    $league = League::factory()->create([
+        'token' => 'league-token-123',
+        'format' => 'CStandard',
+        'event_id' => 10397,
+        'deck_version_id' => null,
+        'state' => LeagueState::Active,
+    ]);
+
+    $match = makeMatchWithDeck($deckV1);
+
+    callAssignLeague($match, defaultGameMeta());
+
+    expect($league->fresh()->deck_version_id)->toBe($deckV1->id);
 });
 
 it('falls back to token-only matching when deck version is null', function () {
@@ -182,6 +225,32 @@ it('creates a new league when re-entering with same deck after completing 5 matc
     expect($newMatch->league_id)->not->toBe($league1->id);
     expect($newMatch->league->token)->toBe('league-token-123');
     expect($newMatch->league->deck_version_id)->toBe($deckVersion->id);
+});
+
+it('does not attach a 6th match to an Active league at the 5-match cap', function () {
+    // Backstop for the unwatched re-entry edge: if app missed the drop and
+    // re-join events but ingested run A's matches, the Active league is
+    // already at 5 matches. A new match for run B must NOT glue onto it.
+    $deckVersion = DeckVersion::factory()->create();
+
+    $fullLeague = League::factory()->create([
+        'token' => 'league-token-123',
+        'format' => 'CStandard',
+        'deck_version_id' => $deckVersion->id,
+        'state' => LeagueState::Active,
+    ]);
+
+    for ($i = 0; $i < 5; $i++) {
+        makeMatchWithDeck($deckVersion, ['league_id' => $fullLeague->id]);
+    }
+
+    $newMatch = makeMatchWithDeck($deckVersion);
+    callAssignLeague($newMatch, defaultGameMeta());
+
+    $newMatch->refresh();
+    expect($newMatch->league_id)->not->toBe($fullLeague->id);
+    expect($newMatch->league->token)->toBe('league-token-123');
+    expect($fullLeague->fresh()->state)->toBe(LeagueState::Complete);
 });
 
 it('reuses active league when it has fewer than 5 matches', function () {

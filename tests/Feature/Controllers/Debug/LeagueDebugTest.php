@@ -21,7 +21,7 @@ it('lists leagues with pagination', function () {
         ->assertInertia(fn ($page) => $page
             ->component('debug/Leagues')
             ->has('leagues.data', 3)
-            ->has('stateOptions', 3)
+            ->has('stateOptions', 4)
             ->has('deckVersionOptions')
         );
 });

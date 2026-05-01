@@ -9,6 +9,7 @@ enum LogEventType: string
     case DECK_USED = 'deck_used';
     case LEAGUE_JOIN_REQUEST = 'league_join_request';
     case LEAGUE_JOINED = 'league_joined';
+    case LEAGUE_DROPPED = 'league_dropped';
 
     case TOURNAMENT_SYNC = 'tournament_sync';
     case TOURNAMENT_STATE_CHANGED = 'tournament_state_changed';
