@@ -48,14 +48,6 @@ function handleFilterChange(next: LeagueFiltersState) {
 
 <template>
     <div class="flex flex-col gap-4 p-3 lg:p-4">
-        <header>
-            <h1 class="text-2xl font-semibold">Leagues</h1>
-            <p class="text-sm text-muted-foreground">
-                {{ kpis.runs.total }} runs · {{ kpis.runs.completed }} completed ·
-                {{ kpis.runs.live }} live · {{ kpis.runs.decks }} decks
-            </p>
-        </header>
-
         <LeagueKpis :kpis="kpis" />
 
         <LeagueFilters
