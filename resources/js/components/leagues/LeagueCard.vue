@@ -119,17 +119,8 @@ function formatDuration(seconds: number | null) {
 
 <template>
     <Card class="gap-0 overflow-hidden p-0">
-        <button
-            type="button"
-            class="flex w-full items-center gap-4 px-4 py-3 text-left hover:bg-muted/40"
-            @click="toggle"
-        >
-            <LeagueResultBadge
-                :classification="league.classification"
-                :wins="wins"
-                :losses="losses"
-                :live-round="league.liveRound"
-            />
+        <button type="button" class="flex w-full items-center gap-4 px-4 py-3 text-left hover:bg-muted/40" @click="toggle">
+            <LeagueResultBadge :classification="league.classification" :wins="wins" :losses="losses" :live-round="league.liveRound" />
 
             <div class="flex min-w-0 flex-1 flex-col gap-1">
                 <div class="flex flex-wrap items-center gap-2 text-sm">
@@ -153,10 +144,7 @@ function formatDuration(seconds: number | null) {
                     </span>
                     <div class="flex items-center gap-1">
                         <template v-for="(r, i) in league.results" :key="i">
-                            <div
-                                v-if="r === null"
-                                class="size-2 rounded-full border border-muted-foreground/40"
-                            />
+                            <div v-if="r === null" class="size-2 rounded-full border border-muted-foreground/40" />
                             <ResultBadge v-else :won="r === 'W'" />
                         </template>
                     </div>
@@ -172,14 +160,8 @@ function formatDuration(seconds: number | null) {
                         <Clock class="size-3" /> avg
                         <span class="font-medium text-foreground">{{ avgMin }}m</span>
                     </span>
-                    <span v-if="todLabel" class="inline-flex items-center gap-1">
-                        <component :is="todIcon" class="size-3" /> {{ todLabel }}
-                    </span>
-                    <span
-                        v-if="league.tixDelta !== null"
-                        class="inline-flex items-center gap-1 tabular-nums"
-                        :class="tixClass"
-                    >
+                    <span v-if="todLabel" class="inline-flex items-center gap-1"> <component :is="todIcon" class="size-3" /> {{ todLabel }} </span>
+                    <span v-if="league.tixDelta !== null" class="inline-flex items-center gap-1 tabular-nums" :class="tixClass">
                         {{ league.tixDelta > 0 ? '+' : '' }}{{ league.tixDelta.toFixed(0) }} tix
                     </span>
                 </div>
@@ -194,23 +176,20 @@ function formatDuration(seconds: number | null) {
                     @edit-notes="handleEditNotes"
                     @drop="handleDrop"
                 />
-                <ChevronDown
-                    class="size-4 text-muted-foreground transition-transform"
-                    :class="{ 'rotate-180': expanded }"
-                />
+                <ChevronDown class="size-4 text-muted-foreground transition-transform" :class="{ 'rotate-180': expanded }" />
             </div>
         </button>
 
         <div v-if="expanded" class="flex flex-col gap-4 border-t border-border p-4">
             <div class="grid grid-cols-2 gap-4 sm:grid-cols-4">
                 <div>
-                    <div class="text-xl font-semibold tabular-nums text-emerald-400">
+                    <div class="text-xl font-semibold text-emerald-400 tabular-nums">
                         {{ league.gameWins }}
                     </div>
                     <div class="text-xs text-muted-foreground">Game wins</div>
                 </div>
                 <div>
-                    <div class="text-xl font-semibold tabular-nums text-destructive">
+                    <div class="text-xl font-semibold text-destructive tabular-nums">
                         {{ league.gameLosses }}
                     </div>
                     <div class="text-xs text-muted-foreground">Game losses</div>
@@ -260,25 +239,16 @@ function formatDuration(seconds: number | null) {
                             </TableCell>
                             <TableCell v-for="i in 3" :key="i" class="text-center text-sm">
                                 <template v-if="match.gameResults[i - 1]">
-                                    <span
-                                        :class="
-                                            match.gameResults[i - 1].result === 'W'
-                                                ? 'text-success'
-                                                : 'text-destructive'
-                                        "
-                                    >
+                                    <span :class="match.gameResults[i - 1].result === 'W' ? 'text-success' : 'text-destructive'">
                                         {{ match.gameResults[i - 1].result === 'W' ? 'Win' : 'Loss' }}
                                     </span>
-                                    <span
-                                        v-if="match.gameResults[i - 1].onPlay !== null"
-                                        class="ml-1 text-xs text-muted-foreground"
-                                    >
+                                    <span v-if="match.gameResults[i - 1].onPlay !== null" class="ml-1 text-xs text-muted-foreground">
                                         ({{ match.gameResults[i - 1].onPlay ? 'OTP' : 'OTD' }})
                                     </span>
                                 </template>
                                 <span v-else class="text-muted-foreground">—</span>
                             </TableCell>
-                            <TableCell class="text-right tabular-nums text-muted-foreground">
+                            <TableCell class="text-right text-muted-foreground tabular-nums">
                                 {{ formatDuration(match.durationSeconds) }}
                             </TableCell>
                         </TableRow>
@@ -288,23 +258,12 @@ function formatDuration(seconds: number | null) {
 
             <section>
                 <div class="mb-2 flex items-center gap-2">
-                    <h4 class="text-[10px] font-medium tracking-widest text-muted-foreground uppercase">
-                        Notes
-                    </h4>
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        class="size-5"
-                        aria-label="Edit notes"
-                        @click="handleEditNotes"
-                    >
+                    <h4 class="text-[10px] font-medium tracking-widest text-muted-foreground uppercase">Notes</h4>
+                    <Button variant="ghost" size="icon" class="size-5" aria-label="Edit notes" @click="handleEditNotes">
                         <PencilLine class="size-3" />
                     </Button>
                 </div>
-                <p
-                    v-if="league.notes"
-                    class="text-sm whitespace-pre-wrap text-foreground"
-                >
+                <p v-if="league.notes" class="text-sm whitespace-pre-wrap text-foreground">
                     {{ league.notes }}
                 </p>
                 <button
@@ -319,10 +278,7 @@ function formatDuration(seconds: number | null) {
         </div>
     </Card>
 
-    <div
-        v-if="showScreenshot"
-        style="position: fixed; top: -9999px; left: -9999px; pointer-events: none"
-    >
+    <div v-if="showScreenshot" style="position: fixed; top: -9999px; left: -9999px; pointer-events: none">
         <LeagueScreenshot ref="screenshotRef" :league="league" />
     </div>
 
