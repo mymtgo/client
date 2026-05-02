@@ -17,7 +17,13 @@ beforeEach(function () {
     app()->instance('mtgo', $mock);
 });
 
-it('processes pending league_joined events into League rows', function () {
+it('backfills event_id on an Active league when a panel-view event is processed', function () {
+    $league = League::factory()->create([
+        'token' => 'test-token',
+        'event_id' => null,
+        'state' => LeagueState::Active,
+    ]);
+
     LogEvent::create([
         'file_path' => '/test/log',
         'byte_offset_start' => 1,
@@ -50,10 +56,8 @@ it('processes pending league_joined events into League rows', function () {
 
     RunPipeline::run();
 
-    $league = League::where('event_id', 99999)->first();
-    expect($league)->not->toBeNull();
-    expect($league->token)->toBe('test-token');
-    expect($league->state)->toBe(LeagueState::Active);
+    expect($league->fresh()->event_id)->toBe(99999);
+    expect($league->fresh()->state)->toBe(LeagueState::Active);
 });
 
 it('marks league_joined events as processed after a pipeline tick', function () {

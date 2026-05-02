@@ -4,6 +4,7 @@ namespace App\Actions\Matches;
 
 use App\Enums\LeagueState;
 use App\Models\League;
+use App\Models\LogEvent;
 use App\Models\MtgoMatch;
 use Illuminate\Support\Facades\Log;
 
@@ -32,7 +33,8 @@ class AssignLeague
 
         $league = null;
 
-        // 1. Best path: find by event_id (set by ProcessLeagueEvents)
+        // 1. Best path: find by event_id. Stamped on creation from the
+        //    panel-view log event, or backfilled by ProcessLeagueEvents.
         //    Active-only: Partial leagues are dropped runs — new matches
         //    should never attach to them.
         if (! empty($gameMeta['EventId'])) {
@@ -43,19 +45,16 @@ class AssignLeague
         }
 
         // 2. Fallback: find by token + Active.
-        //    Format is intentionally not part of the filter: MTGO emits
-        //    different PlayFormatCd codes for the same league across log
-        //    contexts (panel view: "Modern"; match log: "CMODERN"), and
-        //    ProcessLeagueEvents stores the panel-view value while this
-        //    action sees the match-log value. Token alone is unique per
-        //    league run.
+        //    Format is intentionally not part of the filter: legacy data
+        //    holds leagues created from panel-view logs (PlayFormatCd=Modern)
+        //    while this action sees match-log values (PlayFormatCd=CMODERN).
+        //    Token alone is unique per league run.
         //
         //    deck_version_id distinguishes runs across the app-not-watching
         //    re-entry case (drop + re-enter with a new deck while the app
         //    is closed): A's deck v1 ≠ match's v2 → step 2 misses, step 3
-        //    splits correctly. We accept NULL on the league side because
-        //    ProcessLeagueEvents creates leagues at join time without deck
-        //    context — the first match backfills it.
+        //    splits correctly. NULL deck_version_id on a league is legacy —
+        //    new leagues are always created with a known deck.
         if (! $league) {
             $league = League::where('token', $gameMeta['League Token'])
                 ->where('state', LeagueState::Active)
@@ -83,14 +82,28 @@ class AssignLeague
             $league = null;
         }
 
-        // 3. Safety net: create reactively
+        // 3. Create the league. AssignLeague is the sole creator: leagues
+        //    are minted when a match arrives carrying a League Token but no
+        //    matching league exists. This guarantees deck_version_id is
+        //    known at creation time. event_id and joined_at come from the
+        //    most recent matching panel-view log event (match logs don't
+        //    expose EventId in a key=value form ExtractKeyValueBlock can
+        //    parse — they emit "Event Id:NNNN" without an equals sign).
         $isNew = false;
         if (! $league) {
+            $panelView = LogEvent::where('event_type', 'league_joined')
+                ->where('match_token', $gameMeta['League Token'])
+                ->whereNotNull('match_id')
+                ->orderByDesc('logged_at')
+                ->first();
+
             $league = League::create([
                 'token' => $gameMeta['League Token'],
+                'event_id' => $panelView ? (int) $panelView->match_id : null,
                 'format' => $gameMeta['PlayFormatCd'],
                 'deck_version_id' => $match->deck_version_id,
-                'started_at' => now(),
+                'started_at' => $match->started_at ?? now()->toLocal(),
+                'joined_at' => $panelView?->logged_at,
                 'name' => trim(($gameMeta['GameStructureCd'] ?? '').' League '.now()->toLocal()->format('d-m-Y h:ma')),
             ]);
             $isNew = true;

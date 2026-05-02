@@ -6,7 +6,6 @@ use App\Enums\LeagueState;
 use App\Enums\LogEventType;
 use App\Models\League;
 use App\Models\LogEvent;
-use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 
 class ProcessLeagueEvents
@@ -19,7 +18,7 @@ class ProcessLeagueEvents
             ->get();
 
         foreach ($joinEvents as $event) {
-            self::processJoin($event);
+            self::backfillFromPanelView($event);
             $event->update(['processed_at' => now()]);
         }
 
@@ -33,89 +32,40 @@ class ProcessLeagueEvents
             $event->update(['processed_at' => now()]);
         }
 
-        // Mark join requests as processed after processing league_joined events,
-        // since processJoin() queries for recent join requests by logged_at.
         LogEvent::where('event_type', 'league_join_request')
             ->whereNull('processed_at')
             ->update(['processed_at' => now()]);
     }
 
-    private static function processJoin(LogEvent $event): void
+    /**
+     * Stamp event_id and joined_at on an Active league created reactively by
+     * AssignLeague. Leagues are only created when a match arrives — so deck
+     * version is always known. Panel-view events provide the missing event_id
+     * (which match logs do not expose in a parseable form) and the real
+     * join time (closer to the user's actual join click than first-match time).
+     *
+     * Never creates a league. If no Active league with this token exists yet,
+     * the panel view is informational only — a future match will trigger
+     * creation, and a later panel view (or this one re-processed) will backfill.
+     */
+    private static function backfillFromPanelView(LogEvent $event): void
     {
-        $leagueToken = $event->match_token;
-        $eventId = (int) $event->match_id;
-
-        // Extract format from raw_text
-        $format = 'Unknown';
-        if (preg_match('/PlayFormatCd=(\S+)/', $event->raw_text, $m)) {
-            $format = $m[1];
-        }
-
-        // Require a FlsLeagueUserJoinReqMessage within 10 seconds of this event.
-        // On first join, the request comes BEFORE the GameDetailsView.
-        // On re-entry, the Join Event fires BEFORE the request.
-        // So we check both directions within the window.
-        $eventTime = Carbon::parse($event->logged_at);
-        $hasJoinRequest = LogEvent::where('event_type', 'league_join_request')
-            ->where('logged_at', '>=', $eventTime->copy()->subSeconds(10))
-            ->where('logged_at', '<=', $eventTime->copy()->addSeconds(10))
-            ->exists();
-
-        // Check for an existing active league with this token.
-        // Only Active leagues matter — Partial (dropped) and Complete (finished)
-        // runs should not be modified or reused for new matches.
-        $existingLeague = League::where('token', $leagueToken)
+        $league = League::where('token', $event->match_token)
             ->where('state', LeagueState::Active)
+            ->whereNull('event_id')
             ->latest('started_at')
             ->first();
 
-        if ($existingLeague) {
-            // Backfill event_id on reactive leagues (created by AssignLeague without it)
-            if (! $existingLeague->event_id) {
-                $existingLeague->update(['event_id' => $eventId, 'joined_at' => $existingLeague->joined_at ?? $event->logged_at]);
-                Log::channel('pipeline')->info("ProcessLeagueEvents: backfilled event_id={$eventId} on league #{$existingLeague->id}");
-            }
-
-            // No join request — just a UI re-display, nothing more to do
-            if (! $hasJoinRequest) {
-                return;
-            }
-
-            // Has join request + existing league with matches = genuine re-entry
-            if ($existingLeague->matches()->count() > 0) {
-                $existingLeague->update(['state' => LeagueState::Partial]);
-
-                Log::channel('pipeline')->info("ProcessLeagueEvents: marked league #{$existingLeague->id} as partial (re-entry detected)", [
-                    'event_id' => $eventId,
-                    'old_matches' => $existingLeague->matches()->count(),
-                ]);
-            } else {
-                // Empty league + new join request — reuse it
-                Log::channel('pipeline')->info("ProcessLeagueEvents: reusing empty league #{$existingLeague->id} for event_id={$eventId}");
-
-                return;
-            }
-        } elseif (! $hasJoinRequest) {
-            // No existing league and no join request — just a UI view, ignore
+        if (! $league) {
             return;
         }
 
-        // Create new league row
-        $league = League::create([
-            'token' => $leagueToken,
-            'event_id' => $eventId,
-            'format' => $format,
-            'state' => LeagueState::Active,
-            'started_at' => $event->logged_at,
-            'joined_at' => $event->logged_at,
-            'name' => 'League '.Carbon::parse($event->logged_at)->toLocal()->format('d-m-Y h:ma'),
+        $league->update([
+            'event_id' => (int) $event->match_id,
+            'joined_at' => $league->joined_at ?? $event->logged_at,
         ]);
 
-        Log::channel('pipeline')->info("ProcessLeagueEvents: created league #{$league->id}", [
-            'event_id' => $eventId,
-            'token' => $leagueToken,
-            'format' => $format,
-        ]);
+        Log::channel('pipeline')->info("ProcessLeagueEvents: backfilled event_id={$event->match_id} on league #{$league->id}");
     }
 
     /**
@@ -152,6 +102,16 @@ class ProcessLeagueEvents
             ->where('state', LeagueState::Active)
             ->latest('started_at')
             ->first();
+
+        if (! $league) {
+            // Fallback: token-only lookup. Covers leagues created by
+            // AssignLeague that haven't yet been backfilled with event_id
+            // (panel-view event arrived in the same tick as the drop).
+            $league = League::where('token', $panelView->match_token)
+                ->where('state', LeagueState::Active)
+                ->latest('started_at')
+                ->first();
+        }
 
         if (! $league) {
             return;
