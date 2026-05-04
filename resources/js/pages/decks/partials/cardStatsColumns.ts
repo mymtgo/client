@@ -21,6 +21,14 @@ export type CardStatsColumnKey = (typeof CARD_STATS_COLUMNS)[number]['key'];
 
 export type CardStatsVisibility = Record<CardStatsColumnKey, boolean>;
 
+export type CardStatsPerspective = 'mine' | 'theirs';
+
+/**
+ * Columns that only make sense when viewing the local player's deck.
+ * Opponent rows have no deck quantity, hand visibility, or sideboard tracking.
+ */
+export const LOCAL_ONLY_COLUMNS: readonly CardStatsColumnKey[] = ['sb', 'keptPct', 'keptWinPct', 'sbOutPct', 'sbInPct'] as const;
+
 export const DEFAULT_CARD_STATS_VISIBILITY: CardStatsVisibility = Object.fromEntries(
     CARD_STATS_COLUMNS.map((col) => [col.key, true]),
 ) as CardStatsVisibility;

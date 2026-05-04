@@ -17,6 +17,7 @@ class GetCardGameStats
         ?int $opponentArchetypeId = null,
         ?bool $onPlay = null,
         ?bool $isPostboard = null,
+        bool $opponent = false,
     ): Collection {
         $sideboardSource = $deckVersion ?? $deck->latestVersion;
 
@@ -24,11 +25,13 @@ class GetCardGameStats
             return collect();
         }
 
-        $sideboardOracles = collect($sideboardSource->cards)
-            ->filter(fn ($card) => $card['sideboard'] === 'true' || $card['sideboard'] === true)
-            ->pluck('oracle_id')
-            ->filter(fn ($id) => $id !== null)
-            ->flip();
+        $sideboardOracles = $opponent
+            ? collect()
+            : collect($sideboardSource->cards)
+                ->filter(fn ($card) => $card['sideboard'] === 'true' || $card['sideboard'] === true)
+                ->pluck('oracle_id')
+                ->filter(fn ($id) => $id !== null)
+                ->flip();
 
         $versionIds = $deckVersion
             ? [$deckVersion->id]
@@ -40,6 +43,7 @@ class GetCardGameStats
 
         $query = DB::table('card_game_stats as cgs')
             ->join(DB::raw('(SELECT oracle_id, name, color_identity, type, image, local_image FROM cards WHERE oracle_id IS NOT NULL GROUP BY oracle_id) as c'), 'c.oracle_id', '=', 'cgs.oracle_id')
+            ->where('cgs.opponent', $opponent)
             ->whereIn('cgs.deck_version_id', $versionIds);
 
         $query->when($isPostboard !== null, fn ($q) => $q->where('cgs.is_postboard', $isPostboard));

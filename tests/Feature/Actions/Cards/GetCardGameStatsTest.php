@@ -26,6 +26,7 @@ function insertCardGameStat(array $attributes): void
         'seen' => 3,
         'won' => true,
         'sided_out' => false,
+        'opponent' => false,
     ], $attributes));
 }
 
@@ -271,4 +272,44 @@ it('filters by on_play', function () {
     expect($onDrawResults)->toHaveCount(1);
     expect($onDrawResults->first()['totalGames'])->toBe(1);
     expect($onDrawResults->first()['totalKept'])->toBe(1);
+});
+
+it('returns only local rows by default and only opponent rows when opponent flag is true', function () {
+    $deck = Deck::factory()->create();
+    $version = DeckVersion::factory()->for($deck)->create();
+
+    $localCard = Card::factory()->create(['oracle_id' => 'oracle-local', 'name' => 'Forest', 'type' => 'Land', 'color_identity' => 'G', 'image' => null]);
+    $oppCard = Card::factory()->create(['oracle_id' => 'oracle-opp', 'name' => 'Bolt', 'type' => 'Instant', 'color_identity' => 'R', 'image' => null]);
+
+    $match = MtgoMatch::factory()->create(['deck_version_id' => $version->id]);
+    $game = Game::factory()->for($match, 'match')->create(['won' => false]);
+
+    insertCardGameStat([
+        'deck_version_id' => $version->id,
+        'game_id' => $game->id,
+        'oracle_id' => $localCard->oracle_id,
+        'opponent' => false,
+        'won' => false,
+    ]);
+
+    insertCardGameStat([
+        'deck_version_id' => $version->id,
+        'game_id' => $game->id,
+        'oracle_id' => $oppCard->oracle_id,
+        'opponent' => true,
+        'quantity' => 0,
+        'kept' => 0,
+        'seen' => 1,
+        'cast' => 1,
+        'won' => false,
+    ]);
+
+    $mine = GetCardGameStats::run($deck);
+    expect($mine)->toHaveCount(1);
+    expect($mine->first()['oracleId'])->toBe('oracle-local');
+
+    $theirs = GetCardGameStats::run($deck, opponent: true);
+    expect($theirs)->toHaveCount(1);
+    expect($theirs->first()['oracleId'])->toBe('oracle-opp');
+    expect($theirs->first()['isSideboard'])->toBeFalse();
 });

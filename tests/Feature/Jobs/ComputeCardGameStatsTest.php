@@ -480,6 +480,179 @@ it('writes pregame flags as false when game log has no pregame actions', functio
     expect((bool) $stat->pregame_played)->toBeFalse();
 });
 
+it('writes opponent rows with cast and seen data from game log and timeline', function () {
+    [$match, $deckVersion, $local, $opponent] = createMatchWithGames();
+
+    $oppCard = Card::factory()->create(['oracle_id' => 'oracle-opp', 'mtgo_id' => 7001, 'name' => 'Bolt']);
+    $myLand = Card::factory()->create(['oracle_id' => 'oracle-mine', 'mtgo_id' => 7002, 'name' => 'Forest']);
+
+    $game = Game::factory()->for($match, 'match')->create([
+        'won' => false,
+        'started_at' => now(),
+    ]);
+    attachPlayers($game, $local, $opponent, deckJson: [
+        ['mtgo_id' => 7002, 'quantity' => 24, 'sideboard' => false],
+    ]);
+
+    // Opp's bolt seen on Stack and Graveyard. Owner=1 = opp instance.
+    GameTimeline::create([
+        'game_id' => $game->id,
+        'timestamp' => '09:00:00',
+        'content' => [
+            'Players' => [
+                ['Id' => 0, 'Name' => 'testplayer', 'LibraryCount' => 60, 'HandCount' => 0, 'Life' => 20],
+                ['Id' => 1, 'Name' => 'opponent', 'LibraryCount' => 60, 'HandCount' => 0, 'Life' => 20],
+            ],
+            'Cards' => [
+                ['Id' => 200, 'CatalogID' => 7001, 'Owner' => 1, 'Zone' => 'Stack'],
+            ],
+        ],
+    ]);
+    GameTimeline::create([
+        'game_id' => $game->id,
+        'timestamp' => '09:01:00',
+        'content' => [
+            'Players' => [
+                ['Id' => 0, 'Name' => 'testplayer', 'LibraryCount' => 60, 'HandCount' => 0, 'Life' => 20],
+                ['Id' => 1, 'Name' => 'opponent', 'LibraryCount' => 60, 'HandCount' => 0, 'Life' => 20],
+            ],
+            'Cards' => [
+                ['Id' => 200, 'CatalogID' => 7001, 'Owner' => 1, 'Zone' => 'Graveyard'],
+            ],
+        ],
+    ]);
+
+    GameLog::create([
+        'match_token' => $match->token,
+        'file_path' => '/fake/path.dat',
+        'decoded_entries' => [
+            ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@Ptestplayer joined the game.'],
+            ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@Popponent joined the game.'],
+            ['timestamp' => '2026-01-01T09:00:00+00:00', 'message' => '@Popponent casts @[Bolt@:14002,200:@].'],
+            ['timestamp' => '2026-01-01T09:02:00+00:00', 'message' => '@Popponent wins the game.'],
+        ],
+    ]);
+
+    (new ComputeCardGameStats($match->id))->handle();
+
+    $oppRow = DB::table('card_game_stats')
+        ->where('oracle_id', 'oracle-opp')
+        ->where('game_id', $game->id)
+        ->where('opponent', true)
+        ->first();
+
+    expect($oppRow)->not->toBeNull();
+    expect($oppRow->cast)->toBe(1);
+    expect($oppRow->seen)->toBe(1);
+    expect($oppRow->quantity)->toBe(0);
+    expect($oppRow->kept)->toBe(0);
+    expect((bool) $oppRow->won)->toBeFalse();
+    expect((bool) $oppRow->sided_out)->toBeFalse();
+    expect((bool) $oppRow->sided_in)->toBeFalse();
+
+    // Local row for our card unchanged
+    $localRow = DB::table('card_game_stats')
+        ->where('oracle_id', 'oracle-mine')
+        ->where('game_id', $game->id)
+        ->where('opponent', false)
+        ->first();
+
+    expect($localRow)->not->toBeNull();
+    expect($localRow->quantity)->toBe(24);
+});
+
+it('does not write opponent rows when no signals are present for that card', function () {
+    [$match, $deckVersion, $local, $opponent] = createMatchWithGames();
+
+    $myCard = Card::factory()->create(['oracle_id' => 'oracle-mine', 'mtgo_id' => 8001, 'name' => 'Forest']);
+
+    $game = Game::factory()->for($match, 'match')->create([
+        'won' => true,
+        'started_at' => now(),
+    ]);
+    attachPlayers($game, $local, $opponent, deckJson: [
+        ['mtgo_id' => 8001, 'quantity' => 24, 'sideboard' => false],
+    ]);
+    createTimeline($game, []);
+
+    GameLog::create([
+        'match_token' => $match->token,
+        'file_path' => '/fake/path.dat',
+        'decoded_entries' => [
+            ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@Ptestplayer joined the game.'],
+            ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@Popponent joined the game.'],
+            ['timestamp' => '2026-01-01T09:02:00+00:00', 'message' => '@Ptestplayer wins the game.'],
+        ],
+    ]);
+
+    (new ComputeCardGameStats($match->id))->handle();
+
+    $oppRows = DB::table('card_game_stats')
+        ->where('game_id', $game->id)
+        ->where('opponent', true)
+        ->get();
+
+    expect($oppRows)->toHaveCount(0);
+});
+
+it('allows local and opponent rows for the same oracle in the same game', function () {
+    [$match, $deckVersion, $local, $opponent] = createMatchWithGames();
+
+    // Both players on Bolt — local has it in deck, opp casts it
+    $bolt = Card::factory()->create(['oracle_id' => 'oracle-bolt', 'mtgo_id' => 9001, 'name' => 'Bolt']);
+
+    $game = Game::factory()->for($match, 'match')->create([
+        'won' => true,
+        'started_at' => now(),
+    ]);
+    attachPlayers($game, $local, $opponent, deckJson: [
+        ['mtgo_id' => 9001, 'quantity' => 4, 'sideboard' => false],
+    ]);
+
+    GameTimeline::create([
+        'game_id' => $game->id,
+        'timestamp' => '09:00:00',
+        'content' => [
+            'Players' => [
+                ['Id' => 0, 'Name' => 'testplayer', 'LibraryCount' => 60, 'HandCount' => 0, 'Life' => 20],
+                ['Id' => 1, 'Name' => 'opponent', 'LibraryCount' => 60, 'HandCount' => 0, 'Life' => 20],
+            ],
+            'Cards' => [
+                ['Id' => 300, 'CatalogID' => 9001, 'Owner' => 1, 'Zone' => 'Stack'],
+            ],
+        ],
+    ]);
+
+    GameLog::create([
+        'match_token' => $match->token,
+        'file_path' => '/fake/path.dat',
+        'decoded_entries' => [
+            ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@Ptestplayer joined the game.'],
+            ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@Popponent joined the game.'],
+            ['timestamp' => '2026-01-01T09:00:00+00:00', 'message' => '@Popponent casts @[Bolt@:18002,300:@].'],
+            ['timestamp' => '2026-01-01T09:02:00+00:00', 'message' => '@Ptestplayer wins the game.'],
+        ],
+    ]);
+
+    (new ComputeCardGameStats($match->id))->handle();
+
+    $rows = DB::table('card_game_stats')
+        ->where('oracle_id', 'oracle-bolt')
+        ->where('game_id', $game->id)
+        ->get();
+
+    expect($rows)->toHaveCount(2);
+
+    $localRow = $rows->firstWhere('opponent', 0) ?? $rows->firstWhere('opponent', false);
+    $oppRow = $rows->firstWhere('opponent', 1) ?? $rows->firstWhere('opponent', true);
+
+    expect($localRow)->not->toBeNull();
+    expect($localRow->quantity)->toBe(4);
+
+    expect($oppRow)->not->toBeNull();
+    expect($oppRow->cast)->toBe(1);
+});
+
 it('tracks land plays separately from casts in live pipeline', function () {
     [$match, $deckVersion, $local, $opponent] = createMatchWithGames();
 

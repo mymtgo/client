@@ -25,9 +25,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import DeckCardStatsRow from '@/pages/decks/partials/DeckCardStatsRow.vue';
 import {
     CARD_STATS_COLUMNS,
+    LOCAL_ONLY_COLUMNS,
     loadCardStatsVisibility,
     saveCardStatsVisibility,
     type CardStatsColumnKey,
+    type CardStatsPerspective,
     type CardStatsVisibility,
 } from '@/pages/decks/partials/cardStatsColumns';
 import { Deferred, router } from '@inertiajs/vue3';
@@ -99,11 +101,13 @@ const props = defineProps<{
     cardStats?: {
         stats: CardStat[];
         archetypes: { id: number; name: string; colorIdentity: string | null }[];
+        perspective?: CardStatsPerspective;
     };
 }>();
 
 const stats = computed(() => props.cardStats?.stats ?? []);
 const archetypes = computed(() => props.cardStats?.archetypes ?? []);
+const perspective = computed<CardStatsPerspective>(() => props.cardStats?.perspective ?? 'mine');
 
 const { add: toast } = useToast();
 const regenerateOpen = ref(false);
@@ -148,15 +152,26 @@ function regenerateCardStats() {
 const selectedArchetype = ref<string>('__all__');
 const selectedPlayDraw = ref<string>('__all__');
 const selectedBoard = ref<string>('__all__');
+const selectedPerspective = ref<CardStatsPerspective>(perspective.value);
 const searchQuery = ref('');
+
+watch(perspective, (val) => {
+    selectedPerspective.value = val;
+});
 
 function reloadStats() {
     const archetypeId = selectedArchetype.value === '__all__' ? undefined : selectedArchetype.value;
     const playDraw = selectedPlayDraw.value === '__all__' ? undefined : selectedPlayDraw.value;
     const board = selectedBoard.value === '__all__' ? undefined : selectedBoard.value;
+    const perspectiveParam = selectedPerspective.value === 'theirs' ? 'theirs' : undefined;
     router.reload({
         only: ['cardStats'],
-        data: { card_stats_archetype: archetypeId, card_stats_play_draw: playDraw, card_stats_board: board },
+        data: {
+            card_stats_archetype: archetypeId,
+            card_stats_play_draw: playDraw,
+            card_stats_board: board,
+            card_stats_perspective: perspectiveParam,
+        },
         preserveScroll: true,
         preserveState: true,
     });
@@ -174,6 +189,11 @@ function filterByPlayDraw(value: string) {
 
 function filterByBoard(value: string) {
     selectedBoard.value = value;
+    reloadStats();
+}
+
+function filterByPerspective(value: string) {
+    selectedPerspective.value = value === 'theirs' ? 'theirs' : 'mine';
     reloadStats();
 }
 
@@ -289,19 +309,38 @@ function setColumnVisible(key: CardStatsColumnKey, value: boolean): void {
     saveCardStatsVisibility(visibleColumns.value);
 }
 
-const allColumnsVisible = computed(() => CARD_STATS_COLUMNS.every((c) => visibleColumns.value[c.key]));
+// Forces local-only columns off when viewing the opponent perspective — opponent
+// rows have no quantity, kept hand, or sideboard tracking, so those columns are noise.
+const effectiveVisibleColumns = computed<CardStatsVisibility>(() => {
+    if (perspective.value !== 'theirs') return visibleColumns.value;
+    const overridden = { ...visibleColumns.value };
+    for (const key of LOCAL_ONLY_COLUMNS) {
+        overridden[key] = false;
+    }
+    return overridden;
+});
+
+const configurableColumns = computed(() =>
+    perspective.value === 'theirs'
+        ? CARD_STATS_COLUMNS.filter((c) => !LOCAL_ONLY_COLUMNS.includes(c.key))
+        : CARD_STATS_COLUMNS,
+);
+
+const allColumnsVisible = computed(() => configurableColumns.value.every((c) => visibleColumns.value[c.key]));
 
 function toggleAllColumns(): void {
     const newVal = !allColumnsVisible.value;
-    for (const col of CARD_STATS_COLUMNS) {
+    for (const col of configurableColumns.value) {
         visibleColumns.value[col.key] = newVal;
     }
     saveCardStatsVisibility(visibleColumns.value);
 }
 
-const visibleColumnCount = computed(() => 1 + CARD_STATS_COLUMNS.filter((c) => visibleColumns.value[c.key]).length);
+const visibleColumnCount = computed(
+    () => 1 + configurableColumns.value.filter((c) => effectiveVisibleColumns.value[c.key]).length,
+);
 
-const hiddenColumnCount = computed(() => CARD_STATS_COLUMNS.length - (visibleColumnCount.value - 1));
+const hiddenColumnCount = computed(() => configurableColumns.value.length - (visibleColumnCount.value - 1));
 
 // ── Sorting ──────────────────────────────────────────────────────────────────
 
@@ -324,21 +363,25 @@ function pctWithTiebreak(num: number, denom: number): number {
 }
 
 function sortValue(stat: CardStat, key: SortKey): number | string {
+    // For 'theirs', win-rate columns display the opponent's win rate. Sorting must use
+    // the same orientation so descending puts the most dangerous opponent cards on top.
+    const winNum = (won: number, lost: number) => (perspective.value === 'theirs' ? lost : won);
+
     switch (key) {
         case 'name':
             return stat.name;
         case 'keptPct':
             return pctWithTiebreak(stat.keptGames, stat.totalGames);
         case 'keptWinPct':
-            return pctWithTiebreak(stat.keptWon, stat.keptWon + stat.keptLost);
+            return pctWithTiebreak(winNum(stat.keptWon, stat.keptLost), stat.keptWon + stat.keptLost);
         case 'seenPct':
             return pctWithTiebreak(stat.seenGames, stat.totalGames);
         case 'seenWinPct':
-            return pctWithTiebreak(stat.seenWon, stat.seenWon + stat.seenLost);
+            return pctWithTiebreak(winNum(stat.seenWon, stat.seenLost), stat.seenWon + stat.seenLost);
         case 'castPct':
             return pctWithTiebreak(stat.castGames, stat.totalGames);
         case 'castWinPct':
-            return pctWithTiebreak(stat.castWon, stat.castWon + stat.castLost);
+            return pctWithTiebreak(winNum(stat.castWon, stat.castLost), stat.castWon + stat.castLost);
         case 'playedPct':
             return pctWithTiebreak(stat.playedGames, stat.totalGames);
         case 'kicked':
@@ -348,7 +391,7 @@ function sortValue(stat: CardStat, key: SortKey): number | string {
         case 'pregamePct':
             return pctWithTiebreak(stat.pregameGames, stat.totalGames);
         case 'pregameWinPct':
-            return pctWithTiebreak(stat.pregameWon, stat.pregameWon + stat.pregameLost);
+            return pctWithTiebreak(winNum(stat.pregameWon, stat.pregameLost), stat.pregameWon + stat.pregameLost);
         case 'sbOutPct':
             return pctWithTiebreak(stat.sidedOutGames, stat.postboardGames);
         case 'sbInPct':
@@ -510,6 +553,15 @@ function sortIcon(key: SortKey) {
                 </div>
 
                 <SegmentedControl
+                    :modelValue="selectedPerspective"
+                    :options="[
+                        { value: 'mine', label: 'My Cards' },
+                        { value: 'theirs', label: 'Their Cards' },
+                    ]"
+                    @update:modelValue="filterByPerspective"
+                />
+
+                <SegmentedControl
                     :modelValue="selectedBoard"
                     :options="[
                         { value: '__all__', label: 'Overall' },
@@ -598,7 +650,7 @@ function sortIcon(key: SortKey) {
                             </DropdownMenuLabel>
                             <DropdownMenuSeparator />
                             <DropdownMenuCheckboxItem
-                                v-for="col in CARD_STATS_COLUMNS"
+                                v-for="col in configurableColumns"
                                 :key="col.key"
                                 :modelValue="visibleColumns[col.key]"
                                 @update:modelValue="(val: boolean) => setColumnVisible(col.key, val)"
@@ -800,7 +852,15 @@ function sortIcon(key: SortKey) {
             </div>
         </div>
 
-        <div v-if="!stats.length" class="flex flex-col items-center gap-3 py-16 text-center">
+        <div v-if="!stats.length && perspective === 'theirs'" class="flex flex-col items-center gap-3 py-16 text-center">
+            <BarChart3 class="size-10 text-muted-foreground/40" />
+            <p class="font-medium">No opponent cards tracked yet</p>
+            <p class="max-w-sm text-sm text-muted-foreground">
+                Their cards will appear here as you play more games. Switch back to "My Cards" to see your own stats.
+            </p>
+        </div>
+
+        <div v-else-if="!stats.length" class="flex flex-col items-center gap-3 py-16 text-center">
             <BarChart3 class="size-10 text-muted-foreground/40" />
             <p class="font-medium">No card stats yet</p>
             <p class="max-w-sm text-sm text-muted-foreground">
@@ -822,74 +882,74 @@ function sortIcon(key: SortKey) {
                             <TableHead class="cursor-pointer select-none" @click="toggleSort('name')">
                                 <span class="inline-flex items-center gap-1">Card <component :is="sortIcon('name')" class="size-3" /></span>
                             </TableHead>
-                            <TableHead v-if="visibleColumns.type">Type</TableHead>
-                            <TableHead v-if="visibleColumns.sb" class="w-10 text-center">SB</TableHead>
-                            <TableHead v-if="visibleColumns.keptPct" class="cursor-pointer text-right select-none" @click="toggleSort('keptPct')">
+                            <TableHead v-if="effectiveVisibleColumns.type">Type</TableHead>
+                            <TableHead v-if="effectiveVisibleColumns.sb" class="w-10 text-center">SB</TableHead>
+                            <TableHead v-if="effectiveVisibleColumns.keptPct" class="cursor-pointer text-right select-none" @click="toggleSort('keptPct')">
                                 <span class="inline-flex items-center justify-end gap-1"
                                     >Kept % <component :is="sortIcon('keptPct')" class="size-3"
                                 /></span>
                             </TableHead>
-                            <TableHead v-if="visibleColumns.keptWinPct" class="cursor-pointer text-right select-none" @click="toggleSort('keptWinPct')">
+                            <TableHead v-if="effectiveVisibleColumns.keptWinPct" class="cursor-pointer text-right select-none" @click="toggleSort('keptWinPct')">
                                 <span class="inline-flex items-center justify-end gap-1"
                                     >Kept Win % <component :is="sortIcon('keptWinPct')" class="size-3"
                                 /></span>
                             </TableHead>
-                            <TableHead v-if="visibleColumns.castPct" class="cursor-pointer text-right select-none" @click="toggleSort('castPct')">
+                            <TableHead v-if="effectiveVisibleColumns.castPct" class="cursor-pointer text-right select-none" @click="toggleSort('castPct')">
                                 <span class="inline-flex items-center justify-end gap-1"
                                     >Cast % <component :is="sortIcon('castPct')" class="size-3"
                                 /></span>
                             </TableHead>
-                            <TableHead v-if="visibleColumns.castWinPct" class="cursor-pointer text-right select-none" @click="toggleSort('castWinPct')">
+                            <TableHead v-if="effectiveVisibleColumns.castWinPct" class="cursor-pointer text-right select-none" @click="toggleSort('castWinPct')">
                                 <span class="inline-flex items-center justify-end gap-1"
                                     >Cast Win % <component :is="sortIcon('castWinPct')" class="size-3"
                                 /></span>
                             </TableHead>
-                            <TableHead v-if="visibleColumns.playedPct" class="cursor-pointer text-right select-none" @click="toggleSort('playedPct')">
+                            <TableHead v-if="effectiveVisibleColumns.playedPct" class="cursor-pointer text-right select-none" @click="toggleSort('playedPct')">
                                 <span class="inline-flex items-center justify-end gap-1"
                                     >Played % <component :is="sortIcon('playedPct')" class="size-3"
                                 /></span>
                             </TableHead>
-                            <TableHead v-if="visibleColumns.kicked" class="cursor-pointer text-right select-none" @click="toggleSort('kicked')">
+                            <TableHead v-if="effectiveVisibleColumns.kicked" class="cursor-pointer text-right select-none" @click="toggleSort('kicked')">
                                 <span class="inline-flex items-center justify-end gap-1"
                                     >Kicked <component :is="sortIcon('kicked')" class="size-3"
                                 /></span>
                             </TableHead>
-                            <TableHead v-if="visibleColumns.activated" class="cursor-pointer text-right select-none" @click="toggleSort('activated')">
+                            <TableHead v-if="effectiveVisibleColumns.activated" class="cursor-pointer text-right select-none" @click="toggleSort('activated')">
                                 <span class="inline-flex items-center justify-end gap-1"
                                     >Activated <component :is="sortIcon('activated')" class="size-3"
                                 /></span>
                             </TableHead>
-                            <TableHead v-if="visibleColumns.pregamePct" class="cursor-pointer text-right select-none" @click="toggleSort('pregamePct')">
+                            <TableHead v-if="effectiveVisibleColumns.pregamePct" class="cursor-pointer text-right select-none" @click="toggleSort('pregamePct')">
                                 <span class="inline-flex items-center justify-end gap-1"
                                     >Pregame % <component :is="sortIcon('pregamePct')" class="size-3"
                                 /></span>
                             </TableHead>
-                            <TableHead v-if="visibleColumns.pregameWinPct" class="cursor-pointer text-right select-none" @click="toggleSort('pregameWinPct')">
+                            <TableHead v-if="effectiveVisibleColumns.pregameWinPct" class="cursor-pointer text-right select-none" @click="toggleSort('pregameWinPct')">
                                 <span class="inline-flex items-center justify-end gap-1"
                                     >Pregame Win % <component :is="sortIcon('pregameWinPct')" class="size-3"
                                 /></span>
                             </TableHead>
-                            <TableHead v-if="visibleColumns.seenPct" class="cursor-pointer text-right select-none" @click="toggleSort('seenPct')">
+                            <TableHead v-if="effectiveVisibleColumns.seenPct" class="cursor-pointer text-right select-none" @click="toggleSort('seenPct')">
                                 <span class="inline-flex items-center justify-end gap-1"
                                     >Seen % <component :is="sortIcon('seenPct')" class="size-3"
                                 /></span>
                             </TableHead>
-                            <TableHead v-if="visibleColumns.seenWinPct" class="cursor-pointer text-right select-none" @click="toggleSort('seenWinPct')">
+                            <TableHead v-if="effectiveVisibleColumns.seenWinPct" class="cursor-pointer text-right select-none" @click="toggleSort('seenWinPct')">
                                 <span class="inline-flex items-center justify-end gap-1"
                                     >Seen Win % <component :is="sortIcon('seenWinPct')" class="size-3"
                                 /></span>
                             </TableHead>
-                            <TableHead v-if="visibleColumns.sbOutPct" class="cursor-pointer text-right select-none" @click="toggleSort('sbOutPct')">
+                            <TableHead v-if="effectiveVisibleColumns.sbOutPct" class="cursor-pointer text-right select-none" @click="toggleSort('sbOutPct')">
                                 <span class="inline-flex items-center justify-end gap-1"
                                     >SB Out % <component :is="sortIcon('sbOutPct')" class="size-3"
                                 /></span>
                             </TableHead>
-                            <TableHead v-if="visibleColumns.sbInPct" class="cursor-pointer text-right select-none" @click="toggleSort('sbInPct')">
+                            <TableHead v-if="effectiveVisibleColumns.sbInPct" class="cursor-pointer text-right select-none" @click="toggleSort('sbInPct')">
                                 <span class="inline-flex items-center justify-end gap-1"
                                     >SB In % <component :is="sortIcon('sbInPct')" class="size-3"
                                 /></span>
                             </TableHead>
-                            <TableHead v-if="visibleColumns.games" class="cursor-pointer text-right select-none" @click="toggleSort('games')">
+                            <TableHead v-if="effectiveVisibleColumns.games" class="cursor-pointer text-right select-none" @click="toggleSort('games')">
                                 <span class="inline-flex items-center justify-end gap-1"
                                     >Games <component :is="sortIcon('games')" class="size-3"
                                 /></span>
@@ -901,7 +961,8 @@ function sortIcon(key: SortKey) {
                             <ContextMenuTrigger asChild>
                                 <DeckCardStatsRow
                                     :stat="stat"
-                                    :visible-columns="visibleColumns"
+                                    :visible-columns="effectiveVisibleColumns"
+                                    :perspective="perspective"
                                     @image-enter="onRowEnter"
                                     @image-move="onRowMove"
                                     @image-leave="onRowLeave"
@@ -926,7 +987,8 @@ function sortIcon(key: SortKey) {
                             <ContextMenuTrigger asChild>
                                 <DeckCardStatsRow
                                     :stat="stat"
-                                    :visible-columns="visibleColumns"
+                                    :visible-columns="effectiveVisibleColumns"
+                                    :perspective="perspective"
                                     class="opacity-60"
                                     @image-enter="onRowEnter"
                                     @image-move="onRowMove"
