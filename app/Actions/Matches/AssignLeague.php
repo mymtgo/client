@@ -2,6 +2,7 @@
 
 namespace App\Actions\Matches;
 
+use App\Actions\Leagues\CompleteLeague;
 use App\Enums\LeagueState;
 use App\Models\League;
 use App\Models\LogEvent;
@@ -78,7 +79,7 @@ class AssignLeague
         //      (not Partial). The safety-net branch below mints a fresh
         //      league for the new run.
         if ($league && $league->matches()->count() >= 5) {
-            $league->update(['state' => LeagueState::Complete]);
+            CompleteLeague::run($league);
             $league = null;
         }
 

@@ -148,6 +148,7 @@ it('falls back to most recent completed league when no active league exists', fu
         'name' => 'Completed League',
         'state' => 'complete',
         'started_at' => now(),
+        'completed_at' => now(),
     ]);
 
     foreach (range(1, 5) as $i) {
@@ -176,16 +177,17 @@ it('falls back to most recent completed league when no active league exists', fu
     );
 });
 
-it('hides completed league fallback when its last match is older than 5 minutes', function () {
+it('hides completed league when completed_at is older than 5 minutes', function () {
     $league = League::create([
         'token' => 'stale-completed-league',
         'format' => 'Modern',
         'name' => 'Stale League',
         'state' => 'complete',
         'started_at' => now()->subHours(2),
+        'completed_at' => now()->subMinutes(10),
     ]);
 
-    $match = MtgoMatch::create([
+    MtgoMatch::create([
         'mtgo_id' => '700001',
         'token' => 'stale-match',
         'league_id' => $league->id,
@@ -197,8 +199,6 @@ it('hides completed league fallback when its last match is older than 5 minutes'
         'ended_at' => now()->subHours(2),
     ]);
 
-    $match->forceFill(['created_at' => now()->subMinutes(10)])->save();
-
     $response = $this->get(route('leagues.overlay'));
 
     $response->assertOk();
@@ -208,13 +208,14 @@ it('hides completed league fallback when its last match is older than 5 minutes'
     );
 });
 
-it('shows completed league fallback when its last match is within 5 minutes', function () {
+it('shows completed league when completed_at is within 5 minutes', function () {
     $league = League::create([
         'token' => 'fresh-completed-league',
         'format' => 'Modern',
         'name' => 'Fresh League',
         'state' => 'complete',
         'started_at' => now()->subHour(),
+        'completed_at' => now()->subMinutes(2),
     ]);
 
     MtgoMatch::create([
@@ -225,8 +226,8 @@ it('shows completed league fallback when its last match is within 5 minutes', fu
         'match_type' => 'League',
         'state' => MatchState::Complete,
         'outcome' => 'win',
-        'started_at' => now()->subMinutes(2),
-        'ended_at' => now()->subMinutes(1),
+        'started_at' => now()->subMinutes(5),
+        'ended_at' => now()->subMinutes(2),
     ]);
 
     $response = $this->get(route('leagues.overlay'));
@@ -235,6 +236,68 @@ it('shows completed league fallback when its last match is within 5 minutes', fu
     $response->assertInertia(fn ($page) => $page
         ->component('leagues/Overlay')
         ->where('league.id', $league->id)
+    );
+});
+
+it('shows dropped league when dropped_at is within 5 minutes', function () {
+    $league = League::create([
+        'token' => 'fresh-dropped-league',
+        'format' => 'Modern',
+        'name' => 'Fresh Dropped League',
+        'state' => 'dropped',
+        'started_at' => now()->subHour(),
+        'dropped_at' => now()->subMinutes(2),
+    ]);
+
+    MtgoMatch::create([
+        'mtgo_id' => '700003',
+        'token' => 'dropped-match',
+        'league_id' => $league->id,
+        'format' => 'Modern',
+        'match_type' => 'League',
+        'state' => MatchState::Complete,
+        'outcome' => 'loss',
+        'started_at' => now()->subMinutes(10),
+        'ended_at' => now()->subMinutes(5),
+    ]);
+
+    $response = $this->get(route('leagues.overlay'));
+
+    $response->assertOk();
+    $response->assertInertia(fn ($page) => $page
+        ->component('leagues/Overlay')
+        ->where('league.id', $league->id)
+    );
+});
+
+it('hides dropped league when dropped_at is older than 5 minutes', function () {
+    $league = League::create([
+        'token' => 'stale-dropped-league',
+        'format' => 'Modern',
+        'name' => 'Stale Dropped League',
+        'state' => 'dropped',
+        'started_at' => now()->subHours(2),
+        'dropped_at' => now()->subMinutes(10),
+    ]);
+
+    MtgoMatch::create([
+        'mtgo_id' => '700004',
+        'token' => 'stale-dropped-match',
+        'league_id' => $league->id,
+        'format' => 'Modern',
+        'match_type' => 'League',
+        'state' => MatchState::Complete,
+        'outcome' => 'loss',
+        'started_at' => now()->subHours(2),
+        'ended_at' => now()->subHours(2),
+    ]);
+
+    $response = $this->get(route('leagues.overlay'));
+
+    $response->assertOk();
+    $response->assertInertia(fn ($page) => $page
+        ->component('leagues/Overlay')
+        ->where('league', null)
     );
 });
 

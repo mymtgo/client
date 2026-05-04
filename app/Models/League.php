@@ -26,6 +26,7 @@ class League extends Model
         'started_at' => 'datetime',
         'joined_at' => 'datetime',
         'dropped_at' => 'datetime',
+        'completed_at' => 'datetime',
         'state' => LeagueState::class,
     ];
 

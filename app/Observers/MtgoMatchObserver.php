@@ -2,6 +2,7 @@
 
 namespace App\Observers;
 
+use App\Actions\Leagues\CompleteLeague;
 use App\Enums\LeagueState;
 use App\Enums\MatchOutcome;
 use App\Enums\MatchState;
@@ -54,7 +55,7 @@ class MtgoMatchObserver
             // League completion check
             if (($league = $match->league) && $league->state === LeagueState::Active
                 && $league->matches()->where('state', MatchState::Complete)->count() >= 5) {
-                $league->update(['state' => LeagueState::Complete]);
+                CompleteLeague::run($league);
             }
 
             return;

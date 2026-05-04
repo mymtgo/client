@@ -33,9 +33,16 @@ class OverlayController extends Controller
             ->latest('started_at')
             ->first();
 
+        // Grace window: keep finished/dropped leagues visible on the streamer
+        // overlay for 5 minutes after the run ended, then flush silently.
         if (! $league) {
+            $graceCutoff = now()->subMinutes(5);
             $league = $baseQuery()
-                ->whereHas('matches', fn ($q) => $q->where('matches.created_at', '>=', now()->subMinutes(5)))
+                ->whereIn('leagues.state', [LeagueState::Complete, LeagueState::Dropped])
+                ->where(function ($q) use ($graceCutoff) {
+                    $q->where('completed_at', '>=', $graceCutoff)
+                        ->orWhere('dropped_at', '>=', $graceCutoff);
+                })
                 ->latest('started_at')
                 ->first();
         }
