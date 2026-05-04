@@ -13,6 +13,6 @@ class RegenerateCardStatsController extends Controller
     {
         $result = RegenerateCardGameStats::forDeck($deck);
 
-        return back()->with('cardStatsRegenerated', $result['live'] + $result['imported']);
+        return back()->with('cardStatsRegenerated', $result['queued']);
     }
 }

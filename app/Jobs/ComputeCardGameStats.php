@@ -9,6 +9,7 @@ use App\Actions\Import\ExtractCardsFromGameLog;
 use App\Actions\Matches\ExtractGameHandData;
 use App\Models\Card;
 use App\Models\CardGameStat;
+use App\Models\DeckVersion;
 use App\Models\Game;
 use App\Models\GameLog;
 use App\Models\MtgoMatch;
@@ -39,6 +40,10 @@ class ComputeCardGameStats implements ShouldQueue
         }
 
         $games = $match->games->sortBy('started_at')->values();
+
+        // Delete-then-insert: re-runs stay idempotent. Without this, insertOrIgnore
+        // leaves stale rows for cards no longer in the deck or no longer signaled by opp.
+        CardGameStat::whereIn('game_id', $games->pluck('id'))->delete();
 
         $gameLog = GameLog::where('match_token', $match->token)
             ->whereNotNull('decoded_entries')
@@ -92,7 +97,7 @@ class ComputeCardGameStats implements ShouldQueue
     private function processLocalSide(Game $game, $localPlayer, int $deckVersionId, bool $isPostboard, ?array $game1Quantities, ?array $gameLogStats, int $gameIndex): ?array
     {
         $localInstanceId = (int) $localPlayer->pivot->instance_id;
-        $deckJson = $localPlayer->pivot->deck_json;
+        $deckJson = $this->resolveDeckJson($localPlayer, $deckVersionId);
 
         if (empty($deckJson)) {
             return null;
@@ -100,7 +105,7 @@ class ComputeCardGameStats implements ShouldQueue
 
         $deckCollection = collect($deckJson);
         $deckQuantities = $deckCollection
-            ->reject(fn ($card) => $card['sideboard'] ?? false)
+            ->reject(fn ($card) => $this->isSideboardCard($card))
             ->mapWithKeys(fn ($card) => [
                 (string) $card['mtgo_id'] => (int) $card['quantity'],
             ]);
@@ -141,11 +146,11 @@ class ComputeCardGameStats implements ShouldQueue
             }
         }
 
-        $seenByOracle = CountSeenCardsByOracle::run($game, $localInstanceId, $catalogToOracle, self::LOCAL_VISIBLE_ZONES);
-
         $logStats = $gameLogStats
             ? AggregateGameLogCardStats::run($gameLogStats, $gameIndex, $localPlayer->username, $catalogToOracle)
             : $this->emptyLogStats();
+
+        $seenByOracle = $this->resolveSeenByOracle($game, $localInstanceId, $catalogToOracle, self::LOCAL_VISIBLE_ZONES, $logStats);
 
         $rows = [];
         $now = now();
@@ -221,17 +226,19 @@ class ComputeCardGameStats implements ShouldQueue
 
         foreach ($opponents as $opponent) {
             $oppInstanceId = (int) $opponent->pivot->instance_id;
-            $catalogToOracle = $this->buildOpponentCatalogToOracle($game, $oppInstanceId);
+            $oppName = $opponent->username;
+
+            $catalogToOracle = $this->buildOpponentCatalogToOracle($game, $oppInstanceId, $gameLogStats, $gameIndex, $oppName);
 
             if (empty($catalogToOracle)) {
                 continue;
             }
 
-            $seenByOracle = CountSeenCardsByOracle::run($game, $oppInstanceId, $catalogToOracle, self::OPPONENT_VISIBLE_ZONES);
-
             $logStats = $gameLogStats
-                ? AggregateGameLogCardStats::run($gameLogStats, $gameIndex, $opponent->username, $catalogToOracle)
+                ? AggregateGameLogCardStats::run($gameLogStats, $gameIndex, $oppName, $catalogToOracle)
                 : $this->emptyLogStats();
+
+            $seenByOracle = $this->resolveSeenByOracle($game, $oppInstanceId, $catalogToOracle, self::OPPONENT_VISIBLE_ZONES, $logStats);
 
             $oracleIds = array_unique(array_values($catalogToOracle));
 
@@ -286,13 +293,87 @@ class ComputeCardGameStats implements ShouldQueue
     }
 
     /**
-     * Build a catalog-id => oracle-id map from cards observed in the timeline owned by the given instance.
+     * Pivot's deck_json (live capture) preferred. Fall back to the deck-version
+     * snapshot for imported games where pivot wasn't populated.
      *
-     * Opponent decks are unknown, so we only resolve oracle ids for cards we actually saw.
+     * @return list<array<string, mixed>>
+     */
+    private function resolveDeckJson($player, int $deckVersionId): array
+    {
+        $pivotDeck = $player->pivot->deck_json;
+        if (! empty($pivotDeck)) {
+            return $pivotDeck;
+        }
+
+        $version = DeckVersion::find($deckVersionId);
+        if (! $version) {
+            return [];
+        }
+
+        // Old signature format omits mtgo_id; can't resolve to timeline catalog ids.
+        return collect($version->cards)
+            ->filter(fn ($card) => isset($card['mtgo_id']))
+            ->values()
+            ->toArray();
+    }
+
+    /**
+     * @param  array<string, mixed>  $card
+     */
+    private function isSideboardCard(array $card): bool
+    {
+        $value = $card['sideboard'] ?? false;
+        if (is_bool($value)) {
+            return $value;
+        }
+
+        return strtolower((string) $value) === 'true';
+    }
+
+    /**
+     * Counts unique card instances seen via timeline. When timeline lacks data
+     * (imported matches), any oracle with a game-log signal becomes seen=1
+     * since "appeared in the log" is the strongest available evidence.
      *
+     * @param  array<string, string>  $catalogToOracle
+     * @param  list<string>  $visibleZones
+     * @param  array<string, mixed>  $logStats
+     * @return array<string, int>
+     */
+    private function resolveSeenByOracle(Game $game, int $instanceId, array $catalogToOracle, array $visibleZones, array $logStats): array
+    {
+        $seenByOracle = CountSeenCardsByOracle::run($game, $instanceId, $catalogToOracle, $visibleZones);
+
+        $signalKeys = ['cast', 'played', 'kicked', 'flashback', 'madness', 'evoked', 'activated'];
+        foreach ($signalKeys as $key) {
+            foreach ($logStats[$key] ?? [] as $oracleId => $count) {
+                if ($count > 0 && ($seenByOracle[$oracleId] ?? 0) === 0) {
+                    $seenByOracle[$oracleId] = 1;
+                }
+            }
+        }
+
+        foreach (['pregame_revealed', 'pregame_played'] as $key) {
+            foreach ($logStats[$key] ?? [] as $oracleId => $_flag) {
+                if (($seenByOracle[$oracleId] ?? 0) === 0) {
+                    $seenByOracle[$oracleId] = 1;
+                }
+            }
+        }
+
+        return $seenByOracle;
+    }
+
+    /**
+     * Catalog-id => oracle-id from cards we observed for this opponent.
+     * Source union: (a) timeline cards owned by the opp instance, and (b) mtgo_ids
+     * the opp interacted with in the game log. Imported matches have no timeline,
+     * so the game-log fallback is the only path that surfaces opp cards there.
+     *
+     * @param  array<string, mixed>|null  $gameLogStats
      * @return array<string, string>
      */
-    private function buildOpponentCatalogToOracle(Game $game, int $oppInstanceId): array
+    private function buildOpponentCatalogToOracle(Game $game, int $oppInstanceId, ?array $gameLogStats, int $gameIndex, string $oppName): array
     {
         $catalogIds = [];
 
@@ -308,6 +389,22 @@ class ComputeCardGameStats implements ShouldQueue
                     continue;
                 }
                 $catalogIds[$catalogId] = true;
+            }
+        }
+
+        if ($gameLogStats) {
+            foreach ($gameLogStats['cards_by_game'][$gameIndex][$oppName] ?? [] as $card) {
+                $mtgoId = (string) ($card['mtgo_id'] ?? '');
+                if ($mtgoId !== '') {
+                    $catalogIds[$mtgoId] = true;
+                }
+            }
+
+            foreach ($gameLogStats['pregame_actions'][$gameIndex][$oppName] ?? [] as $action) {
+                $mtgoId = (string) ($action['mtgo_id'] ?? '');
+                if ($mtgoId !== '') {
+                    $catalogIds[$mtgoId] = true;
+                }
             }
         }
 

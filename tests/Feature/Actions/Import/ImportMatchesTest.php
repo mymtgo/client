@@ -7,6 +7,7 @@ use App\Models\Card;
 use App\Models\CardGameStat;
 use App\Models\Deck;
 use App\Models\DeckVersion;
+use App\Models\GameLog;
 use App\Models\MtgoMatch;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
@@ -117,15 +118,35 @@ it('skips duplicate mtgo_ids', function () {
     expect($result['skipped'])->toBe(1);
 });
 
-it('creates per-game card stats from per-game card data', function () {
-    $cardA = Card::factory()->create(['mtgo_id' => 100, 'oracle_id' => 'oracle-a']);
-    $cardB = Card::factory()->create(['mtgo_id' => 200, 'oracle_id' => 'oracle-b']);
+it('creates per-game card stats via game log when importing a match', function () {
+    Card::factory()->create(['mtgo_id' => 100, 'oracle_id' => 'oracle-a', 'name' => 'Card A']);
+    Card::factory()->create(['mtgo_id' => 200, 'oracle_id' => 'oracle-b', 'name' => 'Card B']);
 
     $deck = Deck::factory()->create();
-    $signature = base64_encode('oracle-a:4:false|oracle-b:2:false');
+    $signature = base64_encode('100:4:false|200:2:false');
     $version = DeckVersion::factory()->create([
         'deck_id' => $deck->id,
         'signature' => $signature,
+    ]);
+
+    $logToken = 'log-token-77';
+    GameLog::create([
+        'match_token' => $logToken,
+        'file_path' => '/fake/path.dat',
+        'decoded_entries' => [
+            ['timestamp' => '2025-06-01T12:00:00+00:00', 'message' => '@P@Panticloser joined the game.'],
+            ['timestamp' => '2025-06-01T12:00:00+00:00', 'message' => '@P@Ptestopponent joined the game.'],
+            ['timestamp' => '2025-06-01T12:00:01+00:00', 'message' => '@Panticloser rolled a 5.'],
+            // Game 1: Card A cast
+            ['timestamp' => '2025-06-01T12:01:00+00:00', 'message' => '@Panticloser casts @[Card A@:200,1:@].'],
+            ['timestamp' => '2025-06-01T12:15:00+00:00', 'message' => '@Panticloser wins the game.'],
+            // Game 2 boundary marker
+            ['timestamp' => '2025-06-01T12:15:30+00:00', 'message' => '@Panticloser rolled a 3.'],
+            // Game 2: A and B cast
+            ['timestamp' => '2025-06-01T12:16:00+00:00', 'message' => '@Panticloser casts @[Card A@:200,2:@].'],
+            ['timestamp' => '2025-06-01T12:17:00+00:00', 'message' => '@Panticloser casts @[Card B@:400,3:@].'],
+            ['timestamp' => '2025-06-01T12:30:00+00:00', 'message' => '@Panticloser wins the game.'],
+        ],
     ]);
 
     $importData = [
@@ -139,15 +160,10 @@ it('creates per-game card stats from per-game card data', function () {
             'outcome' => 'win',
             'round' => 0,
             'has_game_log' => true,
-            'game_log_token' => null,
+            'game_log_token' => $logToken,
             'local_player' => 'anticloser',
-            'local_cards' => [
-                ['mtgo_id' => 100, 'name' => 'Card A'],
-                ['mtgo_id' => 200, 'name' => 'Card B'],
-            ],
-            'opponent_cards' => [
-                ['mtgo_id' => 300, 'name' => 'Opp Card'],
-            ],
+            'local_cards' => [],
+            'opponent_cards' => [],
             'games' => [
                 [
                     'game_index' => 0,
@@ -157,8 +173,8 @@ it('creates per-game card stats from per-game card data', function () {
                     'opponent_hand_size' => 7,
                     'started_at' => '2025-06-01T12:00:00Z',
                     'ended_at' => '2025-06-01T12:15:00Z',
-                    'local_cards' => [['mtgo_id' => 100, 'name' => 'Card A']],
-                    'opponent_cards' => [['mtgo_id' => 300, 'name' => 'Opp Card']],
+                    'local_cards' => [],
+                    'opponent_cards' => [],
                 ],
                 [
                     'game_index' => 1,
@@ -168,11 +184,8 @@ it('creates per-game card stats from per-game card data', function () {
                     'opponent_hand_size' => 7,
                     'started_at' => '2025-06-01T12:16:00Z',
                     'ended_at' => '2025-06-01T12:30:00Z',
-                    'local_cards' => [
-                        ['mtgo_id' => 100, 'name' => 'Card A'],
-                        ['mtgo_id' => 200, 'name' => 'Card B'],
-                    ],
-                    'opponent_cards' => [['mtgo_id' => 300, 'name' => 'Opp Card']],
+                    'local_cards' => [],
+                    'opponent_cards' => [],
                 ],
             ],
             'game_ids' => [111, 222],
@@ -184,16 +197,17 @@ it('creates per-game card stats from per-game card data', function () {
 
     $match = MtgoMatch::where('mtgo_id', '77777777')->first();
 
-    // Game 1: only Card A seen
+    // Game 1: Card A cast (seen=1), Card B in deck but not seen
     $game1 = $match->games->sortBy('started_at')->first();
-    $game1Stats = CardGameStat::where('game_id', $game1->id)->get();
+    $game1Stats = CardGameStat::where('game_id', $game1->id)->where('opponent', false)->get();
     expect($game1Stats)->toHaveCount(2);
     expect($game1Stats->firstWhere('oracle_id', 'oracle-a')->seen)->toBe(1);
+    expect($game1Stats->firstWhere('oracle_id', 'oracle-a')->cast)->toBe(1);
     expect($game1Stats->firstWhere('oracle_id', 'oracle-b')->seen)->toBe(0);
 
-    // Game 2: both Card A and Card B seen
+    // Game 2: both cards cast
     $game2 = $match->games->sortBy('started_at')->last();
-    $game2Stats = CardGameStat::where('game_id', $game2->id)->get();
+    $game2Stats = CardGameStat::where('game_id', $game2->id)->where('opponent', false)->get();
     expect($game2Stats->firstWhere('oracle_id', 'oracle-a')->seen)->toBe(1);
     expect($game2Stats->firstWhere('oracle_id', 'oracle-b')->seen)->toBe(1);
 });

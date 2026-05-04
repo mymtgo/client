@@ -7,6 +7,7 @@ use App\Actions\Matches\ParseGameLogBinary;
 use App\Enums\MatchOutcome;
 use App\Enums\MatchState;
 use App\Facades\Mtgo;
+use App\Jobs\ComputeCardGameStats;
 use App\Jobs\DetermineMatchArchetypesJob;
 use App\Models\Card;
 use App\Models\Game;
@@ -80,6 +81,7 @@ class ImportMatches
 
                 // Dispatch archetype detection to the queue — external API calls are too slow for inline
                 DetermineMatchArchetypesJob::dispatch($match->id)->onQueue('match_archetypes');
+                ComputeCardGameStats::dispatchSync($match->id);
             }
 
             $imported++;
@@ -218,6 +220,7 @@ class ImportMatches
 
                 self::createGames($match, $data);
                 DetermineMatchArchetypesJob::dispatch($match->id)->onQueue('match_archetypes');
+                ComputeCardGameStats::dispatchSync($match->id);
             }
 
             $imported++;
@@ -227,38 +230,19 @@ class ImportMatches
     }
 
     /**
-     * Create Game records and attach players for a given match.
+     * Create Game records and attach players for a given match. Card-game stats
+     * are computed by ComputeCardGameStats once all games are persisted.
      */
     private static function createGames(MtgoMatch $match, array $data): void
     {
         $localPlayer = Player::firstOrCreate(['username' => $data['local_player']]);
         $opponent = Player::firstOrCreate(['username' => $data['opponent']]);
 
-        // Collect ALL cards (local + opponent) for stats tracking.
-        // ComputeImportedCardGameStats filters against deck oracle_ids, so opponent
-        // cards that aren't in the deck are excluded naturally.
-        $allMatchCards = collect($data['local_cards'] ?? [])
-            ->merge($data['opponent_cards'] ?? [])
-            ->unique('mtgo_id')
-            ->values()
-            ->toArray();
-
         foreach ($data['games'] as $index => $gameData) {
             $gameId = $data['game_ids'][$index] ?? null;
 
-            // Per-game: combine local + opponent cards for this game
-            $gameLocalCards = $gameData['local_cards'] ?? [];
-            $gameOpponentCards = $gameData['opponent_cards'] ?? [];
-            $cardStats = ! empty($gameLocalCards) || ! empty($gameOpponentCards)
-                ? collect($gameLocalCards)->merge($gameOpponentCards)
-                    ->unique('mtgo_id')
-                    ->values()
-                    ->toArray()
-                : collect($allMatchCards)
-                    ->values()
-                    ->toArray();
-
-            // Build deck_json from per-game cards extracted from game log
+            // Build pivot deck_json from per-game cards extracted from game log.
+            // Empty array means the unified job falls back to the deck-version cards.
             $buildDeckJson = fn ($cards) => ! empty($cards)
                 ? collect($cards)->map(fn ($card) => [
                     'mtgo_id' => $card['mtgo_id'],
@@ -293,21 +277,11 @@ class ImportMatches
                 'is_local' => false,
                 'on_play' => ! ($gameData['on_play'] ?? false),
                 'starting_hand_size' => $gameData['opponent_hand_size'] ?? 7,
-                'instance_id' => 0,
+                'instance_id' => 1,
                 'deck_json' => $opponentDeckJson,
                 'dice_roll' => $gameData['opponent_dice_roll'] ?? null,
                 'mulligan_count' => $gameData['opponent_mulligan_count'] ?? 0,
             ]);
-
-            if ($match->deck_version_id && $game->won !== null) {
-                ComputeImportedCardGameStats::run(
-                    $game,
-                    $match->deck_version_id,
-                    $cardStats,
-                    isPostboard: $index > 0,
-                    pregameActions: $gameData['pregame_actions'] ?? [],
-                );
-            }
         }
     }
 
@@ -417,13 +391,7 @@ class ImportMatches
 
     private static function createGameLog(MtgoMatch $match, string $gameLogToken, string $dataPath): void
     {
-        $filePath = $dataPath.'/Match_GameLog_'.$gameLogToken.'.dat';
-
-        if (! file_exists($filePath)) {
-            return;
-        }
-
-        // Link existing decoded GameLog if discovery already processed this file
+        // Link an already-decoded GameLog if discovery (or a prior run) processed this token.
         $existing = GameLog::where('match_token', $gameLogToken)
             ->whereNotNull('decoded_entries')
             ->first();
@@ -431,6 +399,12 @@ class ImportMatches
         if ($existing) {
             $existing->update(['match_token' => $match->token]);
 
+            return;
+        }
+
+        $filePath = $dataPath.'/Match_GameLog_'.$gameLogToken.'.dat';
+
+        if (! file_exists($filePath)) {
             return;
         }
 

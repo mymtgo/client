@@ -41,40 +41,53 @@ class GetCardGameStats
             return collect();
         }
 
-        $query = DB::table('card_game_stats as cgs')
-            ->join(DB::raw('(SELECT oracle_id, name, color_identity, type, image, local_image FROM cards WHERE oracle_id IS NOT NULL GROUP BY oracle_id) as c'), 'c.oracle_id', '=', 'cgs.oracle_id')
-            ->where('cgs.opponent', $opponent)
-            ->whereIn('cgs.deck_version_id', $versionIds);
+        $applySharedFilters = function ($q) use ($versionIds, $isPostboard, $opponentArchetypeId, $onPlay): void {
+            $q->whereIn('cgs.deck_version_id', $versionIds);
+            $q->when($isPostboard !== null, fn ($qq) => $qq->where('cgs.is_postboard', $isPostboard));
 
-        $query->when($isPostboard !== null, fn ($q) => $q->where('cgs.is_postboard', $isPostboard));
-
-        if ($opponentArchetypeId) {
-            $query->join('games as g', 'g.id', '=', 'cgs.game_id')
-                ->join('match_archetypes as ma', function ($join) use ($opponentArchetypeId) {
-                    $join->on('ma.mtgo_match_id', '=', 'g.match_id')
-                        ->where('ma.archetype_id', $opponentArchetypeId);
-                })
-                ->whereExists(function ($sub) {
-                    $sub->select(DB::raw(1))
-                        ->from('game_player as gp')
-                        ->whereRaw('gp.game_id = g.id')
-                        ->whereRaw('gp.player_id = ma.player_id')
-                        ->where('gp.is_local', false);
-                });
-        }
-
-        if ($onPlay !== null) {
-            if (! $opponentArchetypeId) {
-                $query->join('games as g', 'g.id', '=', 'cgs.game_id');
+            if ($opponentArchetypeId) {
+                $q->join('games as g', 'g.id', '=', 'cgs.game_id')
+                    ->join('match_archetypes as ma', function ($join) use ($opponentArchetypeId) {
+                        $join->on('ma.mtgo_match_id', '=', 'g.match_id')
+                            ->where('ma.archetype_id', $opponentArchetypeId);
+                    })
+                    ->whereExists(function ($sub) {
+                        $sub->select(DB::raw(1))
+                            ->from('game_player as gp')
+                            ->whereRaw('gp.game_id = g.id')
+                            ->whereRaw('gp.player_id = ma.player_id')
+                            ->where('gp.is_local', false);
+                    });
             }
 
-            $query->whereExists(function ($sub) use ($onPlay) {
-                $sub->select(DB::raw(1))
-                    ->from('game_player as local_gp')
-                    ->whereRaw('local_gp.game_id = g.id')
-                    ->where('local_gp.is_local', true)
-                    ->where('local_gp.on_play', $onPlay);
-            });
+            if ($onPlay !== null) {
+                if (! $opponentArchetypeId) {
+                    $q->join('games as g', 'g.id', '=', 'cgs.game_id');
+                }
+
+                $q->whereExists(function ($sub) use ($onPlay) {
+                    $sub->select(DB::raw(1))
+                        ->from('game_player as local_gp')
+                        ->whereRaw('local_gp.game_id = g.id')
+                        ->where('local_gp.is_local', true)
+                        ->where('local_gp.on_play', $onPlay);
+                });
+            }
+        };
+
+        $query = DB::table('card_game_stats as cgs')
+            ->join(DB::raw('(SELECT oracle_id, name, color_identity, type, image, local_image FROM cards WHERE oracle_id IS NOT NULL GROUP BY oracle_id) as c'), 'c.oracle_id', '=', 'cgs.oracle_id')
+            ->where('cgs.opponent', $opponent);
+        $applySharedFilters($query);
+
+        // Opponent rows are emitted only when a signal fires, so COUNT(*) on the
+        // grouped query gives signal-games not total-games. Compute total games
+        // played from local rows (one per card per game) and use that as denominator.
+        $totalOpponentGames = null;
+        if ($opponent) {
+            $denomQuery = DB::table('card_game_stats as cgs')->where('cgs.opponent', false);
+            $applySharedFilters($denomQuery);
+            $totalOpponentGames = (int) $denomQuery->distinct()->count('cgs.game_id');
         }
 
         return $query->groupBy('cgs.oracle_id')
@@ -125,7 +138,7 @@ class GetCardGameStats
                 'type' => $row->type,
                 'image' => $row->local_image ? Storage::disk('cards')->url($row->local_image) : $row->image,
                 'isSideboard' => $sideboardOracles->has($row->oracle_id),
-                'totalGames' => (int) $row->total_games,
+                'totalGames' => $totalOpponentGames ?? (int) $row->total_games,
                 'totalPossible' => (int) $row->total_possible,
                 'totalKept' => (int) $row->total_kept,
                 'keptGames' => (int) $row->kept_games,

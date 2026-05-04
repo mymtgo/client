@@ -357,9 +357,19 @@ function toggleSort(key: SortKey) {
     }
 }
 
-function pctWithTiebreak(num: number, denom: number): number {
-    if (denom <= 0) return -1;
-    return Math.round((num / denom) * 100) + denom / 10000;
+/**
+ * Wilson score lower bound (99% CI). Strict enough that a 1/1 (100%) sits below
+ * a 12/20 (60%) and a 6/6 (100%) sits below a 92/137 (67%). Used for any
+ * rate-based sort to neutralise low-sample noise.
+ */
+function wilsonLower(won: number, total: number): number {
+    if (total <= 0) return -1;
+    const z = 2.5758; // 99% confidence
+    const p = won / total;
+    const denom = 1 + (z * z) / total;
+    const center = p + (z * z) / (2 * total);
+    const margin = z * Math.sqrt((p * (1 - p)) / total + (z * z) / (4 * total * total));
+    return (center - margin) / denom;
 }
 
 function sortValue(stat: CardStat, key: SortKey): number | string {
@@ -371,31 +381,31 @@ function sortValue(stat: CardStat, key: SortKey): number | string {
         case 'name':
             return stat.name;
         case 'keptPct':
-            return pctWithTiebreak(stat.keptGames, stat.totalGames);
+            return wilsonLower(stat.keptGames, stat.totalGames);
         case 'keptWinPct':
-            return pctWithTiebreak(winNum(stat.keptWon, stat.keptLost), stat.keptWon + stat.keptLost);
+            return wilsonLower(winNum(stat.keptWon, stat.keptLost), stat.keptWon + stat.keptLost);
         case 'seenPct':
-            return pctWithTiebreak(stat.seenGames, stat.totalGames);
+            return wilsonLower(stat.seenGames, stat.totalGames);
         case 'seenWinPct':
-            return pctWithTiebreak(winNum(stat.seenWon, stat.seenLost), stat.seenWon + stat.seenLost);
+            return wilsonLower(winNum(stat.seenWon, stat.seenLost), stat.seenWon + stat.seenLost);
         case 'castPct':
-            return pctWithTiebreak(stat.castGames, stat.totalGames);
+            return wilsonLower(stat.castGames, stat.totalGames);
         case 'castWinPct':
-            return pctWithTiebreak(winNum(stat.castWon, stat.castLost), stat.castWon + stat.castLost);
+            return wilsonLower(winNum(stat.castWon, stat.castLost), stat.castWon + stat.castLost);
         case 'playedPct':
-            return pctWithTiebreak(stat.playedGames, stat.totalGames);
+            return wilsonLower(stat.playedGames, stat.totalGames);
         case 'kicked':
             return stat.totalKicked;
         case 'activated':
             return stat.totalActivated;
         case 'pregamePct':
-            return pctWithTiebreak(stat.pregameGames, stat.totalGames);
+            return wilsonLower(stat.pregameGames, stat.totalGames);
         case 'pregameWinPct':
-            return pctWithTiebreak(winNum(stat.pregameWon, stat.pregameLost), stat.pregameWon + stat.pregameLost);
+            return wilsonLower(winNum(stat.pregameWon, stat.pregameLost), stat.pregameWon + stat.pregameLost);
         case 'sbOutPct':
-            return pctWithTiebreak(stat.sidedOutGames, stat.postboardGames);
+            return wilsonLower(stat.sidedOutGames, stat.postboardGames);
         case 'sbInPct':
-            return pctWithTiebreak(stat.sidedInGames, stat.postboardGames);
+            return wilsonLower(stat.sidedInGames, stat.postboardGames);
         case 'games':
             return stat.totalGames;
     }
@@ -417,26 +427,37 @@ const filteredAndSortedStats = computed<{ main: CardStat[]; lowData: CardStat[] 
     const q = searchQuery.value.toLowerCase();
     const filtered = stats.value.filter((s) => passesFilter(s) && (!q || s.name.toLowerCase().includes(q)));
 
-    const sortFn = (a: CardStat, b: CardStat) => {
-        const aVal = sortValue(a, sortBy.value);
-        const bVal = sortValue(b, sortBy.value);
-        const cmp = aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
-        return sortDesc.value ? -cmp : cmp;
+    const sortKey = sortBy.value;
+    const desc = sortDesc.value;
+
+    // Decorate-sort-undecorate: compute sort value once per stat, not 2× per comparison.
+    // For a few hundred rows the difference between O(N) and O(N log N × 2) is visible
+    // when toggling perspective on a busy deck.
+    type Decorated = { stat: CardStat; key: number | string };
+
+    const sortDecorated = (items: Decorated[]): CardStat[] => {
+        items.sort((a, b) => {
+            const cmp = a.key < b.key ? -1 : a.key > b.key ? 1 : 0;
+            return desc ? -cmp : cmp;
+        });
+        return items.map((d) => d.stat);
     };
 
-    const sampleFn = WIN_SAMPLE[sortBy.value];
+    const sampleFn = WIN_SAMPLE[sortKey];
 
     if (!sampleFn) {
-        return { main: [...filtered].sort(sortFn), lowData: [] };
+        const decorated = filtered.map((stat) => ({ stat, key: sortValue(stat, sortKey) }));
+        return { main: sortDecorated(decorated), lowData: [] };
     }
 
-    const main: CardStat[] = [];
-    const lowData: CardStat[] = [];
+    const main: Decorated[] = [];
+    const lowData: Decorated[] = [];
     for (const stat of filtered) {
-        (sampleFn(stat) >= LOW_DATA_THRESHOLD ? main : lowData).push(stat);
+        const decorated = { stat, key: sortValue(stat, sortKey) };
+        (sampleFn(stat) >= LOW_DATA_THRESHOLD ? main : lowData).push(decorated);
     }
 
-    return { main: main.sort(sortFn), lowData: lowData.sort(sortFn) };
+    return { main: sortDecorated(main), lowData: sortDecorated(lowData) };
 });
 
 // ── Card image hover ────────────────────────────────────────────────────────
@@ -974,10 +995,10 @@ function sortIcon(key: SortKey) {
                         </ContextMenu>
 
                         <TableRow v-if="filteredAndSortedStats.lowData.length" class="pointer-events-none">
-                            <TableCell :colspan="visibleColumnCount" class="py-1.5">
+                            <TableCell :colspan="visibleColumnCount" class="py-1.5 bg-yellow-500/10">
                                 <div class="flex items-center gap-3">
                                     <div class="h-px flex-1 bg-border" />
-                                    <span class="text-xs text-muted-foreground/60">Low sample size</span>
+                                    <span class="text-xs text-yellow-200">Low sample size</span>
                                     <div class="h-px flex-1 bg-border" />
                                 </div>
                             </TableCell>
@@ -989,7 +1010,6 @@ function sortIcon(key: SortKey) {
                                     :stat="stat"
                                     :visible-columns="effectiveVisibleColumns"
                                     :perspective="perspective"
-                                    class="opacity-60"
                                     @image-enter="onRowEnter"
                                     @image-move="onRowMove"
                                     @image-leave="onRowLeave"

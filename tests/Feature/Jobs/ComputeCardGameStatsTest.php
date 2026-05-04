@@ -480,6 +480,64 @@ it('writes pregame flags as false when game log has no pregame actions', functio
     expect((bool) $stat->pregame_played)->toBeFalse();
 });
 
+it('processes imported-style match (no timeline) using game log and deck version cards', function () {
+    // Imported matches have game logs but no timeline. Job should still produce
+    // local + opp rows using game-log signals only, with seen=1 derived from
+    // any signal (since we have no zone-transition data).
+    [$match, $deckVersion, $local, $opponent] = createMatchWithGames();
+
+    $myBolt = Card::factory()->create(['oracle_id' => 'oracle-mine', 'mtgo_id' => 4001, 'name' => 'Bolt']);
+    $oppCounter = Card::factory()->create(['oracle_id' => 'oracle-opp', 'mtgo_id' => 4002, 'name' => 'Counter']);
+
+    // Hydrate the deck version's cards so the deck_json fallback resolves.
+    $deckVersion->update([
+        'signature' => base64_encode('4001:4:false'),
+    ]);
+
+    $game = Game::factory()->for($match, 'match')->create([
+        'won' => false,
+        'started_at' => now(),
+    ]);
+    // attachPlayers passes deckJson empty by default — pivot fallback will kick in
+    attachPlayers($game, $local, $opponent);
+
+    GameLog::create([
+        'match_token' => $match->token,
+        'file_path' => '/fake/path.dat',
+        'decoded_entries' => [
+            ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@Ptestplayer joined the game.'],
+            ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@Popponent joined the game.'],
+            ['timestamp' => '2026-01-01T09:00:00+00:00', 'message' => '@Ptestplayer casts @[Bolt@:8002,500:@].'],
+            ['timestamp' => '2026-01-01T09:00:30+00:00', 'message' => '@Popponent casts @[Counter@:8004,600:@].'],
+            ['timestamp' => '2026-01-01T09:02:00+00:00', 'message' => '@Popponent wins the game.'],
+        ],
+    ]);
+
+    (new ComputeCardGameStats($match->id))->handle();
+
+    $localRow = DB::table('card_game_stats')
+        ->where('oracle_id', 'oracle-mine')
+        ->where('game_id', $game->id)
+        ->where('opponent', false)
+        ->first();
+
+    expect($localRow)->not->toBeNull();
+    expect($localRow->quantity)->toBe(4);
+    expect($localRow->cast)->toBe(1);
+    expect($localRow->seen)->toBe(1); // log-only fallback
+
+    $oppRow = DB::table('card_game_stats')
+        ->where('oracle_id', 'oracle-opp')
+        ->where('game_id', $game->id)
+        ->where('opponent', true)
+        ->first();
+
+    expect($oppRow)->not->toBeNull();
+    expect($oppRow->cast)->toBe(1);
+    expect($oppRow->seen)->toBe(1); // log-only fallback
+    expect($oppRow->quantity)->toBe(0);
+});
+
 it('writes opponent rows with cast and seen data from game log and timeline', function () {
     [$match, $deckVersion, $local, $opponent] = createMatchWithGames();
 
