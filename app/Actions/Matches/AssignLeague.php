@@ -103,7 +103,7 @@ class AssignLeague
                 'event_id' => $panelView ? (int) $panelView->match_id : null,
                 'format' => $gameMeta['PlayFormatCd'],
                 'deck_version_id' => $match->deck_version_id,
-                'started_at' => $match->started_at ?? now()->toLocal(),
+                'started_at' => $match->started_at ?? now(),
                 'joined_at' => $panelView?->logged_at,
                 'name' => trim(($gameMeta['GameStructureCd'] ?? '').' League '.now()->toLocal()->format('d-m-Y h:ma')),
             ]);
