@@ -3,6 +3,7 @@
 namespace App\Actions\Matches;
 
 use App\Actions\Logs\ConvertMtgoTimestamp;
+use App\Actions\Tournaments\AssignTournament;
 use App\Actions\Util\ExtractJson;
 use App\Actions\Util\ExtractKeyValueBlock;
 use App\Enums\LogEventType;
@@ -223,6 +224,11 @@ class AdvanceMatchState
             AssignLeague::run($match, $gameMeta);
         }
 
+        // ── Assign tournament (if not already assigned) ──
+        if (! $match->tournament_id) {
+            AssignTournament::run($match);
+        }
+
         $match->update(['state' => MatchState::InProgress]);
 
         Log::channel('pipeline')->info("Match {$match->mtgo_id}: Started → InProgress", [
@@ -230,6 +236,7 @@ class AdvanceMatchState
             'game_ids' => $gameStateEvents->pluck('game_id')->unique()->values()->toArray(),
             'deck_linked' => (bool) $match->deck_version_id,
             'league_id' => $match->league_id,
+            'tournament_id' => $match->tournament_id,
         ]);
 
         if ($match->league_id) {

@@ -9,12 +9,13 @@ import CardStatsController from '@/actions/App/Http/Controllers/Decks/CardStatsC
 import GameStatsController from '@/actions/App/Http/Controllers/Decks/GameStatsController';
 import MatchesController from '@/actions/App/Http/Controllers/Decks/MatchesController';
 import LeaguesController from '@/actions/App/Http/Controllers/Decks/LeaguesController';
+import TournamentsController from '@/actions/App/Http/Controllers/Decks/TournamentsController';
 import MatchupsController from '@/actions/App/Http/Controllers/Decks/MatchupsController';
 import DecklistController from '@/actions/App/Http/Controllers/Decks/DecklistController';
 import SettingsController from '@/actions/App/Http/Controllers/Decks/SettingsController';
 import OpenPopoutController from '@/actions/App/Http/Controllers/Decks/OpenPopoutController';
 import type { VersionStats } from '@/types/decks';
-import { ExternalLink, LayoutDashboard, BarChart3, Boxes, Swords, Trophy as TrophyIcon, ScrollText, List, SettingsIcon } from 'lucide-vue-next';
+import { ExternalLink, LayoutDashboard, BarChart3, Boxes, Swords, Trophy as TrophyIcon, Award, ScrollText, List, SettingsIcon } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
 import { Button } from '@/components/ui/button';
 
@@ -54,6 +55,7 @@ const navItems = computed(() => [
     { key: 'game-stats', label: 'Game Stats', icon: Boxes, href: GameStatsController.url({ deck: props.deck.id }) + timeframeQuery.value },
     { key: 'matches', label: 'Matches', icon: Swords, href: MatchesController.url({ deck: props.deck.id }) + timeframeQuery.value },
     { key: 'leagues', label: 'Leagues', icon: TrophyIcon, href: LeaguesController.url({ deck: props.deck.id }) + timeframeQuery.value },
+    { key: 'tournaments', label: 'Tournaments', icon: Award, href: TournamentsController.url({ deck: props.deck.id }) + timeframeQuery.value },
     { key: 'matchups', label: 'Matchups', icon: ScrollText, href: MatchupsController.url({ deck: props.deck.id }) + timeframeQuery.value },
     { key: 'decklist', label: 'Decklist', icon: List, href: DecklistController.url({ deck: props.deck.id }) },
     { key: 'settings', label: 'Settings', icon: SettingsIcon, href: SettingsController.url({ deck: props.deck.id }) },

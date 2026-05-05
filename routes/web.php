@@ -30,6 +30,7 @@ use App\Http\Controllers\Decks\RegenerateCardStatsController;
 use App\Http\Controllers\Decks\ScreenshotDataController;
 use App\Http\Controllers\Decks\SettingsController;
 use App\Http\Controllers\Decks\ToggleGroupingController;
+use App\Http\Controllers\Decks\TournamentsController;
 use App\Http\Controllers\Decks\TriggerArchetypeDetectionController;
 use App\Http\Controllers\Decks\UpdateCoverArtController;
 use App\Http\Controllers\Decks\UpdateDeckArchetypeController;
@@ -131,6 +132,7 @@ Route::group([], function (Router $router) {
         $group->get('{deck:id}/game-stats', GameStatsController::class)->name('decks.game-stats');
         $group->get('{deck:id}/matches', MatchesController::class)->name('decks.matches');
         $group->get('{deck:id}/leagues', LeaguesController::class)->name('decks.leagues');
+        $group->get('{deck:id}/tournaments', TournamentsController::class)->name('decks.tournaments');
         $group->get('{deck:id}/matchups', MatchupsController::class)->name('decks.matchups');
         $group->get('{deck:id}/matchups/{archetype}', MatchupDetailController::class)->name('decks.matchup-detail');
         $group->post('{deck:id}/archetypes/detect', TriggerArchetypeDetectionController::class)->name('decks.archetypes.detect');
