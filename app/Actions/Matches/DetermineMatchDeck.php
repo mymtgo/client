@@ -53,7 +53,7 @@ class DetermineMatchDeck
 
         $applyAccountScope = fn ($query) => $query->when(
             $accountId,
-            fn ($q) => $q->whereHas('deck', fn ($q2) => $q2->where('account_id', $accountId))
+            fn ($q) => $q->whereHas('deck', fn ($q2) => $q2->withTrashed()->where('account_id', $accountId))
         );
 
         $deckVersion = $applyAccountScope(DeckVersion::where('signature', $signature))->first();

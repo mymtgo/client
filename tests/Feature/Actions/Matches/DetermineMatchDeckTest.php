@@ -219,3 +219,18 @@ it('logs diagnostic context when no deck version matches', function () {
 
     expect($match->fresh()->deck_version_id)->toBeNull();
 });
+
+it('links a match to a soft-deleted deck', function () {
+    $cards = [
+        ['mtgo_id' => 2001, 'quantity' => 4, 'sideboard' => 'false'],
+        ['mtgo_id' => 2002, 'quantity' => 4, 'sideboard' => 'false'],
+    ];
+
+    ['match' => $match, 'version' => $version] = setupDeckLinkScenario($cards, $cards);
+
+    Deck::find($version->deck_id)->delete();
+
+    DetermineMatchDeck::run($match);
+
+    expect($match->fresh()->deck_version_id)->toBe($version->id);
+});
