@@ -7,7 +7,9 @@ use App\Actions\Decks\GetDeckViewSharedProps;
 use App\Actions\Leagues\FormatLeagueRuns;
 use App\Actions\Leagues\GetLeagueKpis;
 use App\Concerns\HasTimeframeFilter;
+use App\Data\Front\ArchetypeData;
 use App\Http\Controllers\Controller;
+use App\Models\Archetype;
 use App\Models\Deck;
 use App\Models\DeckVersion;
 use App\Models\League;
@@ -47,6 +49,10 @@ class LeaguesController extends Controller
             'timeframe' => $timeframe,
             'leagues' => FormatLeagueRuns::run($leagues, deckId: $deck->id),
             'kpis' => GetLeagueKpis::run($kpisQuery),
+            'archetypes' => Inertia::defer(fn () => Archetype::query()
+                ->orderBy('name')
+                ->get()
+                ->map(fn (Archetype $a) => ArchetypeData::from($a)->toArray())),
         ]);
     }
 }

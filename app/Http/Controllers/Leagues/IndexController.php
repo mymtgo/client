@@ -4,8 +4,10 @@ namespace App\Http\Controllers\Leagues;
 
 use App\Actions\Leagues\FormatLeagueRuns;
 use App\Actions\Leagues\GetLeagueKpis;
+use App\Data\Front\ArchetypeData;
 use App\Http\Controllers\Controller;
 use App\Models\Account;
+use App\Models\Archetype;
 use App\Models\Deck;
 use App\Models\League;
 use Illuminate\Database\Eloquent\Builder;
@@ -87,6 +89,10 @@ class IndexController extends Controller
                 'q' => $search ?? '',
                 'sort' => $sort,
             ],
+            'archetypes' => Inertia::defer(fn () => Archetype::query()
+                ->orderBy('name')
+                ->get()
+                ->map(fn (Archetype $a) => ArchetypeData::from($a)->toArray())),
         ]);
     }
 

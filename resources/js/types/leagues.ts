@@ -8,10 +8,12 @@ export type LeagueMatch = {
     result: 'W' | 'L';
     opponentName: string | null;
     opponentArchetype: string | null;
+    opponentArchetypeId: number | null;
     gameResults: LeagueGameResult[];
     startedAt: string;
     startedAtHuman: string;
     durationSeconds: number | null;
+    notes: string | null;
 };
 
 export type LeagueClassification = 'TROPHY' | 'CASH' | 'FINISH' | 'BRICK' | 'LIVE';

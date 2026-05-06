@@ -2,6 +2,7 @@
 import DeckShowController from '@/actions/App/Http/Controllers/Decks/DashboardController';
 import MatchShowController from '@/actions/App/Http/Controllers/Matches/ShowController';
 import ManaSymbols from '@/components/ManaSymbols.vue';
+import MatchRowMenu from '@/components/matches/MatchRowMenu.vue';
 import ResultBadge from '@/components/matches/ResultBadge.vue';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
@@ -16,8 +17,9 @@ const props = withDefaults(
         tournament: TournamentRun;
         hideDeckIdentity?: boolean;
         defaultExpanded?: boolean;
+        archetypes?: App.Data.Front.ArchetypeData[];
     }>(),
-    { hideDeckIdentity: false, defaultExpanded: false },
+    { hideDeckIdentity: false, defaultExpanded: false, archetypes: () => [] },
 );
 
 const expanded = ref(props.defaultExpanded);
@@ -160,9 +162,16 @@ function formatDuration(seconds: number | null) {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        <TableRow
+                        <MatchRowMenu
                             v-for="match in tournament.matches"
                             :key="match.id"
+                            :match-id="match.id"
+                            :format="tournament.format"
+                            :current-archetype-id="match.opponentArchetypeId"
+                            :notes="match.notes"
+                            :archetypes="archetypes"
+                        >
+                        <TableRow
                             class="cursor-pointer"
                             @click="router.visit(MatchShowController({ id: match.id }).url)"
                         >
@@ -211,6 +220,7 @@ function formatDuration(seconds: number | null) {
                                 {{ formatDuration(match.durationSeconds) }}
                             </TableCell>
                         </TableRow>
+                        </MatchRowMenu>
                     </TableBody>
                 </Table>
             </div>

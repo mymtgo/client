@@ -2,7 +2,10 @@
 import TournamentCard from '@/components/tournaments/TournamentCard.vue';
 import type { TournamentRun } from '@/types/tournaments';
 
-defineProps<{ tournaments: TournamentRun[] }>();
+defineProps<{
+    tournaments: TournamentRun[];
+    archetypes?: App.Data.Front.ArchetypeData[];
+}>();
 </script>
 
 <template>
@@ -17,6 +20,7 @@ defineProps<{ tournaments: TournamentRun[] }>();
             v-for="(tournament, index) in tournaments"
             :key="tournament.id"
             :tournament="tournament"
+            :archetypes="archetypes ?? []"
             :default-expanded="index === 0"
             hide-deck-identity
         />

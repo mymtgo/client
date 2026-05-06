@@ -7,6 +7,7 @@ import LeagueDropDialog from '@/components/leagues/LeagueDropDialog.vue';
 import LeagueNotesDialog from '@/components/leagues/LeagueNotesDialog.vue';
 import LeagueResultBadge from '@/components/leagues/LeagueResultBadge.vue';
 import LeagueScreenshot from '@/components/leagues/LeagueScreenshot.vue';
+import MatchRowMenu from '@/components/matches/MatchRowMenu.vue';
 import ResultBadge from '@/components/matches/ResultBadge.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -23,8 +24,9 @@ const props = withDefaults(
         league: LeagueRun;
         hideDeckIdentity?: boolean;
         defaultExpanded?: boolean;
+        archetypes?: App.Data.Front.ArchetypeData[];
     }>(),
-    { hideDeckIdentity: false, defaultExpanded: false },
+    { hideDeckIdentity: false, defaultExpanded: false, archetypes: () => [] },
 );
 
 const expanded = ref(props.defaultExpanded || props.league.classification === 'LIVE');
@@ -228,9 +230,16 @@ function formatDuration(seconds: number | null) {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        <TableRow
+                        <MatchRowMenu
                             v-for="(match, matchIndex) in league.matches"
                             :key="match.id"
+                            :match-id="match.id"
+                            :format="league.format"
+                            :current-archetype-id="match.opponentArchetypeId"
+                            :notes="match.notes"
+                            :archetypes="archetypes"
+                        >
+                        <TableRow
                             class="cursor-pointer"
                             @click="router.visit(MatchShowController({ id: match.id }).url)"
                         >
@@ -265,6 +274,7 @@ function formatDuration(seconds: number | null) {
                                 {{ formatDuration(match.durationSeconds) }}
                             </TableCell>
                         </TableRow>
+                        </MatchRowMenu>
                     </TableBody>
                 </Table>
             </div>

@@ -68,6 +68,7 @@ class FormatTournamentRuns
                 'm.state',
                 'm.started_at',
                 'm.ended_at',
+                'm.notes',
                 'm.tournament_round',
                 'm.deck_version_id',
             )
@@ -115,7 +116,7 @@ class FormatTournamentRuns
                     ->whereRaw('gp.player_id = ma.player_id')
                     ->where('gp.is_local', false);
             })
-            ->select('ma.mtgo_match_id', 'p.username', 'a.name as archetype_name')
+            ->select('ma.mtgo_match_id', 'p.username', 'ma.archetype_id', 'a.name as archetype_name')
             ->get()
             ->keyBy('mtgo_match_id');
 
@@ -132,6 +133,7 @@ class FormatTournamentRuns
                 ->each(function ($row) use ($opponentByMatch) {
                     if (! $opponentByMatch->has($row->mtgo_match_id)) {
                         $row->archetype_name = null;
+                        $row->archetype_id = null;
                         $opponentByMatch[$row->mtgo_match_id] = $row;
                     }
                 });
@@ -182,11 +184,13 @@ class FormatTournamentRuns
                 'result' => $isComplete ? ($row->outcome === 'win' ? 'W' : 'L') : null,
                 'opponentName' => $opp?->username,
                 'opponentArchetype' => $opp?->archetype_name,
+                'opponentArchetypeId' => $opp?->archetype_id !== null ? (int) $opp->archetype_id : null,
                 'gameResults' => $gameResults,
                 'startedAt' => $row->started_at,
                 'startedAtHuman' => Carbon::parse($row->started_at)->toLocal()->diffForHumans(),
                 'durationSeconds' => $durationSeconds,
                 'roundNumber' => $row->tournament_round !== null ? (int) $row->tournament_round : null,
+                'notes' => $row->notes ?? null,
             ];
         })->values()->all();
 

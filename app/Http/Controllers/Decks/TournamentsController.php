@@ -6,7 +6,9 @@ use App\Actions\Decks\GetDeckStats;
 use App\Actions\Decks\GetDeckViewSharedProps;
 use App\Actions\Tournaments\FormatTournamentRuns;
 use App\Concerns\HasTimeframeFilter;
+use App\Data\Front\ArchetypeData;
 use App\Http\Controllers\Controller;
+use App\Models\Archetype;
 use App\Models\Deck;
 use App\Models\DeckVersion;
 use App\Models\Tournament;
@@ -51,6 +53,10 @@ class TournamentsController extends Controller
             'currentPage' => 'tournaments',
             'timeframe' => $timeframe,
             'tournaments' => FormatTournamentRuns::run($tournaments, $deck),
+            'archetypes' => Inertia::defer(fn () => Archetype::query()
+                ->orderBy('name')
+                ->get()
+                ->map(fn (Archetype $a) => ArchetypeData::from($a)->toArray())),
         ]);
     }
 }

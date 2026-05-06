@@ -50,7 +50,7 @@ class FormatLeagueRuns
             ->where('m.state', 'complete')
             ->when($accountId, fn ($q, $id) => $q->where('d.account_id', $id))
             ->when($deckId, fn ($q, $id) => $q->where('d.id', $id))
-            ->select('m.id', 'm.league_id', 'm.outcome', 'm.started_at', 'm.ended_at', 'd.id as deck_id', 'd.name as deck_name', 'd.color_identity as deck_color_identity', 'c.art_crop as deck_cover_art', 'c.local_art_crop as deck_local_cover_art')
+            ->select('m.id', 'm.league_id', 'm.outcome', 'm.started_at', 'm.ended_at', 'm.notes', 'd.id as deck_id', 'd.name as deck_name', 'd.color_identity as deck_color_identity', 'c.art_crop as deck_cover_art', 'c.local_art_crop as deck_local_cover_art')
             ->orderBy('m.started_at')
             ->get();
     }
@@ -97,7 +97,7 @@ class FormatLeagueRuns
                     ->whereRaw('gp.player_id = ma.player_id')
                     ->where('gp.is_local', false);
             })
-            ->select('ma.mtgo_match_id', 'p.username', 'a.name as archetype_name')
+            ->select('ma.mtgo_match_id', 'p.username', 'ma.archetype_id', 'a.name as archetype_name')
             ->get()
             ->keyBy('mtgo_match_id');
 
@@ -115,6 +115,7 @@ class FormatLeagueRuns
                 ->each(function ($row) use ($opponentByMatch) {
                     if (! $opponentByMatch->has($row->mtgo_match_id)) {
                         $row->archetype_name = null;
+                        $row->archetype_id = null;
                         $opponentByMatch[$row->mtgo_match_id] = $row;
                     }
                 });
@@ -172,10 +173,12 @@ class FormatLeagueRuns
                 'result' => $won ? 'W' : 'L',
                 'opponentName' => $opp?->username,
                 'opponentArchetype' => $opp?->archetype_name,
+                'opponentArchetypeId' => $opp?->archetype_id !== null ? (int) $opp->archetype_id : null,
                 'gameResults' => $gameResults,
                 'startedAt' => $row->started_at,
                 'startedAtHuman' => Carbon::parse($row->started_at)->toLocal()->diffForHumans(),
                 'durationSeconds' => $durationSeconds,
+                'notes' => $row->notes ?? null,
             ];
         })->values()->all();
 

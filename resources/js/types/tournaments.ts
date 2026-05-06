@@ -4,11 +4,13 @@ export type TournamentMatch = {
     result: 'W' | 'L' | null;
     opponentName: string | null;
     opponentArchetype: string | null;
+    opponentArchetypeId: number | null;
     gameResults: Array<{ result: 'W' | 'L'; onPlay: boolean | null }>;
     startedAt: string;
     startedAtHuman: string;
     durationSeconds: number | null;
     roundNumber: number | null;
+    notes: string | null;
 };
 
 export type TournamentRun = {

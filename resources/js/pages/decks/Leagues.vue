@@ -17,6 +17,7 @@ const props = defineProps<{
     currentPage: string;
     timeframe: string;
     leagues: any[];
+    archetypes?: App.Data.Front.ArchetypeData[];
 }>();
 
 function setTimeframe(value: string) {
@@ -29,6 +30,6 @@ function setTimeframe(value: string) {
 <template>
     <div class="space-y-4 p-3 lg:p-4">
         <TimeframeFilter :model-value="timeframe" @update:model-value="setTimeframe" />
-        <DeckLeagues :leagues="leagues" />
+        <DeckLeagues :leagues="leagues" :archetypes="archetypes ?? []" />
     </div>
 </template>

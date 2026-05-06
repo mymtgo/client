@@ -27,6 +27,7 @@ const props = defineProps<{
     allFormats: string[];
     allDecks: LeagueDeckOption[];
     filters: LeagueFiltersState;
+    archetypes?: App.Data.Front.ArchetypeData[];
 }>();
 
 const displayed = computed(() => props.leagues.data.filter(Boolean) as LeagueRun[]);
@@ -73,6 +74,7 @@ function handleFilterChange(next: LeagueFiltersState) {
                 v-for="(league, index) in displayed"
                 :key="league.id"
                 :league="league"
+                :archetypes="archetypes ?? []"
                 :default-expanded="index === 0"
             />
         </div>
