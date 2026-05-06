@@ -45,8 +45,7 @@ it('creates a tournament and links the match using API metadata', function () {
         ->mtgo_event_id->toBe(12841367)
         ->name->toBe('Legacy Challenge 32')
         ->format->toBe('CLEGACY')
-        ->name_synthesized->toBeFalse()
-        ->deck_version_id->toBe($version->id);
+        ->name_synthesized->toBeFalse();
 
     expect($match->fresh()->tournament_id)->toBe($tournament->id);
 });
@@ -77,13 +76,12 @@ it('is a no-op when match has no tournament_event_id', function () {
     expect($match->fresh()->tournament_id)->toBeNull();
 });
 
-it('reuses an existing tournament keyed by mtgo_event_id + deck_version', function () {
+it('reuses an existing tournament keyed by mtgo_event_id', function () {
     Http::preventStrayRequests();
 
     $version = DeckVersion::factory()->create();
     $existing = Tournament::factory()->create([
         'mtgo_event_id' => 12841367,
-        'deck_version_id' => $version->id,
     ]);
     $match = MtgoMatch::factory()->create([
         'tournament_event_id' => 12841367,
@@ -94,6 +92,30 @@ it('reuses an existing tournament keyed by mtgo_event_id + deck_version', functi
 
     expect(Tournament::count())->toBe(1);
     expect($match->fresh()->tournament_id)->toBe($existing->id);
+});
+
+it('reuses one tournament across matches that ran on different deck versions', function () {
+    Http::preventStrayRequests();
+
+    $v1 = DeckVersion::factory()->create();
+    $v2 = DeckVersion::factory()->create();
+    $existing = Tournament::factory()->create(['mtgo_event_id' => 12841367]);
+
+    $matchA = MtgoMatch::factory()->create([
+        'tournament_event_id' => 12841367,
+        'deck_version_id' => $v1->id,
+    ]);
+    $matchB = MtgoMatch::factory()->create([
+        'tournament_event_id' => 12841367,
+        'deck_version_id' => $v2->id,
+    ]);
+
+    AssignTournament::run($matchA);
+    AssignTournament::run($matchB);
+
+    expect(Tournament::count())->toBe(1);
+    expect($matchA->fresh()->tournament_id)->toBe($existing->id);
+    expect($matchB->fresh()->tournament_id)->toBe($existing->id);
 });
 
 it('synthesizes a fallback name when API lookup fails', function () {

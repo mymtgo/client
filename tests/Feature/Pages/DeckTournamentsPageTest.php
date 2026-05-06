@@ -12,7 +12,6 @@ it('shows tournaments on the deck Tournaments page', function () {
     $deck = Deck::factory()->create(['name' => 'Test Deck']);
     $version = DeckVersion::factory()->create(['deck_id' => $deck->id]);
     $tournament = Tournament::factory()->create([
-        'deck_version_id' => $version->id,
         'name' => 'Legacy Challenge 32',
         'format' => 'CLEGACY',
         'started_at' => now()->subHour(),

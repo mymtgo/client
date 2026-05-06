@@ -9,42 +9,48 @@ use Illuminate\Support\Facades\Log;
 class RefreshTournamentMetadata
 {
     /**
+     * Per-run cap on API lookups. Prevents a single backfill pass from
+     * stalling the queue worker on large histories or flaky networks.
+     */
+    public const PER_RUN_CAP = 50;
+
+    /**
      * Backfill tournaments from historical matches that already carry a
-     * tournament_event_id but no local tournament_id link. Creates a tournament
-     * row per (mtgo_event_id, deck_version_id) pair using the API as the
-     * source of truth — pairs whose event id is unknown to the API are
-     * skipped (re-run later to pick them up).
+     * tournament_event_id but no local tournament_id link. Creates one
+     * tournament row per mtgo_event_id using the API as the source of
+     * truth — events the API does not know about are skipped (re-run later
+     * to pick them up).
+     *
+     * Caller may pass a smaller cap to short-circuit boot-time runs.
      *
      * @return array{
-     *   pairs_scanned: int,
+     *   events_scanned: int,
      *   tournaments_created: int,
      *   matches_linked: int,
-     *   pairs_skipped_api_miss: int,
+     *   events_skipped_api_miss: int,
+     *   events_remaining: int,
      * }
      */
-    public static function run(): array
+    public static function run(int $cap = self::PER_RUN_CAP): array
     {
-        $pairs = MtgoMatch::query()
+        $eventIds = MtgoMatch::query()
             ->whereNotNull('tournament_event_id')
             ->whereNull('tournament_id')
-            ->select('tournament_event_id', 'deck_version_id')
             ->distinct()
-            ->get();
+            ->pluck('tournament_event_id');
+
+        $totalEvents = $eventIds->count();
+        $eventIds = $eventIds->take($cap);
 
         $created = 0;
         $linked = 0;
         $skipped = 0;
 
-        foreach ($pairs as $pair) {
-            $eventId = (int) $pair->tournament_event_id;
-            $deckVersionId = $pair->deck_version_id;
+        foreach ($eventIds as $eventId) {
+            $eventId = (int) $eventId;
 
             $tournament = Tournament::query()
                 ->where('mtgo_event_id', $eventId)
-                ->where(function ($q) use ($deckVersionId) {
-                    $q->whereNull('deck_version_id')
-                        ->orWhere('deck_version_id', $deckVersionId);
-                })
                 ->first();
 
             if (! $tournament) {
@@ -67,30 +73,23 @@ class RefreshTournamentMetadata
                     'name' => $meta['name'],
                     'format' => $meta['format'] ?? null,
                     'started_at' => $meta['started_at'] ?? now(),
-                    'deck_version_id' => $deckVersionId,
                     'name_synthesized' => false,
                 ]);
                 $created++;
             }
 
-            $linkedCount = MtgoMatch::query()
+            $linked += MtgoMatch::query()
                 ->where('tournament_event_id', $eventId)
-                ->when(
-                    $deckVersionId === null,
-                    fn ($q) => $q->whereNull('deck_version_id'),
-                    fn ($q) => $q->where('deck_version_id', $deckVersionId),
-                )
                 ->whereNull('tournament_id')
                 ->update(['tournament_id' => $tournament->id]);
-
-            $linked += $linkedCount;
         }
 
         $summary = [
-            'pairs_scanned' => $pairs->count(),
+            'events_scanned' => $eventIds->count(),
             'tournaments_created' => $created,
             'matches_linked' => $linked,
-            'pairs_skipped_api_miss' => $skipped,
+            'events_skipped_api_miss' => $skipped,
+            'events_remaining' => max(0, $totalEvents - $eventIds->count()),
         ];
 
         Log::channel('pipeline')->info('RefreshTournamentMetadata: backfill pass complete', $summary);

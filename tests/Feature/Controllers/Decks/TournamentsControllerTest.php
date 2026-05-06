@@ -12,7 +12,6 @@ it('renders deck tournaments inertia page with tournaments for that deck', funct
     $deck = Deck::factory()->create();
     $version = DeckVersion::factory()->create(['deck_id' => $deck->id]);
     $tournament = Tournament::factory()->create([
-        'deck_version_id' => $version->id,
         'name' => 'Legacy Challenge 32',
         'started_at' => now()->subHours(2),
     ]);
@@ -37,7 +36,7 @@ it('does not include tournaments belonging to other decks', function () {
     $deck = Deck::factory()->create();
     $otherDeck = Deck::factory()->create();
     $otherVersion = DeckVersion::factory()->create(['deck_id' => $otherDeck->id]);
-    $otherTournament = Tournament::factory()->create(['deck_version_id' => $otherVersion->id]);
+    $otherTournament = Tournament::factory()->create();
     MtgoMatch::factory()->create([
         'deck_version_id' => $otherVersion->id,
         'tournament_id' => $otherTournament->id,

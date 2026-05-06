@@ -25,6 +25,16 @@ class BackfillTournaments implements ShouldQueue
 
     public function handle(): void
     {
-        RefreshTournamentMetadata::run();
+        $summary = RefreshTournamentMetadata::run();
+
+        // Re-dispatch only when this pass made progress AND work remains.
+        // Stopping on a zero-progress pass prevents an infinite re-dispatch
+        // loop when every remaining event id is permanently unknown to the
+        // API (404). Those events get retried on the next app-update trigger.
+        $progressed = $summary['tournaments_created'] > 0 || $summary['matches_linked'] > 0;
+
+        if ($progressed && $summary['events_remaining'] > 0) {
+            self::dispatch()->delay(now()->addSeconds(30));
+        }
     }
 }

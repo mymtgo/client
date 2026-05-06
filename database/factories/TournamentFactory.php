@@ -20,7 +20,6 @@ class TournamentFactory extends Factory
             'name' => 'Legacy Challenge 32',
             'format' => 'CLEGACY',
             'started_at' => now()->subHours(3),
-            'deck_version_id' => null,
             'name_synthesized' => false,
         ];
     }

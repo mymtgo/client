@@ -40,16 +40,17 @@ class TournamentsController extends Controller
                 ->whereIn('matches.id', $allMatchIds)
                 ->whereBetween('matches.started_at', [$from, $to]),
             )
-            ->with(['deckVersion.deck.cover', 'deckVersion.deck.versions'])
             ->orderByDesc('started_at')
             ->get();
+
+        $deck->loadMissing(['cover', 'versions']);
 
         return Inertia::render('decks/Tournaments', [
             ...$shared,
             'currentVersionId' => $deckVersion?->id,
             'currentPage' => 'tournaments',
             'timeframe' => $timeframe,
-            'tournaments' => FormatTournamentRuns::run($tournaments, deckId: $deck->id),
+            'tournaments' => FormatTournamentRuns::run($tournaments, $deck),
         ]);
     }
 }

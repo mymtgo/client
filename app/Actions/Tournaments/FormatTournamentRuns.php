@@ -2,6 +2,8 @@
 
 namespace App\Actions\Tournaments;
 
+use App\Enums\MatchState;
+use App\Models\Deck;
 use App\Models\MtgoMatch;
 use App\Models\Tournament;
 use Carbon\Carbon;
@@ -14,11 +16,9 @@ class FormatTournamentRuns
     /**
      * Format a collection of tournaments into display-ready run data.
      *
-     * @param  Collection<int, Tournament>  $tournaments  Tournaments with deckVersion.deck eager loaded
-     * @param  int  $deckId  Filter matches to this deck
-     * @return array<int, array>
+     * @param  Collection<int, Tournament>  $tournaments
      */
-    public static function run(Collection $tournaments, int $deckId): array
+    public static function run(Collection $tournaments, Deck $deck): array
     {
         if ($tournaments->isEmpty()) {
             return [];
@@ -26,14 +26,31 @@ class FormatTournamentRuns
 
         $tournamentIds = $tournaments->pluck('id');
 
-        $matchRows = self::getMatchRows($tournamentIds, $deckId);
+        $matchRows = self::getMatchRows($tournamentIds, $deck->id);
         $gameRecords = self::getGameRecords($matchRows->pluck('id'));
         $opponentByMatch = self::getOpponentsByMatch($matchRows->pluck('id'));
         $matchesByTournament = $matchRows->groupBy('tournament_id');
 
+        // Pre-compute version index map: deck_version_id => index (1-based,
+        // sorted by modified_at ascending). One pass per request, not per
+        // tournament — avoids N+1 across the version list.
+        $versionIndexByVersionId = $deck->versions
+            ->sortBy('modified_at')
+            ->values()
+            ->mapWithKeys(fn ($v, $i) => [$v->id => $i + 1]);
+
+        $deckCard = self::buildDeckCard($deck);
+
         return $tournaments
             ->values()
-            ->map(fn (Tournament $tournament) => self::formatRun($tournament, $matchesByTournament[$tournament->id] ?? collect(), $opponentByMatch, $gameRecords))
+            ->map(fn (Tournament $tournament) => self::formatRun(
+                $tournament,
+                $matchesByTournament[$tournament->id] ?? collect(),
+                $opponentByMatch,
+                $gameRecords,
+                $deckCard,
+                $versionIndexByVersionId,
+            ))
             ->values()
             ->all();
     }
@@ -42,32 +59,24 @@ class FormatTournamentRuns
     {
         return DB::table('matches as m')
             ->join('deck_versions as dv', 'dv.id', '=', 'm.deck_version_id')
-            ->join('decks as d', 'd.id', '=', 'dv.deck_id')
-            ->leftJoin('cards as c', 'c.id', '=', 'd.cover_id')
             ->whereIn('m.tournament_id', $tournamentIds)
-            ->where('m.state', 'complete')
-            ->where('d.id', $deckId)
+            ->where('dv.deck_id', $deckId)
             ->select(
                 'm.id',
                 'm.tournament_id',
                 'm.outcome',
+                'm.state',
                 'm.started_at',
                 'm.ended_at',
                 'm.tournament_round',
-                'd.id as deck_id',
-                'd.name as deck_name',
-                'd.color_identity as deck_color_identity',
-                'c.art_crop as deck_cover_art',
-                'c.local_art_crop as deck_local_cover_art'
+                'm.deck_version_id',
             )
             ->orderBy('m.started_at')
             ->get();
     }
 
     /**
-     * Get individual game results with on_play status, grouped by match.
-     *
-     * @return Collection<int, Collection> match_id => collection of game rows (ordered by started_at)
+     * @return Collection<int, Collection> match_id => collection of game rows
      */
     private static function getGameRecords(Collection $matchIds): Collection
     {
@@ -110,7 +119,6 @@ class FormatTournamentRuns
             ->get()
             ->keyBy('mtgo_match_id');
 
-        // Fallback: opponent name from game_player for matches missing archetypes
         $missingIds = $matchIds->diff($opponentByMatch->keys());
         if ($missingIds->isNotEmpty()) {
             DB::table('game_player as gp')
@@ -132,41 +140,33 @@ class FormatTournamentRuns
         return $opponentByMatch;
     }
 
-    private static function formatRun(Tournament $tournament, Collection $matches, Collection $opponentByMatch, Collection $gameRecords): array
+    private static function buildDeckCard(Deck $deck): array
     {
-        // Prefer tournament's direct deck version; fall back to most common deck in matches
-        if ($tournament->deck_version_id && $tournament->deckVersion?->deck) {
-            $deckModel = $tournament->deckVersion->deck;
-            $coverArtUrl = $deckModel->cover?->art_crop_url;
-            $deck = ['id' => $deckModel->id, 'name' => $deckModel->name, 'colorIdentity' => $deckModel->color_identity, 'coverArt' => $coverArtUrl, 'coverArtBase64' => self::toBase64($deckModel->cover?->art_crop, $deckModel->cover?->local_art_crop)];
-        } else {
-            $topRow = $matches->groupBy('deck_id')->map->count()->sortDesc()->keys()
-                ->map(fn ($deckId) => $matches->firstWhere('deck_id', $deckId))
-                ->first();
+        $cover = $deck->cover;
+        $coverArtUrl = $cover?->art_crop_url;
 
-            $coverArtUrl = $topRow ? self::resolveArtCrop($topRow->deck_cover_art, $topRow->deck_local_cover_art) : null;
+        return [
+            'id' => $deck->id,
+            'name' => $deck->name,
+            'colorIdentity' => $deck->color_identity,
+            'coverArt' => $coverArtUrl,
+            'coverArtBase64' => self::toBase64($cover?->art_crop, $cover?->local_art_crop),
+        ];
+    }
 
-            $deck = $matches->groupBy('deck_id')
-                ->map->count()
-                ->sortDesc()
-                ->keys()
-                ->map(fn ($deckId) => $matches->firstWhere('deck_id', $deckId))
-                ->map(fn ($row) => [
-                    'id' => $row->deck_id,
-                    'name' => $row->deck_name,
-                    'colorIdentity' => $row->deck_color_identity,
-                    'coverArt' => self::resolveArtCrop($row->deck_cover_art, $row->deck_local_cover_art),
-                    'coverArtBase64' => self::toBase64($row->deck_cover_art, $row->deck_local_cover_art),
-                ])
-                ->first();
-        }
-
+    private static function formatRun(
+        Tournament $tournament,
+        Collection $matches,
+        Collection $opponentByMatch,
+        Collection $gameRecords,
+        array $deckCard,
+        Collection $versionIndexByVersionId,
+    ): array {
         $matchData = $matches->map(function ($row) use ($opponentByMatch, $gameRecords) {
             $opp = $opponentByMatch[$row->id] ?? null;
-            $won = $row->outcome === 'win';
+            $isComplete = $row->state === MatchState::Complete->value;
             $games = $gameRecords->get($row->id, collect());
 
-            // Build per-game results with on_play status
             $gameResults = $games->values()->map(fn ($g) => [
                 'result' => (bool) $g->won ? 'W' : 'L',
                 'onPlay' => $g->on_play !== null ? (bool) $g->on_play : null,
@@ -178,7 +178,8 @@ class FormatTournamentRuns
 
             return [
                 'id' => $row->id,
-                'result' => $won ? 'W' : 'L',
+                'state' => $row->state,
+                'result' => $isComplete ? ($row->outcome === 'win' ? 'W' : 'L') : null,
                 'opponentName' => $opp?->username,
                 'opponentArchetype' => $opp?->archetype_name,
                 'gameResults' => $gameResults,
@@ -189,21 +190,14 @@ class FormatTournamentRuns
             ];
         })->values()->all();
 
-        $results = array_map(fn ($m) => $m['result'], $matchData);
+        $completed = $matches->where('state', MatchState::Complete->value);
+        $results = $completed->map(fn ($r) => $r->outcome === 'win' ? 'W' : 'L')->values()->all();
 
-        // Compute version label using the eager-loaded versions collection
-        // (controller eager-loads deckVersion.deck.versions). Avoid the
-        // versions()->count() query-builder form — that would issue one
-        // COUNT per tournament.
-        $versionLabel = null;
-        if ($tournament->deckVersion?->deck) {
-            $versionIndex = $tournament->deckVersion->deck->versions
-                ->where('modified_at', '<=', $tournament->deckVersion->modified_at)
-                ->count();
-            $versionLabel = 'v'.$versionIndex;
-        }
+        // versionLabel: reflect span of deck versions used across matches in
+        // this tournament. Single version → "v3"; multiple → "v3–v5".
+        $versionLabel = self::computeVersionLabel($matches, $versionIndexByVersionId);
 
-        $stats = self::computeStats($matches, $opponentByMatch, $gameRecords);
+        $stats = self::computeStats($completed, $opponentByMatch, $gameRecords);
 
         return [
             'id' => $tournament->id,
@@ -212,11 +206,11 @@ class FormatTournamentRuns
             'mtgo_event_id' => $tournament->mtgo_event_id,
             'startedAt' => $tournament->started_at,
             'startedAtHuman' => $tournament->started_at ? Carbon::parse($tournament->started_at)->toLocal()->diffForHumans() : null,
-            'deck' => $deck,
+            'deck' => $deckCard,
             'versionLabel' => $versionLabel,
             'results' => $results,
             'matches' => $matchData,
-            'avgMatchSeconds' => self::avgMatchSeconds($matches),
+            'avgMatchSeconds' => self::avgMatchSeconds($completed),
             'topOpponentArchetype' => $stats['topMatchups'][0]['archetype'] ?? null,
             'gameWins' => $stats['gameWins'],
             'gameLosses' => $stats['gameLosses'],
@@ -224,10 +218,32 @@ class FormatTournamentRuns
             'onDrawRecord' => $stats['onDrawRecord'],
             'topMatchups' => $stats['topMatchups'],
             'matches_count' => $matches->count(),
-            'wins' => $matches->where('outcome', 'win')->count(),
-            'losses' => $matches->where('outcome', 'loss')->count(),
+            'inProgressCount' => $matches->count() - $completed->count(),
+            'wins' => $completed->where('outcome', 'win')->count(),
+            'losses' => $completed->where('outcome', 'loss')->count(),
             'name_synthesized' => $tournament->name_synthesized,
         ];
+    }
+
+    private static function computeVersionLabel(Collection $matches, Collection $versionIndexByVersionId): ?string
+    {
+        $indexes = $matches
+            ->pluck('deck_version_id')
+            ->filter()
+            ->unique()
+            ->map(fn ($id) => $versionIndexByVersionId->get($id))
+            ->filter()
+            ->sort()
+            ->values();
+
+        if ($indexes->isEmpty()) {
+            return null;
+        }
+
+        $min = $indexes->first();
+        $max = $indexes->last();
+
+        return $min === $max ? "v{$min}" : "v{$min}–v{$max}";
     }
 
     private static function avgMatchSeconds(Collection $matches): ?int
@@ -296,11 +312,6 @@ class FormatTournamentRuns
             'onDrawRecord' => ['wins' => $onDrawWins, 'losses' => $onDrawLosses],
             'topMatchups' => $topMatchups,
         ];
-    }
-
-    private static function resolveArtCrop(?string $artCrop, ?string $localArtCrop): ?string
-    {
-        return $localArtCrop ? Storage::disk('cards')->url($localArtCrop) : $artCrop;
     }
 
     private static function toBase64(?string $url, ?string $localStoragePath = null): ?string

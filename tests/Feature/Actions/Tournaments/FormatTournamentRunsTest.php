@@ -16,14 +16,13 @@ use Illuminate\Support\Facades\DB;
 uses(RefreshDatabase::class);
 
 it('returns empty array when given empty collection', function () {
-    expect(FormatTournamentRuns::run(collect(), deckId: 1))->toBe([]);
+    expect(FormatTournamentRuns::run(collect(), new Deck))->toBe([]);
 });
 
 it('formats a tournament with derived W-L and per-match data', function () {
     $deck = Deck::factory()->create(['name' => 'Tron']);
     $version = DeckVersion::factory()->create(['deck_id' => $deck->id]);
     $tournament = Tournament::factory()->create([
-        'deck_version_id' => $version->id,
         'name' => 'Modern Challenge 32',
         'format' => 'CMODERN',
         'started_at' => now()->subHours(3),
@@ -47,7 +46,7 @@ it('formats a tournament with derived W-L and per-match data', function () {
         'ended_at' => now()->subHours(2)->addMinutes(20),
     ]);
 
-    $rows = FormatTournamentRuns::run(Tournament::query()->get(), deckId: $deck->id);
+    $rows = FormatTournamentRuns::run(Tournament::query()->get(), $deck);
 
     expect($rows)->toHaveCount(1);
 
@@ -80,7 +79,6 @@ it('returns results array with no padding (length = matches played)', function (
     $deck = Deck::factory()->create();
     $version = DeckVersion::factory()->create(['deck_id' => $deck->id]);
     $tournament = Tournament::factory()->create([
-        'deck_version_id' => $version->id,
         'format' => 'CMODERN',
     ]);
     MtgoMatch::factory()->create([
@@ -92,7 +90,7 @@ it('returns results array with no padding (length = matches played)', function (
         'ended_at' => now()->subHours(2)->addMinutes(10),
     ]);
 
-    $rows = FormatTournamentRuns::run(Tournament::query()->get(), deckId: $deck->id);
+    $rows = FormatTournamentRuns::run(Tournament::query()->get(), $deck);
 
     expect($rows[0]['results'])->toBe(['W']);
     expect($rows[0]['results'])->toHaveCount(1);
@@ -102,7 +100,6 @@ it('computes average match duration in seconds', function () {
     $deck = Deck::factory()->create();
     $version = DeckVersion::factory()->create(['deck_id' => $deck->id]);
     $tournament = Tournament::factory()->create([
-        'deck_version_id' => $version->id,
         'format' => 'CMODERN',
     ]);
 
@@ -123,7 +120,7 @@ it('computes average match duration in seconds', function () {
         'ended_at' => '2026-04-01 11:20:00',
     ]);
 
-    $rows = FormatTournamentRuns::run(Tournament::query()->get(), deckId: $deck->id);
+    $rows = FormatTournamentRuns::run(Tournament::query()->get(), $deck);
 
     expect($rows[0]['avgMatchSeconds'])->toBe(900);
 });
@@ -132,7 +129,6 @@ it('aggregates per-game wins/losses and on-play/draw record', function () {
     $deck = Deck::factory()->create();
     $version = DeckVersion::factory()->create(['deck_id' => $deck->id]);
     $tournament = Tournament::factory()->create([
-        'deck_version_id' => $version->id,
         'format' => 'CMODERN',
     ]);
 
@@ -176,7 +172,7 @@ it('aggregates per-game wins/losses and on-play/draw record', function () {
         ]);
     }
 
-    $rows = FormatTournamentRuns::run(Tournament::query()->get(), deckId: $deck->id);
+    $rows = FormatTournamentRuns::run(Tournament::query()->get(), $deck);
 
     expect($rows[0]['gameWins'])->toBe(2)
         ->and($rows[0]['gameLosses'])->toBe(1)
@@ -188,7 +184,6 @@ it('computes top opponent archetype and top matchups list', function () {
     $deck = Deck::factory()->create();
     $version = DeckVersion::factory()->create(['deck_id' => $deck->id]);
     $tournament = Tournament::factory()->create([
-        'deck_version_id' => $version->id,
         'format' => 'CMODERN',
     ]);
 
@@ -242,7 +237,7 @@ it('computes top opponent archetype and top matchups list', function () {
         ]);
     }
 
-    $rows = FormatTournamentRuns::run(Tournament::query()->get(), deckId: $deck->id);
+    $rows = FormatTournamentRuns::run(Tournament::query()->get(), $deck);
 
     expect($rows[0]['topOpponentArchetype'])->toBe('Yawgmoth')
         ->and($rows[0]['topMatchups'])->toHaveCount(3)
@@ -255,7 +250,6 @@ it('exposes per-match durationSeconds and roundNumber', function () {
     $deck = Deck::factory()->create();
     $version = DeckVersion::factory()->create(['deck_id' => $deck->id]);
     $tournament = Tournament::factory()->create([
-        'deck_version_id' => $version->id,
         'format' => 'CMODERN',
     ]);
 
@@ -269,7 +263,7 @@ it('exposes per-match durationSeconds and roundNumber', function () {
         'ended_at' => '2026-04-01 10:14:00',
     ]);
 
-    $rows = FormatTournamentRuns::run(Tournament::query()->get(), deckId: $deck->id);
+    $rows = FormatTournamentRuns::run(Tournament::query()->get(), $deck);
 
     expect($rows[0]['matches'][0]['durationSeconds'])->toBe(14 * 60);
     expect($rows[0]['matches'][0]['roundNumber'])->toBe(3);

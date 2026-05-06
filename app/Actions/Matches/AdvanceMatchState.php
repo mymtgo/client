@@ -102,6 +102,16 @@ class AdvanceMatchState
                 if (preg_match('/Tournament:(\d+)\s+Round:(\d+)/', $descriptionSource, $descMatch)) {
                     $tournamentEventId = (int) $descMatch[1];
                     $tournamentRound = (int) $descMatch[2];
+                } elseif (self::contextSuggestsTournament($joinedState->context, $descriptionSource)) {
+                    // Format drift detector: the match looks like a tournament
+                    // (TournamentMatch* state context, or "Tournament:" string
+                    // in the description) but our regex did not capture an
+                    // event id + round. Surface the raw description so we can
+                    // adapt the parser to whatever new MTGO variant shipped.
+                    Log::channel('pipeline')->warning("AdvanceMatchState: tournament-shaped join missed regex token={$matchToken} id={$matchId}", [
+                        'context' => $joinedState->context,
+                        'description' => $descriptionSource,
+                    ]);
                 }
 
                 $match = MtgoMatch::create([
@@ -176,6 +186,21 @@ class AdvanceMatchState
 
             return $match->refresh();
         });
+    }
+
+    /**
+     * Heuristic: does the surrounding signal look like a tournament join
+     * even though our regex did not match? Used purely for diagnostic
+     * logging — never gates match creation.
+     */
+    private static function contextSuggestsTournament(?string $context, string $descriptionSource): bool
+    {
+        if ($context !== null && str_contains($context, 'TournamentMatch')) {
+            return true;
+        }
+
+        return str_contains($descriptionSource, 'Tournament:')
+            || str_contains($descriptionSource, 'TournamentMatch');
     }
 
     /**

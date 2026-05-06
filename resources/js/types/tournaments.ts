@@ -1,13 +1,14 @@
 export type TournamentMatch = {
     id: number;
-    result: 'W' | 'L';
+    state: string;
+    result: 'W' | 'L' | null;
     opponentName: string | null;
     opponentArchetype: string | null;
     gameResults: Array<{ result: 'W' | 'L'; onPlay: boolean | null }>;
     startedAt: string;
     startedAtHuman: string;
     durationSeconds: number | null;
-    roundNumber: number;
+    roundNumber: number | null;
 };
 
 export type TournamentRun = {
@@ -35,6 +36,7 @@ export type TournamentRun = {
     onDrawRecord: { wins: number; losses: number };
     topMatchups: Array<{ archetype: string; wins: number; losses: number }>;
     matches_count: number;
+    inProgressCount: number;
     wins: number;
     losses: number;
     name_synthesized: boolean;

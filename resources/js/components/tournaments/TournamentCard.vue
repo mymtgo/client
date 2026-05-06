@@ -84,6 +84,12 @@ function formatDuration(seconds: number | null) {
                     </span>
                     <div class="flex items-center gap-1">
                         <ResultBadge v-for="(r, i) in tournament.results" :key="i" :won="r === 'W'" />
+                        <span
+                            v-for="i in tournament.inProgressCount"
+                            :key="`p${i}`"
+                            class="size-3 animate-pulse rounded-full bg-amber-400/70"
+                            aria-label="Match in progress"
+                        />
                     </div>
                 </div>
 
@@ -100,6 +106,12 @@ function formatDuration(seconds: number | null) {
                     <span class="inline-flex items-center gap-1 tabular-nums">
                         {{ tournament.matches_count }}
                         {{ tournament.matches_count === 1 ? 'round' : 'rounds' }}
+                    </span>
+                    <span
+                        v-if="tournament.inProgressCount > 0"
+                        class="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-medium tracking-wider text-amber-400 uppercase"
+                    >
+                        {{ tournament.inProgressCount }} live
                     </span>
                     <span v-if="!hideDeckIdentity" class="truncate">{{ tournament.name }}</span>
                 </div>
@@ -156,7 +168,18 @@ function formatDuration(seconds: number | null) {
                         >
                             <TableCell class="font-mono tabular-nums">R{{ match.roundNumber }}</TableCell>
                             <TableCell>
-                                <ResultBadge :won="match.result === 'W'" :show-text="true" />
+                                <ResultBadge
+                                    v-if="match.result"
+                                    :won="match.result === 'W'"
+                                    :show-text="true"
+                                />
+                                <span
+                                    v-else
+                                    class="inline-flex items-center gap-1.5 text-xs font-medium text-amber-400"
+                                >
+                                    <span class="size-2 animate-pulse rounded-full bg-amber-400" />
+                                    Live
+                                </span>
                             </TableCell>
                             <TableCell class="truncate font-medium">
                                 <span v-if="match.opponentName">{{ match.opponentName }}</span>

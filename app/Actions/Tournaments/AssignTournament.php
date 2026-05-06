@@ -12,6 +12,9 @@ class AssignTournament
     /**
      * Upsert a tournament for a tournament-bearing match and link them.
      * Idempotent: matches already linked are skipped.
+     *
+     * Tournaments are keyed by mtgo_event_id alone — one tournament row per
+     * event, regardless of how many decks the local player ran in it.
      */
     public static function run(MtgoMatch $match): void
     {
@@ -25,17 +28,8 @@ class AssignTournament
 
         $tournament = Tournament::query()
             ->where('mtgo_event_id', $match->tournament_event_id)
-            ->where(function ($q) use ($match) {
-                $q->whereNull('deck_version_id')
-                    ->orWhere('deck_version_id', $match->deck_version_id);
-            })
-            ->first();
-
-        if (! $tournament) {
-            $tournament = self::create($match);
-        } elseif ($tournament->deck_version_id === null && $match->deck_version_id !== null) {
-            $tournament->update(['deck_version_id' => $match->deck_version_id]);
-        }
+            ->first()
+            ?? self::create($match);
 
         $match->update(['tournament_id' => $tournament->id]);
 
@@ -60,18 +54,14 @@ class AssignTournament
             'name' => $name,
             'format' => $meta['format'] ?? null,
             'started_at' => $meta['started_at'] ?? ($match->started_at ?? now()),
-            'deck_version_id' => $match->deck_version_id,
             'name_synthesized' => $synthesized,
         ];
 
         try {
             return Tournament::create($attributes);
         } catch (UniqueConstraintViolationException) {
-            // Concurrent worker created the same (mtgo_event_id, deck_version_id)
-            // tournament between our find and create. Re-fetch and use it.
             return Tournament::query()
                 ->where('mtgo_event_id', $match->tournament_event_id)
-                ->where('deck_version_id', $match->deck_version_id)
                 ->firstOrFail();
         }
     }
