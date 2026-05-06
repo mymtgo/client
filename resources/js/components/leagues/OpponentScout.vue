@@ -8,6 +8,7 @@ export interface OpponentData {
     losses: number;
     lastArchetype: string | null;
     lastArchetypeColors: string | null;
+    source: 'league' | 'local';
 }
 
 const props = withDefaults(
@@ -38,7 +39,7 @@ const props = withDefaults(
                     {{ opponent.wins }}-{{ opponent.losses }}
                 </span>
             </div>
-            <div v-if="opponent.lastArchetype" class="mt-0.5 flex items-center gap-1 text-base" :style="{ color: textColor, opacity: 0.5 }">
+            <div v-if="opponent.lastArchetype" class="mt-0.5 flex items-center gap-1 text-base" :style="{ color: textColor }">
                 <ManaSymbols v-if="opponent.lastArchetypeColors" :symbols="opponent.lastArchetypeColors" />
                 <span>{{ opponent.lastArchetype }}</span>
             </div>
