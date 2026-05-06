@@ -15,6 +15,8 @@ class TriggerArchetypeDetectionController extends Controller
         TriggerArchetypeDetectionRequest $request,
         QueueArchetypeDetectionForDeck $queue,
     ): RedirectResponse {
+        abort_if($deck->trashed(), 403, 'This deck has been deleted on MTGO and is read-only.');
+
         $count = $queue($deck, $request->string('filter_archetype')->toString());
 
         return back()->with('archetypeDetectionQueued', $count);

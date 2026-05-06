@@ -41,6 +41,9 @@ const selectedCoverId = ref<number | null>(props.coverArt?.id ?? null);
 const loadingOptions = ref(false);
 const saving = ref(false);
 
+const isReadonly = computed(() => !!props.deck?.deletedAt);
+const readonlyTitle = 'Deck deleted on MTGO — read-only';
+
 if (props.coverArt?.name) {
     selectedCardName.value = props.coverArt.name;
 }
@@ -177,29 +180,53 @@ function clearArchetype() {
                             <ManaSymbols v-if="deck.archetype.colorIdentity" :symbols="deck.archetype.colorIdentity" />
                         </div>
                         <div class="flex items-center gap-2">
-                            <Button variant="outline" size="sm" @click="showArchetypeSelect = !showArchetypeSelect">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                :disabled="isReadonly"
+                                :title="isReadonly ? readonlyTitle : undefined"
+                                @click="showArchetypeSelect = !showArchetypeSelect"
+                            >
                                 Change
                             </Button>
-                            <Button variant="ghost" size="sm" :disabled="savingArchetype" @click="clearArchetype">
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                :disabled="savingArchetype || isReadonly"
+                                :title="isReadonly ? readonlyTitle : undefined"
+                                @click="clearArchetype"
+                            >
                                 Remove
                             </Button>
                         </div>
                     </div>
                     <div v-else>
-                        <Button variant="outline" @click="showArchetypeSelect = !showArchetypeSelect">
+                        <Button
+                            variant="outline"
+                            :disabled="isReadonly"
+                            :title="isReadonly ? readonlyTitle : undefined"
+                            @click="showArchetypeSelect = !showArchetypeSelect"
+                        >
                             {{ showArchetypeSelect ? 'Cancel' : 'Set Archetype' }}
                         </Button>
                     </div>
 
                     <div v-if="showArchetypeSelect" class="flex flex-col gap-2">
-                        <Input ref="archetypeSearchInput" v-model="archetypeSearch" placeholder="Search archetypes..." />
+                        <Input
+                            ref="archetypeSearchInput"
+                            v-model="archetypeSearch"
+                            placeholder="Search archetypes..."
+                            :disabled="isReadonly"
+                            :title="isReadonly ? readonlyTitle : undefined"
+                        />
                         <div class="max-h-60 overflow-y-auto space-y-0.5 rounded-md border border-border p-1">
                             <Button
                                 v-for="archetype in filteredArchetypes"
                                 :key="archetype.id"
                                 variant="ghost"
                                 class="w-full justify-between"
-                                :disabled="savingArchetype"
+                                :disabled="savingArchetype || isReadonly"
+                                :title="isReadonly ? readonlyTitle : undefined"
                                 @click="selectArchetype(archetype.id)"
                             >
                                 <span class="flex-1 text-left">{{ archetype.name }}</span>
@@ -218,8 +245,11 @@ function clearArchetype() {
                     <CardDescription>Choose a card from your deck to use as cover art.</CardDescription>
                 </CardHeader>
                 <CardContent class="flex flex-col gap-4">
-                    <Select v-model="selectedCardName">
-                        <SelectTrigger class="w-full">
+                    <Select v-model="selectedCardName" :disabled="isReadonly">
+                        <SelectTrigger
+                            class="w-full"
+                            :title="isReadonly ? readonlyTitle : undefined"
+                        >
                             <SelectValue placeholder="Select a card..." />
                         </SelectTrigger>
                         <SelectContent>
@@ -234,7 +264,12 @@ function clearArchetype() {
                         Loading art options...
                     </div>
 
-                    <div v-if="artOptions.length > 1" class="flex flex-wrap gap-3">
+                    <div
+                        v-if="artOptions.length > 1"
+                        class="flex flex-wrap gap-3"
+                        :class="isReadonly ? 'pointer-events-none opacity-50' : ''"
+                        :title="isReadonly ? readonlyTitle : undefined"
+                    >
                         <button
                             v-for="option in artOptions"
                             :key="option.id"
@@ -243,6 +278,7 @@ function clearArchetype() {
                             :class="selectedCoverId === option.id
                                 ? 'border-primary ring-2 ring-primary/30 scale-105'
                                 : 'border-border opacity-60 hover:opacity-100 hover:border-muted-foreground'"
+                            :disabled="isReadonly"
                             @click="selectedCoverId = option.id"
                         >
                             <img
@@ -263,7 +299,8 @@ function clearArchetype() {
 
                     <div v-if="selectedCardName" class="flex items-center gap-2">
                         <Button
-                            :disabled="!hasChanged || saving"
+                            :disabled="!hasChanged || saving || isReadonly"
+                            :title="isReadonly ? readonlyTitle : undefined"
                             @click="save"
                         >
                             <Spinner v-if="saving" class="mr-2 size-4" />
@@ -272,7 +309,8 @@ function clearArchetype() {
                         <Button
                             v-if="coverArt"
                             variant="ghost"
-                            :disabled="saving"
+                            :disabled="saving || isReadonly"
+                            :title="isReadonly ? readonlyTitle : undefined"
                             @click="clear"
                         >
                             Remove

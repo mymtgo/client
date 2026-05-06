@@ -28,8 +28,13 @@ defineProps<{
                     </div>
                     <div class="flex shrink-0 items-center gap-2 text-xs text-muted-foreground">
                         <Badge variant="outline" class="py-0 text-xs">{{ deck.format }}</Badge>
-                        <span>·</span>
-                        <span>Last played {{ deck.lastPlayedAtHuman ?? 'never' }}</span>
+                        <template v-if="deck.deletedAt">
+                            <Badge variant="destructive" class="py-0 text-xs">Deleted</Badge>
+                        </template>
+                        <template v-else>
+                            <span>·</span>
+                            <span>Last played {{ deck.lastPlayedAtHuman ?? 'never' }}</span>
+                        </template>
                     </div>
                 </div>
 

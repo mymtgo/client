@@ -76,6 +76,7 @@ class Deck extends Model
 
     public function scopeForActiveAccount(Builder $query): Builder
     {
+        $query = $query->withTrashed();
         $accountId = Account::currentId();
 
         if ($accountId) {

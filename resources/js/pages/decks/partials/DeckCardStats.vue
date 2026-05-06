@@ -98,12 +98,16 @@ type CardStat = {
 const props = defineProps<{
     deckId: number;
     timeframe?: string;
+    deletedAt?: string | null;
     cardStats?: {
         stats: CardStat[];
         archetypes: { id: number; name: string; colorIdentity: string | null }[];
         perspective?: CardStatsPerspective;
     };
 }>();
+
+const isReadonly = computed(() => Boolean(props.deletedAt));
+const readonlyTitle = 'Deck deleted on MTGO — read-only';
 
 const stats = computed(() => props.cardStats?.stats ?? []);
 const archetypes = computed(() => props.cardStats?.archetypes ?? []);
@@ -689,7 +693,8 @@ function sortIcon(key: SortKey) {
                         variant="ghost"
                         size="sm"
                         class="bevel py-4 gap-1.5 border border-black/60 px-2.5 text-xs text-muted-foreground"
-                        :disabled="regenerating"
+                        :disabled="regenerating || isReadonly"
+                        :title="isReadonly ? readonlyTitle : undefined"
                         @click="regenerateOpen = true"
                     >
                         <RefreshCw class="size-3.5" :class="regenerating ? 'animate-spin' : ''" />

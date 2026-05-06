@@ -11,6 +11,8 @@ class UpdateNameController extends Controller
 {
     public function __invoke(Deck $deck, Request $request): RedirectResponse
     {
+        abort_if($deck->trashed(), 403, 'This deck has been deleted on MTGO and is read-only.');
+
         $data = $request->validate([
             'name' => 'required|string|max:255',
         ]);

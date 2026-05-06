@@ -150,3 +150,33 @@ it('orders groups by name alphabetically when sort is name, unassigned last', fu
         ->where('groups.2.archetype', null)
     );
 });
+
+it('mixes trashed decks into the flat listing by default', function () {
+    AppSettings::setDecksGroupedByArchetype(false);
+
+    Deck::factory()->count(2)->create();
+    $deleted = Deck::factory()->create();
+    $deleted->delete();
+
+    $this->get(route('decks.index'))
+        ->assertInertia(fn ($page) => $page
+            ->component('decks/Index')
+            ->has('decks.data', 3)
+            ->where('filters.hide_deleted', false)
+        );
+});
+
+it('hides trashed decks when the hide-archived setting is enabled', function () {
+    AppSettings::setDecksGroupedByArchetype(false);
+    AppSettings::setHideArchivedDecks(true);
+
+    Deck::factory()->count(2)->create();
+    $deleted = Deck::factory()->create();
+    $deleted->delete();
+
+    $this->get(route('decks.index'))
+        ->assertInertia(fn ($page) => $page
+            ->has('decks.data', 2)
+            ->where('filters.hide_deleted', true)
+        );
+});

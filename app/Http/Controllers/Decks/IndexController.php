@@ -32,6 +32,12 @@ class IndexController
             $query->where('name', 'like', '%'.$request->input('search').'%');
         }
 
+        $hideDeleted = AppSettings::hideArchivedDecks();
+
+        if ($hideDeleted) {
+            $query->whereNull('deleted_at');
+        }
+
         $sort = $request->input('sort', 'lastPlayed');
         $query = match ($sort) {
             'winRate' => $query->orderByRaw('CASE WHEN won_matches_count + lost_matches_count > 0 THEN CAST(won_matches_count AS FLOAT) / (won_matches_count + lost_matches_count) ELSE 0 END DESC'),
@@ -50,6 +56,7 @@ class IndexController
             'format' => $request->input('format', ''),
             'search' => $request->input('search', ''),
             'sort' => $sort,
+            'hide_deleted' => $hideDeleted,
         ];
 
         $grouped = AppSettings::decksGroupedByArchetype();

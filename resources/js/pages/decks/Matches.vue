@@ -38,6 +38,7 @@ function setTimeframe(value: string) {
             :archetypes="archetypes ?? []"
             :unknown-archetype-count="unknownArchetypeCount"
             :pending-archetype-count="pendingArchetypeCount"
+            :deleted-at="deck.deletedAt"
         />
     </div>
 </template>

@@ -10,6 +10,7 @@ const props = defineProps<{
     deckId: number;
     filterArchetype: string;
     pendingCount: number;
+    deletedAt?: string | null;
 }>();
 
 const { add: toast } = useToast();
@@ -17,6 +18,7 @@ const submitting = ref(false);
 const pollHandle = ref<number | null>(null);
 
 const hasPending = computed(() => props.pendingCount > 0);
+const isReadonly = computed(() => !!props.deletedAt);
 const buttonDisabled = computed(() => submitting.value || hasPending.value);
 
 function trigger() {
@@ -94,7 +96,12 @@ onUnmounted(stopPolling);
                 {{ pendingCount }} in queue
             </span>
         </div>
-        <Button size="sm" :disabled="buttonDisabled" @click="trigger">
+        <Button
+            size="sm"
+            :disabled="buttonDisabled || isReadonly"
+            :title="isReadonly ? 'Deck deleted on MTGO — read-only' : undefined"
+            @click="trigger"
+        >
             <Loader2 v-if="submitting" class="size-3 animate-spin" />
             Detect archetypes
         </Button>

@@ -30,6 +30,7 @@ use App\Http\Controllers\Decks\RegenerateCardStatsController;
 use App\Http\Controllers\Decks\ScreenshotDataController;
 use App\Http\Controllers\Decks\SettingsController;
 use App\Http\Controllers\Decks\ToggleGroupingController;
+use App\Http\Controllers\Decks\ToggleHideArchivedController;
 use App\Http\Controllers\Decks\TournamentsController;
 use App\Http\Controllers\Decks\TriggerArchetypeDetectionController;
 use App\Http\Controllers\Decks\UpdateCoverArtController;
@@ -126,26 +127,30 @@ Route::group([], function (Router $router) {
         'prefix' => 'decks',
     ], function (Router $group) {
         $group->get('/', App\Http\Controllers\Decks\IndexController::class)->name('decks.index');
-        $group->get('{deck:id}', DashboardController::class)->name('decks.show');
-        $group->get('{deck:id}/card-stats', CardStatsController::class)->name('decks.card-stats');
-        $group->post('{deck:id}/card-stats/regenerate', RegenerateCardStatsController::class)->name('decks.card-stats.regenerate');
-        $group->get('{deck:id}/game-stats', GameStatsController::class)->name('decks.game-stats');
-        $group->get('{deck:id}/matches', MatchesController::class)->name('decks.matches');
-        $group->get('{deck:id}/leagues', LeaguesController::class)->name('decks.leagues');
-        $group->get('{deck:id}/tournaments', TournamentsController::class)->name('decks.tournaments');
-        $group->get('{deck:id}/matchups', MatchupsController::class)->name('decks.matchups');
-        $group->get('{deck:id}/matchups/{archetype}', MatchupDetailController::class)->name('decks.matchup-detail');
-        $group->post('{deck:id}/archetypes/detect', TriggerArchetypeDetectionController::class)->name('decks.archetypes.detect');
-        $group->get('{deck:id}/decklist', DecklistController::class)->name('decks.decklist');
-        $group->get('{deck:id}/screenshot-data', ScreenshotDataController::class)->name('decks.screenshot-data');
-        $group->get('{deck:id}/popout', PopoutController::class)->name('decks.popout');
-        $group->post('{deck:id}/popout', OpenPopoutController::class)->name('decks.open-popout');
-        $group->get('{deck:id}/settings', SettingsController::class)->name('decks.settings');
-        $group->get('{deck:id}/cover-art-options', CoverArtOptionsController::class)->name('decks.cover-art-options');
-        $group->patch('{deck:id}/cover-art', UpdateCoverArtController::class)->name('decks.update-cover-art');
-        $group->patch('{deck:id}/archetype', UpdateDeckArchetypeController::class)->name('decks.update-archetype');
-        $group->patch('{deck:id}/name', UpdateNameController::class)->name('decks.update-name');
+        $group->get('{deck:id}', DashboardController::class)->name('decks.show')->withTrashed();
+        $group->get('{deck:id}/card-stats', CardStatsController::class)->name('decks.card-stats')->withTrashed();
+        $group->post('{deck:id}/card-stats/regenerate', RegenerateCardStatsController::class)->name('decks.card-stats.regenerate')->withTrashed();
+        $group->get('{deck:id}/game-stats', GameStatsController::class)->name('decks.game-stats')->withTrashed();
+        $group->get('{deck:id}/matches', MatchesController::class)->name('decks.matches')->withTrashed();
+        $group->get('{deck:id}/leagues', LeaguesController::class)->name('decks.leagues')->withTrashed();
+        $group->get('{deck:id}/tournaments', TournamentsController::class)->name('decks.tournaments')->withTrashed();
+        $group->get('{deck:id}/matchups', MatchupsController::class)->name('decks.matchups')->withTrashed();
+        $group->get('{deck:id}/matchups/{archetype}', MatchupDetailController::class)->name('decks.matchup-detail')->withTrashed();
+        $group->post('{deck:id}/archetypes/detect', TriggerArchetypeDetectionController::class)->name('decks.archetypes.detect')->withTrashed();
+        $group->get('{deck:id}/decklist', DecklistController::class)->name('decks.decklist')->withTrashed();
+        $group->get('{deck:id}/screenshot-data', ScreenshotDataController::class)->name('decks.screenshot-data')->withTrashed();
+        $group->get('{deck:id}/popout', PopoutController::class)->name('decks.popout')->withTrashed();
+        $group->post('{deck:id}/popout', OpenPopoutController::class)->name('decks.open-popout')->withTrashed();
+        $group->get('{deck:id}/settings', SettingsController::class)->name('decks.settings')->withTrashed();
+        $group->get('{deck:id}/cover-art-options', CoverArtOptionsController::class)->name('decks.cover-art-options')->withTrashed();
+        $group->patch('{deck:id}/cover-art', UpdateCoverArtController::class)->name('decks.update-cover-art')->withTrashed();
+        $group->patch('{deck:id}/archetype', UpdateDeckArchetypeController::class)->name('decks.update-archetype')->withTrashed();
+        $group->patch('{deck:id}/name', UpdateNameController::class)->name('decks.update-name')->withTrashed();
+        $group->post('{deck:id}/export-dek', App\Http\Controllers\Decks\ExportDekController::class)
+            ->name('decks.export-dek')
+            ->withTrashed();
         $group->post('grouping', ToggleGroupingController::class)->name('decks.toggle-grouping');
+        $group->post('hide-archived', ToggleHideArchivedController::class)->name('decks.toggle-hide-archived');
     });
 
     $router->group([

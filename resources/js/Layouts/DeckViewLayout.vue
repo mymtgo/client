@@ -17,6 +17,13 @@ const props = defineProps<{
 
 <template>
     <div v-if="deck" class="flex min-h-0 flex-1 flex-col">
+        <div
+            v-if="deck.deletedAt"
+            class="flex items-center justify-center gap-2 border-b border-amber-500/30 bg-amber-500/10 px-4 py-1.5 text-xs text-amber-200"
+        >
+            <AlertTriangle class="size-3.5 shrink-0 text-amber-400" />
+            <span>This deck has been deleted on MTGO. Historical match data is preserved.</span>
+        </div>
         <Link
             v-if="!deck.archetype"
             :href="SettingsController.url({ deck: deck.id })"

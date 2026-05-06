@@ -30,6 +30,8 @@ use Illuminate\Support\Facades\Facade;
  * @method static void setOverlayBackgroundPath(?string $path)
  * @method static bool decksGroupedByArchetype()
  * @method static void setDecksGroupedByArchetype(bool $value)
+ * @method static bool hideArchivedDecks()
+ * @method static void setHideArchivedDecks(bool $value)
  * @method static string systemTimezone()
  * @method static void setSystemTimezone(string $tz)
  * @method static ?string deviceId()

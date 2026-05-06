@@ -8,6 +8,7 @@ const props = defineProps<{
     deckId: number;
     name: string;
     originalName?: string | null;
+    deletedAt?: string | null;
 }>();
 
 const isEditing = ref(false);
@@ -16,8 +17,13 @@ const saving = ref(false);
 const inputEl = ref<HTMLInputElement | null>(null);
 
 const isCustomName = computed(() => Boolean(props.originalName));
+const isReadonly = computed(() => Boolean(props.deletedAt));
+const readonlyTitle = 'Deck deleted on MTGO — read-only';
 
 async function startEditing() {
+    if (isReadonly.value) {
+        return;
+    }
     draft.value = props.name;
     isEditing.value = true;
     await nextTick();
@@ -57,7 +63,7 @@ function commit() {
 }
 
 function revert() {
-    if (!props.originalName || saving.value) {
+    if (!props.originalName || saving.value || isReadonly.value) {
         return;
     }
 
@@ -94,19 +100,20 @@ function revert() {
         <template v-else>
             <button
                 type="button"
-                class="flex min-w-0 flex-1 items-center gap-1.5 truncate text-left"
-                :title="isCustomName ? `Custom name (was: ${originalName})` : 'Click to rename'"
+                class="flex min-w-0 flex-1 items-center gap-1.5 truncate text-left disabled:cursor-default"
+                :disabled="isReadonly"
+                :title="isReadonly ? readonlyTitle : isCustomName ? `Custom name (was: ${originalName})` : 'Click to rename'"
                 @click="startEditing"
             >
                 <h2 class="truncate text-base leading-tight font-semibold">{{ name }}</h2>
-                <Pencil class="size-3 shrink-0 opacity-0 transition-opacity group-hover:opacity-60" />
+                <Pencil v-if="!isReadonly" class="size-3 shrink-0 opacity-0 transition-opacity group-hover:opacity-60" />
             </button>
             <button
                 v-if="isCustomName"
                 type="button"
-                :disabled="saving"
-                :title="`Revert to '${originalName}'`"
-                class="shrink-0 rounded p-0.5 text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover:opacity-100"
+                :disabled="saving || isReadonly"
+                :title="isReadonly ? readonlyTitle : `Revert to '${originalName}'`"
+                class="shrink-0 rounded p-0.5 text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover:opacity-100 disabled:cursor-default disabled:opacity-0"
                 @click.stop="revert"
             >
                 <RotateCcw class="size-3" />

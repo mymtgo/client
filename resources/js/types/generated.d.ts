@@ -43,6 +43,7 @@ coverArt: string | null;
 archetype: App.Data.Front.ArchetypeData | null;
 lastPlayedAt: string | null;
 lastPlayedAtHuman: string | null;
+deletedAt: string | null;
 matches: any;
 identity: any;
 cards: any;

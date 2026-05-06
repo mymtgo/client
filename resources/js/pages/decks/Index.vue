@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import ToggleGroupingController from '@/actions/App/Http/Controllers/Decks/ToggleGroupingController';
+import ToggleHideArchivedController from '@/actions/App/Http/Controllers/Decks/ToggleHideArchivedController';
 import IndexController from '@/actions/App/Http/Controllers/Decks/IndexController';
 import RunSyncController from '@/actions/App/Http/Controllers/Settings/RunSyncController';
 import { Button } from '@/components/ui/button';
@@ -20,14 +21,14 @@ type FlatProps = {
     mode: 'flat';
     decks: Paginator<App.Data.Front.DeckData>;
     formats: Record<string, string>;
-    filters: { format: string; search: string; sort: string };
+    filters: { format: string; search: string; sort: string; hide_deleted: boolean };
 };
 
 type GroupedProps = {
     mode: 'grouped';
     groups: App.Data.Front.DeckGroupData[];
     formats: Record<string, string>;
-    filters: { format: string; search: string; sort: string };
+    filters: { format: string; search: string; sort: string; hide_deleted: boolean };
 };
 
 const props = defineProps<FlatProps | GroupedProps>();
@@ -35,6 +36,7 @@ const props = defineProps<FlatProps | GroupedProps>();
 const searchInput = ref(props.filters.search);
 const activeFormat = ref(props.filters.format || 'all');
 const sortBy = ref(props.filters.sort);
+const hideArchived = ref(props.filters.hide_deleted);
 
 const hasAnyDecks = computed(() => {
     if (props.mode === 'flat') return (props.decks?.total ?? 0) > 0;
@@ -61,6 +63,15 @@ function toggleGrouping(value: boolean) {
     router.post(
         ToggleGroupingController.url(),
         { grouped: value },
+        { preserveScroll: true },
+    );
+}
+
+function toggleHideArchived(value: boolean) {
+    hideArchived.value = value;
+    router.post(
+        ToggleHideArchivedController.url(),
+        { hide: value },
         { preserveScroll: true },
     );
 }
@@ -139,7 +150,16 @@ function updatePage(page: number) {
                     </SelectContent>
                 </Select>
 
-                <div class="ml-auto flex items-center gap-2">
+                <div class="flex items-center gap-2">
+                    <Label for="hide-archived" class="cursor-pointer text-xs">Hide archived</Label>
+                    <Switch
+                        id="hide-archived"
+                        :modelValue="hideArchived"
+                        @update:modelValue="toggleHideArchived"
+                    />
+                </div>
+
+                <div class="flex items-center gap-2">
                     <Label for="group-by-archetype" class="cursor-pointer text-xs">Group by archetype</Label>
                     <Switch
                         id="group-by-archetype"
@@ -148,36 +168,38 @@ function updatePage(page: number) {
                     />
                 </div>
 
-                <Button
-                    variant="outline"
-                    size="sm"
-                    class="gap-1.5 text-xs"
-                    :disabled="syncing"
-                    @click="syncDecks"
-                >
-                    <RefreshCw :class="['size-3.5', syncing && 'animate-spin']" />
-                    {{ syncing ? 'Syncing…' : 'Sync decks' }}
-                </Button>
+                <div class="ml-auto flex items-center gap-2">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        class="gap-1.5 text-xs"
+                        :disabled="syncing"
+                        @click="syncDecks"
+                    >
+                        <RefreshCw :class="['size-3.5', syncing && 'animate-spin']" />
+                        {{ syncing ? 'Syncing…' : 'Sync decks' }}
+                    </Button>
 
-                <Pagination
-                    v-if="mode === 'flat' && decks && decks.total > decks.per_page"
-                    class="mx-0 ml-auto w-auto"
-                    @update:page="updatePage"
-                    v-slot="{ page }"
-                    :items-per-page="decks.per_page"
-                    :total="decks.total"
-                    :default-page="decks.current_page"
-                >
-                    <PaginationContent v-slot="{ items }">
-                        <PaginationPrevious />
-                        <template v-for="(item, index) in items" :key="index">
-                            <PaginationItem v-if="item.type === 'page'" :value="item.value" :is-active="item.value === page">
-                                {{ item.value }}
-                            </PaginationItem>
-                        </template>
-                        <PaginationNext />
-                    </PaginationContent>
-                </Pagination>
+                    <Pagination
+                        v-if="mode === 'flat' && decks && decks.total > decks.per_page"
+                        class="mx-0 w-auto"
+                        @update:page="updatePage"
+                        v-slot="{ page }"
+                        :items-per-page="decks.per_page"
+                        :total="decks.total"
+                        :default-page="decks.current_page"
+                    >
+                        <PaginationContent v-slot="{ items }">
+                            <PaginationPrevious />
+                            <template v-for="(item, index) in items" :key="index">
+                                <PaginationItem v-if="item.type === 'page'" :value="item.value" :is-active="item.value === page">
+                                    {{ item.value }}
+                                </PaginationItem>
+                            </template>
+                            <PaginationNext />
+                        </PaginationContent>
+                    </Pagination>
+                </div>
             </div>
 
             <div v-if="showEmptyStateFiltered" class="flex flex-col items-center gap-2 py-12 text-center">

@@ -17,6 +17,7 @@ const props = defineProps<{
     archetypes: ArchetypeWithCount[];
     unknownArchetypeCount: number;
     pendingArchetypeCount: number;
+    deletedAt?: string | null;
 }>();
 
 const fallbackArchetypes = computed(() =>
@@ -85,6 +86,7 @@ const updateSort = (column: string) => {
             :deck-id="deckId"
             :filter-archetype="filterArchetype"
             :pending-count="pendingArchetypeCount"
+            :deleted-at="deletedAt"
         />
 
         <!-- Filters -->

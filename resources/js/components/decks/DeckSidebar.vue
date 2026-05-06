@@ -81,6 +81,7 @@ const navItems = computed(() => [
                     :deck-id="deck.id"
                     :name="deck.name"
                     :original-name="deck.originalName"
+                    :deleted-at="deck.deletedAt"
                     class="w-full"
                 />
             </div>

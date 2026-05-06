@@ -5,11 +5,12 @@ import DeckList from '@/pages/decks/partials/DeckList.vue';
 import ManaSymbols from '@/components/ManaSymbols.vue';
 import DeckScreenshot from '@/components/decks/DeckScreenshot.vue';
 import ScreenshotDataController from '@/actions/App/Http/Controllers/Decks/ScreenshotDataController';
+import ExportDekController from '@/actions/App/Http/Controllers/Decks/ExportDekController';
 import { useScreenshot } from '@/composables/useScreenshot';
 import { useToast } from '@/composables/useToast';
 import type { VersionStats, VersionDecklist } from '@/types/decks';
 import { computed, nextTick, ref } from 'vue';
-import { Camera, Loader2 } from 'lucide-vue-next';
+import { Camera, Download, Loader2 } from 'lucide-vue-next';
 
 defineOptions({ layout: [AppLayout, DeckViewLayout] });
 
@@ -108,8 +109,42 @@ const screenshotRef = ref<InstanceType<typeof DeckScreenshot> | null>(null);
 const showScreenshot = ref(false);
 const screenshotData = ref<Record<string, any> | null>(null);
 const screenshotLoading = ref(false);
+const exporting = ref(false);
 const { capture } = useScreenshot();
 const { add: addToast } = useToast();
+
+async function downloadDek() {
+    if (exporting.value) return;
+    exporting.value = true;
+
+    try {
+        const xsrf = document.cookie.match(/XSRF-TOKEN=([^;]+)/)?.[1] ?? '';
+        const response = await fetch(ExportDekController.url(props.deck.id), {
+            method: 'POST',
+            headers: {
+                Accept: 'application/json',
+                'X-XSRF-TOKEN': decodeURIComponent(xsrf),
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+        });
+
+        if (!response.ok) {
+            addToast({ type: 'error', title: 'Export failed', message: 'Could not save deck file' });
+            return;
+        }
+
+        const result = await response.json();
+        if (result.success) {
+            addToast({ type: 'success', title: 'Saved deck file', message: result.path });
+        } else if (!result.cancelled) {
+            addToast({ type: 'error', title: 'Export failed', message: result.message ?? 'Could not save deck file' });
+        }
+    } catch (e) {
+        addToast({ type: 'error', title: 'Export failed', message: 'Could not save deck file' });
+    } finally {
+        exporting.value = false;
+    }
+}
 
 async function copyDeckScreenshot() {
     if (screenshotLoading.value) return;
@@ -148,6 +183,15 @@ async function copyDeckScreenshot() {
                 <Loader2 v-if="screenshotLoading" class="size-4 animate-spin" />
                 <Camera v-else class="size-4" />
                 {{ screenshotLoading ? 'Generating...' : 'Share Deck' }}
+            </button>
+            <button
+                :disabled="exporting"
+                class="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
+                @click="downloadDek"
+            >
+                <Loader2 v-if="exporting" class="size-4 animate-spin" />
+                <Download v-else class="size-4" />
+                {{ exporting ? 'Saving…' : 'Download .dek' }}
             </button>
             <a :href="decklistOrgUrl" target="_blank" class="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground">
                 Deck Registration

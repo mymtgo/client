@@ -271,6 +271,16 @@ class AppSettings
         $this->set('decks_grouped_by_archetype', $value);
     }
 
+    public function hideArchivedDecks(): bool
+    {
+        return (bool) $this->get('hide_archived_decks', false);
+    }
+
+    public function setHideArchivedDecks(bool $value): void
+    {
+        $this->set('hide_archived_decks', $value);
+    }
+
     public function systemTimezone(): string
     {
         return (string) $this->get('system_tz', 'UTC');

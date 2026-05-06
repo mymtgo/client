@@ -12,6 +12,8 @@ class UpdateCoverArtController extends Controller
 {
     public function __invoke(Deck $deck, Request $request): RedirectResponse
     {
+        abort_if($deck->trashed(), 403, 'This deck has been deleted on MTGO and is read-only.');
+
         $request->validate([
             'cover_id' => 'nullable|exists:cards,id',
         ]);
