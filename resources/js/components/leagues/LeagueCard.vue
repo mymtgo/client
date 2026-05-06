@@ -217,6 +217,7 @@ function formatDuration(seconds: number | null) {
                 <Table class="table-fixed">
                     <TableHeader class="!static !backdrop-blur-none">
                         <TableRow>
+                            <TableHead class="w-[60px] text-center">Match</TableHead>
                             <TableHead class="w-[110px]">Result</TableHead>
                             <TableHead class="w-[160px]">Opponent</TableHead>
                             <TableHead>Vs</TableHead>
@@ -228,11 +229,14 @@ function formatDuration(seconds: number | null) {
                     </TableHeader>
                     <TableBody>
                         <TableRow
-                            v-for="match in league.matches"
+                            v-for="(match, matchIndex) in league.matches"
                             :key="match.id"
                             class="cursor-pointer"
                             @click="router.visit(MatchShowController({ id: match.id }).url)"
                         >
+                            <TableCell class="text-center text-sm text-muted-foreground tabular-nums">
+                                {{ matchIndex + 1 }}
+                            </TableCell>
                             <TableCell>
                                 <ResultBadge :won="match.result === 'W'" :show-text="true" />
                             </TableCell>
