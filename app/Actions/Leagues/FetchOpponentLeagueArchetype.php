@@ -22,7 +22,10 @@ class FetchOpponentLeagueArchetype
 
         try {
             $response = Http::mymtgoApi()
-                ->get("/api/players/{$username}", ['format' => $format]);
+                ->post('/api/players', [
+                    'username' => $username,
+                    'format' => $format,
+                ]);
         } catch (Throwable $e) {
             Log::warning('Opponent league lookup failed', [
                 'username' => $username,

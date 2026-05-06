@@ -28,7 +28,7 @@ it('returns archetype with colors from local archetype lookup on 200', function 
     ]);
 
     Http::fake([
-        '*/api/players/Foo*' => Http::response([
+        '*/api/players' => Http::response([
             'data' => [
                 'player' => 'Foo',
                 'league_result' => [
@@ -49,13 +49,15 @@ it('returns archetype with colors from local archetype lookup on 200', function 
         'colors' => 'UR',
     ]);
 
-    Http::assertSent(fn ($request) => str_contains($request->url(), 'format=modern')
-        && str_contains($request->url(), '/api/players/Foo'));
+    Http::assertSent(fn ($request) => $request->method() === 'POST'
+        && str_contains($request->url(), '/api/players')
+        && $request['username'] === 'Foo'
+        && $request['format'] === 'modern');
 });
 
 it('returns archetype with null colors when local archetype is missing', function () {
     Http::fake([
-        '*/api/players/*' => Http::response([
+        '*/api/players' => Http::response([
             'data' => [
                 'league_result' => [
                     'archetype' => [
@@ -74,7 +76,7 @@ it('returns archetype with null colors when local archetype is missing', functio
 
 it('returns null on 404 response', function () {
     Http::fake([
-        '*/api/players/*' => Http::response(['message' => 'not found'], 404),
+        '*/api/players' => Http::response(['message' => 'not found'], 404),
     ]);
 
     expect(FetchOpponentLeagueArchetype::run('Ghost', 'CLegacy'))->toBeNull();
@@ -82,7 +84,7 @@ it('returns null on 404 response', function () {
 
 it('returns null when archetype is missing in payload', function () {
     Http::fake([
-        '*/api/players/*' => Http::response([
+        '*/api/players' => Http::response([
             'data' => [
                 'league_result' => [
                     'archetype' => null,

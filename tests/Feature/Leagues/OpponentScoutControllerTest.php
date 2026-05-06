@@ -24,7 +24,7 @@ beforeEach(function () {
     AppSettings::setApiKeyExpiresAt(now()->addHour()->toIso8601String());
 });
 
-function attachOpponent(MtgoMatch $match, Player $opponent): void
+function attachScoutOpponent(MtgoMatch $match, Player $opponent): void
 {
     $game = Game::create([
         'match_id' => $match->id,
@@ -57,10 +57,10 @@ it('renders league archetype when API returns a 5-0 hit', function () {
         'started_at' => now(),
     ]);
 
-    attachOpponent($match, $opponent);
+    attachScoutOpponent($match, $opponent);
 
     Http::fake([
-        '*/api/players/leagueWinner*' => Http::response([
+        '*/api/players' => Http::response([
             'data' => [
                 'league_result' => [
                     'archetype' => [
@@ -97,10 +97,10 @@ it('falls back to local data when API returns 404', function () {
         'started_at' => now(),
     ]);
 
-    attachOpponent($match, $opponent);
+    attachScoutOpponent($match, $opponent);
 
     Http::fake([
-        '*/api/players/*' => Http::response(['message' => 'not found'], 404),
+        '*/api/players' => Http::response(['message' => 'not found'], 404),
     ]);
 
     $response = $this->get(route('leagues.opponent-scout'));
@@ -132,10 +132,10 @@ it('caches API result so subsequent polls do not re-fetch', function () {
         'started_at' => now(),
     ]);
 
-    attachOpponent($match, $opponent);
+    attachScoutOpponent($match, $opponent);
 
     Http::fake([
-        '*/api/players/cachedFoe*' => Http::response([
+        '*/api/players' => Http::response([
             'data' => [
                 'league_result' => [
                     'archetype' => [
