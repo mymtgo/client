@@ -151,8 +151,9 @@ it('orders groups by name alphabetically when sort is name, unassigned last', fu
     );
 });
 
-it('mixes trashed decks into the flat listing by default', function () {
+it('mixes trashed decks into the flat listing when hide-archived is disabled', function () {
     AppSettings::setDecksGroupedByArchetype(false);
+    AppSettings::setHideArchivedDecks(false);
 
     Deck::factory()->count(2)->create();
     $deleted = Deck::factory()->create();

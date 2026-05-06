@@ -273,7 +273,7 @@ class AppSettings
 
     public function hideArchivedDecks(): bool
     {
-        return (bool) $this->get('hide_archived_decks', false);
+        return (bool) $this->get('hide_archived_decks', true);
     }
 
     public function setHideArchivedDecks(bool $value): void
