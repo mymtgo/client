@@ -62,6 +62,18 @@ it('returns counts, trophy rate, cash rate, avg finish', function () {
         ->and($kpis['avgFinish'])->toBe(4.0);
 });
 
+it('counts dropped runs as completed for stats', function () {
+    seedLeagueRun($this->dv, LeagueState::Complete, 5, 0);
+    seedLeagueRun($this->dv, LeagueState::Dropped, 2, 2);
+
+    $kpis = GetLeagueKpis::run(League::query());
+
+    expect($kpis['runs']['completed'])->toBe(2)
+        ->and($kpis['trophies'])->toBe(1)
+        ->and($kpis['trophyRate'])->toBe(50.0)
+        ->and($kpis['avgFinish'])->toBe(3.5);
+});
+
 it('returns null rates and avg when no completed runs', function () {
     seedLeagueRun($this->dv, LeagueState::Active, 1, 0);
 

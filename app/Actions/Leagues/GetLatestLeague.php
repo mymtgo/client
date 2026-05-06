@@ -17,7 +17,7 @@ class GetLatestLeague
     public static function run(Deck $deck, Collection $matchIds): ?array
     {
         $league = League::whereHas('matches', fn ($q) => $q->whereIn('matches.id', $matchIds))
-            ->where('state', 'complete')
+            ->whereIn('state', ['complete', 'dropped'])
             ->with('deckVersion.deck.cover')
             ->orderByDesc('started_at')
             ->first();

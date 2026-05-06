@@ -45,7 +45,7 @@ class GetLeagueKpis
             $wins = $rows->where('outcome', 'win')->count();
             $state = $stateById[$id]?->value ?? null;
 
-            if ($state === 'complete') {
+            if ($state === 'complete' || $state === 'dropped') {
                 $completed++;
                 $completedWins->push($wins);
                 if ($wins === 5) {

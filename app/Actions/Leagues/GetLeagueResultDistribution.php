@@ -20,7 +20,7 @@ class GetLeagueResultDistribution
         $buckets = collect(['5-0' => 0, '4-1' => 0, '3-2' => 0, '2-3' => 0, '1-4' => 0, '0-5' => 0]);
 
         $leagues = League::whereHas('matches', fn ($q) => $q->whereIn('matches.id', $matchIds))
-            ->where('state', 'complete')
+            ->whereIn('state', ['complete', 'dropped'])
             ->pluck('id');
 
         if ($leagues->isEmpty()) {
