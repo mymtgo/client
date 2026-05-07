@@ -53,20 +53,57 @@ class ComputeCardGameStats implements ShouldQueue
             ? ExtractCardsFromGameLog::run($gameLog->decoded_entries)
             : null;
 
+        $sideboardOracleIds = $this->resolveSideboardOracleIds($match->deck_version_id);
+
+        // Imported matches build deck_json from cards "seen" in the game log only,
+        // so per-game quantities under-report the real maindeck. Comparing those
+        // against each other produces false sided_in/sided_out signals for any
+        // card that simply wasn't drawn in g1 — keep g1Quantities null so the
+        // comparison short-circuits.
+        $trackSideboarding = ! $match->imported;
+
         $game1Quantities = null;
 
         foreach ($games as $index => $game) {
             $isPostboard = $index > 0;
-            $game1Quantities = $this->processGame($game, $match->deck_version_id, $isPostboard, $game1Quantities, $gameLogStats, $index);
+            $next = $this->processGame($game, $match->deck_version_id, $isPostboard, $game1Quantities, $gameLogStats, $index, $sideboardOracleIds);
+
+            if (! $isPostboard && $trackSideboarding) {
+                $game1Quantities = $next;
+            }
         }
+    }
+
+    /**
+     * Oracle ids of cards present in the deck version's sideboard. Used to emit
+     * zero-quantity postboard rows for sideboard cards that stayed in the
+     * sideboard, so SB In % has the correct postboard-game denominator.
+     *
+     * @return array<int, string>
+     */
+    private function resolveSideboardOracleIds(int $deckVersionId): array
+    {
+        $version = DeckVersion::find($deckVersionId);
+
+        if (! $version) {
+            return [];
+        }
+
+        return collect($version->cards)
+            ->filter(fn ($card) => $this->isSideboardCard($card) && ! empty($card['oracle_id']))
+            ->pluck('oracle_id')
+            ->unique()
+            ->values()
+            ->toArray();
     }
 
     /**
      * @param  array<string, mixed>|null  $gameLogStats
      * @param  array<string, int>|null  $game1Quantities
+     * @param  array<int, string>  $sideboardOracleIds
      * @return array<string, int>|null oracle_id => quantity for game 1 (forwarded for sideboard comparison)
      */
-    private function processGame(Game $game, int $deckVersionId, bool $isPostboard, ?array $game1Quantities, ?array $gameLogStats, int $gameIndex): ?array
+    private function processGame(Game $game, int $deckVersionId, bool $isPostboard, ?array $game1Quantities, ?array $gameLogStats, int $gameIndex, array $sideboardOracleIds): ?array
     {
         if ($game->won === null) {
             return null;
@@ -78,7 +115,7 @@ class ComputeCardGameStats implements ShouldQueue
             return null;
         }
 
-        $nextGame1Quantities = $this->processLocalSide($game, $localPlayer, $deckVersionId, $isPostboard, $game1Quantities, $gameLogStats, $gameIndex);
+        $nextGame1Quantities = $this->processLocalSide($game, $localPlayer, $deckVersionId, $isPostboard, $game1Quantities, $gameLogStats, $gameIndex, $sideboardOracleIds);
 
         $this->processOpponentSide($game, $deckVersionId, $isPostboard, $gameLogStats, $gameIndex);
 
@@ -92,9 +129,10 @@ class ComputeCardGameStats implements ShouldQueue
     /**
      * @param  array<string, int>|null  $game1Quantities
      * @param  array<string, mixed>|null  $gameLogStats
+     * @param  array<int, string>  $sideboardOracleIds
      * @return array<string, int>|null oracle_id => maindeck quantity (game-1 only)
      */
-    private function processLocalSide(Game $game, $localPlayer, int $deckVersionId, bool $isPostboard, ?array $game1Quantities, ?array $gameLogStats, int $gameIndex): ?array
+    private function processLocalSide(Game $game, $localPlayer, int $deckVersionId, bool $isPostboard, ?array $game1Quantities, ?array $gameLogStats, int $gameIndex, array $sideboardOracleIds): ?array
     {
         $localInstanceId = (int) $localPlayer->pivot->instance_id;
         $deckJson = $this->resolveDeckJson($localPlayer, $deckVersionId);
@@ -200,6 +238,36 @@ class ComputeCardGameStats implements ShouldQueue
                         now: $now,
                     );
                 }
+            }
+        }
+
+        // Sideboard cards that stayed in sideboard get a zero-quantity postboard
+        // row so SB In % has the correct denominator (every postboard game, not
+        // only the ones where the card was sided in).
+        if ($isPostboard) {
+            foreach ($sideboardOracleIds as $oracleId) {
+                if (isset($oracleQuantities[$oracleId])) {
+                    continue;
+                }
+                if (isset($game1Quantities[$oracleId]) && $game1Quantities[$oracleId] > 0) {
+                    continue;
+                }
+
+                $rows[] = $this->buildRow(
+                    oracleId: $oracleId,
+                    gameId: $game->id,
+                    deckVersionId: $deckVersionId,
+                    quantity: 0,
+                    kept: 0,
+                    seen: 0,
+                    logStats: $this->emptyLogStats(),
+                    won: (bool) $game->won,
+                    isPostboard: true,
+                    sidedOut: false,
+                    sidedIn: false,
+                    opponent: false,
+                    now: $now,
+                );
             }
         }
 

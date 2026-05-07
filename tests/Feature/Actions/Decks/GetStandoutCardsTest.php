@@ -139,7 +139,7 @@ it('ranks most cast by castGames and labels it accordingly', function () {
     $result = GetStandoutCards::run($deck);
 
     expect($result['mostCast']['name'])->toBe('Frequent');
-    expect($result['mostCast']['stat'])->toBe('Cast in 10 of 10 games');
+    expect($result['mostCast']['stat'])->toBe('10 of 10 games');
 });
 
 it('ranks most played land by playedGames not seenGames', function () {
@@ -174,7 +174,7 @@ it('ranks most played land by playedGames not seenGames', function () {
     $result = GetStandoutCards::run($deck);
 
     expect($result['mostPlayedLand']['name'])->toBe('Forest');
-    expect($result['mostPlayedLand']['stat'])->toBe('Played in 8 of 8 games');
+    expect($result['mostPlayedLand']['stat'])->toBe('8 of 8 games');
 });
 
 it('labels most seen with seenGames over totalGames', function () {
@@ -194,5 +194,5 @@ it('labels most seen with seenGames over totalGames', function () {
     $result = GetStandoutCards::run($deck);
 
     expect($result['mostSeen']['name'])->toBe('Visible');
-    expect($result['mostSeen']['stat'])->toBe('Seen in 7 of 7 games');
+    expect($result['mostSeen']['stat'])->toBe('7 of 7 games');
 });

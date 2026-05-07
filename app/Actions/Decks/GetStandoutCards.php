@@ -55,11 +55,11 @@ class GetStandoutCards
 
         return [
             'topPerformer' => $topPerformer ? self::formatPct($topPerformer, 'cast win rate', $topPerformer['castWon'], $topPerformer['castGames']) : null,
-            'mostCast' => $mostCast ? self::formatGameCount($mostCast, 'Cast', $mostCast['castGames'], $mostCast['totalGames']) : null,
-            'mostSeen' => $mostSeen ? self::formatGameCount($mostSeen, 'Seen', $mostSeen['seenGames'], $mostSeen['totalGames']) : null,
-            'mostPlayedLand' => $mostPlayedLand ? self::formatGameCount($mostPlayedLand, 'Played', $mostPlayedLand['playedGames'], $mostPlayedLand['totalGames']) : null,
-            'mostSidedIn' => $mostSidedIn ? self::formatPct($mostSidedIn, 'postboard games', $mostSidedIn['sidedInGames'], $mostSidedIn['postboardGames']) : null,
-            'mostSidedOut' => $mostSidedOut ? self::formatPct($mostSidedOut, 'postboard games', $mostSidedOut['sidedOutGames'], $mostSidedOut['postboardGames']) : null,
+            'mostCast' => $mostCast ? self::formatCount($mostCast, $mostCast['castGames'], $mostCast['totalGames'], 'games') : null,
+            'mostSeen' => $mostSeen ? self::formatCount($mostSeen, $mostSeen['seenGames'], $mostSeen['totalGames'], 'games') : null,
+            'mostPlayedLand' => $mostPlayedLand ? self::formatCount($mostPlayedLand, $mostPlayedLand['playedGames'], $mostPlayedLand['totalGames'], 'games') : null,
+            'mostSidedIn' => $mostSidedIn ? self::formatCount($mostSidedIn, $mostSidedIn['sidedInGames'], $mostSidedIn['postboardGames'], 'postboard games') : null,
+            'mostSidedOut' => $mostSidedOut ? self::formatCount($mostSidedOut, $mostSidedOut['sidedOutGames'], $mostSidedOut['postboardGames'], 'postboard games') : null,
         ];
     }
 
@@ -74,12 +74,12 @@ class GetStandoutCards
         ];
     }
 
-    private static function formatGameCount(array $card, string $verb, int $gameCount, int $totalGames): array
+    private static function formatCount(array $card, int $count, int $total, string $unit): array
     {
         return [
             'name' => $card['name'],
             'image' => $card['image'],
-            'stat' => "{$verb} in {$gameCount} of {$totalGames} games",
+            'stat' => "{$count} of {$total} {$unit}",
         ];
     }
 }
