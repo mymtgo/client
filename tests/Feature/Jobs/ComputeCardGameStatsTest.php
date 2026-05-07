@@ -128,6 +128,123 @@ it('detects sided out cards by comparing maindeck quantities between games', fun
     expect((bool) $g2CardB->sided_in)->toBeTrue(); // sided IN from sideboard
 });
 
+it('skips sided_in/sided_out detection for imported matches because deck_json is seen-only', function () {
+    $deckVersion = DeckVersion::factory()->create([
+        'signature' => base64_encode('oracle-main:4:false|oracle-sb:2:true'),
+    ]);
+    $match = MtgoMatch::factory()->create([
+        'deck_version_id' => $deckVersion->id,
+        'state' => 'complete',
+        'imported' => true,
+    ]);
+    $local = Player::create(['username' => 'testplayer']);
+    $opponent = Player::create(['username' => 'opponent']);
+
+    Card::factory()->create(['oracle_id' => 'oracle-main', 'mtgo_id' => 3001, 'name' => 'Main Card']);
+
+    // Imported g1 deck_json under-reports — only Main was "seen", appears at qty 1
+    $game1 = Game::factory()->for($match, 'match')->create([
+        'won' => true,
+        'started_at' => now(),
+    ]);
+    attachPlayers($game1, $local, $opponent, deckJson: [
+        ['mtgo_id' => 3001, 'quantity' => 1, 'sideboard' => false],
+    ]);
+
+    // Imported g2: Main card seen at qty 4 — would falsely trigger sided_in if compared
+    $game2 = Game::factory()->for($match, 'match')->create([
+        'won' => true,
+        'started_at' => now()->addMinutes(10),
+    ]);
+    attachPlayers($game2, $local, $opponent, deckJson: [
+        ['mtgo_id' => 3001, 'quantity' => 4, 'sideboard' => false],
+    ]);
+
+    (new ComputeCardGameStats($match->id))->handle();
+
+    $g2Main = DB::table('card_game_stats')
+        ->where('opponent', false)
+        ->where('oracle_id', 'oracle-main')
+        ->where('game_id', $game2->id)
+        ->first();
+
+    expect($g2Main)->not->toBeNull();
+    expect((bool) $g2Main->sided_in)->toBeFalse();
+    expect((bool) $g2Main->sided_out)->toBeFalse();
+});
+
+it('emits zero-quantity rows for sideboard cards that stayed in sideboard', function () {
+    $deckVersion = DeckVersion::factory()->create([
+        'signature' => base64_encode('oracle-main:4:false|oracle-sb:2:true'),
+    ]);
+    $match = MtgoMatch::factory()->create([
+        'deck_version_id' => $deckVersion->id,
+        'state' => 'complete',
+    ]);
+    $local = Player::create(['username' => 'testplayer']);
+    $opponent = Player::create(['username' => 'opponent']);
+
+    Card::factory()->create(['oracle_id' => 'oracle-main', 'mtgo_id' => 2001, 'name' => 'Main Card']);
+    Card::factory()->create(['oracle_id' => 'oracle-sb', 'mtgo_id' => 2002, 'name' => 'SB Card']);
+
+    // Game 1 (preboard): 4x main, 2x SB stays in sideboard
+    $game1 = Game::factory()->for($match, 'match')->create([
+        'won' => true,
+        'started_at' => now(),
+    ]);
+    attachPlayers($game1, $local, $opponent, deckJson: [
+        ['mtgo_id' => 2001, 'quantity' => 4, 'sideboard' => false],
+        ['mtgo_id' => 2002, 'quantity' => 2, 'sideboard' => true],
+    ]);
+
+    // Game 2 (postboard): SB card NOT sided in (still in sideboard)
+    $game2 = Game::factory()->for($match, 'match')->create([
+        'won' => false,
+        'started_at' => now()->addMinutes(10),
+    ]);
+    attachPlayers($game2, $local, $opponent, deckJson: [
+        ['mtgo_id' => 2001, 'quantity' => 4, 'sideboard' => false],
+        ['mtgo_id' => 2002, 'quantity' => 2, 'sideboard' => true],
+    ]);
+
+    // Game 3 (postboard): SB card sided in
+    $game3 = Game::factory()->for($match, 'match')->create([
+        'won' => true,
+        'started_at' => now()->addMinutes(20),
+    ]);
+    attachPlayers($game3, $local, $opponent, deckJson: [
+        ['mtgo_id' => 2001, 'quantity' => 2, 'sideboard' => false],
+        ['mtgo_id' => 2002, 'quantity' => 2, 'sideboard' => false],
+    ]);
+
+    (new ComputeCardGameStats($match->id))->handle();
+
+    $stats = DB::table('card_game_stats')->where('opponent', false)->get();
+
+    // Game 1: no row for SB card (preboard, sb-only)
+    $g1Sb = $stats->where('oracle_id', 'oracle-sb')->where('game_id', $game1->id)->first();
+    expect($g1Sb)->toBeNull();
+
+    // Game 2: zero-qty postboard row, NOT sided in
+    $g2Sb = $stats->where('oracle_id', 'oracle-sb')->where('game_id', $game2->id)->first();
+    expect($g2Sb)->not->toBeNull();
+    expect($g2Sb->quantity)->toBe(0);
+    expect((bool) $g2Sb->is_postboard)->toBeTrue();
+    expect((bool) $g2Sb->sided_in)->toBeFalse();
+    expect((bool) $g2Sb->sided_out)->toBeFalse();
+
+    // Game 3: sided in
+    $g3Sb = $stats->where('oracle_id', 'oracle-sb')->where('game_id', $game3->id)->first();
+    expect($g3Sb)->not->toBeNull();
+    expect($g3Sb->quantity)->toBe(2);
+    expect((bool) $g3Sb->sided_in)->toBeTrue();
+
+    // Aggregate sanity: SB In % denominator = 2 postboard games, sided_in once = 50%
+    $sbAgg = $stats->where('oracle_id', 'oracle-sb');
+    expect($sbAgg->where('is_postboard', 1)->count())->toBe(2);
+    expect($sbAgg->where('sided_in', 1)->count())->toBe(1);
+});
+
 it('counts multiple casts of the same card instance via zone transitions', function () {
     [$match, $deckVersion, $local, $opponent] = createMatchWithGames();
 
