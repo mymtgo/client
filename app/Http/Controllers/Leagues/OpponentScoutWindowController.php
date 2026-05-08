@@ -43,7 +43,7 @@ class OpponentScoutWindowController extends Controller
     {
         $leagueArchetype = Cache::remember(
             $opponentPlayer->username.'_archetype',
-            now()->addHours(6),
+            now()->addHour(),
             fn () => FetchOpponentLeagueArchetype::run($opponentPlayer->username, $currentMatch->format) ?? false,
         );
 

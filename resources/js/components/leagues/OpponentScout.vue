@@ -34,7 +34,7 @@ const props = withDefaults(
     >
         <template v-if="opponent">
             <div class="flex items-center justify-between text-base">
-                <span class="font-semibold">vs {{ opponent.username }}</span>
+                <span class="font-semibold">{{ opponent.username }}</span>
                 <span v-if="opponent.previousMatches > 0" class="tabular-nums" :style="{ color: textColor, opacity: 0.7 }">
                     {{ opponent.wins }}-{{ opponent.losses }}
                 </span>
@@ -43,9 +43,9 @@ const props = withDefaults(
                 <ManaSymbols v-if="opponent.lastArchetypeColors" :symbols="opponent.lastArchetypeColors" />
                 <span>{{ opponent.lastArchetype }}</span>
             </div>
-            <div v-else-if="opponent.previousMatches === 0" class="text-base" :style="{ color: textColor, opacity: 0.5 }">
-                First time opponent
-            </div>
+            <div v-else-if="opponent.previousMatches === 0" class="text-base" :style="{ color: textColor, opacity: 0.5 }">First time opponent</div>
+            <span class="text-xs text-white/50" v-if="opponent.lastArchetype && opponent.source == 'league'">Last known 5-0 deck used.</span>
+            <span class="text-xs text-white/50" v-if="opponent.lastArchetype && opponent.source == 'local'">Last deck you encountered.</span>
         </template>
     </div>
 </template>
