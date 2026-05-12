@@ -655,6 +655,64 @@ it('processes imported-style match (no timeline) using game log and deck version
     expect($oppRow->quantity)->toBe(0);
 });
 
+it('uses deck-version snapshot quantities for imported matches instead of sparse pivot deck_json', function () {
+    // Imported pivot deck_json only contains cards seen in the game log, which
+    // collapses denominators to "games where the card appeared". For imported
+    // matches the deck-version snapshot is the truth.
+    $tendrils = Card::factory()->create(['oracle_id' => 'oracle-tendrils', 'mtgo_id' => 9001, 'name' => 'Tendrils of Agony']);
+    $lotus = Card::factory()->create(['oracle_id' => 'oracle-lotus', 'mtgo_id' => 9002, 'name' => 'Lotus Petal']);
+    $bolt = Card::factory()->create(['oracle_id' => 'oracle-bolt', 'mtgo_id' => 9003, 'name' => 'Lightning Bolt']);
+
+    $deckVersion = DeckVersion::factory()->create([
+        'signature' => base64_encode('9001:4:false|9002:4:false|9003:2:false'),
+    ]);
+    $match = MtgoMatch::factory()->create([
+        'deck_version_id' => $deckVersion->id,
+        'state' => 'complete',
+        'imported' => true,
+    ]);
+    $local = Player::create(['username' => 'testplayer']);
+    $opponent = Player::create(['username' => 'opponent']);
+
+    $game = Game::factory()->for($match, 'match')->create([
+        'won' => true,
+        'started_at' => now(),
+    ]);
+    // Sparse pivot — only Lotus was seen this game.
+    attachPlayers($game, $local, $opponent, deckJson: [
+        ['mtgo_id' => 9002, 'quantity' => 1, 'sideboard' => false],
+    ]);
+
+    (new ComputeCardGameStats($match->id))->handle();
+
+    $tendrilsRow = DB::table('card_game_stats')
+        ->where('opponent', false)
+        ->where('oracle_id', 'oracle-tendrils')
+        ->where('game_id', $game->id)
+        ->first();
+
+    expect($tendrilsRow)->not->toBeNull();
+    expect((int) $tendrilsRow->quantity)->toBe(4);
+
+    $lotusRow = DB::table('card_game_stats')
+        ->where('opponent', false)
+        ->where('oracle_id', 'oracle-lotus')
+        ->where('game_id', $game->id)
+        ->first();
+
+    expect($lotusRow)->not->toBeNull();
+    expect((int) $lotusRow->quantity)->toBe(4);
+
+    $boltRow = DB::table('card_game_stats')
+        ->where('opponent', false)
+        ->where('oracle_id', 'oracle-bolt')
+        ->where('game_id', $game->id)
+        ->first();
+
+    expect($boltRow)->not->toBeNull();
+    expect((int) $boltRow->quantity)->toBe(2);
+});
+
 it('writes opponent rows with cast and seen data from game log and timeline', function () {
     [$match, $deckVersion, $local, $opponent] = createMatchWithGames();
 

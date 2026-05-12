@@ -54,19 +54,20 @@ class ComputeCardGameStats implements ShouldQueue
             : null;
 
         $sideboardOracleIds = $this->resolveSideboardOracleIds($match->deck_version_id);
+        $imported = (bool) $match->imported;
 
         // Imported matches build deck_json from cards "seen" in the game log only,
         // so per-game quantities under-report the real maindeck. Comparing those
         // against each other produces false sided_in/sided_out signals for any
         // card that simply wasn't drawn in g1 — keep g1Quantities null so the
         // comparison short-circuits.
-        $trackSideboarding = ! $match->imported;
+        $trackSideboarding = ! $imported;
 
         $game1Quantities = null;
 
         foreach ($games as $index => $game) {
             $isPostboard = $index > 0;
-            $next = $this->processGame($game, $match->deck_version_id, $isPostboard, $game1Quantities, $gameLogStats, $index, $sideboardOracleIds);
+            $next = $this->processGame($game, $match->deck_version_id, $isPostboard, $game1Quantities, $gameLogStats, $index, $sideboardOracleIds, $imported);
 
             if (! $isPostboard && $trackSideboarding) {
                 $game1Quantities = $next;
@@ -103,7 +104,7 @@ class ComputeCardGameStats implements ShouldQueue
      * @param  array<int, string>  $sideboardOracleIds
      * @return array<string, int>|null oracle_id => quantity for game 1 (forwarded for sideboard comparison)
      */
-    private function processGame(Game $game, int $deckVersionId, bool $isPostboard, ?array $game1Quantities, ?array $gameLogStats, int $gameIndex, array $sideboardOracleIds): ?array
+    private function processGame(Game $game, int $deckVersionId, bool $isPostboard, ?array $game1Quantities, ?array $gameLogStats, int $gameIndex, array $sideboardOracleIds, bool $imported): ?array
     {
         if ($game->won === null) {
             return null;
@@ -115,7 +116,7 @@ class ComputeCardGameStats implements ShouldQueue
             return null;
         }
 
-        $nextGame1Quantities = $this->processLocalSide($game, $localPlayer, $deckVersionId, $isPostboard, $game1Quantities, $gameLogStats, $gameIndex, $sideboardOracleIds);
+        $nextGame1Quantities = $this->processLocalSide($game, $localPlayer, $deckVersionId, $isPostboard, $game1Quantities, $gameLogStats, $gameIndex, $sideboardOracleIds, $imported);
 
         $this->processOpponentSide($game, $deckVersionId, $isPostboard, $gameLogStats, $gameIndex);
 
@@ -132,10 +133,10 @@ class ComputeCardGameStats implements ShouldQueue
      * @param  array<int, string>  $sideboardOracleIds
      * @return array<string, int>|null oracle_id => maindeck quantity (game-1 only)
      */
-    private function processLocalSide(Game $game, $localPlayer, int $deckVersionId, bool $isPostboard, ?array $game1Quantities, ?array $gameLogStats, int $gameIndex, array $sideboardOracleIds): ?array
+    private function processLocalSide(Game $game, $localPlayer, int $deckVersionId, bool $isPostboard, ?array $game1Quantities, ?array $gameLogStats, int $gameIndex, array $sideboardOracleIds, bool $imported): ?array
     {
         $localInstanceId = (int) $localPlayer->pivot->instance_id;
-        $deckJson = $this->resolveDeckJson($localPlayer, $deckVersionId);
+        $deckJson = $this->resolveDeckJson($localPlayer, $deckVersionId, $imported);
 
         if (empty($deckJson)) {
             return null;
@@ -361,18 +362,34 @@ class ComputeCardGameStats implements ShouldQueue
     }
 
     /**
-     * Pivot's deck_json (live capture) preferred. Fall back to the deck-version
-     * snapshot for imported games where pivot wasn't populated.
+     * Live games: pivot deck_json (captured at match start) is the truth.
+     * Imported games: pivot is sparse (only cards "seen" in the log), so the
+     * deck-version snapshot is the truth — pivot would deflate denominators
+     * to "games where this card appeared" rather than "all games played".
      *
      * @return list<array<string, mixed>>
      */
-    private function resolveDeckJson($player, int $deckVersionId): array
+    private function resolveDeckJson($player, int $deckVersionId, bool $imported): array
     {
+        $versionDeck = $this->resolveVersionDeck($deckVersionId);
+
+        if ($imported && ! empty($versionDeck)) {
+            return $versionDeck;
+        }
+
         $pivotDeck = $player->pivot->deck_json;
         if (! empty($pivotDeck)) {
             return $pivotDeck;
         }
 
+        return $versionDeck;
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function resolveVersionDeck(int $deckVersionId): array
+    {
         $version = DeckVersion::find($deckVersionId);
         if (! $version) {
             return [];
