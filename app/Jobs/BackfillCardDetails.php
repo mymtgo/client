@@ -29,7 +29,9 @@ class BackfillCardDetails implements ShouldQueue
     {
         $cards = Card::query()
             ->whereNotNull('name')
-            ->whereNull('art_crop')
+            ->where(function ($q) {
+                $q->whereNull('art_crop')->orWhereNull('mana_cost');
+            })
             ->get();
 
         if ($cards->isEmpty()) {
@@ -91,6 +93,7 @@ class BackfillCardDetails implements ShouldQueue
                 })->join(','),
                 'colors' => $cardData['colors'] ?? null,
                 'cmc' => $cardData['cmc'] ?? null,
+                'mana_cost' => $cardData['mana_cost'] ?? null,
                 'set_name' => $cardData['set_name'] ?? null,
                 'set_code' => $cardData['set'] ?? null,
                 'art_crop' => $cardData['art_crop'] ?? null,
@@ -136,6 +139,7 @@ class BackfillCardDetails implements ShouldQueue
                     : $card->color_identity,
                 'colors' => $cardData['colors'] ?? null,
                 'cmc' => $cardData['cmc'] ?? null,
+                'mana_cost' => $cardData['mana_cost'] ?? null,
                 'set_name' => $cardData['set_name'] ?? null,
                 'set_code' => $cardData['set'] ?? null,
                 'art_crop' => $cardData['art_crop'] ?? null,

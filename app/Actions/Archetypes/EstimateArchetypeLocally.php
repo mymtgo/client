@@ -2,7 +2,7 @@
 
 namespace App\Actions\Archetypes;
 
-use App\Models\Archetype;
+use App\Models\ArchetypeDeck;
 use App\Models\Card;
 use Illuminate\Support\Collection;
 
@@ -29,11 +29,13 @@ class EstimateArchetypeLocally
     /**
      * Attempt to match a deck against locally-downloaded archetype decklists.
      *
-     * Comparison uses oracle_id (printing-agnostic) so that different MTGO
-     * printings of the same card are treated as equal.
+     * Each ArchetypeDeck variant is scored individually. The archetype_id is
+     * derived from the best-matching deck. Ambiguity is checked at the parent
+     * archetype level — two variants of the same archetype tying does not
+     * trigger the penalty.
      *
-     * @param  Collection<int, array{mtgo_id: int, quantity: int}>  $cards
-     * @return array{archetype_id: int, confidence: float}|null
+     * @param  Collection<int, array{mtgo_id: int|string, quantity: int}>  $cards
+     * @return array{archetype_id: int, archetype_deck_id: int, confidence: float}|null
      */
     public static function run(Collection $cards, string $format): ?array
     {
@@ -73,20 +75,22 @@ class EstimateArchetypeLocally
 
         $normalizedFormat = self::normalizeFormat($format);
 
-        $candidates = Archetype::query()
-            ->where('format', $normalizedFormat)
-            ->whereNotNull('decklist_downloaded_at')
-            ->with(['cards' => fn ($q) => $q->select('cards.id', 'cards.mtgo_id', 'cards.oracle_id')])
+        $candidateDecks = ArchetypeDeck::query()
+            ->whereHas('archetype', fn ($q) => $q->where('format', $normalizedFormat))
+            ->with([
+                'archetype:id',
+                'cards' => fn ($q) => $q->select('cards.id', 'cards.mtgo_id', 'cards.oracle_id'),
+            ])
             ->get();
 
-        if ($candidates->isEmpty()) {
+        if ($candidateDecks->isEmpty()) {
             return null;
         }
 
         $scores = [];
 
-        foreach ($candidates as $archetype) {
-            $deckCards = $archetype->cards
+        foreach ($candidateDecks as $deck) {
+            $deckCards = $deck->cards
                 ->filter(fn ($c) => $c->oracle_id !== null)
                 ->keyBy('oracle_id');
             $deckDistinct = $deckCards->count();
@@ -122,7 +126,8 @@ class EstimateArchetypeLocally
                 + ($deckCoverage * self::COVERAGE_WEIGHT);
 
             $scores[] = [
-                'archetype_id' => $archetype->id,
+                'archetype_id' => $deck->archetype_id,
+                'archetype_deck_id' => $deck->id,
                 'score' => $score,
             ];
         }
@@ -147,6 +152,7 @@ class EstimateArchetypeLocally
 
         return [
             'archetype_id' => $best['archetype_id'],
+            'archetype_deck_id' => $best['archetype_deck_id'],
             'confidence' => round($confidence, 4),
         ];
     }

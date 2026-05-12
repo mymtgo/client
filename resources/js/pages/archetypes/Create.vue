@@ -32,7 +32,7 @@ defineProps<{
     prefill: Prefill | null;
 }>();
 
-function handleSubmit(data: { name: string; format: string; color_identity: string | null; cards: any[]; source_match_id: number | null; incomplete: boolean }) {
+function handleSubmit(data: { name: string; format: string; color_identity: string | null; cards: any[] | null; source_match_id: number | null; incomplete: boolean }) {
     router.post(StoreController.url(), data);
 }
 </script>
@@ -43,7 +43,7 @@ function handleSubmit(data: { name: string; format: string; color_identity: stri
             <div class="mb-6 border-b border-black/60 pb-4">
                 <h1 class="text-lg font-bold text-foreground">Create Archetype</h1>
             </div>
-            <ArchetypeForm :matches="matches" :prefill="prefill" submit-label="Create Archetype" @submit="handleSubmit" />
+            <ArchetypeForm :matches="matches" :prefill="prefill" submit-label="Create Archetype" require-cards @submit="handleSubmit" />
         </div>
     </ArchetypeLayout>
 </template>

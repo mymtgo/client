@@ -5,19 +5,21 @@ namespace App\Http\Controllers\Archetypes;
 use App\Actions\Archetypes\GenerateDekFile;
 use App\Models\Archetype;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 use Native\Desktop\Dialog;
 
 class ExportDekController
 {
-    public function __invoke(Archetype $archetype): JsonResponse
+    public function __invoke(Request $request, Archetype $archetype): JsonResponse
     {
         if ($archetype->is_fallback) {
             abort(403, 'Fallback archetypes have no decklist to export.');
         }
 
-        $xml = GenerateDekFile::run($archetype);
+        $deckId = $request->input('archetype_deck_id');
+        $xml = GenerateDekFile::run($archetype, $deckId !== null ? (int) $deckId : null);
         $suggestedName = Str::slug($archetype->name).'.dek';
 
         $path = Dialog::new()

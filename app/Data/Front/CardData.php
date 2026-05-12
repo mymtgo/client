@@ -17,7 +17,7 @@ class CardData extends Data
         public ?string $artCrop = null,
         public ?float $cmc = null,
         public int $quantity = 1,
-        public bool $sideboard = false
+        public bool $sideboard = false,
     ) {}
 
     public static function fromModel(Card $card): self

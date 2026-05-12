@@ -1,8 +1,11 @@
 <?php
 
+use App\Actions\Archetypes\AddArchetypeVariant;
+use App\Actions\Archetypes\UpdateArchetypeMeta;
 use App\Jobs\DownloadArchetypeDecklists;
 use App\Jobs\DownloadArchetypes;
 use App\Models\Archetype;
+use App\Models\Card;
 use App\Models\MatchArchetype;
 use App\Models\MtgoMatch;
 use App\Models\Player;
@@ -90,4 +93,21 @@ it('does not download decklists for manual archetypes', function () {
     (new DownloadArchetypeDecklists($archetype->id))->handle();
 
     Http::assertNothingSent();
+});
+
+it('creates exactly one archetype_deck and writes cards to it', function () {
+    $archetype = Archetype::factory()->create(['manual' => true]);
+    $card = Card::factory()->create(['oracle_id' => 'oracle-1', 'mtgo_id' => '100']);
+
+    UpdateArchetypeMeta::run($archetype, 'My Manual Brew', 'modern', 'W');
+    AddArchetypeVariant::run($archetype, [
+        ['oracle_id' => 'oracle-1', 'mtgo_id' => 100, 'quantity' => 4, 'sideboard' => false],
+    ]);
+
+    $archetype->refresh()->load('decks.cards');
+    expect($archetype->decks)->toHaveCount(1);
+    $deck = $archetype->decks->first();
+    expect($deck->cards)->toHaveCount(1);
+    expect($deck->cards->first()->id)->toBe($card->id);
+    expect($deck->cards->first()->pivot->quantity)->toBe(4);
 });

@@ -18,6 +18,7 @@ class ArchetypeData extends Data
         public bool $hasDecklist,
         public bool $manual,
         public bool $isFallback,
+        public ?int $mergedIntoId = null,
     ) {}
 
     public static function fromModel(Archetype $archetype): self
@@ -28,9 +29,10 @@ class ArchetypeData extends Data
             format: $archetype->format,
             colorIdentity: $archetype->color_identity,
             decklistDownloadedAt: $archetype->decklist_downloaded_at,
-            hasDecklist: $archetype->decklist_downloaded_at !== null,
+            hasDecklist: isset($archetype->decks_exists) ? (bool) $archetype->decks_exists : $archetype->decks()->exists(),
             manual: $archetype->manual,
             isFallback: $archetype->is_fallback,
+            mergedIntoId: $archetype->merged_into_id,
         );
     }
 }

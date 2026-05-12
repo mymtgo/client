@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers\Archetypes;
 
+use App\Actions\Archetypes\GetArchetypeVariantFacingWinrates;
 use App\Actions\Archetypes\GetFilteredArchetypes;
 use App\Data\Front\ArchetypeData;
-use App\Data\Front\CardData;
+use App\Data\Front\ArchetypeDeckData;
+use App\Data\Front\ArchetypeDetailData;
 use App\Http\Controllers\Controller;
 use App\Models\Archetype;
 use Illuminate\Http\Request;
@@ -17,19 +19,31 @@ class EditController extends Controller
     {
         $data = GetFilteredArchetypes::run($request);
 
-        $cards = null;
+        $archetype->load(['decks' => fn ($q) => $q->orderByDesc('seen_count'), 'decks.cards']);
 
-        if ($archetype->decklist_downloaded_at) {
-            $archetype->load('cards');
-            $cards = $archetype->cards->map(fn ($card) => CardData::fromModel($card))->all();
-        }
+        $winrates = GetArchetypeVariantFacingWinrates::run($archetype);
+
+        $decks = $archetype->decks
+            ->sortByDesc(fn ($deck) => [
+                ($winrates[$deck->id]['wins'] ?? 0) + ($winrates[$deck->id]['losses'] ?? 0),
+                $deck->seen_count,
+            ])
+            ->values()
+            ->map(fn ($deck) => ArchetypeDeckData::fromModel($deck, $winrates[$deck->id] ?? null))
+            ->all();
+
+        $detail = new ArchetypeDetailData(
+            archetype: ArchetypeData::fromModel($archetype),
+            decks: $decks,
+            isStale: $archetype->decklist_downloaded_at !== null
+                && $archetype->decklist_downloaded_at->lt(now()->subWeek()),
+        );
 
         return Inertia::render('archetypes/Edit', [
             'archetypes' => $data['archetypes'],
             'formats' => $data['formats'],
             'filters' => $data['filters'],
-            'archetype' => ArchetypeData::fromModel($archetype),
-            'cards' => $cards,
+            'detail' => $detail,
         ]);
     }
 }

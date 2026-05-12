@@ -141,6 +141,7 @@ class PopulateMissingCardData implements ShouldQueue
             'color_identity' => $formattedColorIdentity,
             'colors' => $cardData['colors'] ?? null,
             'cmc' => $cardData['cmc'] ?? null,
+            'mana_cost' => $cardData['mana_cost'] ?? null,
             'set_name' => $cardData['set_name'] ?? null,
             'set_code' => $cardData['set'] ?? null,
             'art_crop' => $cardData['art_crop'] ?? null,

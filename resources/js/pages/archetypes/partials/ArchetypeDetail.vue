@@ -1,24 +1,62 @@
 <script setup lang="ts">
 import DownloadDecklistController from '@/actions/App/Http/Controllers/Archetypes/DownloadDecklistController';
-import ExportDekController from '@/actions/App/Http/Controllers/Archetypes/ExportDekController';
 import EditController from '@/actions/App/Http/Controllers/Archetypes/EditController';
 import DestroyController from '@/actions/App/Http/Controllers/Archetypes/DestroyController';
+import UnmergeController from '@/actions/App/Http/Controllers/Archetypes/UnmergeController';
+import ShowController from '@/actions/App/Http/Controllers/Archetypes/ShowController';
+import VariantDecklist from './VariantDecklist.vue';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import ManaSymbols from '@/components/ManaSymbols.vue';
-import DeckList from '@/pages/decks/partials/DeckList.vue';
 import { router, Link } from '@inertiajs/vue3';
-import { Download, RefreshCw, Pencil, Trash2 } from 'lucide-vue-next';
-import { computed, ref } from 'vue';
+import { RefreshCw, Pencil, Trash2, GitMerge } from 'lucide-vue-next';
+import { computed, ref, watch } from 'vue';
+import MergeArchetypeDialog from './MergeArchetypeDialog.vue';
 
 const props = defineProps<{
     detail: App.Data.Front.ArchetypeDetailData;
 }>();
 
 const downloading = ref(false);
-const exporting = ref(false);
 const confirmingDelete = ref(false);
+const mergeOpen = ref(false);
 
+const activeVariantId = ref<string>(
+    props.detail.decks.length > 0 ? String(props.detail.decks[0].id) : '',
+);
+
+watch(
+    () => props.detail.decks.map((d) => d.id).join(','),
+    () => {
+        const ids = props.detail.decks.map((d) => String(d.id));
+        if (! ids.includes(activeVariantId.value) && ids.length > 0) {
+            activeVariantId.value = ids[0];
+        }
+    },
+);
+
+const activeDeck = computed<App.Data.Front.ArchetypeDeckData | null>(() => {
+    return props.detail.decks.find((d) => String(d.id) === activeVariantId.value) ?? null;
+});
+
+const activeIndex = computed<number>(() => {
+    return props.detail.decks.findIndex((d) => String(d.id) === activeVariantId.value);
+});
+
+function unmerge(): void {
+    router.post(
+        UnmergeController.url({ archetype: props.detail.archetype.id }),
+        {},
+        { preserveScroll: true },
+    );
+}
 function deleteArchetype() {
     router.delete(DestroyController.url({ archetype: props.detail.archetype.id }));
 }
@@ -38,47 +76,18 @@ async function downloadDecklist() {
             only: ['detail'],
             preserveScroll: true,
             preserveState: true,
-            onFinish: () => { downloading.value = false; },
+            onFinish: () => {
+                downloading.value = false;
+            },
         });
     } catch {
         downloading.value = false;
     }
 }
-
-async function exportDek() {
-    exporting.value = true;
-    try {
-        const xsrf = document.cookie.match(/XSRF-TOKEN=([^;]+)/)?.[1] ?? '';
-        await fetch(ExportDekController.url({ archetype: props.detail.archetype.id }), {
-            method: 'POST',
-            headers: {
-                'X-XSRF-TOKEN': decodeURIComponent(xsrf),
-                'Accept': 'application/json',
-            },
-        });
-    } finally {
-        exporting.value = false;
-    }
-}
-
-const maindeck = computed(() => {
-    if (!props.detail.cards) return {};
-    const grouped: Record<string, App.Data.Front.CardData[]> = {};
-    for (const card of props.detail.cards.filter(c => !c.sideboard)) {
-        const type = card.type ?? 'Unknown';
-        (grouped[type] ??= []).push(card);
-    }
-    return grouped;
-});
-
-const sideboard = computed(() => {
-    if (!props.detail.cards) return [];
-    return props.detail.cards.filter(c => c.sideboard);
-});
 </script>
 
 <template>
-    <div class="flex h-full flex-col">
+    <div class="relative flex h-full flex-col">
         <!-- Header -->
         <div class="border-b border-black/60 p-4">
             <div class="flex items-start justify-between">
@@ -93,14 +102,23 @@ const sideboard = computed(() => {
                 </div>
                 <div class="flex gap-2">
                     <Button
-                        v-if="detail.archetype.hasDecklist && !detail.archetype.isFallback"
+                        v-if="!detail.archetype.isFallback && !detail.archetype.manual && detail.decks.length > 0"
                         variant="outline"
                         size="sm"
-                        :disabled="exporting"
-                        @click="exportDek"
+                        :disabled="downloading"
+                        @click="downloadDecklist"
                     >
-                        <Download class="mr-1.5 size-3.5" />
-                        Download .dek
+                        <RefreshCw class="mr-1.5 size-3.5" :class="{ 'animate-spin': downloading }" />
+                        {{ downloading ? 'Re-downloading…' : 'Re-download' }}
+                    </Button>
+                    <Button
+                        v-if="!detail.archetype.isFallback && !detail.archetype.mergedIntoId"
+                        variant="outline"
+                        size="sm"
+                        @click="mergeOpen = true"
+                    >
+                        <GitMerge class="mr-1.5 size-3.5" />
+                        Merge
                     </Button>
                     <Button v-if="!detail.archetype.isFallback" variant="outline" size="sm" as-child>
                         <Link :href="EditController.url({ archetype: detail.archetype.id })">
@@ -117,18 +135,6 @@ const sideboard = computed(() => {
                         <Trash2 class="mr-1.5 size-3.5" />
                         Delete
                     </Button>
-                </div>
-            </div>
-
-            <!-- Winrate stats -->
-            <div v-if="detail.playingWinrate !== null || detail.facingWinrate !== null" class="mt-3 flex flex-col gap-1">
-                <div v-if="detail.playingWinrate !== null" class="text-sm text-purple-400">
-                    {{ detail.playingWinrate }}% winrate playing this archetype
-                    <span class="text-muted-foreground">({{ detail.playingRecord }})</span>
-                </div>
-                <div v-if="detail.facingWinrate !== null" class="text-sm text-orange-400">
-                    {{ detail.facingWinrate }}% winrate against this archetype
-                    <span class="text-muted-foreground">({{ detail.facingRecord }})</span>
                 </div>
             </div>
         </div>
@@ -149,8 +155,26 @@ const sideboard = computed(() => {
 
         <!-- Body -->
         <div class="flex-1 overflow-y-auto p-4">
+            <!-- Merged notice -->
+            <div
+                v-if="detail.mergedInto"
+                class="flex h-full flex-col items-center justify-center gap-3 text-center"
+            >
+                <p class="text-sm text-muted-foreground">
+                    This archetype has been merged into
+                    <Link
+                        :href="ShowController.url({ archetype: detail.mergedInto.id })"
+                        class="underline"
+                    >
+                        {{ detail.mergedInto.name }}
+                    </Link>.
+                    Future detections will be attributed to it.
+                </p>
+                <Button variant="outline" @click="unmerge">Unmerge</Button>
+            </div>
+
             <!-- Fallback description -->
-            <div v-if="detail.archetype.isFallback" class="flex h-full flex-col items-center justify-center gap-2 text-center">
+            <div v-else-if="detail.archetype.isFallback" class="flex h-full flex-col items-center justify-center gap-2 text-center">
                 <p class="max-w-md text-sm text-muted-foreground">
                     System fallback for unidentified opponent decks. Auto-assigned when no archetype matches.
                 </p>
@@ -158,7 +182,7 @@ const sideboard = computed(() => {
 
             <!-- Not downloaded -->
             <div
-                v-else-if="!detail.archetype.hasDecklist && !detail.archetype.manual && !downloading"
+                v-else-if="detail.decks.length === 0 && !detail.archetype.manual && !downloading"
                 class="flex h-full flex-col items-center justify-center gap-3"
             >
                 <p class="text-sm text-muted-foreground">Decklist not yet downloaded</p>
@@ -167,15 +191,53 @@ const sideboard = computed(() => {
                 </Button>
             </div>
 
-            <!-- Downloading -->
-            <div v-else-if="downloading" class="flex h-full flex-col items-center justify-center gap-3">
+            <!-- Initial download (no existing decks) -->
+            <div v-else-if="downloading && detail.decks.length === 0" class="flex h-full flex-col items-center justify-center gap-3">
                 <Spinner class="size-5" />
-                <p class="text-sm text-muted-foreground">Downloading decklist...</p>
+                <p class="text-sm text-muted-foreground">Downloading decklists...</p>
             </div>
 
-            <!-- Downloaded -->
-            <DeckList v-else-if="detail.cards" :maindeck="maindeck" :sideboard="sideboard" />
+            <!-- Variant picker + active variant decklist -->
+            <div
+                v-else-if="detail.decks.length > 0"
+                class="flex flex-col gap-3"
+            >
+                <div class="flex items-center gap-2">
+                    <label class="text-xs font-medium text-muted-foreground" for="variant-picker">
+                        Variant
+                    </label>
+                    <Select v-model="activeVariantId">
+                        <SelectTrigger id="variant-picker" class="w-[260px]">
+                            <SelectValue placeholder="Pick a variant" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem
+                                v-for="(deck, idx) in detail.decks"
+                                :key="deck.id"
+                                :value="String(deck.id)"
+                            >
+                                Variant {{ idx + 1 }} · seen {{ deck.seenCount }}×
+                            </SelectItem>
+                        </SelectContent>
+                    </Select>
+                    <span class="text-xs text-muted-foreground">
+                        of {{ detail.decks.length }}
+                    </span>
+                </div>
+
+                <VariantDecklist
+                    v-if="activeDeck"
+                    :archetype-id="detail.archetype.id"
+                    :archetype-name="detail.archetype.name"
+                    :variant-label="`Variant ${activeIndex + 1}`"
+                    :deck="activeDeck"
+                />
+            </div>
+            <div v-else class="flex h-full flex-col items-center justify-center gap-3">
+                <p class="text-sm text-muted-foreground">No variants downloaded yet.</p>
+            </div>
         </div>
+
         <!-- Delete confirmation -->
         <div
             v-if="confirmingDelete"
@@ -193,5 +255,16 @@ const sideboard = computed(() => {
                 </div>
             </div>
         </div>
+
+        <MergeArchetypeDialog
+            v-model:open="mergeOpen"
+            :archetype="detail.archetype"
+        />
     </div>
 </template>
+
+<style scoped>
+.fade-enter-active { transition: opacity 0.1s ease; }
+.fade-leave-active { transition: opacity 0.05s ease; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
+</style>

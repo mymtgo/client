@@ -8,15 +8,23 @@ decklistDownloadedAt: string | null;
 hasDecklist: boolean;
 manual: boolean;
 isFallback: boolean;
+mergedIntoId: number | null;
+};
+export type ArchetypeDeckData = {
+id: number;
+uuid: string;
+seenCount: number;
+lastSyncedAt: string | null;
+cards: Array<App.Data.Front.CardData>;
+facingWinrate: number | null;
+wins: number;
+losses: number;
 };
 export type ArchetypeDetailData = {
 archetype: App.Data.Front.ArchetypeData;
-cards: Array<App.Data.Front.CardData> | null;
-playingWinrate: number | null;
-playingRecord: string | null;
-facingWinrate: number | null;
-facingRecord: string | null;
+decks: Array<App.Data.Front.ArchetypeDeckData>;
 isStale: boolean;
+mergedInto: App.Data.Front.ArchetypeData | null;
 };
 export type CardData = {
 mtgoId: number | null;

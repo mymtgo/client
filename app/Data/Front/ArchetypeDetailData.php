@@ -9,12 +9,9 @@ class ArchetypeDetailData extends Data
 {
     public function __construct(
         public ArchetypeData $archetype,
-        /** @var CardData[]|null */
-        public ?array $cards,
-        public ?float $playingWinrate,
-        public ?string $playingRecord,
-        public ?float $facingWinrate,
-        public ?string $facingRecord,
+        /** @var ArchetypeDeckData[] */
+        public array $decks,
         public bool $isStale,
+        public ?ArchetypeData $mergedInto = null,
     ) {}
 }

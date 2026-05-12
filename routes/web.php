@@ -5,8 +5,12 @@ use App\Http\Controllers\Archetypes\DownloadController;
 use App\Http\Controllers\Archetypes\DownloadDecklistController;
 use App\Http\Controllers\Archetypes\EditController;
 use App\Http\Controllers\Archetypes\ExportDekController;
+use App\Http\Controllers\Archetypes\MergeCandidatesController;
+use App\Http\Controllers\Archetypes\MergeController;
 use App\Http\Controllers\Archetypes\ScanMatchController;
+use App\Http\Controllers\Archetypes\UnmergeController;
 use App\Http\Controllers\Archetypes\UploadDekController;
+use App\Http\Controllers\Archetypes\Variants\ReassignController;
 use App\Http\Controllers\Cards\ImageBase64Controller;
 use App\Http\Controllers\Debug\Cards\PopulateController;
 use App\Http\Controllers\Debug\Decks\SyncController;
@@ -163,9 +167,21 @@ Route::group([], function (Router $router) {
         $group->post('scan-match/{match}', ScanMatchController::class)->name('archetypes.scan-match');
         $group->post('download', DownloadController::class)->name('archetypes.download-all');
         $group->get('{archetype}', App\Http\Controllers\Archetypes\ShowController::class)->name('archetypes.show');
+        $group->get('{archetype}/merge-candidates', MergeCandidatesController::class)
+            ->name('archetypes.merge-candidates');
+        $group->post('{archetype}/merge', MergeController::class)
+            ->name('archetypes.merge');
+        $group->post('{archetype}/unmerge', UnmergeController::class)
+            ->name('archetypes.unmerge');
         $group->get('{archetype}/edit', EditController::class)->name('archetypes.edit');
         $group->put('{archetype}', App\Http\Controllers\Archetypes\UpdateController::class)->name('archetypes.update');
         $group->delete('{archetype}', App\Http\Controllers\Archetypes\DestroyController::class)->name('archetypes.destroy');
+        $group->delete('{archetype}/variants/{deck}', App\Http\Controllers\Archetypes\Variants\DestroyController::class)
+            ->scopeBindings()
+            ->name('archetypes.variants.destroy');
+        $group->post('{archetype}/variants/{deck}/reassign', ReassignController::class)
+            ->whereNumber('deck')
+            ->name('archetypes.variants.reassign');
         $group->post('{archetype}/download', DownloadDecklistController::class)->name('archetypes.download');
         $group->post('{archetype}/export', ExportDekController::class)->name('archetypes.export');
     });

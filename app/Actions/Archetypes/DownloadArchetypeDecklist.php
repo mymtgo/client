@@ -4,8 +4,10 @@ namespace App\Actions\Archetypes;
 
 use App\Actions\RegisterDevice;
 use App\Models\Archetype;
+use App\Models\ArchetypeDeck;
 use App\Models\Card;
 use Illuminate\Http\Client\Response;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -31,12 +33,34 @@ class DownloadArchetypeDecklist
             throw new \RuntimeException('Failed to download decklist from API.');
         }
 
-        $cards = $response->json('cards', []);
+        $decks = $response->json('decks', []);
+
+        DB::transaction(function () use ($archetype, $decks) {
+            foreach ($decks as $deckData) {
+                self::upsertDeck($archetype, $deckData);
+            }
+
+            $archetype->update(['decklist_downloaded_at' => now()]);
+        });
+    }
+
+    /**
+     * @param  array{uuid: string, seen_count: int, cards: array<int, array<string, mixed>>}  $deckData
+     */
+    private static function upsertDeck(Archetype $archetype, array $deckData): void
+    {
+        $deck = ArchetypeDeck::updateOrCreate(
+            ['uuid' => $deckData['uuid']],
+            [
+                'archetype_id' => $archetype->id,
+                'seen_count' => $deckData['seen_count'] ?? 0,
+                'last_synced_at' => now(),
+            ]
+        );
 
         $pivotData = [];
-
-        foreach ($cards as $cardData) {
-            if (empty($cardData['oracle_id'])) {
+        foreach ($deckData['cards'] ?? [] as $cardData) {
+            if (empty($cardData['oracle_id']) || empty($cardData['mtgo_id'])) {
                 continue;
             }
 
@@ -57,12 +81,11 @@ class DownloadArchetypeDecklist
             ];
         }
 
-        $archetype->cards()->sync($pivotData);
-        $archetype->update(['decklist_downloaded_at' => now()]);
+        $deck->cards()->sync($pivotData);
     }
 
     private static function fetchFromApi(string $uuid): Response
     {
-        return Http::mymtgoApi()->get('/api/archetypes/'.$uuid.'/decklist');
+        return Http::mymtgoApi()->get('/api/archetypes/'.$uuid.'/decklists');
     }
 }

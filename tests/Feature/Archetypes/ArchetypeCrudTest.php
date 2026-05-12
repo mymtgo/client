@@ -71,14 +71,13 @@ describe('edit', function () {
         $response->assertOk();
         $response->assertInertia(fn ($page) => $page
             ->component('archetypes/Edit')
-            ->has('archetype')
-            ->has('cards')
+            ->has('detail')
         );
     });
 });
 
 describe('update', function () {
-    it('updates an archetype and sets it to manual', function () {
+    it('updates archetype meta without flipping the manual flag', function () {
         $archetype = Archetype::factory()->withDecklist()->create([
             'manual' => false,
         ]);
@@ -107,7 +106,7 @@ describe('update', function () {
         ]);
 
         $response->assertRedirect();
-        expect($archetype->fresh()->manual)->toBeTrue();
+        expect($archetype->fresh()->manual)->toBeFalse();
         expect($archetype->fresh()->name)->toBe('Updated Name');
     });
 });

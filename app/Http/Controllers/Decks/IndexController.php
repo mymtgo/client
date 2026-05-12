@@ -20,7 +20,7 @@ class IndexController
     public function __invoke(Request $request): Response
     {
         $query = Deck::forActiveAccount()
-            ->with(['cover', 'archetype'])
+            ->with(['cover', 'archetype' => fn ($q) => $q->withExists('decks')])
             ->withCount(['wonMatches', 'lostMatches', 'matches'])
             ->withMax('matches', 'started_at');
 

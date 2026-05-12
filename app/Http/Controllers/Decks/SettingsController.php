@@ -32,6 +32,7 @@ class SettingsController extends Controller
 
         $archetypes = Archetype::where('format', $archetypeFormat)
             ->orderBy('name')
+            ->withExists('decks')
             ->get()
             ->map(fn (Archetype $a) => ArchetypeData::fromModel($a));
 

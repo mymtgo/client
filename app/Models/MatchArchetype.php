@@ -27,6 +27,12 @@ class MatchArchetype extends Model
         return $this->belongsTo(Archetype::class, 'archetype_id');
     }
 
+    /** @return BelongsTo<ArchetypeDeck, $this> */
+    public function archetypeDeck(): BelongsTo
+    {
+        return $this->belongsTo(ArchetypeDeck::class);
+    }
+
     /** @return BelongsTo<Player, $this> */
     public function player(): BelongsTo
     {

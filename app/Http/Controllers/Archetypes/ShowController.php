@@ -2,11 +2,11 @@
 
 namespace App\Http\Controllers\Archetypes;
 
-use App\Actions\Archetypes\GetArchetypeWinrates;
+use App\Actions\Archetypes\GetArchetypeVariantFacingWinrates;
 use App\Actions\Archetypes\GetFilteredArchetypes;
 use App\Data\Front\ArchetypeData;
+use App\Data\Front\ArchetypeDeckData;
 use App\Data\Front\ArchetypeDetailData;
-use App\Data\Front\CardData;
 use App\Models\Archetype;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -18,29 +18,31 @@ class ShowController
     {
         $sidebar = GetFilteredArchetypes::run($request);
 
-        $cards = null;
-        if ($archetype->decklist_downloaded_at) {
-            $archetype->loadMissing('cards');
-            $cards = $archetype->cards->map(function ($card) {
-                $cardData = CardData::fromModel($card);
-                $cardData->quantity = $card->pivot->quantity;
-                $cardData->sideboard = $card->pivot->sideboard;
+        $archetype->load(['decks' => fn ($q) => $q->orderByDesc('seen_count'), 'decks.cards']);
 
-                return $cardData;
-            })->all();
+        if ($archetype->merged_into_id !== null) {
+            $archetype->load('mergedInto:id,name,color_identity,format,is_fallback,manual,merged_into_id');
         }
 
-        $winrates = GetArchetypeWinrates::run($archetype);
+        $winrates = GetArchetypeVariantFacingWinrates::run($archetype);
+
+        $decks = $archetype->decks
+            ->sortByDesc(fn ($deck) => [
+                ($winrates[$deck->id]['wins'] ?? 0) + ($winrates[$deck->id]['losses'] ?? 0),
+                $deck->seen_count,
+            ])
+            ->values()
+            ->map(fn ($deck) => ArchetypeDeckData::fromModel($deck, $winrates[$deck->id] ?? null))
+            ->all();
 
         $detail = new ArchetypeDetailData(
             archetype: ArchetypeData::fromModel($archetype),
-            cards: $cards,
-            playingWinrate: $winrates['playing']['winrate'] ?? null,
-            playingRecord: $winrates['playing'] ? $winrates['playing']['wins'].' - '.$winrates['playing']['losses'] : null,
-            facingWinrate: $winrates['facing']['winrate'] ?? null,
-            facingRecord: $winrates['facing'] ? $winrates['facing']['wins'].' - '.$winrates['facing']['losses'] : null,
+            decks: $decks,
             isStale: $archetype->decklist_downloaded_at !== null
                 && $archetype->decklist_downloaded_at->lt(now()->subWeek()),
+            mergedInto: $archetype->mergedInto !== null
+                ? ArchetypeData::fromModel($archetype->mergedInto)
+                : null,
         );
 
         return Inertia::render('archetypes/Show', [

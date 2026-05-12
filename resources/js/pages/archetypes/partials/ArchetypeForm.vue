@@ -9,8 +9,8 @@ import ArchetypePreview from '@/pages/archetypes/partials/ArchetypePreview.vue';
 import DekUploadButton from '@/pages/archetypes/partials/DekUploadButton.vue';
 import ManaIdentityPicker from '@/pages/archetypes/partials/ManaIdentityPicker.vue';
 import MatchSelect from '@/pages/archetypes/partials/MatchSelect.vue';
-import { Link } from '@inertiajs/vue3';
-import { ref, watch } from 'vue';
+import { Link, usePage } from '@inertiajs/vue3';
+import { computed, ref, watch } from 'vue';
 
 interface MatchOption {
     id: number;
@@ -25,21 +25,28 @@ interface Prefill {
     cards: any[];
 }
 
-const props = defineProps<{
-    name?: string;
-    format?: string;
-    colorIdentity?: string | null;
-    initialCards?: App.Data.Front.CardData[] | null;
-    submitLabel: string;
-    matches?: MatchOption[];
-    prefill?: Prefill | null;
-}>();
+const props = withDefaults(
+    defineProps<{
+        name?: string;
+        format?: string;
+        colorIdentity?: string | null;
+        initialCards?: App.Data.Front.CardData[] | null;
+        submitLabel: string;
+        matches?: MatchOption[];
+        prefill?: Prefill | null;
+        requireCards?: boolean;
+        cancelHref?: string;
+    }>(),
+    { requireCards: false, cancelHref: () => IndexController.url() },
+);
 
 const emit = defineEmits<{
-    submit: [data: { name: string; format: string; color_identity: string | null; cards: any[]; source_match_id: number | null; incomplete: boolean }];
+    submit: [data: { name: string; format: string; color_identity: string | null; cards: any[] | null; source_match_id: number | null; incomplete: boolean }];
 }>();
 
 const FORMATS = [
+    { value: 'standard', label: 'Standard' },
+    { value: 'pioneer', label: 'Pioneer' },
     { value: 'modern', label: 'Modern' },
     { value: 'pauper', label: 'Pauper' },
     { value: 'legacy', label: 'Legacy' },
@@ -56,6 +63,14 @@ const incomplete = ref(props.prefill !== null && props.prefill !== undefined);
 const scanning = ref(false);
 const scanError = ref<string | null>(null);
 const submitting = ref(false);
+const page = usePage();
+const cardsError = computed(() => (page.props.errors as Record<string, string>)?.cards ?? null);
+const submitButtonLabel = computed(() => {
+    if (props.requireCards) {
+        return props.submitLabel;
+    }
+    return resolvedCards.value?.length ? 'Save & Add Variant' : props.submitLabel;
+});
 const skipNextScan = ref(props.prefill !== null && props.prefill !== undefined);
 
 function applyResolved(data: { cards: any[]; color_identity: string | null }) {
@@ -112,13 +127,12 @@ watch(sourceMatchId, async (matchId) => {
 });
 
 function handleSubmit() {
-    if (!resolvedCards.value?.length) return;
     submitting.value = true;
     emit('submit', {
         name: name.value,
         format: format.value,
         color_identity: colorIdentity.value,
-        cards: resolvedCards.value,
+        cards: resolvedCards.value?.length ? resolvedCards.value : null,
         source_match_id: sourceMatchId.value,
         incomplete: incomplete.value,
     });
@@ -172,22 +186,19 @@ function handleSubmit() {
                     />
                     <p v-if="scanning" class="text-xs text-muted-foreground">Scanning match...</p>
                     <p v-if="scanError" class="text-xs text-red-400">{{ scanError }}</p>
+                    <p v-if="cardsError" class="text-xs text-red-400">{{ cardsError }}</p>
                 </div>
             </div>
 
             <div class="flex gap-3 pt-4">
-                <Button type="submit" :disabled="submitting || scanning || !resolvedCards?.length || !name || !format">
-                    {{ submitLabel }}
+                <Button type="submit" :disabled="submitting || scanning || !name || !format || (requireCards && !resolvedCards?.length)">
+                    {{ submitButtonLabel }}
                 </Button>
                 <Button variant="outline" as-child>
-                    <Link :href="IndexController.url()">Cancel</Link>
+                    <Link :href="cancelHref">Cancel</Link>
                 </Button>
             </div>
         </div>
 
-        <!-- Right column: preview -->
-        <div class="flex min-h-0 flex-1 flex-col rounded-lg border border-black/40 bg-black/10">
-            <ArchetypePreview :cards="resolvedCards" :incomplete="incomplete" />
-        </div>
     </form>
 </template>

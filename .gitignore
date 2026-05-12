@@ -13,6 +13,7 @@
 /.zed
 /auth.json
 /node_modules
+/_oldnode_modules
 /public/build
 /public/hot
 /public/storage
@@ -38,3 +39,11 @@ CLAUDE.md
 /resources/js/routes
 /resources/js/wayfinder
 .superpowers/
+/.claude-flow
+/.claude/agents
+/.claude/commands
+/.claude/helpers
+/.claude/settings.json
+/agentdb.rvf
+/agentdb.rvf.lock
+/ruvector.db

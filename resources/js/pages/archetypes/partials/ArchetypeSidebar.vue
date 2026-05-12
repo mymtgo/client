@@ -121,13 +121,23 @@ function goToPage(page: number) {
                 class="flex items-center gap-2 border-b border-black/40 px-3 py-2.5 text-sm transition-colors hover:bg-accent/50"
                 :class="{
                     'border-l-2 border-l-purple-500 bg-accent/30': selectedId === archetype.id,
+                    'opacity-60': archetype.mergedIntoId,
                 }"
                 preserve-state
                 preserve-scroll
                 :only="['detail']"
             >
                 <div class="min-w-0 flex-1">
-                    <div class="truncate font-medium text-foreground">{{ archetype.name }}</div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="truncate font-medium text-foreground">{{ archetype.name }}</span>
+                        <span
+                            v-if="archetype.mergedIntoId"
+                            class="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground"
+                            title="Merged into another archetype"
+                        >
+                            Merged
+                        </span>
+                    </div>
                     <div class="flex items-center gap-1.5 text-xs text-muted-foreground">
                         <span>{{ archetype.format }}</span>
                         <span>&middot;</span>
@@ -135,7 +145,7 @@ function goToPage(page: number) {
                     </div>
                 </div>
                 <div
-                    v-if="archetype.hasDecklist"
+                    v-if="archetype.hasDecklist && !archetype.mergedIntoId"
                     class="size-2 shrink-0 rounded-full bg-green-500"
                     title="Decklist downloaded"
                 />

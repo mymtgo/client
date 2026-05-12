@@ -4,6 +4,7 @@ namespace App\Actions;
 
 use App\Actions\Archetypes\EstimateArchetypeLocally;
 use App\Models\Archetype;
+use App\Models\ArchetypeDeck;
 use App\Models\ArchetypeMatchAttempt;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
@@ -52,8 +53,17 @@ class DetermineDeckArchetype
             $archetypeModel = Archetype::where('uuid', $archetype['uuid'])->first();
 
             if ($archetypeModel) {
+                $deckVersionUuid = $archetype['deck_version_uuid'] ?? null;
+                $archetypeDeckId = $deckVersionUuid
+                    ? ArchetypeDeck::query()
+                        ->where('archetype_id', $archetypeModel->id)
+                        ->where('uuid', $deckVersionUuid)
+                        ->value('id')
+                    : null;
+
                 $result = [
                     'archetype_id' => $archetypeModel->id,
+                    'archetype_deck_id' => $archetypeDeckId,
                     'confidence' => $archetype['confidence'],
                 ];
             }

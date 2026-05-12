@@ -2,6 +2,7 @@
 
 use App\Actions\DetermineDeckArchetype;
 use App\Models\Archetype;
+use App\Models\ArchetypeDeck;
 use App\Models\Card;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
@@ -20,6 +21,8 @@ it('uses local match when confidence is above threshold', function () {
         'format' => 'modern',
     ]);
 
+    $deck = ArchetypeDeck::factory()->for($archetype)->create();
+
     $cards = [];
     foreach (['bolt' => 100, 'spike' => 101, 'guide' => 102, 'swift' => 103] as $oracle => $mtgoId) {
         $card = Card::create([
@@ -31,7 +34,7 @@ it('uses local match when confidence is above threshold', function () {
         $cards[$card->id] = ['quantity' => 4, 'sideboard' => false];
     }
 
-    $archetype->cards()->sync($cards);
+    $deck->cards()->sync($cards);
 
     $inputCards = collect([
         ['mtgo_id' => 100, 'quantity' => 4],
@@ -44,6 +47,7 @@ it('uses local match when confidence is above threshold', function () {
 
     expect($result)->not->toBeNull();
     expect($result['archetype_id'])->toBe($archetype->id);
+    expect($result['archetype_deck_id'])->toBe($deck->id);
 
     Http::assertNothingSent();
 });
@@ -55,6 +59,8 @@ it('falls back to API when local confidence is too low', function () {
         'uuid' => 'api-burn-uuid',
     ]);
 
+    $deck = ArchetypeDeck::factory()->for($archetype)->create();
+
     $card = Card::create([
         'oracle_id' => 'bolt',
         'mtgo_id' => 100,
@@ -62,7 +68,7 @@ it('falls back to API when local confidence is too low', function () {
         'type' => 'Instant',
     ]);
 
-    $archetype->cards()->sync([$card->id => ['quantity' => 4, 'sideboard' => false]]);
+    $deck->cards()->sync([$card->id => ['quantity' => 4, 'sideboard' => false]]);
 
     Http::fake([
         '*/api/archetypes/estimate' => Http::response([
@@ -88,8 +94,52 @@ it('falls back to API when local confidence is too low', function () {
 
     expect($result)->not->toBeNull();
     expect($result['confidence'])->toBe(0.85);
+    expect($result['archetype_deck_id'])->toBeNull();
 
     Http::assertSent(fn ($request) => str_contains($request->url(), 'archetypes/estimate'));
+});
+
+it('resolves archetype_deck_id when API returns a known deck_version_uuid', function () {
+    $archetype = Archetype::factory()->create([
+        'uuid' => 'api-uuid-variant',
+        'format' => 'modern',
+    ]);
+
+    $deck = ArchetypeDeck::factory()->for($archetype)->create(['uuid' => 'deck-version-uuid-xyz']);
+
+    Http::fake([
+        '*/api/archetypes/estimate' => Http::response([
+            [
+                'uuid' => 'api-uuid-variant',
+                'confidence' => 0.92,
+                'deck_version_uuid' => 'deck-version-uuid-xyz',
+            ],
+        ]),
+    ]);
+
+    $result = DetermineDeckArchetype::run(collect([['mtgo_id' => 999, 'quantity' => 4]]), 'modern');
+
+    expect($result)->not->toBeNull();
+    expect($result['archetype_id'])->toBe($archetype->id);
+    expect($result['archetype_deck_id'])->toBe($deck->id);
+});
+
+it('falls back to null archetype_deck_id when API deck_version_uuid is unknown locally', function () {
+    Archetype::factory()->create(['uuid' => 'api-uuid-unknown-variant', 'format' => 'modern']);
+
+    Http::fake([
+        '*/api/archetypes/estimate' => Http::response([
+            [
+                'uuid' => 'api-uuid-unknown-variant',
+                'confidence' => 0.8,
+                'deck_version_uuid' => 'unknown-deck-uuid',
+            ],
+        ]),
+    ]);
+
+    $result = DetermineDeckArchetype::run(collect([['mtgo_id' => 999, 'quantity' => 4]]), 'modern');
+
+    expect($result['archetype_deck_id'])->toBeNull();
 });
 
 it('falls back to API when no local archetypes exist', function () {
@@ -111,5 +161,22 @@ it('falls back to API when no local archetypes exist', function () {
     $result = DetermineDeckArchetype::run($inputCards, 'modern');
 
     expect($result)->not->toBeNull();
+    expect($result['archetype_deck_id'])->toBeNull();
     Http::assertSent(fn ($request) => str_contains($request->url(), 'archetypes/estimate'));
+});
+
+it('returns archetype_deck_id when local estimation hits', function () {
+    $archetype = Archetype::factory()->create(['format' => 'modern', 'decklist_downloaded_at' => now()]);
+    $card = Card::factory()->create(['oracle_id' => 'a', 'mtgo_id' => '1']);
+
+    $deck = ArchetypeDeck::factory()->for($archetype)->create(['uuid' => 'd1']);
+    $deck->cards()->attach($card->id, ['quantity' => 4, 'sideboard' => false]);
+
+    $input = collect([['mtgo_id' => '1', 'quantity' => 4]]);
+
+    $result = DetermineDeckArchetype::run($input, 'modern');
+
+    expect($result)->not->toBeNull();
+    expect($result['archetype_id'])->toBe($archetype->id);
+    expect($result['archetype_deck_id'])->toBe($deck->id);
 });

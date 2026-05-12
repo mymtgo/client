@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Storage;
  * @property ArchetypeCard|null $pivot
  * @property int|null $quantity
  * @property bool|null $sideboard
+ * @property string|null $mana_cost
  * @property string|null $local_image
  * @property string|null $local_art_crop
  * @property string|null $image_url Resolved image URL (local-first, falls back to remote)

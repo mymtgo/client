@@ -6,9 +6,15 @@ use App\Models\Archetype;
 
 class GenerateDekFile
 {
-    public static function run(Archetype $archetype): string
+    public static function run(Archetype $archetype, ?int $archetypeDeckId = null): string
     {
-        $archetype->loadMissing('cards');
+        $deck = $archetypeDeckId
+            ? $archetype->decks()->where('id', $archetypeDeckId)->with('cards')->first()
+            : $archetype->decks()->orderByDesc('seen_count')->with('cards')->first();
+
+        if (! $deck) {
+            throw new \RuntimeException('Archetype has no decklist to export.');
+        }
 
         $lines = [
             '<?xml version="1.0" encoding="UTF-8"?>',
@@ -17,7 +23,7 @@ class GenerateDekFile
             '  <PreconstructedDeckID>0</PreconstructedDeckID>',
         ];
 
-        foreach ($archetype->cards as $card) {
+        foreach ($deck->cards as $card) {
             $sideboard = $card->pivot->sideboard ? 'true' : 'false';
             $name = htmlspecialchars($card->name, ENT_XML1, 'UTF-8');
             $lines[] = sprintf(

@@ -19,6 +19,7 @@ class ArchetypeFactory extends Factory
             'format' => $this->faker->randomElement(['modern', 'pioneer', 'legacy', 'standard', 'pauper']),
             'color_identity' => $this->faker->randomElement(['W', 'U', 'B', 'R', 'G', 'WU', 'BR', 'RG', null]),
             'manual' => false,
+            'is_fallback' => false,
         ];
     }
 

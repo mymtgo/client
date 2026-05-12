@@ -2,6 +2,7 @@
 
 namespace App\Actions;
 
+use App\Actions\Archetypes\ResolveMergedArchetype;
 use App\Jobs\DownloadArchetypeDecklists;
 use App\Models\Archetype;
 use App\Models\MtgoMatch;
@@ -25,8 +26,10 @@ class DetermineMatchArchetypes
             $deckArchetypeId = $match->deckVersion?->deck?->archetype_id;
 
             if ($deckArchetypeId) {
+                $resolved = ResolveMergedArchetype::run($deckArchetypeId, null);
                 $matchArchetypes[] = [
-                    'archetype_id' => $deckArchetypeId,
+                    'archetype_id' => $resolved['archetype_id'],
+                    'archetype_deck_id' => $resolved['archetype_deck_id'],
                     'confidence' => 1.0,
                     'player_id' => $player->id,
                 ];
@@ -35,8 +38,13 @@ class DetermineMatchArchetypes
                 $archetype = DetermineDeckArchetype::run(collect($playerDeck), $match->format, $match->id, $player->id);
 
                 if ($archetype) {
+                    $resolved = ResolveMergedArchetype::run(
+                        $archetype['archetype_id'],
+                        $archetype['archetype_deck_id'] ?? null,
+                    );
                     $matchArchetypes[] = [
-                        'archetype_id' => $archetype['archetype_id'],
+                        'archetype_id' => $resolved['archetype_id'],
+                        'archetype_deck_id' => $resolved['archetype_deck_id'],
                         'confidence' => $archetype['confidence'],
                         'player_id' => $player->id,
                     ];
@@ -84,11 +92,16 @@ class DetermineMatchArchetypes
                     continue;
                 }
 
-                $archetype = ['archetype_id' => $homebrewId, 'confidence' => 0];
+                $archetype = ['archetype_id' => $homebrewId, 'archetype_deck_id' => null, 'confidence' => 0];
             }
 
+            $resolved = ResolveMergedArchetype::run(
+                $archetype['archetype_id'],
+                $archetype['archetype_deck_id'] ?? null,
+            );
             $matchArchetypes[] = [
-                'archetype_id' => $archetype['archetype_id'],
+                'archetype_id' => $resolved['archetype_id'],
+                'archetype_deck_id' => $resolved['archetype_deck_id'],
                 'confidence' => $archetype['confidence'],
                 'player_id' => $opponentId,
             ];

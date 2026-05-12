@@ -2,14 +2,16 @@
 
 use App\Actions\Archetypes\EstimateArchetypeLocally;
 use App\Models\Archetype;
+use App\Models\ArchetypeDeck;
 use App\Models\Card;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 
-function createArchetypeWithCards(array $attributes, array $cards): Archetype
+function createArchetypeWithCards(array $attributes, array $cards): array
 {
     $archetype = Archetype::factory()->withDecklist()->create($attributes);
+    $deck = ArchetypeDeck::factory()->for($archetype)->create();
 
     $pivotData = [];
     foreach ($cards as $cardData) {
@@ -27,9 +29,9 @@ function createArchetypeWithCards(array $attributes, array $cards): Archetype
         ];
     }
 
-    $archetype->cards()->sync($pivotData);
+    $deck->cards()->sync($pivotData);
 
-    return $archetype;
+    return ['archetype' => $archetype, 'deck' => $deck];
 }
 
 it('matches a deck against a local archetype', function () {
@@ -91,7 +93,7 @@ it('returns null when no cards overlap', function () {
 });
 
 it('picks the best matching archetype', function () {
-    $burn = createArchetypeWithCards(
+    ['archetype' => $burn, 'deck' => $burnDeck] = createArchetypeWithCards(
         ['name' => 'Burn', 'format' => 'modern'],
         [
             ['oracle_id' => 'bolt', 'mtgo_id' => 100, 'name' => 'Lightning Bolt', 'quantity' => 4],
@@ -118,6 +120,7 @@ it('picks the best matching archetype', function () {
 
     expect($result)->not->toBeNull();
     expect($result['archetype_id'])->toBe($burn->id);
+    expect($result['archetype_deck_id'])->toBe($burnDeck->id);
 });
 
 it('skips archetypes without downloaded decklists', function () {
@@ -187,4 +190,59 @@ it('applies ambiguity penalty when top two scores are close', function () {
     // With penalty (×0.7) it should be ~0.98
     // Key check: confidence is reduced from what it would be without ambiguity
     expect($result['confidence'])->toBeLessThan(1.0);
+});
+
+it('picks the best matching deck variant under an archetype', function () {
+    $archetype = Archetype::factory()->create(['format' => 'modern', 'decklist_downloaded_at' => now()]);
+
+    $cardA = Card::factory()->create(['oracle_id' => 'a', 'mtgo_id' => '1']);
+    $cardB = Card::factory()->create(['oracle_id' => 'b', 'mtgo_id' => '2']);
+    $cardC = Card::factory()->create(['oracle_id' => 'c', 'mtgo_id' => '3']);
+
+    // Variant 1: A + B
+    $variant1 = ArchetypeDeck::factory()->for($archetype)->create(['uuid' => 'v1', 'seen_count' => 5]);
+    $variant1->cards()->attach([
+        $cardA->id => ['quantity' => 4, 'sideboard' => false],
+        $cardB->id => ['quantity' => 4, 'sideboard' => false],
+    ]);
+
+    // Variant 2: A + C  (input matches this one)
+    $variant2 = ArchetypeDeck::factory()->for($archetype)->create(['uuid' => 'v2', 'seen_count' => 3]);
+    $variant2->cards()->attach([
+        $cardA->id => ['quantity' => 4, 'sideboard' => false],
+        $cardC->id => ['quantity' => 4, 'sideboard' => false],
+    ]);
+
+    $input = collect([
+        ['mtgo_id' => '1', 'quantity' => 4],
+        ['mtgo_id' => '3', 'quantity' => 4],
+    ]);
+
+    $result = EstimateArchetypeLocally::run($input, 'modern');
+
+    expect($result)->not->toBeNull();
+    expect($result['archetype_id'])->toBe($archetype->id);
+    expect($result['archetype_deck_id'])->toBe($variant2->id);
+});
+
+it('returns null when no deck has any card overlap', function () {
+    $archetype = Archetype::factory()->create(['format' => 'modern', 'decklist_downloaded_at' => now()]);
+    $cardA = Card::factory()->create(['oracle_id' => 'a', 'mtgo_id' => '1']);
+    $unrelated = Card::factory()->create(['oracle_id' => 'unrelated', 'mtgo_id' => '999']);
+
+    $variant = ArchetypeDeck::factory()->for($archetype)->create();
+    $variant->cards()->attach($cardA->id, ['quantity' => 4, 'sideboard' => false]);
+
+    $input = collect([['mtgo_id' => '999', 'quantity' => 4]]);
+
+    expect(EstimateArchetypeLocally::run($input, 'modern'))->toBeNull();
+});
+
+it('skips archetypes with no decks', function () {
+    Archetype::factory()->create(['format' => 'modern', 'decklist_downloaded_at' => now()]);
+    Card::factory()->create(['oracle_id' => 'a', 'mtgo_id' => '1']);
+
+    $input = collect([['mtgo_id' => '1', 'quantity' => 4]]);
+
+    expect(EstimateArchetypeLocally::run($input, 'modern'))->toBeNull();
 });
