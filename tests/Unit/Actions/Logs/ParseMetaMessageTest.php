@@ -20,9 +20,10 @@ it('parses a die roll chat message', function () {
 
 it('parses a play-choice chat message', function () {
     // "@Pluizhenriquebimbo chooses to play first."
+    $msg = '@Pluizhenriquebimbo chooses to play first.';
     $bytes = array_merge(
-        [62, 0, 0, 0, 3, 17, 186, 129, 118, 228, 151, 56, 103, 0, 0, 0, 0, 0, 0, 0, 38, 0, 0, 0],
-        array_map('ord', str_split('@Pluizhenriquebimbo chooses to play first.')),
+        [strlen($msg) + 24, 0, 0, 0, 3, 17, 186, 129, 118, 228, 151, 56, 103, 0, 0, 0, 0, 0, 0, 0, strlen($msg), 0, 0, 0],
+        array_map('ord', str_split($msg)),
     );
 
     $parsed = ParseMetaMessage::run($bytes);
@@ -33,9 +34,10 @@ it('parses a play-choice chat message', function () {
 });
 
 it('parses a mulligan chat message', function () {
+    $msg = '@Phyuma mulligans to six.';
     $bytes = array_merge(
-        [46, 0, 0, 0, 3, 17, 186, 129, 118, 228, 151, 56, 103, 0, 0, 0, 0, 0, 0, 0, 22, 0, 0, 0],
-        array_map('ord', str_split('@Phyuma mulligans to six.')),
+        [strlen($msg) + 24, 0, 0, 0, 3, 17, 186, 129, 118, 228, 151, 56, 103, 0, 0, 0, 0, 0, 0, 0, strlen($msg), 0, 0, 0],
+        array_map('ord', str_split($msg)),
     );
 
     $parsed = ParseMetaMessage::run($bytes);
@@ -46,9 +48,10 @@ it('parses a mulligan chat message', function () {
 });
 
 it('parses a game winner chat message', function () {
+    $msg = '@Phyuma wins the game.';
     $bytes = array_merge(
-        [42, 0, 0, 0, 3, 17, 186, 129, 118, 228, 151, 56, 103, 0, 0, 0, 0, 0, 0, 0, 18, 0, 0, 0],
-        array_map('ord', str_split('@Phyuma wins the game.')),
+        [strlen($msg) + 24, 0, 0, 0, 3, 17, 186, 129, 118, 228, 151, 56, 103, 0, 0, 0, 0, 0, 0, 0, strlen($msg), 0, 0, 0],
+        array_map('ord', str_split($msg)),
     );
 
     $parsed = ParseMetaMessage::run($bytes);
@@ -58,9 +61,10 @@ it('parses a game winner chat message', function () {
 });
 
 it('parses a concede chat message', function () {
+    $msg = '@Pluiz has conceded from the game.';
     $bytes = array_merge(
-        [54, 0, 0, 0, 3, 17, 186, 129, 118, 228, 151, 56, 103, 0, 0, 0, 0, 0, 0, 0, 30, 0, 0, 0],
-        array_map('ord', str_split('@Pluiz has conceded from the game.')),
+        [strlen($msg) + 24, 0, 0, 0, 3, 17, 186, 129, 118, 228, 151, 56, 103, 0, 0, 0, 0, 0, 0, 0, strlen($msg), 0, 0, 0],
+        array_map('ord', str_split($msg)),
     );
 
     $parsed = ParseMetaMessage::run($bytes);
@@ -109,4 +113,38 @@ it('returns unknown kind for unrecognised type byte', function () {
 
     expect($parsed['type'])->toBe(250)
         ->and($parsed['kind'])->toBe(MetaMessageKind::Unknown->value);
+});
+
+it('parses a deck list (type 82)', function () {
+    $header = [108, 2, 0, 0, 82, 18, 181, 208, 118, 228, 151, 56, 60, 0, 0, 0];
+    // 60 u64-LE multiverse IDs — use a simple repeating pattern: 100..159
+    $cardBytes = [];
+    for ($i = 100; $i < 160; $i++) {
+        $cardBytes[] = $i & 0xFF;
+        $cardBytes[] = ($i >> 8) & 0xFF;
+        for ($j = 0; $j < 6; $j++) {
+            $cardBytes[] = 0;
+        }
+    }
+    $bytes = array_merge($header, $cardBytes);
+
+    $parsed = ParseMetaMessage::run($bytes);
+
+    expect($parsed['kind'])->toBe(MetaMessageKind::DeckList->value)
+        ->and($parsed['cards'])->toHaveCount(60)
+        ->and($parsed['cards'][0])->toBe(100)
+        ->and($parsed['cards'][59])->toBe(159);
+});
+
+it('parses an opponent name (type 4)', function () {
+    $name = 'OpponentX';
+    $bytes = array_merge(
+        [strlen($name) + 24, 0, 0, 0, 4, 17, 186, 129, 118, 228, 151, 56, 0, 0, 0, 0, 0, 0, 0, 0, strlen($name), 0, 0, 0],
+        array_map('ord', str_split($name)),
+    );
+
+    $parsed = ParseMetaMessage::run($bytes);
+
+    expect($parsed['kind'])->toBe(MetaMessageKind::OpponentName->value)
+        ->and($parsed['text'])->toBe($name);
 });

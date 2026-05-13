@@ -56,38 +56,42 @@ class ParseMetaMessage
     /**
      * Find a trailing ASCII payload. Many event types end with:
      *   ...[4 bytes uint32 LE length N][N ascii bytes]
-     * Falling back to longest printable run keeps unknown types usable.
+     * Strict declared-length match only — no longest-printable-run fallback.
      */
     private static function extractText(array $bytes): ?string
     {
         $count = count($bytes);
 
-        if ($count >= 5) {
-            for ($payloadStart = 16; $payloadStart <= $count - 4; $payloadStart += 4) {
-                $lenAt = $payloadStart - 4;
-                $declared = $bytes[$lenAt]
-                    | ($bytes[$lenAt + 1] << 8)
-                    | ($bytes[$lenAt + 2] << 16)
-                    | ($bytes[$lenAt + 3] << 24);
+        if ($count < 5) {
+            return null;
+        }
 
-                if ($declared <= 0 || $declared > $count) {
-                    continue;
-                }
+        // Strict declared-length probe: scan candidate length fields by 4-byte stride,
+        // accept only when length matches the trailing window exactly.
+        for ($payloadStart = 16; $payloadStart <= $count - 4; $payloadStart += 4) {
+            $lenAt = $payloadStart - 4;
+            $declared = $bytes[$lenAt]
+                | ($bytes[$lenAt + 1] << 8)
+                | ($bytes[$lenAt + 2] << 16)
+                | ($bytes[$lenAt + 3] << 24);
 
-                if ($payloadStart + $declared !== $count) {
-                    continue;
-                }
+            if ($declared <= 0 || $declared > $count) {
+                continue;
+            }
 
-                $slice = array_slice($bytes, $payloadStart, $declared);
-                $ascii = self::bytesToPrintable($slice);
+            if ($payloadStart + $declared !== $count) {
+                continue;
+            }
 
-                if ($ascii !== null) {
-                    return $ascii;
-                }
+            $slice = array_slice($bytes, $payloadStart, $declared);
+            $ascii = self::bytesToPrintable($slice);
+
+            if ($ascii !== null) {
+                return $ascii;
             }
         }
 
-        return self::longestPrintableRun($bytes, min: 4);
+        return null;
     }
 
     private static function bytesToPrintable(array $bytes): ?string
@@ -106,32 +110,6 @@ class ParseMetaMessage
         }
 
         return $out !== '' ? $out : null;
-    }
-
-    private static function longestPrintableRun(array $bytes, int $min): ?string
-    {
-        $best = '';
-        $current = '';
-
-        foreach ($bytes as $b) {
-            if ($b >= 32 && $b <= 126) {
-                $current .= chr($b);
-
-                continue;
-            }
-
-            if (strlen($current) > strlen($best)) {
-                $best = $current;
-            }
-
-            $current = '';
-        }
-
-        if (strlen($current) > strlen($best)) {
-            $best = $current;
-        }
-
-        return strlen($best) >= $min ? $best : null;
     }
 
     /**
