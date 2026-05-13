@@ -29,5 +29,7 @@ class ApplyGameWinner implements SubHandler
             'won' => $parsed['event']['player'] === $localUsername,
             'ended_at' => ConvertMtgoTimestamp::run($event->logged_at, $event->timestamp),
         ]);
+
+        SynthesizeGameLog::run($game->fresh());
     }
 }

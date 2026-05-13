@@ -6,6 +6,8 @@ use App\Actions\Pipeline\ApplyLogEvents;
 use App\Actions\Pipeline\Handlers\HandleGameManagementJson;
 use App\Actions\Pipeline\Handlers\HandleGameStateUpdate;
 use App\Actions\Pipeline\Handlers\HandleMatchStateChanged;
+use App\Actions\Pipeline\MetaMessage\ApplyCardCast;
+use App\Actions\Pipeline\MetaMessage\ApplyCardPlay;
 use App\Actions\Pipeline\MetaMessage\ApplyDeckList;
 use App\Actions\Pipeline\MetaMessage\ApplyDieRoll;
 use App\Actions\Pipeline\MetaMessage\ApplyGameWinner;
@@ -95,6 +97,8 @@ class AppServiceProvider extends ServiceProvider
             MetaMessageKind::TurnStart->value => ApplyTurnStart::class,
             MetaMessageKind::GameWinner->value => ApplyGameWinner::class,
             MetaMessageKind::Joined->value => ApplyJoined::class,
+            MetaMessageKind::CastCard->value => ApplyCardCast::class,
+            MetaMessageKind::PlayCard->value => ApplyCardPlay::class,
         ];
     }
 
