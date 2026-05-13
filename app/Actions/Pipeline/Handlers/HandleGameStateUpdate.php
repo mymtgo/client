@@ -2,6 +2,7 @@
 
 namespace App\Actions\Pipeline\Handlers;
 
+use App\Actions\Logs\ConvertMtgoTimestamp;
 use App\Models\Game;
 use App\Models\LogEvent;
 use App\Support\PipelineContext;
@@ -22,7 +23,10 @@ class HandleGameStateUpdate implements Handler
 
         Game::firstOrCreate(
             ['mtgo_id' => $event->game_id],
-            ['match_id' => $match->id, 'started_at' => now()],
+            [
+                'match_id' => $match->id,
+                'started_at' => ConvertMtgoTimestamp::run($event->logged_at, $event->timestamp),
+            ],
         );
     }
 }

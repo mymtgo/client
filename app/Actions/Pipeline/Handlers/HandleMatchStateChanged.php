@@ -3,6 +3,7 @@
 namespace App\Actions\Pipeline\Handlers;
 
 use App\Actions\Matches\AdvanceMatchState;
+use App\Enums\MatchState;
 use App\Models\LogEvent;
 use App\Support\PipelineContext;
 
@@ -25,11 +26,13 @@ class HandleMatchStateChanged implements Handler
 
         $match = AdvanceMatchState::run($event->match_token, $matchId);
 
-        if ($match) {
-            $context->rememberMatch($match);
+        if (! $match) {
+            return;
         }
 
-        if ($match && str_contains($event->raw_text ?? '', 'MatchClosedState')) {
+        $context->rememberMatch($match);
+
+        if (in_array($match->state, [MatchState::Ended, MatchState::Complete], true)) {
             app(HandleMatchClosed::class)->handle($event, $context);
         }
     }
