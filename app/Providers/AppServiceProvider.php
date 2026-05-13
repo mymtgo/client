@@ -6,7 +6,16 @@ use App\Actions\Pipeline\ApplyLogEvents;
 use App\Actions\Pipeline\Handlers\HandleGameManagementJson;
 use App\Actions\Pipeline\Handlers\HandleGameStateUpdate;
 use App\Actions\Pipeline\Handlers\HandleMatchStateChanged;
+use App\Actions\Pipeline\MetaMessage\ApplyDeckList;
+use App\Actions\Pipeline\MetaMessage\ApplyDieRoll;
+use App\Actions\Pipeline\MetaMessage\ApplyGameWinner;
+use App\Actions\Pipeline\MetaMessage\ApplyJoined;
+use App\Actions\Pipeline\MetaMessage\ApplyMulligan;
+use App\Actions\Pipeline\MetaMessage\ApplyPlayChoice;
+use App\Actions\Pipeline\MetaMessage\ApplyStartingHand;
+use App\Actions\Pipeline\MetaMessage\ApplyTurnStart;
 use App\Actions\RegisterDevice;
+use App\Enums\MetaMessageKind;
 use App\Facades\AppSettings;
 use App\Managers\MtgoManager;
 use App\Models\LogCursor;
@@ -75,6 +84,17 @@ class AppServiceProvider extends ServiceProvider
             'match_state_changed' => HandleMatchStateChanged::class,
             'game_state_update' => HandleGameStateUpdate::class,
             'game_management_json' => HandleGameManagementJson::class,
+        ];
+
+        HandleGameManagementJson::$subHandlers = [
+            MetaMessageKind::DeckList->value => ApplyDeckList::class,
+            MetaMessageKind::DieRoll->value => ApplyDieRoll::class,
+            MetaMessageKind::PlayChoice->value => ApplyPlayChoice::class,
+            MetaMessageKind::Mulligan->value => ApplyMulligan::class,
+            MetaMessageKind::StartingHand->value => ApplyStartingHand::class,
+            MetaMessageKind::TurnStart->value => ApplyTurnStart::class,
+            MetaMessageKind::GameWinner->value => ApplyGameWinner::class,
+            MetaMessageKind::Joined->value => ApplyJoined::class,
         ];
     }
 

@@ -39,7 +39,7 @@ class Game extends Model
     {
         return $this->belongsToMany(Player::class)
             ->using(GamePlayer::class)
-            ->withPivot(['on_play', 'instance_id', 'starting_hand_size', 'deck_json', 'is_local']);
+            ->withPivot(['on_play', 'instance_id', 'starting_hand_size', 'deck_json', 'is_local', 'dice_roll', 'mulligan_count']);
     }
 
     /** @return BelongsToMany<Player, $this, GamePlayer, 'pivot'> */
