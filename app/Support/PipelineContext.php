@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Facades\Mtgo;
 use App\Models\Account;
 use App\Models\Card;
 use App\Models\MtgoMatch;
@@ -53,6 +54,13 @@ class PipelineContext
 
     public function localUsername(): ?string
     {
+        if ($this->localUsername === null) {
+            $resolved = Mtgo::resolveUsername();
+            if ($resolved !== null) {
+                $this->localUsername = $resolved;
+            }
+        }
+
         return $this->localUsername;
     }
 

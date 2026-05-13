@@ -1,5 +1,6 @@
 <?php
 
+use App\Facades\Mtgo;
 use App\Models\Account;
 use App\Models\Card;
 use App\Models\MtgoMatch;
@@ -56,7 +57,28 @@ it('remembers local username via setter', function () {
     expect($ctx->localUsername())->toBe('me');
 });
 
+it('lazily resolves local username via the Mtgo facade when not set', function () {
+    Mtgo::shouldReceive('resolveUsername')->once()->andReturn('test-user');
+
+    $ctx = new PipelineContext;
+
+    expect($ctx->localUsername())->toBe('test-user');
+
+    // Second call should not hit the facade again (cached on the instance)
+    expect($ctx->localUsername())->toBe('test-user');
+});
+
+it('returns null from localUsername when the facade also returns null', function () {
+    Mtgo::shouldReceive('resolveUsername')->andReturn(null);
+
+    $ctx = new PipelineContext;
+
+    expect($ctx->localUsername())->toBeNull();
+});
+
 it('returns null for unknown lookups', function () {
+    Mtgo::shouldReceive('resolveUsername')->andReturn(null);
+
     $ctx = new PipelineContext;
 
     expect($ctx->matchByToken('nope'))->toBeNull()

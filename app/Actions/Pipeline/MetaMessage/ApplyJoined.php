@@ -15,8 +15,12 @@ class ApplyJoined implements SubHandler
             return;
         }
 
-        $game = Game::where('mtgo_id', $event->game_id)->first();
+        $localUsername = $context->localUsername();
+        if ($localUsername === null) {
+            return;  // can't set is_local correctly without local username — retry next tick
+        }
 
+        $game = Game::where('mtgo_id', $event->game_id)->first();
         if (! $game) {
             return;
         }
@@ -26,8 +30,8 @@ class ApplyJoined implements SubHandler
 
         if (! $game->players()->where('player_id', $player->id)->exists()) {
             $game->players()->attach($player->id, [
-                'is_local' => $context->localUsername() === $username,
                 'instance_id' => (int) ($parsed['event']['instance_id'] ?? 0),
+                'is_local' => $localUsername === $username,
             ]);
         }
     }

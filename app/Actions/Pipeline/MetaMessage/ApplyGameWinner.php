@@ -15,17 +15,18 @@ class ApplyGameWinner implements SubHandler
             return;
         }
 
-        $game = Game::where('mtgo_id', $event->game_id)->first();
+        $localUsername = $context->localUsername();
+        if ($localUsername === null) {
+            return;  // can't tell win/loss without local username — retry next tick
+        }
 
+        $game = Game::where('mtgo_id', $event->game_id)->first();
         if (! $game || $game->ended_at !== null) {
             return;
         }
 
-        $localUsername = $context->localUsername();
-        $winner = $parsed['event']['player'];
-
         $game->update([
-            'won' => $localUsername !== null && $winner === $localUsername,
+            'won' => $parsed['event']['player'] === $localUsername,
             'ended_at' => ConvertMtgoTimestamp::run($event->logged_at, $event->timestamp),
         ]);
     }
