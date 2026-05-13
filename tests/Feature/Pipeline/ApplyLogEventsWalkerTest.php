@@ -8,6 +8,10 @@ use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 
 uses(LazilyRefreshDatabase::class);
 
+beforeEach(function () {
+    ApplyLogEvents::$handlers = [];
+});
+
 it('skips events with no registered handler without marking them processed', function () {
     $event = LogEvent::factory()->create([
         'event_type' => 'unregistered_event_type',
@@ -94,4 +98,30 @@ it('leaves an event unprocessed when its handler throws', function () {
     ApplyLogEvents::run();
 
     expect($event->fresh()->processed_at)->toBeNull();
+});
+
+it('processes events across the chunkById boundary', function () {
+    $handler = new class implements Handler
+    {
+        public static int $calls = 0;
+
+        public function handle(LogEvent $event, PipelineContext $context): void
+        {
+            self::$calls++;
+        }
+    };
+
+    $handlerClass = get_class($handler);
+    app()->instance($handlerClass, $handler);
+    ApplyLogEvents::$handlers = ['chunk_boundary' => $handlerClass];
+
+    LogEvent::factory()->count(250)->create([
+        'event_type' => 'chunk_boundary',
+        'processed_at' => null,
+    ]);
+
+    ApplyLogEvents::run();
+
+    expect($handler::$calls)->toBe(250)
+        ->and(LogEvent::whereNull('processed_at')->where('event_type', 'chunk_boundary')->count())->toBe(0);
 });
