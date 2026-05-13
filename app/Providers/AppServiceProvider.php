@@ -3,6 +3,9 @@
 namespace App\Providers;
 
 use App\Actions\Pipeline\ApplyLogEvents;
+use App\Actions\Pipeline\Handlers\HandleGameManagementJson;
+use App\Actions\Pipeline\Handlers\HandleGameStateUpdate;
+use App\Actions\Pipeline\Handlers\HandleMatchStateChanged;
 use App\Actions\RegisterDevice;
 use App\Facades\AppSettings;
 use App\Managers\MtgoManager;
@@ -69,7 +72,9 @@ class AppServiceProvider extends ServiceProvider
     private function registerPipelineHandlers(): void
     {
         ApplyLogEvents::$handlers = [
-            // Populated as handlers come online in Phase 4 + Phase 5.
+            'match_state_changed' => HandleMatchStateChanged::class,
+            'game_state_update' => HandleGameStateUpdate::class,
+            'game_management_json' => HandleGameManagementJson::class,
         ];
     }
 
