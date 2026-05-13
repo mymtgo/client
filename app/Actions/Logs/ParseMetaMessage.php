@@ -2,6 +2,8 @@
 
 namespace App\Actions\Logs;
 
+use App\Enums\MetaMessageKind;
+
 /**
  * Parse one MetaMessage byte array (the integer array seen inside MTGO
  * "GsMessageMessage" log lines) into a structured event.
@@ -186,22 +188,34 @@ class ParseMetaMessage
     private static function kindFor(int $type, ?array $event): string
     {
         if ($type === 82) {
-            return 'deck_list';
+            return MetaMessageKind::DeckList->value;
         }
 
         if ($type === 4) {
-            return 'opponent_name';
+            return MetaMessageKind::OpponentName->value;
         }
 
         if ($event !== null) {
-            return $event['action'];
+            return match ($event['action']) {
+                'die_roll' => MetaMessageKind::DieRoll->value,
+                'play_choice' => MetaMessageKind::PlayChoice->value,
+                'mulligan' => MetaMessageKind::Mulligan->value,
+                'starting_hand' => MetaMessageKind::StartingHand->value,
+                'game_winner' => MetaMessageKind::GameWinner->value,
+                'concede' => MetaMessageKind::Concede->value,
+                'turn_start' => MetaMessageKind::TurnStart->value,
+                'joined' => MetaMessageKind::Joined->value,
+                'cast_card' => MetaMessageKind::CastCard->value,
+                'play_card' => MetaMessageKind::PlayCard->value,
+                default => MetaMessageKind::Chat->value,
+            };
         }
 
         return match ($type) {
-            3 => 'chat',
-            9 => 'system',
-            44 => 'ui_prompt',
-            default => 'unknown',
+            3 => MetaMessageKind::Chat->value,
+            9 => MetaMessageKind::System->value,
+            44 => MetaMessageKind::UiPrompt->value,
+            default => MetaMessageKind::Unknown->value,
         };
     }
 
@@ -227,7 +241,7 @@ class ParseMetaMessage
             return ['action' => 'play_choice', 'player' => $m['player'], 'value' => $m['choice']];
         }
 
-        if (preg_match('/^(?<player>[A-Za-z][A-Za-z0-9_]+) mulligans to (?<value>\w+) cards?/', $clean, $m)) {
+        if (preg_match('/^(?<player>[A-Za-z][A-Za-z0-9_]+) mulligans to (?<value>\w+)(?: cards?)?[.\s]?/', $clean, $m)) {
             return ['action' => 'mulligan', 'player' => $m['player'], 'value' => self::wordToInt($m['value'])];
         }
 
