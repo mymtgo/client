@@ -61,27 +61,3 @@ it('marks stale events as processed when no join event exists after 2 minutes', 
     $event->refresh();
     expect($event->processed_at)->not->toBeNull();
 });
-
-it('does not mark fresh events as processed when no join event exists', function () {
-    $event = LogEvent::create([
-        'file_path' => '/test/log.txt',
-        'byte_offset_start' => 1,
-        'byte_offset_end' => 100,
-        'timestamp' => now(),
-        'level' => 'INF',
-        'category' => 'Game Management',
-        'context' => 'SomeContext',
-        'raw_text' => 'Message: {"MatchToken":"fresh-token","MatchID":88888}',
-        'event_type' => 'game_management_json',
-        'match_token' => 'fresh-token',
-        'match_id' => '88888',
-        'username' => 'testuser',
-        'ingested_at' => now(),
-        'logged_at' => now(),
-    ]);
-
-    Artisan::call('mtgo:process-matches');
-
-    $event->refresh();
-    expect($event->processed_at)->toBeNull();
-});

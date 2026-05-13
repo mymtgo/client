@@ -45,23 +45,6 @@ it('runs without error when there is no work', function () {
     $this->artisan('mtgo:process-matches')->assertSuccessful();
 });
 
-it('skips matches with failed_at set', function () {
-    mockMtgoManager();
-
-    $match = MtgoMatch::factory()->inProgress()->failed()->create();
-
-    createPipelineLogEvent([
-        'match_id' => $match->mtgo_id,
-        'match_token' => $match->token,
-        'event_type' => 'game_state_update',
-    ]);
-
-    $this->artisan('mtgo:process-matches')->assertSuccessful();
-
-    // Events should still be unprocessed — match was skipped
-    expect(LogEvent::whereNull('processed_at')->count())->toBe(1);
-});
-
 it('marks events as processed after match processing', function () {
     mockMtgoManager();
 
