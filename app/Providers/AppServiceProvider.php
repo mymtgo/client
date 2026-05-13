@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Actions\Pipeline\ApplyLogEvents;
 use App\Actions\RegisterDevice;
 use App\Facades\AppSettings;
 use App\Managers\MtgoManager;
@@ -57,6 +58,19 @@ class AppServiceProvider extends ServiceProvider
             /** @var Carbon $this */
             return $this->copy()->setTimezone(AppSettings::systemTimezone());
         });
+
+        $this->registerPipelineHandlers();
+    }
+
+    /**
+     * Map LogEvent.event_type values to handler classes for the ApplyLogEvents walker.
+     * Empty until Phase 4/5 handlers ship; populated per the metamessage-pipeline plan.
+     */
+    private function registerPipelineHandlers(): void
+    {
+        ApplyLogEvents::$handlers = [
+            // Populated as handlers come online in Phase 4 + Phase 5.
+        ];
     }
 
     /**
