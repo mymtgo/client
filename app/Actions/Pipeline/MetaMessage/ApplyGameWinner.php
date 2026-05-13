@@ -3,6 +3,7 @@
 namespace App\Actions\Pipeline\MetaMessage;
 
 use App\Actions\Logs\ConvertMtgoTimestamp;
+use App\Models\CardGameStat;
 use App\Models\Game;
 use App\Models\LogEvent;
 use App\Support\PipelineContext;
@@ -25,10 +26,14 @@ class ApplyGameWinner implements SubHandler
             return;
         }
 
+        $won = $parsed['event']['player'] === $localUsername;
+
         $game->update([
-            'won' => $parsed['event']['player'] === $localUsername,
+            'won' => $won,
             'ended_at' => ConvertMtgoTimestamp::run($event->logged_at, $event->timestamp),
         ]);
+
+        CardGameStat::where('game_id', $game->id)->update(['won' => $won]);
 
         SynthesizeGameLog::run($game->fresh());
     }

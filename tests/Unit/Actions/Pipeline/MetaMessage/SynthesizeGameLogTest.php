@@ -85,6 +85,22 @@ it('is idempotent — re-running updates the same GameLog row', function () {
     expect(GameLog::where('match_token', $match->token)->count())->toBe(1);
 });
 
+it('uses the synthesized: path prefix', function () {
+    $match = MtgoMatch::factory()->create();
+    $game = Game::factory()->create(['match_id' => $match->id, 'mtgo_id' => 1234]);
+
+    LogEvent::factory()->create([
+        'game_id' => 1234,
+        'event_type' => 'game_management_json',
+        'raw_text' => metaMessageRawText('@Palice rolled a 1.'),
+        'logged_at' => now()->setMicroseconds(0),
+    ]);
+
+    SynthesizeGameLog::run($game->fresh());
+
+    expect(GameLog::first()->file_path)->toStartWith(SynthesizeGameLog::PATH_PREFIX);
+});
+
 it('skips events whose raw_text has no MetaMessage', function () {
     $match = MtgoMatch::factory()->create();
     $game = Game::factory()->create(['match_id' => $match->id, 'mtgo_id' => 999]);

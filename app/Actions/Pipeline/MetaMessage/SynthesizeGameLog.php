@@ -16,6 +16,8 @@ use App\Models\LogEvent;
  */
 class SynthesizeGameLog
 {
+    public const PATH_PREFIX = 'synthesized:';
+
     public static function run(Game $game): void
     {
         $matchToken = $game->match?->token;
@@ -55,7 +57,7 @@ class SynthesizeGameLog
         GameLog::updateOrCreate(
             [
                 'match_token' => $matchToken,
-                'file_path' => 'synthesized:'.$game->mtgo_id,
+                'file_path' => self::PATH_PREFIX.$game->mtgo_id,
             ],
             [
                 'decoded_entries' => $entries,

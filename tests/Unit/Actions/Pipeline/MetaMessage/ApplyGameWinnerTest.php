@@ -3,6 +3,8 @@
 use App\Actions\Pipeline\MetaMessage\ApplyGameWinner;
 use App\Enums\MetaMessageKind;
 use App\Facades\Mtgo;
+use App\Models\CardGameStat;
+use App\Models\DeckVersion;
 use App\Models\Game;
 use App\Models\LogEvent;
 use App\Models\MtgoMatch;
@@ -71,6 +73,55 @@ it('does not update the game when the local username cannot be resolved', functi
     $fresh = $game->fresh();
     expect($fresh->won)->toBeNull();
     expect($fresh->ended_at)->toBeNull();
+});
+
+it('backfills won on existing card_game_stats rows', function () {
+    $match = MtgoMatch::factory()->create();
+    $game = Game::factory()->create(['match_id' => $match->id, 'mtgo_id' => 42, 'ended_at' => null, 'won' => null]);
+    $event = LogEvent::factory()->create(['game_id' => 42, 'timestamp' => '14:33:21']);
+    $deckVersion = DeckVersion::factory()->create();
+
+    $baseStat = [
+        'deck_version_id' => $deckVersion->id,
+        'quantity' => 1,
+        'kept' => 0,
+        'seen' => 0,
+        'won' => false,
+        'is_postboard' => false,
+        'sided_out' => false,
+        'cast' => 0,
+        'sided_in' => 0,
+        'pregame_revealed' => false,
+        'pregame_played' => false,
+    ];
+
+    $statForLocal = CardGameStat::create($baseStat + [
+        'game_id' => $game->id,
+        'oracle_id' => 'oracle-1',
+        'opponent' => false,
+    ]);
+    $statForOpponent = CardGameStat::create($baseStat + [
+        'game_id' => $game->id,
+        'oracle_id' => 'oracle-2',
+        'opponent' => true,
+    ]);
+
+    $otherGame = Game::factory()->create(['match_id' => $match->id, 'mtgo_id' => 99]);
+    $statOtherGame = CardGameStat::create($baseStat + [
+        'game_id' => $otherGame->id,
+        'oracle_id' => 'oracle-3',
+        'opponent' => false,
+    ]);
+
+    $context = new PipelineContext;
+    $context->setLocalUsername('alice');
+
+    (new ApplyGameWinner)->apply($event, gameWinnerParsed('alice'), $context);
+
+    expect($statForLocal->fresh()->won)->toBeTrue();
+    expect($statForOpponent->fresh()->won)->toBeTrue();
+    // Other games are untouched.
+    expect($statOtherGame->fresh()->won)->toBeFalse();
 });
 
 it('is idempotent and does not overwrite an already-settled game', function () {
