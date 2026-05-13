@@ -1,5 +1,7 @@
 * text=auto eol=lf
 
+tests/Fixtures/Logs/*.log binary
+
 *.blade.php diff=html
 *.css diff=css
 *.html diff=html

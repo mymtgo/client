@@ -1,4 +1,5 @@
 *.log
+!tests/Fixtures/Logs/*.log
 .DS_Store
 .env
 .env.backup
