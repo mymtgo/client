@@ -5,7 +5,16 @@ namespace App\Providers;
 use App\Actions\Pipeline\ApplyLogEvents;
 use App\Actions\Pipeline\Handlers\HandleGameManagementJson;
 use App\Actions\Pipeline\Handlers\HandleGameStateUpdate;
+use App\Actions\Pipeline\Handlers\HandleLeagueDropped;
+use App\Actions\Pipeline\Handlers\HandleLeagueJoined;
+use App\Actions\Pipeline\Handlers\HandleLeagueJoinRequest;
 use App\Actions\Pipeline\Handlers\HandleMatchStateChanged;
+use App\Actions\Pipeline\Handlers\HandleTournamentEnded;
+use App\Actions\Pipeline\Handlers\HandleTournamentPlayerEliminated;
+use App\Actions\Pipeline\Handlers\HandleTournamentRoundInfo;
+use App\Actions\Pipeline\Handlers\HandleTournamentRoundResult;
+use App\Actions\Pipeline\Handlers\HandleTournamentStateChanged;
+use App\Actions\Pipeline\Handlers\HandleTournamentSync;
 use App\Actions\Pipeline\MetaMessage\ApplyCardCast;
 use App\Actions\Pipeline\MetaMessage\ApplyCardPlay;
 use App\Actions\Pipeline\MetaMessage\ApplyDeckList;
@@ -86,6 +95,15 @@ class AppServiceProvider extends ServiceProvider
             'match_state_changed' => HandleMatchStateChanged::class,
             'game_state_update' => HandleGameStateUpdate::class,
             'game_management_json' => HandleGameManagementJson::class,
+            'league_joined' => HandleLeagueJoined::class,
+            'league_dropped' => HandleLeagueDropped::class,
+            'league_join_request' => HandleLeagueJoinRequest::class,
+            'tournament_sync' => HandleTournamentSync::class,
+            'tournament_round_info' => HandleTournamentRoundInfo::class,
+            'tournament_round_result' => HandleTournamentRoundResult::class,
+            'tournament_player_eliminated' => HandleTournamentPlayerEliminated::class,
+            'tournament_ended' => HandleTournamentEnded::class,
+            'tournament_state_changed' => HandleTournamentStateChanged::class,
         ];
 
         HandleGameManagementJson::$subHandlers = [
