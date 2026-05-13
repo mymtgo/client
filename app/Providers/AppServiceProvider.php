@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Actions\Pipeline\ApplyLogEvents;
+use App\Actions\Pipeline\Handlers\HandleDeckUsed;
 use App\Actions\Pipeline\Handlers\HandleGameManagementJson;
 use App\Actions\Pipeline\Handlers\HandleGameStateUpdate;
 use App\Actions\Pipeline\Handlers\HandleLeagueDropped;
@@ -104,6 +105,7 @@ class AppServiceProvider extends ServiceProvider
             'tournament_player_eliminated' => HandleTournamentPlayerEliminated::class,
             'tournament_ended' => HandleTournamentEnded::class,
             'tournament_state_changed' => HandleTournamentStateChanged::class,
+            'deck_used' => HandleDeckUsed::class,
         ];
 
         HandleGameManagementJson::$subHandlers = [

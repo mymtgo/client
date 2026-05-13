@@ -15,6 +15,13 @@ use Throwable;
 class ApplyLogEvents
 {
     /**
+     * Maximum handler invocations per event before the walker abandons it.
+     * Abandoned events are marked processed_at + abandoned_at to break the
+     * retry loop while preserving forensic visibility.
+     */
+    private const MAX_ATTEMPTS = 5;
+
+    /**
      * Map of event_type → handler class. Populated by AppServiceProvider.
      *
      * @var array<string, class-string<Handler>>
@@ -64,14 +71,28 @@ class ApplyLogEvents
             $handler->handle($event, $context);
             $event->update(['processed_at' => now()]);
         } catch (Throwable $e) {
-            Log::channel('pipeline')->error('ApplyLogEvents: handler failed', [
-                'handler' => $handlerClass,
-                'event_id' => $event->id,
-                'event_type' => $event->event_type,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
-            // Leave processed_at NULL — next tick will retry.
+            $attempts = (int) $event->attempts + 1;
+            $updates = ['attempts' => $attempts];
+
+            if ($attempts >= self::MAX_ATTEMPTS) {
+                $updates['abandoned_at'] = now();
+                $updates['processed_at'] = now();
+                Log::channel('pipeline')->error('ApplyLogEvents: handler permanently failed after '.self::MAX_ATTEMPTS.' attempts', [
+                    'handler' => $handlerClass,
+                    'event_id' => $event->id,
+                    'event_type' => $event->event_type,
+                    'error' => $e->getMessage(),
+                ]);
+            } else {
+                Log::channel('pipeline')->warning("ApplyLogEvents: handler {$handlerClass} failed (attempt {$attempts}/".self::MAX_ATTEMPTS.')', [
+                    'event_id' => $event->id,
+                    'event_type' => $event->event_type,
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
+                ]);
+            }
+
+            $event->update($updates);
         }
     }
 }

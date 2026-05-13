@@ -97,7 +97,65 @@ it('leaves an event unprocessed when its handler throws', function () {
 
     ApplyLogEvents::run();
 
-    expect($event->fresh()->processed_at)->toBeNull();
+    $fresh = $event->fresh();
+    expect($fresh->processed_at)->toBeNull()
+        ->and((int) $fresh->attempts)->toBe(1)
+        ->and($fresh->abandoned_at)->toBeNull();
+});
+
+it('abandons an event after five failed handler attempts', function () {
+    $event = LogEvent::factory()->create([
+        'event_type' => 'always_failing',
+        'processed_at' => null,
+    ]);
+
+    $handler = new class implements Handler
+    {
+        public function handle(LogEvent $event, PipelineContext $context): void
+        {
+            throw new RuntimeException('boom');
+        }
+    };
+
+    app()->instance(get_class($handler), $handler);
+    ApplyLogEvents::$handlers = ['always_failing' => get_class($handler)];
+
+    for ($i = 0; $i < 5; $i++) {
+        ApplyLogEvents::run();
+    }
+
+    $fresh = $event->fresh();
+    expect((int) $fresh->attempts)->toBe(5)
+        ->and($fresh->abandoned_at)->not->toBeNull()
+        ->and($fresh->processed_at)->not->toBeNull();
+});
+
+it('stops retrying once an event is abandoned', function () {
+    $event = LogEvent::factory()->create([
+        'event_type' => 'always_failing',
+        'processed_at' => null,
+    ]);
+
+    $handler = new class implements Handler
+    {
+        public static int $calls = 0;
+
+        public function handle(LogEvent $event, PipelineContext $context): void
+        {
+            self::$calls++;
+            throw new RuntimeException('boom');
+        }
+    };
+
+    app()->instance(get_class($handler), $handler);
+    ApplyLogEvents::$handlers = ['always_failing' => get_class($handler)];
+
+    // Run six times — handler should only execute five.
+    for ($i = 0; $i < 6; $i++) {
+        ApplyLogEvents::run();
+    }
+
+    expect($handler::$calls)->toBe(5);
 });
 
 it('processes events across the chunkById boundary', function () {
