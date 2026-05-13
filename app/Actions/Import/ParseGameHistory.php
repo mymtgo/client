@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Actions\Matches;
+namespace App\Actions\Import;
 
 use App\Facades\AppSettings;
 use App\Facades\Mtgo;

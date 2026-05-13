@@ -3,8 +3,8 @@
 namespace App\Jobs;
 
 use App\Actions\Import\ExtractCardsFromGameLog;
+use App\Actions\Import\ParseGameHistory;
 use App\Actions\Import\ScoreMatchConfidence;
-use App\Actions\Matches\ParseGameHistory;
 use App\Models\DeckVersion;
 use App\Models\GameLog;
 use App\Models\ImportScan;

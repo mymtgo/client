@@ -2,6 +2,8 @@
 
 namespace App\Actions\Matches;
 
+use App\Actions\Import\ParseGameHistory;
+
 class ParseMatchHistory
 {
     /**

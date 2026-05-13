@@ -2,8 +2,8 @@
 
 namespace App\Jobs;
 
+use App\Actions\Import\ParseGameHistory;
 use App\Actions\Import\PopulateCardsInChunks;
-use App\Actions\Matches\ParseGameHistory;
 use App\Models\ImportScan;
 use App\Models\MtgoMatch;
 use Illuminate\Contracts\Queue\ShouldQueue;
