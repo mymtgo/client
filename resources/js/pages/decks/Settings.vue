@@ -6,10 +6,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import CoverArtOptionsController from '@/actions/App/Http/Controllers/Decks/CoverArtOptionsController';
+import UpdateColorIdentityController from '@/actions/App/Http/Controllers/Decks/UpdateColorIdentityController';
 import UpdateCoverArtController from '@/actions/App/Http/Controllers/Decks/UpdateCoverArtController';
 import UpdateDeckArchetypeController from '@/actions/App/Http/Controllers/Decks/UpdateDeckArchetypeController';
+import UpdateNameController from '@/actions/App/Http/Controllers/Decks/UpdateNameController';
 import ManaSymbols from '@/components/ManaSymbols.vue';
 import { Input } from '@/components/ui/input';
+import { RotateCcw } from 'lucide-vue-next';
 import type { VersionStats } from '@/types/decks';
 import { computed, nextTick, ref, watch } from 'vue';
 import { router } from '@inertiajs/vue3';
@@ -163,11 +166,241 @@ function clearArchetype() {
         },
     );
 }
+
+const nameDraft = ref(props.deck.name);
+const savingName = ref(false);
+
+watch(() => props.deck.name, (name) => {
+    nameDraft.value = name;
+});
+
+const trimmedName = computed(() => nameDraft.value.trim());
+const nameChanged = computed(() => trimmedName.value !== '' && trimmedName.value !== props.deck.name);
+const hasCustomName = computed(() => Boolean(props.deck.originalName));
+
+function saveName() {
+    if (!nameChanged.value) {
+        return;
+    }
+
+    savingName.value = true;
+    router.patch(
+        UpdateNameController.url({ deck: props.deck.id }),
+        { name: trimmedName.value },
+        {
+            preserveScroll: true,
+            preserveState: true,
+            onFinish: () => { savingName.value = false; },
+            onError: () => { nameDraft.value = props.deck.name; },
+        },
+    );
+}
+
+function revertName() {
+    if (!props.deck.originalName) {
+        return;
+    }
+
+    savingName.value = true;
+    router.patch(
+        UpdateNameController.url({ deck: props.deck.id }),
+        { name: props.deck.originalName },
+        {
+            preserveScroll: true,
+            preserveState: true,
+            onFinish: () => { savingName.value = false; },
+        },
+    );
+}
+
+const COLOR_OPTIONS: { key: string; label: string }[] = [
+    { key: 'W', label: 'White' },
+    { key: 'U', label: 'Blue' },
+    { key: 'B', label: 'Black' },
+    { key: 'R', label: 'Red' },
+    { key: 'G', label: 'Green' },
+    { key: 'C', label: 'Colorless' },
+];
+
+const COLOR_ORDER = COLOR_OPTIONS.map((c) => c.key);
+
+function parseIdentity(value: string | null): string[] {
+    if (!value) {
+        return [];
+    }
+    return value.split(',').map((c) => c.trim()).filter(Boolean);
+}
+
+const selectedColors = ref<string[]>(parseIdentity(props.deck.colorIdentity));
+const savingIdentity = ref(false);
+
+watch(() => props.deck.colorIdentity, (value) => {
+    selectedColors.value = parseIdentity(value);
+});
+
+function toggleColor(color: string) {
+    if (isReadonly.value) {
+        return;
+    }
+
+    const current = new Set(selectedColors.value);
+
+    if (current.has(color)) {
+        current.delete(color);
+    } else {
+        current.add(color);
+    }
+
+    selectedColors.value = Array.from(current).sort(
+        (a, b) => COLOR_ORDER.indexOf(a) - COLOR_ORDER.indexOf(b),
+    );
+}
+
+function normalizeIdentity(colors: string[]): string[] {
+    return Array.from(new Set(colors)).sort(
+        (a, b) => COLOR_ORDER.indexOf(a) - COLOR_ORDER.indexOf(b),
+    );
+}
+
+const identityChanged = computed(
+    () => normalizeIdentity(selectedColors.value).join(',') !== (props.deck.colorIdentity ?? ''),
+);
+
+const previewIdentity = computed(() => {
+    const sorted = [...selectedColors.value].sort(
+        (a, b) => COLOR_ORDER.indexOf(a) - COLOR_ORDER.indexOf(b),
+    );
+    return sorted.join(',') || null;
+});
+
+function saveIdentity() {
+    if (!identityChanged.value) {
+        return;
+    }
+
+    savingIdentity.value = true;
+    router.patch(
+        UpdateColorIdentityController.url({ deck: props.deck.id }),
+        { color_identity: selectedColors.value },
+        {
+            preserveScroll: true,
+            preserveState: true,
+            onFinish: () => { savingIdentity.value = false; },
+            onError: () => {
+                selectedColors.value = parseIdentity(props.deck.colorIdentity);
+            },
+        },
+    );
+}
+
+function resetIdentity() {
+    selectedColors.value = parseIdentity(props.deck.colorIdentity);
+}
 </script>
 
 <template>
     <div class="p-3 lg:p-4">
         <div class="max-w-2xl">
+            <Card class="mb-4">
+                <CardHeader>
+                    <CardTitle>Name</CardTitle>
+                    <CardDescription>
+                        Rename this deck. The original MTGO name is kept so you can revert at any time.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent class="flex flex-col gap-3">
+                    <div class="flex flex-col gap-2 sm:flex-row">
+                        <Input
+                            v-model="nameDraft"
+                            maxlength="255"
+                            placeholder="Deck name"
+                            class="sm:flex-1"
+                            :disabled="isReadonly || savingName"
+                            :title="isReadonly ? readonlyTitle : undefined"
+                            @keydown.enter.prevent="saveName"
+                        />
+                        <Button
+                            :disabled="!nameChanged || savingName || isReadonly"
+                            :title="isReadonly ? readonlyTitle : undefined"
+                            @click="saveName"
+                        >
+                            <Spinner v-if="savingName" class="mr-2 size-4" />
+                            Save
+                        </Button>
+                    </div>
+                    <div v-if="hasCustomName" class="flex items-center justify-between rounded-md border border-dashed border-border bg-muted/30 px-3 py-2 text-sm">
+                        <span class="text-muted-foreground">
+                            Original MTGO name: <span class="font-medium text-foreground">{{ deck.originalName }}</span>
+                        </span>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            :disabled="savingName || isReadonly"
+                            :title="isReadonly ? readonlyTitle : undefined"
+                            @click="revertName"
+                        >
+                            <RotateCcw class="mr-1 size-3" />
+                            Revert
+                        </Button>
+                    </div>
+                </CardContent>
+            </Card>
+            <Card class="mb-4">
+                <CardHeader>
+                    <CardTitle>Color Identity</CardTitle>
+                    <CardDescription>
+                        Override the deck's color identity. Used for filtering and matchup grouping.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent class="flex flex-col gap-4">
+                    <div class="flex flex-wrap gap-2">
+                        <button
+                            v-for="option in COLOR_OPTIONS"
+                            :key="option.key"
+                            type="button"
+                            class="flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors"
+                            :class="[
+                                selectedColors.includes(option.key)
+                                    ? 'border-primary bg-primary/10 text-foreground'
+                                    : 'border-border bg-transparent text-muted-foreground hover:border-muted-foreground hover:text-foreground',
+                                isReadonly ? 'cursor-not-allowed opacity-50' : '',
+                            ]"
+                            :disabled="isReadonly"
+                            :title="isReadonly ? readonlyTitle : option.label"
+                            :aria-pressed="selectedColors.includes(option.key)"
+                            @click="toggleColor(option.key)"
+                        >
+                            <ManaSymbols :symbols="option.key" />
+                            <span>{{ option.label }}</span>
+                        </button>
+                    </div>
+
+                    <div class="flex items-center gap-3 rounded-md border border-dashed border-border bg-muted/30 px-3 py-2">
+                        <span class="text-sm text-muted-foreground">Preview:</span>
+                        <ManaSymbols :symbols="previewIdentity" />
+                        <span v-if="!previewIdentity" class="text-sm italic text-muted-foreground">No colors selected</span>
+                    </div>
+
+                    <div class="flex items-center gap-2">
+                        <Button
+                            :disabled="!identityChanged || savingIdentity || isReadonly"
+                            :title="isReadonly ? readonlyTitle : undefined"
+                            @click="saveIdentity"
+                        >
+                            <Spinner v-if="savingIdentity" class="mr-2 size-4" />
+                            Save
+                        </Button>
+                        <Button
+                            v-if="identityChanged"
+                            variant="ghost"
+                            :disabled="savingIdentity || isReadonly"
+                            @click="resetIdentity"
+                        >
+                            Cancel
+                        </Button>
+                    </div>
+                </CardContent>
+            </Card>
             <Card class="mb-4">
                 <CardHeader>
                     <CardTitle>Archetype</CardTitle>

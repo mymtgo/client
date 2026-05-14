@@ -37,6 +37,7 @@ use App\Http\Controllers\Decks\ToggleGroupingController;
 use App\Http\Controllers\Decks\ToggleHideArchivedController;
 use App\Http\Controllers\Decks\TournamentsController;
 use App\Http\Controllers\Decks\TriggerArchetypeDetectionController;
+use App\Http\Controllers\Decks\UpdateColorIdentityController;
 use App\Http\Controllers\Decks\UpdateCoverArtController;
 use App\Http\Controllers\Decks\UpdateDeckArchetypeController;
 use App\Http\Controllers\Decks\UpdateNameController;
@@ -150,6 +151,7 @@ Route::group([], function (Router $router) {
         $group->patch('{deck:id}/cover-art', UpdateCoverArtController::class)->name('decks.update-cover-art')->withTrashed();
         $group->patch('{deck:id}/archetype', UpdateDeckArchetypeController::class)->name('decks.update-archetype')->withTrashed();
         $group->patch('{deck:id}/name', UpdateNameController::class)->name('decks.update-name')->withTrashed();
+        $group->patch('{deck:id}/color-identity', UpdateColorIdentityController::class)->name('decks.update-color-identity')->withTrashed();
         $group->post('{deck:id}/export-dek', App\Http\Controllers\Decks\ExportDekController::class)
             ->name('decks.export-dek')
             ->withTrashed();
