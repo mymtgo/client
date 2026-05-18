@@ -62,6 +62,9 @@ class IngestLog
         $cursor->head_hash = $headHash;
         $cursor->save();
 
+        // Captured AFTER rotation reset: a reset means we'll re-read from 0 against a
+        // fresh file, and any forward movement still counts as a genuine advance.
+        $previousOffset = $cursor->byte_offset;
         $currentUsername = $cursor->local_username;
 
         // Nothing new since last time.
@@ -172,8 +175,11 @@ class IngestLog
             }
         }
 
-        TimedTransaction::run('IngestLog:cursor', function () use ($cursor, $safeOffset) {
+        TimedTransaction::run('IngestLog:cursor', function () use ($cursor, $safeOffset, $previousOffset) {
             $cursor->byte_offset = $safeOffset;
+            if ($safeOffset > $previousOffset) {
+                $cursor->last_advanced_at = now();
+            }
             $cursor->save();
         });
 

@@ -2,6 +2,7 @@
 
 namespace App\Managers;
 
+use App\Actions\Logs\DetectStaleIngest;
 use App\Actions\Logs\FindMtgoLogPath;
 use App\Actions\Logs\GetLogFilePaths;
 use App\Actions\Logs\IngestLog;
@@ -219,6 +220,8 @@ class MtgoManager
         if (! $this->canRun()) {
             return;
         }
+
+        DetectStaleIngest::run();
 
         FindMtgoLogPath::all()->each(fn (string $path) => IngestLog::run($path));
     }

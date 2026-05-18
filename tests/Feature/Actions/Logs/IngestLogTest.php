@@ -156,6 +156,35 @@ it('preserves tournament_token when ingesting tournament state changed events', 
         ->and($event->tournament_token)->toBe('b197b9e8-0d08-4227-aa17-ba38cb4c1731');
 });
 
+it('records last_advanced_at when cursor moves forward', function () {
+    $logPath = $this->tempDir.'/test.log';
+    file_put_contents($logPath, "15:04:11 [INF] (Game Management|Match State Changed for aaaa-1111 from X to Y) First event.\n");
+
+    IngestLog::run($logPath);
+
+    $cursor = LogCursor::where('file_path', $logPath)->first();
+    expect($cursor->last_advanced_at)->not->toBeNull();
+});
+
+it('does not update last_advanced_at when no new bytes are present', function () {
+    $logPath = $this->tempDir.'/test.log';
+    file_put_contents($logPath, "15:04:11 [INF] (Game Management|Match State Changed for aaaa-1111 from X to Y) First event.\n");
+
+    IngestLog::run($logPath);
+
+    $cursor = LogCursor::where('file_path', $logPath)->first();
+    $firstAdvance = $cursor->last_advanced_at;
+
+    expect($firstAdvance)->not->toBeNull();
+
+    // Second run: no new bytes. last_advanced_at must not change.
+    sleep(1);
+    IngestLog::run($logPath);
+
+    $cursor->refresh();
+    expect($cursor->last_advanced_at?->timestamp)->toBe($firstAdvance->timestamp);
+});
+
 it('handles incomplete events at end of file', function () {
     $logPath = $this->tempDir.'/test.log';
     // Write a complete classifiable event + an incomplete one (no newline at end)
