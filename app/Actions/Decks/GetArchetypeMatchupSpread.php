@@ -5,21 +5,33 @@ namespace App\Actions\Decks;
 use App\Models\Deck;
 use App\Models\DeckVersion;
 use Carbon\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 class GetArchetypeMatchupSpread
 {
-    public static function run(Deck $deck, ?Carbon $from, ?Carbon $to, ?DeckVersion $deckVersion = null)
+    public static function run(Deck $deck, ?Carbon $from, ?Carbon $to, ?DeckVersion $deckVersion = null): Collection
     {
-        $deckVersions = $deckVersion
-            ? collect([$deckVersion->id])
-            : $deck->versions()->pluck('id');
+        $versionIds = $deckVersion
+            ? [$deckVersion->id]
+            : $deck->versions()->pluck('id')->all();
 
-        // Step 1: Get distinct (archetype_id, match_id) pairs (unchanged)
+        return self::forVersionIds($versionIds, $from, $to);
+    }
+
+    /**
+     * @param  array<int, int>  $deckVersionIds
+     */
+    public static function forVersionIds(array $deckVersionIds, ?Carbon $from, ?Carbon $to): Collection
+    {
+        if (empty($deckVersionIds)) {
+            return collect();
+        }
+
         $pairsQuery = DB::table('matches as m')
             ->join('match_archetypes as ma', 'ma.mtgo_match_id', '=', 'm.id')
             ->join('archetypes as a', 'a.id', '=', 'ma.archetype_id')
-            ->whereIn('m.deck_version_id', $deckVersions->toArray())
+            ->whereIn('m.deck_version_id', $deckVersionIds)
             ->where('m.state', 'complete')
             ->whereExists(function ($q) {
                 $q->selectRaw('1')
@@ -35,7 +47,6 @@ class GetArchetypeMatchupSpread
             $pairsQuery->whereBetween('m.started_at', [$from, $to]);
         }
 
-        // Step 2: Pre-compute game stats per match (replaces correlated subqueries)
         $gameStatsQuery = DB::table('games as g')
             ->leftJoin('game_player as gp', function ($join) {
                 $join->on('gp.game_id', '=', 'g.id')
@@ -53,7 +64,6 @@ class GetArchetypeMatchupSpread
                 SUM(CASE WHEN g.turn_count IS NOT NULL THEN 1 ELSE 0 END) as games_with_turns
             ');
 
-        // Step 3: Join pairs with pre-computed game stats and aggregate
         return DB::query()
             ->fromSub($pairsQuery, 'pairs')
             ->joinSub($gameStatsQuery, 'gs', 'gs.match_id', '=', 'pairs.match_id')

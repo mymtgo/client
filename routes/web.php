@@ -61,6 +61,9 @@ use App\Http\Controllers\Matches\DetectArchetypeController;
 use App\Http\Controllers\Matches\ShowController;
 use App\Http\Controllers\Matches\UpdateArchetypeController;
 use App\Http\Controllers\Matches\UpdateNotesController;
+use App\Http\Controllers\Reports\CardStatsController as ReportsCardStatsController;
+use App\Http\Controllers\Reports\IndexController as ReportsIndexController;
+use App\Http\Controllers\Reports\MatchesController as ReportsMatchesController;
 use App\Http\Controllers\Settings\BrowseFolderController;
 use App\Http\Controllers\Settings\CheckApiStatusController;
 use App\Http\Controllers\Settings\DeleteOverlayBackgroundController;
@@ -120,6 +123,12 @@ Route::group([], function (Router $router) {
         'prefix' => 'opponents',
     ], function (Router $group) {
         $group->get('/', App\Http\Controllers\Opponents\IndexController::class)->name('opponents.index');
+    });
+
+    $router->group(['prefix' => 'reports'], function (Router $group) {
+        $group->get('/', ReportsIndexController::class)->name('reports.index');
+        $group->get('matches', ReportsMatchesController::class)->name('reports.matches');
+        $group->get('card-stats', ReportsCardStatsController::class)->name('reports.card-stats');
     });
 
     $router->group([

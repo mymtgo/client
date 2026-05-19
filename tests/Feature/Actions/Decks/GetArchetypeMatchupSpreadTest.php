@@ -168,3 +168,29 @@ it('returns null avg_turns when no turn data exists', function () {
 
     expect($matchup['avg_turns'])->toBeNull();
 });
+
+it('aggregates matchups across multiple deck versions via forVersionIds', function () {
+    $opponentArchetype = Archetype::factory()->create(['name' => 'UR Murktide']);
+
+    $deckA = Deck::factory()->create();
+    $versionA = DeckVersion::factory()->create(['deck_id' => $deckA->id]);
+    createMatchWithGamesForSpread($versionA, $opponentArchetype, 'win', [
+        ['won' => true, 'on_play' => true, 'turn_count' => 6],
+    ]);
+
+    $deckB = Deck::factory()->create();
+    $versionB = DeckVersion::factory()->create(['deck_id' => $deckB->id]);
+    createMatchWithGamesForSpread($versionB, $opponentArchetype, 'loss', [
+        ['won' => false, 'on_play' => false, 'turn_count' => 8],
+    ]);
+
+    $result = GetArchetypeMatchupSpread::forVersionIds([$versionA->id, $versionB->id], null, null);
+
+    expect($result)->toHaveCount(1);
+    $row = $result->first();
+    expect($row['matches'])->toBe(2)
+        ->and($row['match_wins'])->toBe(1)
+        ->and($row['match_losses'])->toBe(1)
+        ->and($row['games_won'])->toBe(1)
+        ->and($row['games_lost'])->toBe(1);
+});

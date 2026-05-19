@@ -358,3 +358,45 @@ it('returns only local rows by default and only opponent rows when opponent flag
     expect($theirs->first()['oracleId'])->toBe('oracle-opp');
     expect($theirs->first()['isSideboard'])->toBeFalse();
 });
+
+it('aggregates card stats across multiple deck versions via forVersionIds', function () {
+    $deckA = Deck::factory()->create();
+    $versionA = DeckVersion::factory()->for($deckA)->create();
+
+    $deckB = Deck::factory()->create();
+    $versionB = DeckVersion::factory()->for($deckB)->create();
+
+    $card = Card::factory()->create([
+        'oracle_id' => 'oracle-multi-version',
+        'name' => 'Brainstorm',
+        'type' => 'Instant',
+        'color_identity' => 'U',
+        'image' => null,
+    ]);
+
+    $matchA = MtgoMatch::factory()->create(['deck_version_id' => $versionA->id]);
+    $gameA = Game::factory()->for($matchA, 'match')->create(['won' => true]);
+
+    $matchB = MtgoMatch::factory()->create(['deck_version_id' => $versionB->id]);
+    $gameB = Game::factory()->for($matchB, 'match')->create(['won' => false]);
+
+    insertCardGameStat([
+        'deck_version_id' => $versionA->id,
+        'game_id' => $gameA->id,
+        'oracle_id' => $card->oracle_id,
+        'won' => true,
+    ]);
+
+    insertCardGameStat([
+        'deck_version_id' => $versionB->id,
+        'game_id' => $gameB->id,
+        'oracle_id' => $card->oracle_id,
+        'won' => false,
+    ]);
+
+    $results = GetCardGameStats::forVersionIds([$versionA->id, $versionB->id], collect());
+
+    expect($results)->toHaveCount(1);
+    expect($results->first()['oracleId'])->toBe('oracle-multi-version');
+    expect($results->first()['totalGames'])->toBe(2);
+});
