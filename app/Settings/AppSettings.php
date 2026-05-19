@@ -281,6 +281,16 @@ class AppSettings
         $this->set('hide_archived_decks', $value);
     }
 
+    public function autostartEnabled(): bool
+    {
+        return (bool) $this->get('autostart_enabled', false);
+    }
+
+    public function setAutostartEnabled(bool $value): void
+    {
+        $this->set('autostart_enabled', $value);
+    }
+
     public function systemTimezone(): string
     {
         return (string) $this->get('system_tz', 'UTC');

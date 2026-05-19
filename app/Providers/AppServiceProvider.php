@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Actions\RegisterDevice;
 use App\Facades\AppSettings;
+use App\Listeners\Tray\HandleTrayClick;
 use App\Managers\MtgoManager;
 use App\Models\LogCursor;
 use App\Observers\LogCursorObserver;
@@ -11,9 +12,11 @@ use App\Settings\AppSettings as ConcreteAppSettings;
 use App\Settings\MigrateSettingsToJson;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\ServiceProvider;
+use Native\Desktop\Events\MenuBar\MenuBarClicked;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -35,6 +38,11 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->configureNativephpDatabase();
+
+        Event::listen(
+            MenuBarClicked::class,
+            HandleTrayClick::class,
+        );
 
         LogCursor::observe(LogCursorObserver::class);
 

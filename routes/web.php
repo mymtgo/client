@@ -74,6 +74,7 @@ use App\Http\Controllers\Settings\RunSubmitMatchesController;
 use App\Http\Controllers\Settings\RunSyncController;
 use App\Http\Controllers\Settings\SwitchAccountController;
 use App\Http\Controllers\Settings\UpdateAccountTrackingController;
+use App\Http\Controllers\Settings\UpdateAutostartController;
 use App\Http\Controllers\Settings\UpdateDataPathController;
 use App\Http\Controllers\Settings\UpdateDebugModeController;
 use App\Http\Controllers\Settings\UpdateLocalImagesController;
@@ -217,6 +218,7 @@ Route::group([], function (Router $router) {
         $group->delete('overlay/background', DeleteOverlayBackgroundController::class)->name('settings.overlay.background.delete');
         $group->patch('debug-mode', UpdateDebugModeController::class)->name('settings.debug-mode');
         $group->patch('local-images', UpdateLocalImagesController::class)->name('settings.local-images');
+        $group->patch('autostart', UpdateAutostartController::class)->name('settings.autostart');
         $group->get('api-status', CheckApiStatusController::class)->name('settings.api-status');
         $group->post('reauthenticate', ReauthenticateController::class)->name('settings.reauthenticate');
     });
