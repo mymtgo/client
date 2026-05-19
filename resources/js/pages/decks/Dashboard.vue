@@ -29,6 +29,7 @@ const props = defineProps<{
     gamesOtdLost: number;
     otdRate: number;
     chartData: { date: string; wins: number; losses: number; winrate: string | null }[];
+    peerChart?: { archetypeName: string; deckCount: number; data: { date: string; wins: number; losses: number }[] } | null;
     matchupSpread?: any[];
     leagueResults?: Record<string, number>;
     standoutCards?: Record<string, any>;
@@ -59,6 +60,7 @@ function setTimeframe(value: string) {
             :games-otd-lost="gamesOtdLost"
             :otd-rate="otdRate"
             :chart-data="chartData"
+            :peer-chart="peerChart ?? null"
             :matchup-spread="matchupSpread"
             :league-results="leagueResults"
             :standout-cards="standoutCards"

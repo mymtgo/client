@@ -23,6 +23,7 @@ const props = defineProps<{
     gamesOtdLost: number;
     otdRate: number;
     chartData: { date: string; wins: number; losses: number; winrate: string | null }[];
+    peerChart?: { archetypeName: string; deckCount: number; data: { date: string; wins: number; losses: number }[] } | null;
     matchupSpread?: any[];
     leagueResults?: Record<string, number>;
     standoutCards?: Record<string, any>;
@@ -165,6 +166,7 @@ const leagueResultsBuckets = ['5-0', '4-1', '3-2', '2-3', '1-4', '0-5'];
                     <MatchHistoryChart
                         v-if="chartData.length"
                         :data="chartData"
+                        :peer="peerChart ?? null"
                     />
                     <p v-else class="py-12 text-center text-sm text-muted-foreground">
                         No match data for this period.

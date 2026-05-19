@@ -5,10 +5,12 @@ namespace App\Providers;
 use App\Actions\Decks\OpenMostRecentDeckPopout;
 use App\Actions\Leagues\OpenOpponentScoutWindow;
 use App\Actions\Leagues\OpenOverlayWindow;
+use App\Actions\Tray\CreateTrayMenuBar;
 use App\Actions\Updates\RunAppUpdates;
 use App\Facades\AppSettings;
 use App\Facades\Mtgo;
 use Native\Desktop\Contracts\ProvidesPhpIni;
+use Native\Desktop\Facades\App as NativeApp;
 use Native\Desktop\Facades\Menu;
 use Native\Desktop\Facades\System;
 use Native\Desktop\Facades\Window;
@@ -26,6 +28,12 @@ class NativeAppServiceProvider implements ProvidesPhpIni
 
         RunAppUpdates::run();
 
+        if (PHP_OS_FAMILY !== 'Linux') {
+            NativeApp::openAtLogin(AppSettings::autostartEnabled());
+        }
+
+        CreateTrayMenuBar::run();
+
         if (app()->isProduction()) {
             Menu::create();
         }
@@ -35,9 +43,7 @@ class NativeAppServiceProvider implements ProvidesPhpIni
             ->minHeight(800)
             ->minWidth(1200)
             ->movable()
-            ->title('mymtgo')
-            ->hideMenu()
-            ->trafficLightsHidden();
+            ->title('mymtgo');
 
         Mtgo::runInitialSetup();
         Mtgo::retryUnsubmittedMatches();

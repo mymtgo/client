@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Decks;
 use App\Actions\Decks\GetArchetypeMatchupSpread;
 use App\Actions\Decks\GetDeckStats;
 use App\Actions\Decks\GetDeckViewSharedProps;
+use App\Actions\Decks\GetPeerArchetypeChartData;
 use App\Actions\Decks\GetStandoutCards;
 use App\Actions\Leagues\GetLatestLeague;
 use App\Actions\Leagues\GetLeagueResultDistribution;
@@ -61,6 +62,9 @@ class DashboardController extends Controller
             'chartData' => fn () => $this->buildDeckChartData($deck, $from, $to, $deckVersion),
 
             // Deferred
+            'peerChart' => Inertia::defer(
+                fn () => GetPeerArchetypeChartData::run($deck, $from, $to),
+            ),
             'matchupSpread' => Inertia::defer(
                 fn () => GetArchetypeMatchupSpread::run($deck, $from, $to, $deckVersion),
             ),

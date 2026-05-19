@@ -61,6 +61,9 @@ use App\Http\Controllers\Matches\DetectArchetypeController;
 use App\Http\Controllers\Matches\ShowController;
 use App\Http\Controllers\Matches\UpdateArchetypeController;
 use App\Http\Controllers\Matches\UpdateNotesController;
+use App\Http\Controllers\Reports\CardStatsController as ReportsCardStatsController;
+use App\Http\Controllers\Reports\IndexController as ReportsIndexController;
+use App\Http\Controllers\Reports\MatchesController as ReportsMatchesController;
 use App\Http\Controllers\Settings\BrowseFolderController;
 use App\Http\Controllers\Settings\CheckApiStatusController;
 use App\Http\Controllers\Settings\DeleteOverlayBackgroundController;
@@ -71,6 +74,7 @@ use App\Http\Controllers\Settings\RunSubmitMatchesController;
 use App\Http\Controllers\Settings\RunSyncController;
 use App\Http\Controllers\Settings\SwitchAccountController;
 use App\Http\Controllers\Settings\UpdateAccountTrackingController;
+use App\Http\Controllers\Settings\UpdateAutostartController;
 use App\Http\Controllers\Settings\UpdateDataPathController;
 use App\Http\Controllers\Settings\UpdateDebugModeController;
 use App\Http\Controllers\Settings\UpdateLocalImagesController;
@@ -120,6 +124,12 @@ Route::group([], function (Router $router) {
         'prefix' => 'opponents',
     ], function (Router $group) {
         $group->get('/', App\Http\Controllers\Opponents\IndexController::class)->name('opponents.index');
+    });
+
+    $router->group(['prefix' => 'reports'], function (Router $group) {
+        $group->get('/', ReportsIndexController::class)->name('reports.index');
+        $group->get('matches', ReportsMatchesController::class)->name('reports.matches');
+        $group->get('card-stats', ReportsCardStatsController::class)->name('reports.card-stats');
     });
 
     $router->group([
@@ -208,6 +218,7 @@ Route::group([], function (Router $router) {
         $group->delete('overlay/background', DeleteOverlayBackgroundController::class)->name('settings.overlay.background.delete');
         $group->patch('debug-mode', UpdateDebugModeController::class)->name('settings.debug-mode');
         $group->patch('local-images', UpdateLocalImagesController::class)->name('settings.local-images');
+        $group->patch('autostart', UpdateAutostartController::class)->name('settings.autostart');
         $group->get('api-status', CheckApiStatusController::class)->name('settings.api-status');
         $group->post('reauthenticate', ReauthenticateController::class)->name('settings.reauthenticate');
     });

@@ -11,6 +11,7 @@ import UpdateShareStatsController from '@/actions/App/Http/Controllers/Settings/
 import UpdateDebugModeController from '@/actions/App/Http/Controllers/Settings/UpdateDebugModeController';
 import UpdateLocalImagesController from '@/actions/App/Http/Controllers/Settings/UpdateLocalImagesController';
 import UpdateWatcherController from '@/actions/App/Http/Controllers/Settings/UpdateWatcherController';
+import UpdateAutostartController from '@/actions/App/Http/Controllers/Settings/UpdateAutostartController';
 import type { LeagueData } from '@/components/leagues/LeagueTracker.vue';
 import LeagueTracker from '@/components/leagues/LeagueTracker.vue';
 import type { OpponentData } from '@/components/leagues/OpponentScout.vue';
@@ -44,6 +45,8 @@ leagueWindowEnabled: boolean;
     localImages: boolean;
     localImagesSize: string;
     appVersion: string;
+    autostartEnabled: boolean;
+    trayAvailable: boolean;
 }>();
 
 const logPathInput = ref(props.logPath);
@@ -101,6 +104,10 @@ function toggleWatcher() {
 
 function toggleShareStats(val: boolean) {
     withProcessing('shareStats', 'patch', UpdateShareStatsController.url(), { enabled: val });
+}
+
+function toggleAutostart(val: boolean) {
+    withProcessing('autostart', 'patch', UpdateAutostartController.url(), { enabled: val });
 }
 
 function submitPendingMatches() {
@@ -413,6 +420,33 @@ const sampleOpponent: OpponentData = {
                                 {{ processing === 'watcher' ? 'Processing...' : watcherActive && pathsValid ? 'Stop' : 'Start' }}
                             </Button>
                         </div>
+                    </div>
+                </CardContent>
+            </Card>
+
+            <!-- Background -->
+            <Card>
+                <CardHeader>
+                    <CardTitle>Background</CardTitle>
+                    <CardDescription>Keep mymtgo running in the system tray and launch automatically when you sign in.</CardDescription>
+                </CardHeader>
+                <CardContent class="flex flex-col gap-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <Label>Launch at login</Label>
+                            <p class="text-sm text-muted-foreground">Start mymtgo automatically when your computer signs in.</p>
+                        </div>
+                        <Switch :modelValue="props.autostartEnabled" @update:modelValue="toggleAutostart" :disabled="processing === 'autostart'" />
+                    </div>
+                    <Separator />
+                    <div>
+                        <Label>Closing the window</Label>
+                        <p v-if="props.trayAvailable" class="text-sm text-muted-foreground">
+                            Closing the main window leaves mymtgo running in the system tray. Match ingestion continues in the background — open it again from the tray icon.
+                        </p>
+                        <p v-else class="text-sm text-muted-foreground">
+                            Your operating system doesn't support a system tray for this app. Closing the main window will quit mymtgo and stop match ingestion.
+                        </p>
                     </div>
                 </CardContent>
             </Card>

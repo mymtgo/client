@@ -4,8 +4,9 @@ import DecksIndexController from '@/actions/App/Http/Controllers/Decks/IndexCont
 import DashboardController from '@/actions/App/Http/Controllers/IndexController';
 import LeaguesIndexController from '@/actions/App/Http/Controllers/Leagues/IndexController';
 import OpponentsIndexController from '@/actions/App/Http/Controllers/Opponents/IndexController';
+import ReportsIndexController from '@/actions/App/Http/Controllers/Reports/IndexController';
 import { Link, usePage } from '@inertiajs/vue3';
-import { Bug, Layers, LayoutDashboard, Puzzle, Swords, Trophy } from 'lucide-vue-next';
+import { BarChart3, Bug, Layers, LayoutDashboard, Puzzle, Swords, Trophy } from 'lucide-vue-next';
 import { computed } from 'vue';
 
 const page = usePage();
@@ -16,6 +17,7 @@ const nav = [
     { label: 'Leagues', icon: Trophy, href: LeaguesIndexController.url() },
     { label: 'Opponents', icon: Swords, href: OpponentsIndexController.url() },
     { label: 'Archetypes', icon: Puzzle, href: ArchetypesIndexController.url() },
+    { label: 'Reports', icon: BarChart3, href: ReportsIndexController.url() },
 ];
 
 const debugMode = computed(() => (usePage().props as Record<string, unknown>).debugMode as boolean);

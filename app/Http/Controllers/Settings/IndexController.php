@@ -58,6 +58,8 @@ class IndexController extends Controller
             'overlayBackgroundUrl' => $overlayBackgroundUrl,
             'localImages' => AppSettings::downloadImagesLocally(),
             'localImagesSize' => $this->getLocalImagesSize(),
+            'autostartEnabled' => AppSettings::autostartEnabled(),
+            'trayAvailable' => PHP_OS_FAMILY !== 'Linux',
         ]);
     }
 }

@@ -25,14 +25,6 @@ class GetCardGameStats
             return collect();
         }
 
-        $sideboardOracles = $opponent
-            ? collect()
-            : collect($sideboardSource->cards)
-                ->filter(fn ($card) => $card['sideboard'] === 'true' || $card['sideboard'] === true)
-                ->pluck('oracle_id')
-                ->filter(fn ($id) => $id !== null)
-                ->flip();
-
         $versionIds = $deckVersion
             ? [$deckVersion->id]
             : $deck->versions()->pluck('id')->all();
@@ -41,8 +33,29 @@ class GetCardGameStats
             return collect();
         }
 
-        $applySharedFilters = function ($q) use ($versionIds, $isPostboard, $opponentArchetypeId, $onPlay): void {
-            $q->whereIn('cgs.deck_version_id', $versionIds);
+        $sideboardOracles = self::resolveSideboardOraclesForVersion($sideboardSource, $opponent);
+
+        return self::forVersionIds($versionIds, $sideboardOracles, $opponentArchetypeId, $onPlay, $isPostboard, $opponent);
+    }
+
+    /**
+     * @param  array<int, int>  $deckVersionIds
+     * @param  Collection<string, true>  $sideboardOracleIds  oracle_id => true map; pass empty collection to skip sideboard flagging
+     */
+    public static function forVersionIds(
+        array $deckVersionIds,
+        Collection $sideboardOracleIds,
+        ?int $opponentArchetypeId = null,
+        ?bool $onPlay = null,
+        ?bool $isPostboard = null,
+        bool $opponent = false,
+    ): Collection {
+        if (empty($deckVersionIds)) {
+            return collect();
+        }
+
+        $applySharedFilters = function ($q) use ($deckVersionIds, $isPostboard, $opponentArchetypeId, $onPlay): void {
+            $q->whereIn('cgs.deck_version_id', $deckVersionIds);
             $q->when($isPostboard !== null, fn ($qq) => $qq->where('cgs.is_postboard', $isPostboard));
 
             if ($opponentArchetypeId) {
@@ -137,7 +150,7 @@ class GetCardGameStats
                 'colorIdentity' => $row->color_identity,
                 'type' => $row->type,
                 'image' => $row->local_image ? Storage::disk('cards')->url($row->local_image) : $row->image,
-                'isSideboard' => $sideboardOracles->has($row->oracle_id),
+                'isSideboard' => $sideboardOracleIds->has($row->oracle_id),
                 'totalGames' => $totalOpponentGames ?? (int) $row->total_games,
                 'totalPossible' => (int) $row->total_possible,
                 'totalKept' => (int) $row->total_kept,
@@ -171,7 +184,7 @@ class GetCardGameStats
     }
 
     /**
-     * Get archetypes that have card_game_stats data for this deck version.
+     * Get archetypes that have card_game_stats data for the given deck versions.
      */
     public static function availableArchetypes(Deck $deck, ?DeckVersion $deckVersion = null): Collection
     {
@@ -179,9 +192,21 @@ class GetCardGameStats
             ? [$deckVersion->id]
             : $deck->versions()->pluck('id')->all();
 
+        return self::availableArchetypesForVersionIds($versionIds);
+    }
+
+    /**
+     * @param  array<int, int>  $deckVersionIds
+     */
+    public static function availableArchetypesForVersionIds(array $deckVersionIds): Collection
+    {
+        if (empty($deckVersionIds)) {
+            return collect();
+        }
+
         return Archetype::query()
-            ->whereHas('matchArchetypes', function ($q) use ($versionIds) {
-                $q->whereHas('match', fn ($mq) => $mq->whereIn('deck_version_id', $versionIds))
+            ->whereHas('matchArchetypes', function ($q) use ($deckVersionIds) {
+                $q->whereHas('match', fn ($mq) => $mq->whereIn('deck_version_id', $deckVersionIds))
                     ->whereExists(function ($sub) {
                         $sub->select(DB::raw(1))
                             ->from('game_player as gp')
@@ -198,5 +223,21 @@ class GetCardGameStats
                 'name' => $a->name,
                 'colorIdentity' => $a->color_identity,
             ]);
+    }
+
+    /**
+     * @return Collection<string, true>
+     */
+    public static function resolveSideboardOraclesForVersion(DeckVersion $version, bool $opponent): Collection
+    {
+        if ($opponent) {
+            return collect();
+        }
+
+        return collect($version->cards)
+            ->filter(fn ($card) => ($card['sideboard'] ?? false) === 'true' || ($card['sideboard'] ?? false) === true)
+            ->pluck('oracle_id')
+            ->filter(fn ($id) => $id !== null)
+            ->flip();
     }
 }
