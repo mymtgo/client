@@ -71,6 +71,24 @@ it('splits sessions with >2 hour gaps', function () {
     expect($result['record'])->toBe('0-1');
 });
 
+it('ignores complete matches with null outcome', function () {
+    [$account, $version] = setupSessionAccount();
+    MtgoMatch::factory()->create([
+        'deck_version_id' => $version->id,
+        'outcome' => null,
+        'started_at' => now()->subHour(),
+        'ended_at' => now()->subMinutes(30),
+    ]);
+    MtgoMatch::factory()->won()->create([
+        'deck_version_id' => $version->id,
+        'started_at' => now()->subMinutes(20),
+        'ended_at' => now()->subMinutes(5),
+    ]);
+    $result = GetLastSession::run($account->id);
+    expect($result['matches'])->toHaveCount(1);
+    expect($result['record'])->toBe('1-0');
+});
+
 it('handles null ended_at with fallback', function () {
     [$account, $version] = setupSessionAccount();
     MtgoMatch::factory()->won()->create([

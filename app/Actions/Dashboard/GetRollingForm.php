@@ -22,6 +22,7 @@ class GetRollingForm
         $recent = MtgoMatch::complete()
             ->forAccount($accountId)
             ->when($format, fn ($q, $f) => $q->where('format', $f))
+            ->whereNotNull('outcome')
             ->orderByDesc('started_at')
             ->limit(20)
             ->pluck('outcome');

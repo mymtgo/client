@@ -21,6 +21,7 @@ class GetLastSession
         $matches = MtgoMatch::complete()
             ->forAccount($accountId)
             ->when($format, fn ($q, $f) => $q->where('format', $f))
+            ->whereNotNull('outcome')
             ->with(['opponentArchetypes.archetype', 'games'])
             ->orderByDesc('started_at')
             ->limit(50)

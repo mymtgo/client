@@ -52,6 +52,20 @@ it('returns last 20 matches in chronological order', function () {
     expect($result['results'])->toHaveCount(20);
 });
 
+it('ignores complete matches with null outcome', function () {
+    [$account, $version] = setupFormAccount();
+    MtgoMatch::factory()->create([
+        'deck_version_id' => $version->id,
+        'outcome' => null,
+        'started_at' => now()->subHours(3),
+    ]);
+    MtgoMatch::factory()->won()->create(['deck_version_id' => $version->id, 'started_at' => now()->subHours(2)]);
+    MtgoMatch::factory()->lost()->create(['deck_version_id' => $version->id, 'started_at' => now()->subHour()]);
+    $result = GetRollingForm::run($account->id);
+    expect($result['results'])->toBe(['W', 'L']);
+    expect($result['winrate'])->toBe(50);
+});
+
 it('excludes draws from winrate denominator', function () {
     [$account, $version] = setupFormAccount();
     MtgoMatch::factory()->won()->create(['deck_version_id' => $version->id, 'started_at' => now()->subHours(3)]);
