@@ -2435,17 +2435,17 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/alecritson/desktop.git",
-                "reference": "48a9e681198fb438626489cfed37c9d91d935daf"
+                "reference": "bf603b875b2460c77294f491cc8cc88aa36ba146"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/alecritson/desktop/zipball/48a9e681198fb438626489cfed37c9d91d935daf",
-                "reference": "48a9e681198fb438626489cfed37c9d91d935daf",
+                "url": "https://api.github.com/repos/alecritson/desktop/zipball/bf603b875b2460c77294f491cc8cc88aa36ba146",
+                "reference": "bf603b875b2460c77294f491cc8cc88aa36ba146",
                 "shasum": ""
             },
             "require": {
                 "ext-zip": "*",
-                "illuminate/contracts": "^10.0|^11.0|^12.0|^13.0",
+                "illuminate/contracts": "^10.0|^11.0|^12.0",
                 "laravel/prompts": "^0.1.1|^0.2|^0.3",
                 "nativephp/php-bin": "^1.0",
                 "php": "^8.3",
@@ -2463,10 +2463,10 @@
                 "larastan/larastan": "^2.0|^3.1",
                 "laravel/pint": "^1.0",
                 "nunomaduro/collision": "^7.11|^8.1.1",
-                "orchestra/testbench": "^8.0|^9.0|^10.0|^11.0",
-                "pestphp/pest": "^v2.30|^3.0|^4.4",
-                "pestphp/pest-plugin-arch": "^2.0|^3.0|^4.0",
-                "pestphp/pest-plugin-laravel": "^2.0|^3.1|^4.1",
+                "orchestra/testbench": "^8.0|^9.0|^10.0",
+                "pestphp/pest": "^v2.30|^3.0",
+                "pestphp/pest-plugin-arch": "^2.0|^3.0",
+                "pestphp/pest-plugin-laravel": "^2.0|^3.1",
                 "phpstan/extension-installer": "^1.1",
                 "phpstan/phpstan-deprecation-rules": "^1.0|^2.0",
                 "phpstan/phpstan-phpunit": "^1.0|^2.0",
@@ -2567,7 +2567,7 @@
                     "url": "https://opencollective.com/nativephp"
                 }
             ],
-            "time": "2026-04-09T07:09:13+00:00"
+            "time": "2026-05-07T20:00:04+00:00"
         },
         {
             "name": "nativephp/php-bin",
