@@ -2,6 +2,7 @@
 
 namespace App\Managers;
 
+use App\Actions\Cards\EnqueueCardStats;
 use App\Actions\Logs\FindMtgoLogPath;
 use App\Actions\Logs\GetLogFilePaths;
 use App\Actions\Logs\IngestLog;
@@ -12,6 +13,7 @@ use App\Actions\Settings\ValidatePath;
 use App\Facades\AppSettings;
 use App\Jobs\DownloadArchetypes;
 use App\Jobs\PopulateMissingCardData;
+use App\Jobs\ShipCardStats;
 use App\Jobs\ShipTournamentObservations;
 use App\Jobs\SubmitMatch;
 use App\Jobs\SyncDecks;
@@ -261,6 +263,16 @@ class MtgoManager
         $schedule->job(new ShipTournamentObservations)
             ->everyThirtySeconds()
             ->name('ship_tournament_observations')
+            ->withoutOverlapping(60);
+
+        $schedule->job(new ShipCardStats)
+            ->everyThirtySeconds()
+            ->name('ship_card_stats')
+            ->withoutOverlapping(60);
+
+        $schedule->call(fn () => EnqueueCardStats::run())
+            ->everyMinute()
+            ->name('enqueue_card_stats')
             ->withoutOverlapping(60);
 
         $schedule->call(fn () => $this->downloadArchetypes())

@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 /**
  * @property-read Collection<int, Player> $players
@@ -58,5 +59,17 @@ class Game extends Model
     public function timeline(): HasMany
     {
         return $this->hasMany(GameTimeline::class);
+    }
+
+    /** @return HasMany<CardGameStat, $this> */
+    public function cardGameStats(): HasMany
+    {
+        return $this->hasMany(CardGameStat::class);
+    }
+
+    /** @return HasOne<CardStatShipQueue, $this> */
+    public function shipQueueEntry(): HasOne
+    {
+        return $this->hasOne(CardStatShipQueue::class);
     }
 }
