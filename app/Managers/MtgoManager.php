@@ -13,6 +13,7 @@ use App\Actions\Settings\ValidatePath;
 use App\Facades\AppSettings;
 use App\Jobs\DownloadArchetypes;
 use App\Jobs\PopulateMissingCardData;
+use App\Jobs\RefreshArchetypes;
 use App\Jobs\ShipCardStats;
 use App\Jobs\ShipTournamentObservations;
 use App\Jobs\SubmitMatch;
@@ -284,5 +285,10 @@ class MtgoManager
         $schedule->call(fn () => PruneProcessedLogEvents::run())
             ->daily()
             ->name('prune_log_events');
+
+        $schedule->job(new RefreshArchetypes)
+            ->daily()
+            ->name('refresh_archetypes')
+            ->withoutOverlapping(120);
     }
 }

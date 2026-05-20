@@ -156,6 +156,24 @@ it('quarantines a corrupt file from within set() without a prior read', function
         ->withArgs(fn ($msg) => str_contains($msg, 'settings.json corrupt'));
 });
 
+it('persists archetypes_last_refreshed_at', function () {
+    expect($this->settings->archetypesLastRefreshedAt())->toBeNull();
+
+    $this->settings->setArchetypesLastRefreshedAt('2026-05-20T04:00:00+00:00');
+
+    expect($this->settings->archetypesLastRefreshedAt())->toBe('2026-05-20T04:00:00+00:00');
+});
+
+it('persists archetypes_refresh_in_progress as bool', function () {
+    expect($this->settings->archetypesRefreshInProgress())->toBeFalse();
+
+    $this->settings->setArchetypesRefreshInProgress(true);
+    expect($this->settings->archetypesRefreshInProgress())->toBeTrue();
+
+    $this->settings->setArchetypesRefreshInProgress(false);
+    expect($this->settings->archetypesRefreshInProgress())->toBeFalse();
+});
+
 it('reader does not see truncated bytes during a concurrent write', function () {
     // Prime the file with valid content.
     $this->settings->set('api_key', 'secret-token');
