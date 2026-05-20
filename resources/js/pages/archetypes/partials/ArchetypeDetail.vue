@@ -139,20 +139,6 @@ async function downloadDecklist() {
             </div>
         </div>
 
-        <!-- Stale notice -->
-        <div
-            v-if="detail.isStale && !detail.archetype.manual && !detail.archetype.isFallback"
-            class="mx-4 mt-3 flex items-center justify-between rounded-md border border-yellow-500/30 bg-yellow-500/10 px-3 py-2"
-        >
-            <span class="text-sm text-yellow-500">
-                This decklist is over a week old. Consider re-downloading in case of changes.
-            </span>
-            <Button variant="ghost" size="sm" class="text-yellow-500 hover:text-yellow-400" :disabled="downloading" @click="downloadDecklist">
-                <RefreshCw class="mr-1.5 size-3.5" />
-                Re-download
-            </Button>
-        </div>
-
         <!-- Body -->
         <div class="flex-1 overflow-y-auto p-4">
             <!-- Merged notice -->
