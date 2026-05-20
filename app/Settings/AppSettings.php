@@ -351,6 +351,28 @@ class AppSettings
         $this->set('api_key_expires_at', $expiresAt);
     }
 
+    public function archetypesLastRefreshedAt(): ?string
+    {
+        $value = $this->get('archetypes_last_refreshed_at');
+
+        return is_string($value) ? $value : null;
+    }
+
+    public function setArchetypesLastRefreshedAt(string $iso8601): void
+    {
+        $this->set('archetypes_last_refreshed_at', $iso8601);
+    }
+
+    public function archetypesRefreshInProgress(): bool
+    {
+        return (bool) $this->get('archetypes_refresh_in_progress', false);
+    }
+
+    public function setArchetypesRefreshInProgress(bool $value): void
+    {
+        $this->set('archetypes_refresh_in_progress', $value);
+    }
+
     private function path(): string
     {
         return Storage::disk()->path(self::FILENAME);

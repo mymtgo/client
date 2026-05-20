@@ -42,6 +42,10 @@ use Illuminate\Support\Facades\Facade;
  * @method static void setApiKey(?string $key)
  * @method static ?string apiKeyExpiresAt()
  * @method static void setApiKeyExpiresAt(?string $expiresAt)
+ * @method static ?string archetypesLastRefreshedAt()
+ * @method static void setArchetypesLastRefreshedAt(string $iso8601)
+ * @method static bool archetypesRefreshInProgress()
+ * @method static void setArchetypesRefreshInProgress(bool $value)
  */
 class AppSettings extends Facade
 {
