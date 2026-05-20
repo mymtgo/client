@@ -43,7 +43,7 @@ use Illuminate\Support\Facades\Facade;
  * @method static ?string apiKeyExpiresAt()
  * @method static void setApiKeyExpiresAt(?string $expiresAt)
  * @method static ?string archetypesLastRefreshedAt()
- * @method static void setArchetypesLastRefreshedAt(string $iso8601)
+ * @method static void setArchetypesLastRefreshedAt(string $value)
  * @method static bool archetypesRefreshInProgress()
  * @method static void setArchetypesRefreshInProgress(bool $value)
  */

@@ -157,19 +157,21 @@ it('quarantines a corrupt file from within set() without a prior read', function
 });
 
 it('persists archetypes_last_refreshed_at', function () {
-    expect(App\Facades\AppSettings::archetypesLastRefreshedAt())->toBeNull();
+    expect($this->settings->archetypesLastRefreshedAt())->toBeNull();
 
-    App\Facades\AppSettings::setArchetypesLastRefreshedAt('2026-05-20T04:00:00+00:00');
+    $this->settings->setArchetypesLastRefreshedAt('2026-05-20T04:00:00+00:00');
 
-    expect(App\Facades\AppSettings::archetypesLastRefreshedAt())->toBe('2026-05-20T04:00:00+00:00');
+    expect($this->settings->archetypesLastRefreshedAt())->toBe('2026-05-20T04:00:00+00:00');
 });
 
 it('persists archetypes_refresh_in_progress as bool', function () {
-    expect(App\Facades\AppSettings::archetypesRefreshInProgress())->toBeFalse();
+    expect($this->settings->archetypesRefreshInProgress())->toBeFalse();
 
-    App\Facades\AppSettings::setArchetypesRefreshInProgress(true);
+    $this->settings->setArchetypesRefreshInProgress(true);
+    expect($this->settings->archetypesRefreshInProgress())->toBeTrue();
 
-    expect(App\Facades\AppSettings::archetypesRefreshInProgress())->toBeTrue();
+    $this->settings->setArchetypesRefreshInProgress(false);
+    expect($this->settings->archetypesRefreshInProgress())->toBeFalse();
 });
 
 it('reader does not see truncated bytes during a concurrent write', function () {

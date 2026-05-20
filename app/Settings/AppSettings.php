@@ -358,9 +358,9 @@ class AppSettings
         return is_string($value) ? $value : null;
     }
 
-    public function setArchetypesLastRefreshedAt(string $iso8601): void
+    public function setArchetypesLastRefreshedAt(string $value): void
     {
-        $this->set('archetypes_last_refreshed_at', $iso8601);
+        $this->set('archetypes_last_refreshed_at', $value);
     }
 
     public function archetypesRefreshInProgress(): bool
