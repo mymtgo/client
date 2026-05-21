@@ -27,9 +27,19 @@ class ParseMatchHistory
             return null;
         }
 
+        $wins = (int) $match['GameWins'];
+        $losses = (int) $match['GameLosses'];
+
+        // MTGO seeds a 0-0 placeholder row in mtgo_game_history when a match
+        // is joined. Treat that as "no result yet" — otherwise the stuck-match
+        // watchdog will resolve an in-progress match as outcome=Unknown.
+        if ($wins === 0 && $losses === 0) {
+            return null;
+        }
+
         return [
-            'wins' => (int) $match['GameWins'],
-            'losses' => (int) $match['GameLosses'],
+            'wins' => $wins,
+            'losses' => $losses,
         ];
     }
 }

@@ -54,8 +54,12 @@ class SyncGamePivots
             }
         }
 
-        if ($game->ended_at === null && ! empty($gameData['ended_at'])) {
-            $updates['ended_at'] = Carbon::parse($gameData['ended_at']);
+        if (! empty($gameData['ended_at'])) {
+            $parsed = Carbon::parse($gameData['ended_at']);
+
+            if ($game->ended_at === null || ! $game->ended_at->equalTo($parsed)) {
+                $updates['ended_at'] = $parsed;
+            }
         }
 
         if (! empty($updates)) {

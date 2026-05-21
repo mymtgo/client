@@ -42,10 +42,11 @@ it('does not inflate results on concession', function () {
 
     expect($result['wins'])->toBe(1)
         ->and($result['losses'])->toBe(0)
-        ->and($result['decided'])->toBeTrue();
+        ->and($result['decided'])->toBeTrue()
+        ->and($result['authoritative'])->toBeFalse();
 });
 
-it('marks decided when win threshold reached', function () {
+it('marks decided and authoritative when win threshold reached', function () {
     $result = DetermineMatchResult::run(
         games: games([['me', 'opp'], ['opp', 'me'], ['me', 'opp']]),
         localPlayer: 'me',
@@ -54,10 +55,11 @@ it('marks decided when win threshold reached', function () {
 
     expect($result['wins'])->toBe(2)
         ->and($result['losses'])->toBe(1)
-        ->and($result['decided'])->toBeTrue();
+        ->and($result['decided'])->toBeTrue()
+        ->and($result['authoritative'])->toBeTrue();
 });
 
-it('marks decided when match score present', function () {
+it('marks decided and authoritative when match score present', function () {
     $result = DetermineMatchResult::run(
         games: games([['me', 'opp']]),
         localPlayer: 'me',
@@ -65,7 +67,8 @@ it('marks decided when match score present', function () {
         matchScoreExists: true,
     );
 
-    expect($result['decided'])->toBeTrue();
+    expect($result['decided'])->toBeTrue()
+        ->and($result['authoritative'])->toBeTrue();
 });
 
 it('marks not decided when no signal exists', function () {
@@ -77,10 +80,11 @@ it('marks not decided when no signal exists', function () {
 
     expect($result['wins'])->toBe(1)
         ->and($result['losses'])->toBe(0)
-        ->and($result['decided'])->toBeFalse();
+        ->and($result['decided'])->toBeFalse()
+        ->and($result['authoritative'])->toBeFalse();
 });
 
-it('marks decided on disconnect', function () {
+it('marks decided but not authoritative on disconnect', function () {
     $result = DetermineMatchResult::run(
         games: games([['me', 'opp']]),
         localPlayer: 'me',
@@ -88,7 +92,8 @@ it('marks decided on disconnect', function () {
         disconnectDetected: true,
     );
 
-    expect($result['decided'])->toBeTrue();
+    expect($result['decided'])->toBeTrue()
+        ->and($result['authoritative'])->toBeFalse();
 });
 
 it('prefers MTGO match score over counted winners', function () {
@@ -102,7 +107,8 @@ it('prefers MTGO match score over counted winners', function () {
 
     expect($result['wins'])->toBe(2)
         ->and($result['losses'])->toBe(1)
-        ->and($result['decided'])->toBeTrue();
+        ->and($result['decided'])->toBeTrue()
+        ->and($result['authoritative'])->toBeTrue();
 });
 
 it('counts only games with winners', function () {

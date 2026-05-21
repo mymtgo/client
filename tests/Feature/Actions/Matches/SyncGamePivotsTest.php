@@ -102,11 +102,11 @@ it('writes ended_at when source has it and game is null', function () {
     expect($game->fresh()->ended_at)->not->toBeNull();
 });
 
-it('does not overwrite existing ended_at', function () {
+it('overwrites stale ended_at with the latest from the game log', function () {
     $game = freshSyncPivotGame();
     attachSyncPivotPlayers($game, 'me', 'opp');
-    $original = now()->subDay();
-    $game->update(['ended_at' => $original]);
+    $placeholder = now()->subDay();
+    $game->update(['ended_at' => $placeholder]);
 
     SyncGamePivots::forGame($game->fresh(['players']), [
         'winner' => 'me',
@@ -114,7 +114,23 @@ it('does not overwrite existing ended_at', function () {
         'ended_at' => '2026-04-29T10:00:00+00:00',
     ], 'me');
 
-    expect($game->fresh()->ended_at->timestamp)->toBe($original->timestamp);
+    expect($game->fresh()->ended_at->format('Y-m-d H:i:s'))->toBe('2026-04-29 10:00:00');
+});
+
+it('is a no-op when ended_at already matches the source', function () {
+    $game = freshSyncPivotGame();
+    attachSyncPivotPlayers($game, 'me', 'opp');
+    $existing = '2026-04-29T10:00:00+00:00';
+    $game->update(['ended_at' => $existing]);
+    $updatedAt = $game->fresh()->updated_at;
+
+    SyncGamePivots::forGame($game->fresh(['players']), [
+        'winner' => null,
+        'on_play' => null,
+        'ended_at' => $existing,
+    ], 'me');
+
+    expect($game->fresh()->updated_at->timestamp)->toBe($updatedAt->timestamp);
 });
 
 it('flips on_play when local player is on play', function () {

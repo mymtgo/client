@@ -53,7 +53,7 @@ it('returns correct result for a normal 2-1 win', function () {
         stateChanges: collect(),
     );
 
-    expect($result)->toBe(['wins' => 2, 'losses' => 1, 'decided' => true]);
+    expect($result)->toBe(['wins' => 2, 'losses' => 1, 'decided' => true, 'authoritative' => true]);
 });
 
 it('returns correct result for a normal 2-0 win', function () {
@@ -63,7 +63,7 @@ it('returns correct result for a normal 2-0 win', function () {
         stateChanges: collect(),
     );
 
-    expect($result)->toBe(['wins' => 2, 'losses' => 0, 'decided' => true]);
+    expect($result)->toBe(['wins' => 2, 'losses' => 0, 'decided' => true, 'authoritative' => true]);
 });
 
 it('returns correct result for a normal 1-2 loss', function () {
@@ -73,7 +73,7 @@ it('returns correct result for a normal 1-2 loss', function () {
         stateChanges: collect(),
     );
 
-    expect($result)->toBe(['wins' => 1, 'losses' => 2, 'decided' => true]);
+    expect($result)->toBe(['wins' => 1, 'losses' => 2, 'decided' => true, 'authoritative' => true]);
 });
 
 it('returns correct result for a normal 0-2 loss', function () {
@@ -83,7 +83,7 @@ it('returns correct result for a normal 0-2 loss', function () {
         stateChanges: collect(),
     );
 
-    expect($result)->toBe(['wins' => 0, 'losses' => 2, 'decided' => true]);
+    expect($result)->toBe(['wins' => 0, 'losses' => 2, 'decided' => true, 'authoritative' => true]);
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -103,7 +103,7 @@ it('detects casual concede as a loss after winning game 1', function () {
         stateChanges: $stateChanges,
     );
 
-    expect($result)->toBe(['wins' => 1, 'losses' => 0, 'decided' => true]);
+    expect($result)->toBe(['wins' => 1, 'losses' => 0, 'decided' => true, 'authoritative' => false]);
 });
 
 it('detects casual concede as a loss after losing game 1', function () {
@@ -118,7 +118,7 @@ it('detects casual concede as a loss after losing game 1', function () {
         stateChanges: $stateChanges,
     );
 
-    expect($result)->toBe(['wins' => 0, 'losses' => 1, 'decided' => true]);
+    expect($result)->toBe(['wins' => 0, 'losses' => 1, 'decided' => true, 'authoritative' => false]);
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -138,7 +138,7 @@ it('detects league concede as a loss after losing game 1', function () {
         stateChanges: $stateChanges,
     );
 
-    expect($result)->toBe(['wins' => 0, 'losses' => 1, 'decided' => true]);
+    expect($result)->toBe(['wins' => 0, 'losses' => 1, 'decided' => true, 'authoritative' => false]);
 });
 
 it('detects league concede as a loss after winning game 1', function () {
@@ -153,7 +153,7 @@ it('detects league concede as a loss after winning game 1', function () {
         stateChanges: $stateChanges,
     );
 
-    expect($result)->toBe(['wins' => 1, 'losses' => 0, 'decided' => true]);
+    expect($result)->toBe(['wins' => 1, 'losses' => 0, 'decided' => true, 'authoritative' => false]);
 });
 
 it('detects league concede with no games played', function () {
@@ -168,7 +168,7 @@ it('detects league concede with no games played', function () {
         stateChanges: $stateChanges,
     );
 
-    expect($result)->toBe(['wins' => 0, 'losses' => 0, 'decided' => true]);
+    expect($result)->toBe(['wins' => 0, 'losses' => 0, 'decided' => true, 'authoritative' => false]);
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -187,7 +187,7 @@ it('marks decided when opponent disconnects and disconnectDetected is passed', f
         disconnectDetected: true,
     );
 
-    expect($result)->toBe(['wins' => 1, 'losses' => 0, 'decided' => true]);
+    expect($result)->toBe(['wins' => 1, 'losses' => 0, 'decided' => true, 'authoritative' => false]);
 });
 
 it('marks decided when opponent disconnects in league match', function () {
@@ -202,7 +202,7 @@ it('marks decided when opponent disconnects in league match', function () {
         disconnectDetected: true,
     );
 
-    expect($result)->toBe(['wins' => 1, 'losses' => 0, 'decided' => true]);
+    expect($result)->toBe(['wins' => 1, 'losses' => 0, 'decided' => true, 'authoritative' => false]);
 });
 
 it('marks decided when opponent disconnects with no games played', function () {
@@ -217,7 +217,7 @@ it('marks decided when opponent disconnects with no games played', function () {
         disconnectDetected: true,
     );
 
-    expect($result)->toBe(['wins' => 0, 'losses' => 0, 'decided' => true]);
+    expect($result)->toBe(['wins' => 0, 'losses' => 0, 'decided' => true, 'authoritative' => false]);
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

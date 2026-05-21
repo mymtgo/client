@@ -17,6 +17,13 @@ class DetermineMatchResult
      *
      * Reports actual game counts — never inflates to the win threshold.
      * The `decided` flag indicates whether the match outcome is known.
+     * The `authoritative` flag indicates whether `wins`/`losses` can be
+     * trusted as the final score. It is true only when the game-log itself
+     * gave us a complete picture — either MTGO emitted a "wins the match
+     * X-Y" line, or we counted enough per-game winners to hit the win
+     * threshold. When only a match-end signal (server-completed, concede,
+     * disconnect) fired, the count is partial and the caller should fall
+     * back to mtgo_game_history for the real score.
      *
      * @param  array<int, array{winner?: ?string, loser?: ?string}>  $games  Per-game data from ExtractGameResults
      * @param  string  $localPlayer  Local player username
@@ -24,7 +31,7 @@ class DetermineMatchResult
      * @param  array{0: int, 1: int}|null  $matchScore  MTGO-authoritative score [localWins, opponentWins]
      * @param  bool  $matchScoreExists  Whether a "wins the match" line was seen
      * @param  bool  $disconnectDetected  Whether a disconnect was detected
-     * @return array{wins: int, losses: int, decided: bool}
+     * @return array{wins: int, losses: int, decided: bool, authoritative: bool}
      */
     public static function run(
         array $games,
@@ -42,11 +49,13 @@ class DetermineMatchResult
         $matchCompleted = static::matchCompletedByServer($stateChanges);
 
         $decided = $thresholdMet || $conceded || $matchCompleted || $matchScoreExists || $disconnectDetected;
+        $authoritative = $matchScoreExists || $thresholdMet;
 
         return [
             'wins' => $wins,
             'losses' => $losses,
             'decided' => $decided,
+            'authoritative' => $authoritative,
         ];
     }
 

@@ -3,43 +3,31 @@ import OverlayLayout from '@/Layouts/OverlayLayout.vue';
 import type { OpponentData } from '@/components/leagues/OpponentScout.vue';
 import OpponentScoutComponent from '@/components/leagues/OpponentScout.vue';
 import { router } from '@inertiajs/vue3';
-import { onMounted, onUnmounted, watch } from 'vue';
+import { onMounted, onUnmounted } from 'vue';
 
 defineOptions({ layout: OverlayLayout });
 
-const props = defineProps<{
+defineProps<{
     opponent: OpponentData | null;
 }>();
 
 let interval: ReturnType<typeof setInterval> | null = null;
 
-const stopPolling = () => {
-    if (interval) {
-        clearInterval(interval);
-        interval = null;
-    }
-};
-
 onMounted(() => {
-    if (props.opponent?.lastArchetype) {
-        return;
-    }
-
+    // Always poll while the window is open — opponent changes between
+    // matches, and having the archetype for the current match doesn't
+    // mean we have it for the next one.
     interval = setInterval(() => {
         router.reload({ only: ['opponent'] });
     }, 5000);
 });
 
-watch(
-    () => props.opponent?.lastArchetype,
-    (archetype) => {
-        if (archetype) {
-            stopPolling();
-        }
-    },
-);
-
-onUnmounted(stopPolling);
+onUnmounted(() => {
+    if (interval) {
+        clearInterval(interval);
+        interval = null;
+    }
+});
 </script>
 
 <template>

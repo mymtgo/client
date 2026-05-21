@@ -11,8 +11,10 @@ class ResolveMatchFromHistory
     /**
      * Resolve a match using match history W-L data.
      *
-     * Backfills Game.won on existing records (best guess, game order).
-     * Does NOT create missing Game records.
+     * Writes match-level outcome and aggregate counts only. Per-game
+     * Game.won is owned by SyncGamePivots (driven by the actual game log)
+     * because mtgo_game_history records only aggregate W-L, not per-game
+     * winners — any per-game inference here would be a guess.
      *
      * @param  array{wins: int, losses: int}  $result
      */
@@ -20,29 +22,12 @@ class ResolveMatchFromHistory
     {
         $outcome = MtgoMatch::determineOutcome($result['wins'], $result['losses']);
 
-        // Backfill Game.won on existing games where won is null
-        $games = $match->games()->orderBy('started_at')->get();
-        $winsToAssign = $result['wins'];
-        $lossesToAssign = $result['losses'];
-
-        foreach ($games as $game) {
-            if ($game->won !== null) {
-                continue;
-            }
-
-            if ($winsToAssign > 0) {
-                $game->update(['won' => true]);
-                $winsToAssign--;
-            } elseif ($lossesToAssign > 0) {
-                $game->update(['won' => false]);
-                $lossesToAssign--;
-            }
-        }
-
         $previousState = $match->state;
 
         $match->update([
             'outcome' => $outcome,
+            'games_won' => $result['wins'],
+            'games_lost' => $result['losses'],
             'state' => MatchState::Complete,
             'ended_at' => $match->ended_at ?? now(),
         ]);

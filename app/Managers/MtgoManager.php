@@ -247,8 +247,7 @@ class MtgoManager
         // match creation → game log parsing → result resolution.
         $schedule->call(fn () => RunPipeline::run())
             ->everyTwoSeconds()
-            ->name('process_matches')
-            ->withoutOverlapping(10);
+            ->name('process_matches');
 
         $schedule->call(fn () => ReconcileStuckMatches::run())
             ->everyThirtySeconds()

@@ -5,6 +5,7 @@ namespace App\Actions\Pipeline;
 use App\Actions\Matches\DetermineMatchResult;
 use App\Actions\Matches\ExtractGameResults;
 use App\Actions\Matches\ParseGameLogBinary;
+use App\Actions\Matches\ParseMatchHistory;
 use App\Actions\Matches\SyncGamePivots;
 use App\Enums\MatchState;
 use App\Facades\Mtgo;
@@ -77,30 +78,60 @@ class ResolveGameResults
             disconnectDetected: $disconnectDetected,
         );
 
-        if ($result['decided']) {
-            $previousState = $match->state;
-            $outcome = MtgoMatch::determineOutcome($result['wins'], $result['losses']);
+        if (! $result['decided']) {
+            return;
+        }
 
-            $endedAt = $match->ended_at;
-            if ($match->state === MatchState::InProgress) {
-                $lastTs = end($entries)['timestamp'] ?? null;
-                $endedAt = $lastTs
-                    ? Carbon::parse($lastTs)
-                    : now();
+        $wins = $result['wins'];
+        $losses = $result['losses'];
+        $source = 'game_log';
+
+        // Server says the match ended but our per-game count is partial
+        // (game-end events lag behind the MatchCompletedState event, and
+        // the final game's .dat file may not be flushed yet). Consult
+        // mtgo_game_history, which is authoritative once MTGO has written
+        // it. If history is still a 0-0 placeholder, hold off — the next
+        // tick (or ReconcileStuckMatches) will pick it up.
+        if (! $result['authoritative']) {
+            $historyResult = ParseMatchHistory::findResult($match->mtgo_id);
+
+            if ($historyResult === null) {
+                Log::channel('pipeline')->info("Match {$match->mtgo_id}: server-completed but history not ready — deferring", [
+                    'game_log_count' => "{$wins}-{$losses}",
+                ]);
+
+                return;
             }
 
-            $match->update([
-                'outcome' => $outcome,
-                'state' => MatchState::Complete,
-                'ended_at' => $endedAt,
-            ]);
-
-            Log::channel('pipeline')->info("Match {$match->mtgo_id}: {$previousState->value} → Complete", [
-                'result' => "{$result['wins']}-{$result['losses']}",
-                'outcome' => $outcome->value,
-                'source' => 'game_log',
-            ]);
+            $wins = $historyResult['wins'];
+            $losses = $historyResult['losses'];
+            $source = 'match_history';
         }
+
+        $previousState = $match->state;
+        $outcome = MtgoMatch::determineOutcome($wins, $losses);
+
+        $endedAt = $match->ended_at;
+        if ($match->state === MatchState::InProgress) {
+            $lastTs = end($entries)['timestamp'] ?? null;
+            $endedAt = $lastTs
+                ? Carbon::parse($lastTs)
+                : now();
+        }
+
+        $match->update([
+            'outcome' => $outcome,
+            'games_won' => $wins,
+            'games_lost' => $losses,
+            'state' => MatchState::Complete,
+            'ended_at' => $endedAt,
+        ]);
+
+        Log::channel('pipeline')->info("Match {$match->mtgo_id}: {$previousState->value} → Complete", [
+            'result' => "{$wins}-{$losses}",
+            'outcome' => $outcome->value,
+            'source' => $source,
+        ]);
     }
 
     /**
