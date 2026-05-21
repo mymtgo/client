@@ -5,7 +5,7 @@ namespace App\Managers;
 use App\Actions\Cards\EnqueueCardStats;
 use App\Actions\Logs\FindMtgoLogPath;
 use App\Actions\Logs\GetLogFilePaths;
-use App\Actions\Logs\IngestLog;
+use App\Actions\Logs\IngestLogInstance;
 use App\Actions\Logs\PruneProcessedLogEvents;
 use App\Actions\Pipeline\RunPipeline;
 use App\Actions\RegisterDevice;
@@ -223,7 +223,7 @@ class MtgoManager
             return;
         }
 
-        FindMtgoLogPath::all()->each(fn (string $path) => IngestLog::run($path));
+        FindMtgoLogPath::all()->each(fn (string $path) => IngestLogInstance::run($path));
     }
 
     public function populateMissingCardData(bool $sync = false): void
