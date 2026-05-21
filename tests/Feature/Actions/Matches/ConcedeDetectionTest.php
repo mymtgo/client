@@ -3,6 +3,7 @@
 use App\Actions\Matches\DetermineMatchResult;
 use App\Enums\LogEventType;
 use App\Models\LogEvent;
+use App\Models\LogInstance;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -10,6 +11,7 @@ uses(RefreshDatabase::class);
 function makeStateChangeEvent(string $context): LogEvent
 {
     return LogEvent::create([
+        'log_instance_id' => LogInstance::factory()->create()->id,
         'file_path' => '/tmp/test.log',
         'byte_offset_start' => rand(0, 999999),
         'byte_offset_end' => rand(1000000, 9999999),

@@ -3,6 +3,7 @@
 use App\Facades\AppSettings;
 use App\Jobs\ShipTournamentObservations;
 use App\Models\LogEvent;
+use App\Models\LogInstance;
 use App\Models\TournamentObservationQueue;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
@@ -22,6 +23,7 @@ beforeEach(function () {
 function enqueueObservation(string $eventType = 'tournament_sync'): TournamentObservationQueue
 {
     $logEvent = LogEvent::create([
+        'log_instance_id' => LogInstance::factory()->create()->id,
         'file_path' => '/tmp/fake.log',
         'byte_offset_start' => 0,
         'byte_offset_end' => 10,

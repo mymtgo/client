@@ -2,6 +2,7 @@
 
 use App\Managers\MtgoManager;
 use App\Models\LogEvent;
+use App\Models\LogInstance;
 use App\Models\MtgoMatch;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
@@ -18,6 +19,7 @@ beforeEach(function () {
 
 it('excludes league_joined events from match discovery', function () {
     LogEvent::create([
+        'log_instance_id' => LogInstance::factory()->create()->id,
         'file_path' => '/test/log.txt',
         'byte_offset_start' => 1,
         'byte_offset_end' => 100,
@@ -40,6 +42,7 @@ it('excludes league_joined events from match discovery', function () {
 
 it('marks stale events as processed when no join event exists after 2 minutes', function () {
     $event = LogEvent::create([
+        'log_instance_id' => LogInstance::factory()->create()->id,
         'file_path' => '/test/log.txt',
         'byte_offset_start' => 1,
         'byte_offset_end' => 100,
@@ -64,6 +67,7 @@ it('marks stale events as processed when no join event exists after 2 minutes', 
 
 it('does not mark fresh events as processed when no join event exists', function () {
     $event = LogEvent::create([
+        'log_instance_id' => LogInstance::factory()->create()->id,
         'file_path' => '/test/log.txt',
         'byte_offset_start' => 1,
         'byte_offset_end' => 100,

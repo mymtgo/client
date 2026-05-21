@@ -2,6 +2,7 @@
 
 use App\Actions\Matches\AdvanceMatchState;
 use App\Models\LogEvent;
+use App\Models\LogInstance;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -16,6 +17,7 @@ it('stamps tournament_event_id and tournament_round on join when Description car
 
     // Simulate the raw log being ingested as a game_management_json event.
     LogEvent::create([
+        'log_instance_id' => LogInstance::factory()->create()->id,
         'file_path' => '/tmp/fake.log',
         'byte_offset_start' => 0,
         'byte_offset_end' => strlen($firstBlock),
@@ -48,6 +50,7 @@ it('leaves tournament fields null for non-tournament matches', function () {
     $rawJoin = '12:00:00 [INF] (Game Management|Processing Registered Handler for GsMessageMessage in MatchJoinedEventUnderwayState) Processor: MatchJoinedEventUnderwayState Message: {"MatchToken":"'.$matchToken.'","MatchID":'.$matchId.',"GameID":1} Receiver: Event Token='.$matchToken.'Event Id:'.$matchId.'CurrentStateProcessor=MatchJoinedEventUnderwayStateCurrentState=Joined, EventUnderway, ConnectedDescription=LeagueMatch Id:'.$matchId.'Match Token:'.$matchToken.'PlayFormatCd=CMODERNGameStructureCd= ModernJoinedToGame=TrueAmIHost=FalsePlayerIds=964394,123';
 
     LogEvent::create([
+        'log_instance_id' => LogInstance::factory()->create()->id,
         'file_path' => '/tmp/fake.log',
         'byte_offset_start' => 0,
         'byte_offset_end' => strlen($rawJoin),

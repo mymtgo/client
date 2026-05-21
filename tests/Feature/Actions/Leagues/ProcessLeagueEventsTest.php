@@ -4,6 +4,7 @@ use App\Actions\Leagues\ProcessLeagueEvents;
 use App\Enums\LeagueState;
 use App\Models\League;
 use App\Models\LogEvent;
+use App\Models\LogInstance;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -11,6 +12,7 @@ uses(RefreshDatabase::class);
 function createLeagueJoinRequest(array $overrides = []): LogEvent
 {
     return LogEvent::create(array_merge([
+        'log_instance_id' => LogInstance::factory()->create()->id,
         'file_path' => '/test/log.txt',
         'byte_offset_start' => rand(1, 999999),
         'byte_offset_end' => rand(1, 999999),
@@ -28,6 +30,7 @@ function createLeagueJoinRequest(array $overrides = []): LogEvent
 function createLeaguePanelView(int $eventId = 10397, string $eventToken = 'test-league-token', ?DateTimeInterface $loggedAt = null): LogEvent
 {
     return LogEvent::create([
+        'log_instance_id' => LogInstance::factory()->create()->id,
         'file_path' => '/test/log.txt',
         'byte_offset_start' => rand(1, 999999),
         'byte_offset_end' => rand(1, 999999),
@@ -47,6 +50,7 @@ function createLeaguePanelView(int $eventId = 10397, string $eventToken = 'test-
 function createLeagueDropEvent(?DateTimeInterface $loggedAt = null): LogEvent
 {
     return LogEvent::create([
+        'log_instance_id' => LogInstance::factory()->create()->id,
         'file_path' => '/test/log.txt',
         'byte_offset_start' => rand(1, 999999),
         'byte_offset_end' => rand(1, 999999),
@@ -202,6 +206,7 @@ it('falls back to token lookup when the panel-view event_id has not yet been bac
     // Mark the panel view processed so backfillFromPanelView is skipped,
     // simulating a panel view ingested in a prior tick.
     LogEvent::create([
+        'log_instance_id' => LogInstance::factory()->create()->id,
         'file_path' => '/test/log.txt',
         'byte_offset_start' => rand(1, 999999),
         'byte_offset_end' => rand(1, 999999),

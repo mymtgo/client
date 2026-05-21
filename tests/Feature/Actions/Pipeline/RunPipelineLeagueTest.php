@@ -5,6 +5,7 @@ use App\Enums\LeagueState;
 use App\Managers\MtgoManager;
 use App\Models\League;
 use App\Models\LogEvent;
+use App\Models\LogInstance;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -24,7 +25,10 @@ it('backfills event_id on an Active league when a panel-view event is processed'
         'state' => LeagueState::Active,
     ]);
 
+    $instance = LogInstance::factory()->create();
+
     LogEvent::create([
+        'log_instance_id' => $instance->id,
         'file_path' => '/test/log',
         'byte_offset_start' => 1,
         'byte_offset_end' => 2,
@@ -39,6 +43,7 @@ it('backfills event_id on an Active league when a panel-view event is processed'
     ]);
 
     LogEvent::create([
+        'log_instance_id' => $instance->id,
         'file_path' => '/test/log',
         'byte_offset_start' => 3,
         'byte_offset_end' => 4,
@@ -61,7 +66,10 @@ it('backfills event_id on an Active league when a panel-view event is processed'
 });
 
 it('marks league_joined events as processed after a pipeline tick', function () {
+    $instance = LogInstance::factory()->create();
+
     LogEvent::create([
+        'log_instance_id' => $instance->id,
         'file_path' => '/test/log',
         'byte_offset_start' => 1,
         'byte_offset_end' => 2,
@@ -76,6 +84,7 @@ it('marks league_joined events as processed after a pipeline tick', function () 
     ]);
 
     $joinEvent = LogEvent::create([
+        'log_instance_id' => $instance->id,
         'file_path' => '/test/log',
         'byte_offset_start' => 3,
         'byte_offset_end' => 4,
