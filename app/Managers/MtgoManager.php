@@ -7,6 +7,7 @@ use App\Actions\Logs\FindMtgoLogPath;
 use App\Actions\Logs\GetLogFilePaths;
 use App\Actions\Logs\IngestLogInstance;
 use App\Actions\Logs\PruneProcessedLogEvents;
+use App\Actions\Matches\ReconcileStuckMatches;
 use App\Actions\Pipeline\RunPipeline;
 use App\Actions\RegisterDevice;
 use App\Actions\Settings\ValidatePath;
@@ -246,7 +247,13 @@ class MtgoManager
         // match creation → game log parsing → result resolution.
         $schedule->call(fn () => RunPipeline::run())
             ->everyTwoSeconds()
-            ->name('process_matches');
+            ->name('process_matches')
+            ->withoutOverlapping(10);
+
+        $schedule->call(fn () => ReconcileStuckMatches::run())
+            ->everyThirtySeconds()
+            ->name('reconcile_stuck_matches')
+            ->withoutOverlapping(60);
 
         // Periodic maintenance (unchanged)
         $schedule->call(fn () => $this->retryUnsubmittedMatches())
