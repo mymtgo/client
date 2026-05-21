@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Models\LogEvent;
+use App\Models\LogInstance;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -18,6 +19,7 @@ class LogEventFactory extends Factory
     public function definition(): array
     {
         return [
+            'log_instance_id' => LogInstance::factory(),
             'file_path' => '/tmp/fake.log',
             'byte_offset_start' => fake()->unique()->numberBetween(0, 9_999_999),
             'byte_offset_end' => fake()->numberBetween(100, 200),
