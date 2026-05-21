@@ -1,6 +1,5 @@
 <?php
 
-use App\Actions\Matches\ReconcileStuckMatches;
 use App\Events\LogInstanceSealed;
 use App\Listeners\ResolveMatchesOnInstanceSealed;
 use Illuminate\Support\Facades\Event;
@@ -14,9 +13,12 @@ it('is registered as a listener for LogInstanceSealed', function () {
 });
 
 it('invokes ReconcileStuckMatches when handled', function () {
-    Mockery::mock('alias:'.ReconcileStuckMatches::class)
-        ->shouldReceive('run')
-        ->once();
+    $called = false;
+    $listener = new ResolveMatchesOnInstanceSealed(function () use (&$called) {
+        $called = true;
+    });
 
-    (new ResolveMatchesOnInstanceSealed)->handle(new LogInstanceSealed(1, 'truncated'));
+    $listener->handle(new LogInstanceSealed(1, 'truncated'));
+
+    expect($called)->toBeTrue();
 });
