@@ -43,6 +43,7 @@ class NativeAppServiceProvider implements ProvidesPhpIni
             ->minHeight(800)
             ->minWidth(1200)
             ->movable()
+            ->hideOnClose()
             ->title('mymtgo');
 
         Mtgo::runInitialSetup();
