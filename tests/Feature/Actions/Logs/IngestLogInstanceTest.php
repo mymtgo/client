@@ -1,6 +1,7 @@
 <?php
 
 use App\Actions\Logs\IngestLogInstance;
+use App\Models\Account;
 use App\Models\LogCursor;
 use App\Models\LogEvent;
 use App\Models\LogInstance;
@@ -141,4 +142,109 @@ it('does nothing for a non-existent path', function () {
 
     expect(LogInstance::count())->toBe(0)
         ->and(LogCursor::count())->toBe(0);
+});
+
+it('does nothing for a null path', function () {
+    IngestLogInstance::run(null);
+
+    expect(LogEvent::count())->toBe(0)
+        ->and(LogInstance::count())->toBe(0)
+        ->and(LogCursor::count())->toBe(0);
+});
+
+it('captures local_username on the active LogInstance when a Login event is parsed', function () {
+    writeLog($this->logPath, "15:52:41 [INF] (Login|MtGO Login Success) Username: testplayer (3022021)\n");
+
+    IngestLogInstance::run($this->logPath);
+
+    $instance = LogInstance::query()->whereNull('sealed_at')->first();
+    expect($instance->local_username)->toBe('testplayer');
+});
+
+it('updates local_username when the account switches mid-session', function () {
+    writeLog($this->logPath, "15:52:41 [INF] (Login|MtGO Login Success) Username: player_one (3022021)\n");
+    IngestLogInstance::run($this->logPath);
+
+    expect(LogInstance::query()->whereNull('sealed_at')->value('local_username'))->toBe('player_one');
+
+    file_put_contents(
+        $this->logPath,
+        "16:10:00 [INF] (Login|MtGO Login Success) Username: player_two (4055032)\n",
+        FILE_APPEND
+    );
+    IngestLogInstance::run($this->logPath);
+
+    expect(LogInstance::query()->whereNull('sealed_at')->value('local_username'))->toBe('player_two');
+});
+
+it('registers and activates new Accounts on login detection', function () {
+    writeLog($this->logPath, "15:52:41 [INF] (Login|MtGO Login Success) Username: newplayer (3022021)\n");
+
+    IngestLogInstance::run($this->logPath);
+
+    $account = Account::where('username', 'newplayer')->first();
+    expect($account)->not->toBeNull()
+        ->and($account->tracked)->toBeTrue()
+        ->and($account->active)->toBeTrue();
+});
+
+it('is idempotent — running twice on the same file does not duplicate events', function () {
+    writeLog($this->logPath, loginLine().classifyableLine());
+
+    IngestLogInstance::run($this->logPath);
+    $countAfterFirst = LogEvent::count();
+
+    IngestLogInstance::run($this->logPath);
+
+    expect(LogEvent::count())->toBe($countAfterFirst);
+});
+
+it('classifies match_state_changed events and preserves the match_token', function () {
+    writeLog($this->logPath, classifyableLine());
+
+    IngestLogInstance::run($this->logPath);
+
+    $event = LogEvent::where('event_type', 'match_state_changed')->first();
+    expect($event)->not->toBeNull()
+        ->and($event->match_token)->toBe('aaaa-1111');
+});
+
+it('preserves tournament_token when ingesting tournament_state_changed events', function () {
+    $content = file_get_contents(base_path('tests/Fixtures/log_samples/tournament_state_changed.txt'));
+    writeLog($this->logPath, rtrim($content)."\n");
+
+    IngestLogInstance::run($this->logPath);
+
+    $event = LogEvent::where('event_type', 'tournament_state_changed')->first();
+    expect($event)->not->toBeNull()
+        ->and($event->tournament_token)->toBe('b197b9e8-0d08-4227-aa17-ba38cb4c1731');
+});
+
+it('does not commit incomplete events at end of file (no trailing newline)', function () {
+    writeLog(
+        $this->logPath,
+        "15:04:11 [INF] (Game Management|Match State Changed for cccc-3333 from X to Y) Complete event.\n".
+        '15:04:12 [INF] (Game Management|Match State Changed for dddd-4444 from X to Y) This has no newline'
+    );
+
+    IngestLogInstance::run($this->logPath);
+
+    $events = LogEvent::all();
+    expect($events)->toHaveCount(1)
+        ->and($events->first()->match_token)->toBe('cccc-3333');
+});
+
+it('persists events across multiple 500-row insert chunks', function () {
+    $lines = [];
+    for ($i = 0; $i < 650; $i++) {
+        $time = sprintf('15:%02d:%02d', intdiv($i, 60) % 60, $i % 60);
+        $token = sprintf('%04d-0000-0000-0000-000000000000', $i);
+        $lines[] = "{$time} [INF] (Game Management|Match State Changed for {$token} from X to Y) Log line number {$i}.";
+    }
+    writeLog($this->logPath, implode("\n", $lines)."\n");
+
+    IngestLogInstance::run($this->logPath);
+
+    expect(LogEvent::count())->toBe(650)
+        ->and(LogCursor::first()->byte_offset)->toBe(filesize($this->logPath));
 });
