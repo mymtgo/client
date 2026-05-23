@@ -6,8 +6,6 @@ use App\Actions\RegisterDevice;
 use App\Facades\AppSettings;
 use App\Listeners\Tray\HandleTrayClick;
 use App\Managers\MtgoManager;
-use App\Models\LogCursor;
-use App\Observers\LogCursorObserver;
 use App\Settings\AppSettings as ConcreteAppSettings;
 use App\Settings\MigrateSettingsToJson;
 use Carbon\Carbon;
@@ -43,8 +41,6 @@ class AppServiceProvider extends ServiceProvider
             MenuBarClicked::class,
             HandleTrayClick::class,
         );
-
-        LogCursor::observe(LogCursorObserver::class);
 
         if (! Storage::disk()->exists('settings.json')) {
             (new MigrateSettingsToJson)->run();

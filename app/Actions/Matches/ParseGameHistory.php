@@ -136,7 +136,7 @@ class ParseGameHistory
      */
     public static function run(?string $path = null): array
     {
-        return Cache::remember('mtgo.game_history', now()->addSeconds(30), function () use ($path) {
+        return Cache::remember('mtgo.game_history', now()->addSeconds(20), function () use ($path) {
             return static::parse($path);
         });
     }

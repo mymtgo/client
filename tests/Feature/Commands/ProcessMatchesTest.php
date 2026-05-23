@@ -4,6 +4,7 @@ use App\Enums\MatchOutcome;
 use App\Enums\MatchState;
 use App\Managers\MtgoManager;
 use App\Models\LogEvent;
+use App\Models\LogInstance;
 use App\Models\MtgoMatch;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -12,6 +13,7 @@ uses(RefreshDatabase::class);
 function createPipelineLogEvent(array $attributes = []): LogEvent
 {
     return LogEvent::create(array_merge([
+        'log_instance_id' => LogInstance::factory()->create()->id,
         'file_path' => '/tmp/test.log',
         'byte_offset_start' => rand(0, 999999),
         'byte_offset_end' => rand(1000000, 9999999),

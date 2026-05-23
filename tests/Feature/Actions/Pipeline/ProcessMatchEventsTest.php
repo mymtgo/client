@@ -4,6 +4,7 @@ use App\Actions\Pipeline\ProcessMatchEvents;
 use App\Enums\MatchState;
 use App\Models\Account;
 use App\Models\LogEvent;
+use App\Models\LogInstance;
 use App\Models\MtgoMatch;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -30,6 +31,7 @@ function createMatchEvents(string $token, string $matchId, string $localUsername
     ]);
 
     $base = [
+        'log_instance_id' => LogInstance::factory()->create()->id,
         'file_path' => '/tmp/test.log',
         'timestamp' => now()->format('H:i:s'),
         'level' => 'Info',

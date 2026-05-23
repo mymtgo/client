@@ -2,6 +2,7 @@
 
 use App\Actions\Matches\DetermineMatchResult;
 use App\Models\LogEvent;
+use App\Models\LogInstance;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -18,6 +19,7 @@ function games(array $games): array
 it('does not inflate results on concession', function () {
     $stateChanges = collect([
         LogEvent::create([
+            'log_instance_id' => LogInstance::factory()->create()->id,
             'file_path' => '/tmp/test.log',
             'byte_offset_start' => 0,
             'byte_offset_end' => 100,

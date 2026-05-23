@@ -12,7 +12,10 @@ class IndexController extends Controller
     public function __invoke(): Response
     {
         return Inertia::render('debug/LogCursors', [
-            'logCursors' => LogCursor::query()->orderByDesc('id')->paginate(50),
+            'logCursors' => LogCursor::query()
+                ->with('logInstance')
+                ->orderByDesc('id')
+                ->paginate(50),
         ]);
     }
 }

@@ -11,9 +11,25 @@ const { add: toast } = useToast();
 
 usePoll(10000);
 
+type LogCursor = {
+    id: number;
+    stuck_ticks: number;
+    last_advance_at?: string | null;
+    updated_at?: string | null;
+    log_instance?: {
+        id: number;
+        file_path: string;
+        local_username?: string | null;
+        head_hash?: string | null;
+        sealed_at?: string | null;
+        seal_reason?: string | null;
+    } | null;
+    [key: string]: unknown;
+};
+
 const props = defineProps<{
     logCursors: {
-        data: Array<Record<string, unknown>>;
+        data: LogCursor[];
         links: Array<{ url: string | null; label: string; active: boolean }>;
         current_page: number;
         last_page: number;
@@ -25,9 +41,11 @@ const columns = [
     { key: 'local_username', label: 'Username' },
     { key: 'file_path', label: 'File Path' },
     { key: 'byte_offset', label: 'Byte Offset' },
-    { key: 'file_size', label: 'File Size' },
-    { key: 'file_mtime', label: 'File Mtime' },
+    { key: 'last_observed_size', label: 'Last Observed Size' },
+    { key: 'stuck_ticks', label: 'Stuck Ticks' },
+    { key: 'last_advance_at', label: 'Last Advance' },
     { key: 'head_hash', label: 'Head Hash' },
+    { key: 'seal_status', label: 'Seal Status' },
     { key: 'updated_at', label: 'Updated At' },
 ];
 
@@ -59,17 +77,26 @@ function refresh() {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        <tr v-for="cursor in logCursors.data" :key="cursor.id as number">
+                        <tr v-for="cursor in logCursors.data" :key="cursor.id">
                             <TableCell v-for="col in columns" :key="col.key" class="whitespace-nowrap px-2 py-1.5 text-xs">
                                 <template v-if="col.key === 'file_path'">
-                                    <span class="max-w-[300px] truncate block" :title="cursor[col.key] as string">
-                                        {{ cursor[col.key] }}
+                                    <span class="block max-w-[300px] truncate" :title="cursor.log_instance?.file_path ?? ''">
+                                        {{ cursor.log_instance?.file_path ?? '—' }}
                                     </span>
+                                </template>
+                                <template v-else-if="col.key === 'local_username'">
+                                    {{ cursor.log_instance?.local_username ?? '—' }}
                                 </template>
                                 <template v-else-if="col.key === 'head_hash'">
                                     <span class="font-mono text-muted-foreground">
-                                        {{ cursor[col.key] ? (cursor[col.key] as string).substring(0, 8) : '—' }}
+                                        {{ cursor.log_instance?.head_hash ? cursor.log_instance.head_hash.substring(0, 8) : '—' }}
                                     </span>
+                                </template>
+                                <template v-else-if="col.key === 'seal_status'">
+                                    <span v-if="cursor.log_instance?.sealed_at" class="text-muted-foreground" :title="cursor.log_instance.sealed_at">
+                                        {{ cursor.log_instance.seal_reason ?? 'sealed' }}
+                                    </span>
+                                    <span v-else class="text-emerald-500">active</span>
                                 </template>
                                 <template v-else>
                                     {{ cursor[col.key] ?? '—' }}

@@ -3,6 +3,7 @@
 use App\Actions\Tournaments\EnqueueTournamentObservations;
 use App\Enums\LogEventType;
 use App\Models\LogEvent;
+use App\Models\LogInstance;
 use App\Models\TournamentObservationQueue;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -11,6 +12,7 @@ uses(RefreshDatabase::class);
 function makeClassifiedLogEvent(string $eventType, ?string $tournamentToken, ?string $matchToken, string $rawText): LogEvent
 {
     return LogEvent::create([
+        'log_instance_id' => LogInstance::factory()->create()->id,
         'file_path' => '/tmp/fake.log',
         'byte_offset_start' => 0,
         'byte_offset_end' => strlen($rawText),
@@ -62,6 +64,7 @@ it('skips log events that are already enqueued', function () {
 
 it('ignores non-tournament log events', function () {
     LogEvent::create([
+        'log_instance_id' => LogInstance::factory()->create()->id,
         'file_path' => '/tmp/fake.log',
         'byte_offset_start' => 0,
         'byte_offset_end' => 10,

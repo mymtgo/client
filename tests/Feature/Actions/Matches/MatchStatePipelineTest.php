@@ -9,6 +9,7 @@ use App\Models\Deck;
 use App\Models\DeckVersion;
 use App\Models\LogCursor;
 use App\Models\LogEvent;
+use App\Models\LogInstance;
 use App\Models\MtgoMatch;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
@@ -24,13 +25,18 @@ beforeEach(function () {
 });
 
 it('does not create matches for foreign match tokens without join events', function () {
-    LogCursor::create([
+    $instance = LogInstance::factory()->create([
         'file_path' => '/test/log',
-        'byte_offset' => 0,
         'local_username' => 'TestPlayer',
     ]);
 
+    LogCursor::create([
+        'log_instance_id' => $instance->id,
+        'byte_offset' => 0,
+    ]);
+
     LogEvent::create([
+        'log_instance_id' => $instance->id,
         'file_path' => '/test/log',
         'byte_offset_start' => 0,
         'byte_offset_end' => 100,
