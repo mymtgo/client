@@ -234,6 +234,46 @@ it('does not commit incomplete events at end of file (no trailing newline)', fun
         ->and($events->first()->match_token)->toBe('cccc-3333');
 });
 
+it('recovers when a concurrent tick wins the cursor INSERT race', function () {
+    // Regression: with everyTwoSeconds() scheduling and no overlap guard,
+    // two ticks would both see $instance->cursor === null and race
+    // LogCursor::create(['log_instance_id' => X]). The loser hit a UNIQUE
+    // violation on log_cursors.log_instance_id and aborted RunPipeline.
+    //
+    // Simulate the race: create an unsealed instance for the live path,
+    // pre-seed its cursor (the "winning" tick), then run IngestLogInstance
+    // with the in-memory model's cursor relation NOT pre-loaded — forcing
+    // the run() path to enter createCursor() and discover the existing row.
+
+    writeLog($this->logPath, loginLine());
+
+    IngestLogInstance::run($this->logPath);
+
+    expect(LogInstance::count())->toBe(1)
+        ->and(LogCursor::count())->toBe(1);
+
+    $instance = LogInstance::first();
+    $instance->cursor()->delete();
+    LogCursor::create(['log_instance_id' => $instance->id]);
+
+    // Bust the eager-loaded cursor cache by re-querying. The path through
+    // resolveActiveInstance does ->with('cursor') which would mask the race;
+    // this test exercises the fallback by calling createCursor directly
+    // against an instance whose cursor relation hasn't been loaded.
+    $reloaded = LogInstance::find($instance->id);
+    expect($reloaded->relationLoaded('cursor'))->toBeFalse();
+
+    $reflection = new ReflectionClass(IngestLogInstance::class);
+    $method = $reflection->getMethod('createCursor');
+    $method->setAccessible(true);
+
+    $cursor = $method->invoke(null, $reloaded);
+
+    expect($cursor)->toBeInstanceOf(LogCursor::class)
+        ->and(LogCursor::count())->toBe(1)
+        ->and($cursor->log_instance_id)->toBe($instance->id);
+});
+
 it('persists events across multiple 500-row insert chunks', function () {
     $lines = [];
     for ($i = 0; $i < 650; $i++) {

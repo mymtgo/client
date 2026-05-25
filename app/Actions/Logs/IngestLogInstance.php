@@ -8,6 +8,7 @@ use App\Models\LogEvent;
 use App\Models\LogInstance;
 use App\Support\TimedTransaction;
 use Carbon\Carbon;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\Log;
 
 class IngestLogInstance
@@ -34,7 +35,7 @@ class IngestLogInstance
             return; // sealed only; new instance created on next tick
         }
 
-        $cursor = $instance->cursor ?? LogCursor::create(['log_instance_id' => $instance->id]);
+        $cursor = $instance->cursor ?? static::createCursor($instance);
 
         // Stuck-tick force-reset before ingesting.
         if ($cursor->stuck_ticks >= self::STUCK_THRESHOLD) {
@@ -269,6 +270,22 @@ class IngestLogInstance
         }
 
         return $advanced;
+    }
+
+    /**
+     * Create (or fetch) the cursor for this instance, tolerating a race where
+     * a concurrent pipeline tick beat us to the INSERT. The new log_cursors
+     * table has UNIQUE(log_instance_id), so two ticks both seeing $instance->
+     * cursor === null and racing LogCursor::create() will hit a constraint
+     * violation on the loser — we recover by re-fetching the winning row.
+     */
+    protected static function createCursor(LogInstance $instance): LogCursor
+    {
+        try {
+            return LogCursor::create(['log_instance_id' => $instance->id]);
+        } catch (UniqueConstraintViolationException) {
+            return LogCursor::where('log_instance_id', $instance->id)->firstOrFail();
+        }
     }
 
     protected static function isNewEventLine(string $line): bool

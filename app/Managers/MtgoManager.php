@@ -244,9 +244,16 @@ class MtgoManager
         // ── Unified pipeline (every 2s) ──────────────────────────────
         // Single command owns the entire lifecycle: log ingest →
         // match creation → game log parsing → result resolution.
+        //
+        // withoutOverlapping prevents stacked ticks from racing on
+        // LogCursor creation when a single tick takes longer than 2s
+        // (e.g. catching up a large backlog after recovery from a stuck
+        // pipeline). 2-minute mutex TTL so a genuinely hung tick frees
+        // the lock instead of stalling forever.
         $schedule->call(fn () => RunPipeline::run())
             ->everyTwoSeconds()
-            ->name('process_matches');
+            ->name('process_matches')
+            ->withoutOverlapping(2);
 
         // Periodic maintenance (unchanged)
         $schedule->call(fn () => $this->retryUnsubmittedMatches())
