@@ -9,24 +9,33 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (Schema::hasTable('log_cursors')) {
-            Schema::create('log_cursors_legacy_snapshot', function (Blueprint $table) {
-                $table->id();
-                $table->string('file_path', 1024);
-                $table->unsignedBigInteger('byte_offset')->default(0);
-                $table->unsignedBigInteger('file_mtime')->nullable();
-                $table->unsignedBigInteger('file_size')->nullable();
-                $table->string('head_hash', 40)->nullable();
-                $table->string('local_username')->nullable();
-                $table->timestamps();
-            });
+        // Idempotency: if log_cursors already has log_instance_id we've
+        // already rewritten the table on a prior run. See migration 100100
+        // for the partial-state scenario this guards against.
+        if (Schema::hasTable('log_cursors') && Schema::hasColumn('log_cursors', 'log_instance_id')) {
+            return;
+        }
 
-            DB::table('log_cursors_legacy_snapshot')->insertUsing(
-                ['id', 'file_path', 'byte_offset', 'file_mtime', 'file_size', 'head_hash', 'local_username', 'created_at', 'updated_at'],
-                DB::table('log_cursors')->select(
-                    'id', 'file_path', 'byte_offset', 'file_mtime', 'file_size', 'head_hash', 'local_username', 'created_at', 'updated_at'
-                )
-            );
+        if (Schema::hasTable('log_cursors')) {
+            if (! Schema::hasTable('log_cursors_legacy_snapshot')) {
+                Schema::create('log_cursors_legacy_snapshot', function (Blueprint $table) {
+                    $table->id();
+                    $table->string('file_path', 1024);
+                    $table->unsignedBigInteger('byte_offset')->default(0);
+                    $table->unsignedBigInteger('file_mtime')->nullable();
+                    $table->unsignedBigInteger('file_size')->nullable();
+                    $table->string('head_hash', 40)->nullable();
+                    $table->string('local_username')->nullable();
+                    $table->timestamps();
+                });
+
+                DB::table('log_cursors_legacy_snapshot')->insertUsing(
+                    ['id', 'file_path', 'byte_offset', 'file_mtime', 'file_size', 'head_hash', 'local_username', 'created_at', 'updated_at'],
+                    DB::table('log_cursors')->select(
+                        'id', 'file_path', 'byte_offset', 'file_mtime', 'file_size', 'head_hash', 'local_username', 'created_at', 'updated_at'
+                    )
+                );
+            }
 
             Schema::drop('log_cursors');
         }

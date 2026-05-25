@@ -8,6 +8,14 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // Idempotency: a prior interrupted run may have added the column
+        // before the migrations row was recorded. Re-running would throw
+        // "duplicate column name" and abort the whole migration batch,
+        // stranding the user on a half-migrated schema.
+        if (Schema::hasColumn('log_events', 'log_instance_id')) {
+            return;
+        }
+
         Schema::table('log_events', function (Blueprint $table) {
             $table->foreignId('log_instance_id')
                 ->nullable()
@@ -19,6 +27,10 @@ return new class extends Migration
 
     public function down(): void
     {
+        if (! Schema::hasColumn('log_events', 'log_instance_id')) {
+            return;
+        }
+
         Schema::table('log_events', function (Blueprint $table) {
             $table->dropConstrainedForeignId('log_instance_id');
         });
