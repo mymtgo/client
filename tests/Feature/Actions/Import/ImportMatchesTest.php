@@ -7,7 +7,6 @@ use App\Models\Card;
 use App\Models\CardGameStat;
 use App\Models\Deck;
 use App\Models\DeckVersion;
-use App\Models\GameLog;
 use App\Models\MtgoMatch;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
@@ -118,7 +117,7 @@ it('skips duplicate mtgo_ids', function () {
     expect($result['skipped'])->toBe(1);
 });
 
-it('creates per-game card stats via game log when importing a match', function () {
+it('creates per-game card stats from deck quantities when importing a match', function () {
     Card::factory()->create(['mtgo_id' => 100, 'oracle_id' => 'oracle-a', 'name' => 'Card A']);
     Card::factory()->create(['mtgo_id' => 200, 'oracle_id' => 'oracle-b', 'name' => 'Card B']);
 
@@ -127,26 +126,6 @@ it('creates per-game card stats via game log when importing a match', function (
     $version = DeckVersion::factory()->create([
         'deck_id' => $deck->id,
         'signature' => $signature,
-    ]);
-
-    $logToken = 'log-token-77';
-    GameLog::create([
-        'match_token' => $logToken,
-        'file_path' => '/fake/path.dat',
-        'decoded_entries' => [
-            ['timestamp' => '2025-06-01T12:00:00+00:00', 'message' => '@P@Panticloser joined the game.'],
-            ['timestamp' => '2025-06-01T12:00:00+00:00', 'message' => '@P@Ptestopponent joined the game.'],
-            ['timestamp' => '2025-06-01T12:00:01+00:00', 'message' => '@Panticloser rolled a 5.'],
-            // Game 1: Card A cast
-            ['timestamp' => '2025-06-01T12:01:00+00:00', 'message' => '@Panticloser casts @[Card A@:200,1:@].'],
-            ['timestamp' => '2025-06-01T12:15:00+00:00', 'message' => '@Panticloser wins the game.'],
-            // Game 2 boundary marker
-            ['timestamp' => '2025-06-01T12:15:30+00:00', 'message' => '@Panticloser rolled a 3.'],
-            // Game 2: A and B cast
-            ['timestamp' => '2025-06-01T12:16:00+00:00', 'message' => '@Panticloser casts @[Card A@:200,2:@].'],
-            ['timestamp' => '2025-06-01T12:17:00+00:00', 'message' => '@Panticloser casts @[Card B@:400,3:@].'],
-            ['timestamp' => '2025-06-01T12:30:00+00:00', 'message' => '@Panticloser wins the game.'],
-        ],
     ]);
 
     $importData = [
@@ -160,7 +139,7 @@ it('creates per-game card stats via game log when importing a match', function (
             'outcome' => 'win',
             'round' => 0,
             'has_game_log' => true,
-            'game_log_token' => $logToken,
+            'game_log_token' => null,
             'local_player' => 'anticloser',
             'local_cards' => [],
             'opponent_cards' => [],
@@ -196,20 +175,16 @@ it('creates per-game card stats via game log when importing a match', function (
     ImportMatches::run($importData);
 
     $match = MtgoMatch::where('mtgo_id', '77777777')->first();
+    expect($match->games)->toHaveCount(2);
 
-    // Game 1: Card A cast (seen=1), Card B in deck but not seen
+    // Card-game stats reflect deck quantities — log-derived signals (cast/seen)
+    // require GameLog bridge which has been removed. Quantity rows still flow
+    // via the deck-version snapshot used by ComputeCardGameStats.
     $game1 = $match->games->sortBy('started_at')->first();
     $game1Stats = CardGameStat::where('game_id', $game1->id)->where('opponent', false)->get();
     expect($game1Stats)->toHaveCount(2);
-    expect($game1Stats->firstWhere('oracle_id', 'oracle-a')->seen)->toBe(1);
-    expect($game1Stats->firstWhere('oracle_id', 'oracle-a')->cast)->toBe(1);
-    expect($game1Stats->firstWhere('oracle_id', 'oracle-b')->seen)->toBe(0);
-
-    // Game 2: both cards cast
-    $game2 = $match->games->sortBy('started_at')->last();
-    $game2Stats = CardGameStat::where('game_id', $game2->id)->where('opponent', false)->get();
-    expect($game2Stats->firstWhere('oracle_id', 'oracle-a')->seen)->toBe(1);
-    expect($game2Stats->firstWhere('oracle_id', 'oracle-b')->seen)->toBe(1);
+    expect($game1Stats->firstWhere('oracle_id', 'oracle-a')->quantity)->toBe(4);
+    expect($game1Stats->firstWhere('oracle_id', 'oracle-b')->quantity)->toBe(2);
 });
 
 it('populates opponent deck_json from per-game opponent cards', function () {
