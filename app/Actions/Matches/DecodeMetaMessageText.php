@@ -8,6 +8,7 @@ class DecodeMetaMessageText
      * Result-phrase regex patterns — every variant ExtractGameResults consumes.
      */
     private const PATTERNS = [
+        // Result phrases
         '/@P[A-Za-z0-9_-]+ rolled a \d+\./',
         '/@P@P[A-Za-z0-9_-]+ joined the game\./',
         '/@P[A-Za-z0-9_-]+ chooses to play (first|second)\./',
@@ -17,6 +18,22 @@ class DecodeMetaMessageText
         '/@P[A-Za-z0-9_-]+ has lost connection to the game\./',
         '/@P[A-Za-z0-9_-]+ (?:leads|wins) the match \d+-\d+/',
         '/Match Tied \d+-\d+/',
+
+        // Card-action phrases (required by ExtractCardsFromGameLog)
+        '/@P[A-Za-z0-9_-]+ casts @\[[^@]+@:\d+,\d+:@\].*/',
+        '/@P[A-Za-z0-9_-]+ plays @\[[^@]+@:\d+,\d+:@\]/',
+        '/@P[A-Za-z0-9_-]+ activates an ability of @\[[^@]+@:\d+,\d+:@\]/',
+        '/@P[A-Za-z0-9_-]+ puts a triggered ability from @\[[^@]+@:\d+,\d+:@\]/',
+        '/@P[A-Za-z0-9_-]+ reveals @\[[^@]+@:\d+,\d+:@\] from their opening hand/',
+        '/@P[A-Za-z0-9_-]+ reveals \d+ cards? with @\[.*/',
+        '/@P[A-Za-z0-9_-]+ reveals @\[[^@]+@:\d+,\d+:@\]/',
+        '/@P[A-Za-z0-9_-]+ discards @\[[^@]+@:\d+,\d+:@\]/',
+        '/@P[A-Za-z0-9_-]+ puts @\[[^@]+@:\d+,\d+:@\] into their graveyard/',
+        '/@P[A-Za-z0-9_-]+ puts @\[[^@]+@:\d+,\d+:@\] onto the battlefield/',
+        "/@P[A-Za-z0-9_-]+'s @\\[[^@]+@:\\d+,\\d+:@\\]/",
+        '/@P[A-Za-z0-9_-]+ names .+ for @\[[^@]+@:\d+,\d+:@\]/',
+        '/@P[A-Za-z0-9_-]+ mulligans to .+/',
+        '/@PTurn \d+:/',
     ];
 
     /**

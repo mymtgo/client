@@ -7,11 +7,11 @@ use App\Actions\Cards\CountSeenCardsByOracle;
 use App\Actions\Cards\UpdateGameMetaFromLog;
 use App\Actions\Import\ExtractCardsFromGameLog;
 use App\Actions\Matches\ExtractGameHandData;
+use App\Actions\Matches\ExtractMetaMessageEntries;
 use App\Models\Card;
 use App\Models\CardGameStat;
 use App\Models\DeckVersion;
 use App\Models\Game;
-use App\Models\GameLog;
 use App\Models\MtgoMatch;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -45,12 +45,10 @@ class ComputeCardGameStats implements ShouldQueue
         // leaves stale rows for cards no longer in the deck or no longer signaled by opp.
         CardGameStat::whereIn('game_id', $games->pluck('id'))->delete();
 
-        $gameLog = GameLog::where('match_token', $match->token)
-            ->whereNotNull('decoded_entries')
-            ->first();
+        $entries = ExtractMetaMessageEntries::run($match->token);
 
-        $gameLogStats = $gameLog?->decoded_entries
-            ? ExtractCardsFromGameLog::run($gameLog->decoded_entries)
+        $gameLogStats = ! empty($entries)
+            ? ExtractCardsFromGameLog::run($entries)
             : null;
 
         $sideboardOracleIds = $this->resolveSideboardOracleIds($match->deck_version_id);
