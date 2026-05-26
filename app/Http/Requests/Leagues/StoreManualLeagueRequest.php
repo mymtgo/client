@@ -26,7 +26,7 @@ class StoreManualLeagueRequest extends FormRequest
                 'integer',
                 Rule::exists('decks', 'id')->where(fn ($q) => $q->where('account_id', $accountId)),
             ],
-            'started_at' => ['required', 'date', 'before_or_equal:now'],
+            'started_at' => ['required', 'date'],
             'name' => ['required', 'string', 'max:100'],
         ];
     }

@@ -97,3 +97,31 @@ it('rejects incomplete matches', function () {
     $this->post("/leagues/{$this->league->id}/matches", ['match_id' => $match->id])
         ->assertSessionHasErrors('match_id');
 });
+
+it('links multiple matches in one request', function () {
+    $matchA = makeLeagueMatch($this->version->id);
+    $matchB = makeLeagueMatch($this->version->id);
+
+    $response = $this->post("/leagues/{$this->league->id}/matches", [
+        'match_ids' => [$matchA->id, $matchB->id],
+    ]);
+
+    $response->assertRedirect();
+    expect($matchA->fresh()->league_id)->toBe($this->league->id);
+    expect($matchB->fresh()->league_id)->toBe($this->league->id);
+});
+
+it('rejects bulk link if it would exceed 5 matches', function () {
+    for ($i = 0; $i < 4; $i++) {
+        makeLeagueMatch($this->version->id, ['league_id' => $this->league->id]);
+    }
+    $a = makeLeagueMatch($this->version->id);
+    $b = makeLeagueMatch($this->version->id);
+
+    $this->post("/leagues/{$this->league->id}/matches", [
+        'match_ids' => [$a->id, $b->id],
+    ])->assertSessionHasErrors('match_id');
+
+    expect($a->fresh()->league_id)->toBeNull();
+    expect($b->fresh()->league_id)->toBeNull();
+});

@@ -79,7 +79,7 @@ const dropDialogRef = ref<InstanceType<typeof LeagueDropDialog> | null>(null);
 const addMatchDialogRef = ref<InstanceType<typeof AddMatchDialog> | null>(null);
 
 function handleAddMatch() {
-    addMatchDialogRef.value?.open(props.league.id);
+    addMatchDialogRef.value?.open(props.league.id, props.league.matches.length);
 }
 
 function handleUnlinkMatch(matchId: number) {

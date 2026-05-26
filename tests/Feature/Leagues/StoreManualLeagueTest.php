@@ -60,11 +60,3 @@ it('rejects decks not owned by the active account', function () {
 
     expect(League::count())->toBe(0);
 });
-
-it('rejects future started_at', function () {
-    $this->post('/leagues', [
-        'deck_id' => $this->deck->id,
-        'started_at' => now()->addDay()->toIso8601String(),
-        'name' => 'Future',
-    ])->assertSessionHasErrors('started_at');
-});
