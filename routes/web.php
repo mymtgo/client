@@ -113,6 +113,7 @@ Route::group([], function (Router $router) {
     $router->group([
         'prefix' => 'leagues',
     ], function (Router $group) {
+        $group->post('/', App\Http\Controllers\Leagues\StoreController::class)->name('leagues.store');
         $group->get('/', App\Http\Controllers\Leagues\IndexController::class)->name('leagues.index');
         $group->get('overlay', OverlayController::class)->name('leagues.overlay');
         $group->get('opponent-scout', OpponentScoutWindowController::class)->name('leagues.opponent-scout');
