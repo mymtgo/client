@@ -16,7 +16,7 @@ class StoreController extends Controller
     public function __invoke(StoreManualLeagueRequest $request): RedirectResponse
     {
         $deck = Deck::query()->findOrFail($request->integer('deck_id'));
-        $latestVersion = $deck->versions()->orderByDesc('modified_at')->firstOrFail();
+        $latestVersion = $deck->latestVersion()->firstOrFail();
 
         $startedAt = Carbon::parse($request->input('started_at'));
 

@@ -33,7 +33,7 @@ it('creates a complete manual league bound to the latest deck version', function
         'name' => 'Modern League 26-05-2026 08:00pm',
     ]);
 
-    $response->assertRedirect();
+    $response->assertRedirect(route('leagues.index'));
 
     $league = League::query()->latest('id')->first();
     expect($league)->not->toBeNull()
