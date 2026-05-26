@@ -55,7 +55,7 @@ it('rejects matches from a different deck', function () {
     $match = makeLeagueMatch($otherVersion->id);
 
     $this->post("/leagues/{$this->league->id}/matches", ['match_id' => $match->id])
-        ->assertStatus(422);
+        ->assertSessionHasErrors('match_id');
 
     expect($match->fresh()->league_id)->toBeNull();
 });
@@ -67,7 +67,7 @@ it('rejects when league already has 5 matches', function () {
     $candidate = makeLeagueMatch($this->version->id);
 
     $this->post("/leagues/{$this->league->id}/matches", ['match_id' => $candidate->id])
-        ->assertStatus(422);
+        ->assertSessionHasErrors('match_id');
 
     expect($candidate->fresh()->league_id)->toBeNull();
 });
@@ -80,7 +80,7 @@ it('rejects non-manual leagues', function () {
     $match = makeLeagueMatch($this->version->id);
 
     $this->post("/leagues/{$autoLeague->id}/matches", ['match_id' => $match->id])
-        ->assertStatus(422);
+        ->assertSessionHasErrors('match_id');
 });
 
 it('rejects already-linked matches', function () {
@@ -88,12 +88,12 @@ it('rejects already-linked matches', function () {
     $match = makeLeagueMatch($this->version->id, ['league_id' => $otherLeague->id]);
 
     $this->post("/leagues/{$this->league->id}/matches", ['match_id' => $match->id])
-        ->assertStatus(422);
+        ->assertSessionHasErrors('match_id');
 });
 
 it('rejects incomplete matches', function () {
     $match = makeLeagueMatch($this->version->id, ['state' => MatchState::Started, 'outcome' => null, 'ended_at' => null]);
 
     $this->post("/leagues/{$this->league->id}/matches", ['match_id' => $match->id])
-        ->assertStatus(422);
+        ->assertSessionHasErrors('match_id');
 });
