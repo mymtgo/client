@@ -53,6 +53,7 @@ use App\Http\Controllers\Import\ScanStatusController;
 use App\Http\Controllers\Import\StoreController;
 use App\Http\Controllers\IndexController;
 use App\Http\Controllers\Leagues\DropController;
+use App\Http\Controllers\Leagues\LinkMatchController;
 use App\Http\Controllers\Leagues\OpponentScoutWindowController;
 use App\Http\Controllers\Leagues\OverlayController;
 use App\Http\Controllers\Matches\BulkUpdateArchetypeController;
@@ -119,6 +120,7 @@ Route::group([], function (Router $router) {
         $group->get('opponent-scout', OpponentScoutWindowController::class)->name('leagues.opponent-scout');
         $group->patch('{league}/notes', App\Http\Controllers\Leagues\UpdateNotesController::class)->name('leagues.update-notes');
         $group->patch('{league}/drop', DropController::class)->name('leagues.drop');
+        $group->post('{league}/matches', LinkMatchController::class)->name('leagues.matches.link');
     });
 
     $router->group([
