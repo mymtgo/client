@@ -4,13 +4,15 @@ use App\Actions\Pipeline\ResolveMatchFromMetaMessages;
 use App\Enums\MatchOutcome;
 use App\Enums\MatchState;
 use App\Facades\Mtgo;
-use App\Models\Account;
+use App\Models\Game;
 use App\Models\LogEvent;
 use App\Models\LogInstance;
 use App\Models\MtgoMatch;
+use App\Models\Player;
 use Carbon\Carbon;
+use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 
-uses(\Illuminate\Foundation\Testing\LazilyRefreshDatabase::class);
+uses(LazilyRefreshDatabase::class);
 
 function resolveMetaTest_makeMatch(string $token, MatchState $state = MatchState::InProgress): MtgoMatch
 {
@@ -19,6 +21,24 @@ function resolveMetaTest_makeMatch(string $token, MatchState $state = MatchState
         'state' => $state,
         'mtgo_id' => 123,
     ]);
+}
+
+function resolveMetaTest_setupMatchWithPlayers(string $token, string $localUsername = 'TestPlayer', string $oppUsername = 'Opp', MatchState $state = MatchState::InProgress): MtgoMatch
+{
+    $match = MtgoMatch::factory()->create([
+        'token' => $token,
+        'state' => $state,
+        'mtgo_id' => 123,
+    ]);
+
+    $localPlayer = Player::factory()->create(['username' => $localUsername]);
+    $opponent = Player::factory()->create(['username' => $oppUsername]);
+
+    $game = Game::factory()->create(['match_id' => $match->id]);
+    $game->players()->attach($localPlayer->id, ['is_local' => 1, 'instance_id' => 1]);
+    $game->players()->attach($opponent->id, ['is_local' => 0, 'instance_id' => 2]);
+
+    return $match;
 }
 
 function resolveMetaTest_seedCompletedSignal(string $token, LogInstance $instance, string $variant = 'LeagueMatchJoinedCompletedState'): void
@@ -67,10 +87,8 @@ it('is a no-op when match has no players', function () {
 
 it('is a no-op when CompletedState signal is absent', function () {
     $token = 'a2222222-2222-2222-2222-222222222222';
+    $match = resolveMetaTest_setupMatchWithPlayers($token, 'TestPlayer', 'Opp');
     $instance = LogInstance::factory()->create();
-    $account = Account::factory()->create(['username' => 'TestPlayer', 'tracked' => true]);
-    $match = resolveMetaTest_makeMatch($token);
-    $match->players()->attach($account->id);
 
     resolveMetaTest_seedMetaMessage($token, $instance, '@PTestPlayer rolled a 1.', 1);
     resolveMetaTest_seedMetaMessage($token, $instance, '@POpp rolled a 6.', 2);
@@ -85,10 +103,8 @@ it('is a no-op when CompletedState signal is absent', function () {
 
 it('marks match Complete when CompletedState + decisive entries present', function () {
     $token = 'a3333333-3333-3333-3333-333333333333';
+    $match = resolveMetaTest_setupMatchWithPlayers($token, 'TestPlayer', 'Opp');
     $instance = LogInstance::factory()->create();
-    $account = Account::factory()->create(['username' => 'TestPlayer', 'tracked' => true]);
-    $match = resolveMetaTest_makeMatch($token);
-    $match->players()->attach($account->id);
 
     resolveMetaTest_seedMetaMessage($token, $instance, '@POpp rolled a 1.', 1);
     resolveMetaTest_seedMetaMessage($token, $instance, '@PTestPlayer rolled a 5.', 2);
@@ -122,10 +138,8 @@ it('marks match Complete when CompletedState + decisive entries present', functi
 
 it('marks match Complete for concede end_reason', function () {
     $token = 'a4444444-4444-4444-4444-444444444444';
+    $match = resolveMetaTest_setupMatchWithPlayers($token, 'TestPlayer', 'Opp');
     $instance = LogInstance::factory()->create();
-    $account = Account::factory()->create(['username' => 'TestPlayer', 'tracked' => true]);
-    $match = resolveMetaTest_makeMatch($token);
-    $match->players()->attach($account->id);
 
     resolveMetaTest_seedMetaMessage($token, $instance, '@POpp rolled a 1.', 1);
     resolveMetaTest_seedMetaMessage($token, $instance, '@PTestPlayer rolled a 5.', 2);
@@ -150,10 +164,8 @@ it('marks match Complete for concede end_reason', function () {
 
 it('detects the tournament MatchJoinedCompletedState variant', function () {
     $token = 'a5555555-5555-5555-5555-555555555555';
+    $match = resolveMetaTest_setupMatchWithPlayers($token, 'TestPlayer', 'Opp');
     $instance = LogInstance::factory()->create();
-    $account = Account::factory()->create(['username' => 'TestPlayer', 'tracked' => true]);
-    $match = resolveMetaTest_makeMatch($token);
-    $match->players()->attach($account->id);
 
     resolveMetaTest_seedMetaMessage($token, $instance, '@POpp rolled a 1.', 1);
     resolveMetaTest_seedMetaMessage($token, $instance, '@PTestPlayer rolled a 5.', 2);
@@ -174,10 +186,8 @@ it('detects the tournament MatchJoinedCompletedState variant', function () {
 
 it('is idempotent — second run is no-op on already-Complete match', function () {
     $token = 'a6666666-6666-6666-6666-666666666666';
+    $match = resolveMetaTest_setupMatchWithPlayers($token, 'TestPlayer', 'Opp');
     $instance = LogInstance::factory()->create();
-    $account = Account::factory()->create(['username' => 'TestPlayer', 'tracked' => true]);
-    $match = resolveMetaTest_makeMatch($token);
-    $match->players()->attach($account->id);
 
     resolveMetaTest_seedMetaMessage($token, $instance, '@POpp rolled a 1.', 1);
     resolveMetaTest_seedMetaMessage($token, $instance, '@PTestPlayer rolled a 5.', 2);
