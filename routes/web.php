@@ -52,6 +52,7 @@ use App\Http\Controllers\Import\ScanMatchesController;
 use App\Http\Controllers\Import\ScanStatusController;
 use App\Http\Controllers\Import\StoreController;
 use App\Http\Controllers\IndexController;
+use App\Http\Controllers\Leagues\AvailableMatchesController;
 use App\Http\Controllers\Leagues\DropController;
 use App\Http\Controllers\Leagues\LinkMatchController;
 use App\Http\Controllers\Leagues\OpponentScoutWindowController;
@@ -123,6 +124,8 @@ Route::group([], function (Router $router) {
         $group->patch('{league}/drop', DropController::class)->name('leagues.drop');
         $group->post('{league}/matches', LinkMatchController::class)->name('leagues.matches.link');
         $group->delete('{league}/matches/{mtgoMatch}', UnlinkMatchController::class)->name('leagues.matches.unlink');
+        $group->get('{league}/available-matches', AvailableMatchesController::class)
+            ->name('leagues.available-matches');
     });
 
     $router->group([
