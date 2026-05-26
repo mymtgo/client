@@ -48,7 +48,7 @@ class SyncDecks
                 continue;
             }
 
-            $cards = collect($array['Item'])->map(function ($item) {
+            $cards = collect($array['Item'] ?? [])->map(function ($item) {
                 $attrs = $item['@attributes'] ?? $item;
 
                 return [
