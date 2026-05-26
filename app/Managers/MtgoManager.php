@@ -234,9 +234,8 @@ class MtgoManager
     public function pathsAreValid(): bool
     {
         $logOk = ValidatePath::forLogs($this->getLogPath());
-        $dataOk = ValidatePath::forData($this->getLogDataPath());
 
-        return $logOk['valid'] && $dataOk['valid'];
+        return $logOk['valid'];
     }
 
     public function schedule(Schedule $schedule): void
