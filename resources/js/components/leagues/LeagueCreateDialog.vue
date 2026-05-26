@@ -59,8 +59,17 @@ function onNameInput(value: string) {
     form.name = value;
 }
 
+function onDeckChange(value: unknown) {
+    if (value === '' || value === null || value === undefined) {
+        form.deck_id = null;
+        return;
+    }
+    const parsed = Number(value);
+    form.deck_id = Number.isFinite(parsed) ? parsed : null;
+}
+
 function submit() {
-    form.post(LeaguesStoreController().url, {
+    form.submit(LeaguesStoreController(), {
         preserveScroll: true,
         onSuccess: () => {
             open.value = false;
@@ -82,21 +91,23 @@ defineExpose({ open: openDialog });
             <form class="flex flex-col gap-4" @submit.prevent="submit">
                 <div class="flex flex-col gap-1.5">
                     <Label for="deck">Deck</Label>
-                    <Select v-model="form.deck_id">
+                    <Select
+                        :model-value="form.deck_id !== null ? String(form.deck_id) : ''"
+                        @update:model-value="onDeckChange"
+                    >
                         <SelectTrigger id="deck">
                             <SelectValue placeholder="Select a deck" />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem v-for="d in decks" :key="d.id" :value="d.id">
+                            <SelectItem v-for="d in decks" :key="d.id" :value="String(d.id)">
                                 {{ d.name }} <span class="text-xs text-muted-foreground">— {{ d.format }}</span>
                             </SelectItem>
                         </SelectContent>
                     </Select>
                     <p v-if="form.errors.deck_id" class="text-xs text-destructive">{{ form.errors.deck_id }}</p>
-                </div>
-
-                <div v-if="formatLabel" class="text-xs text-muted-foreground">
-                    Format: <span class="font-medium text-foreground">{{ formatLabel }}</span>
+                    <p v-if="formatLabel" class="text-xs text-muted-foreground">
+                        Format: <span class="font-medium text-foreground">{{ formatLabel }}</span>
+                    </p>
                 </div>
 
                 <div class="flex flex-col gap-1.5">
