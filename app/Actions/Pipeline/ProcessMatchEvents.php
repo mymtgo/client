@@ -119,9 +119,9 @@ class ProcessMatchEvents
 
             if (in_array($match->state, [MatchState::InProgress, MatchState::Ended])) {
                 try {
-                    ResolveGameResults::run($match);
+                    ResolveMatchFromMetaMessages::run($match);
                 } catch (\Throwable $e) {
-                    Log::channel('pipeline')->warning("Match {$match->mtgo_id}: game log resolution failed, will retry", [
+                    Log::channel('pipeline')->warning("Match {$match->mtgo_id}: metamessage resolution failed, will retry", [
                         'error' => $e->getMessage(),
                     ]);
                 }
