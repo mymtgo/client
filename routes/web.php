@@ -56,6 +56,7 @@ use App\Http\Controllers\Leagues\DropController;
 use App\Http\Controllers\Leagues\LinkMatchController;
 use App\Http\Controllers\Leagues\OpponentScoutWindowController;
 use App\Http\Controllers\Leagues\OverlayController;
+use App\Http\Controllers\Leagues\UnlinkMatchController;
 use App\Http\Controllers\Matches\BulkUpdateArchetypeController;
 use App\Http\Controllers\Matches\DeleteController;
 use App\Http\Controllers\Matches\DetectArchetypeController;
@@ -121,6 +122,7 @@ Route::group([], function (Router $router) {
         $group->patch('{league}/notes', App\Http\Controllers\Leagues\UpdateNotesController::class)->name('leagues.update-notes');
         $group->patch('{league}/drop', DropController::class)->name('leagues.drop');
         $group->post('{league}/matches', LinkMatchController::class)->name('leagues.matches.link');
+        $group->delete('{league}/matches/{mtgoMatch}', UnlinkMatchController::class)->name('leagues.matches.unlink');
     });
 
     $router->group([
