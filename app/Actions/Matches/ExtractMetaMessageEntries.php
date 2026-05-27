@@ -2,15 +2,19 @@
 
 namespace App\Actions\Matches;
 
+use App\Actions\Logs\ConvertMtgoTimestamp;
 use App\Actions\Util\ExtractJson;
 use App\Models\LogEvent;
-use Illuminate\Support\Carbon;
 
 class ExtractMetaMessageEntries
 {
     /**
      * Build the {timestamp, message}[] entries shape for a match from its
      * MetaMessage log events. Same shape ExtractGameResults consumes.
+     *
+     * Timestamps are UTC ISO-8601 strings: LogEvent.timestamp is a time-only
+     * "HH:MM:SS" in the user's system timezone, so we combine it with the
+     * file's logged_at date and convert to UTC via ConvertMtgoTimestamp.
      *
      * @return array<int, array{timestamp: string, message: string}>
      */
@@ -40,7 +44,7 @@ class ExtractMetaMessageEntries
                 }
 
                 return [
-                    'timestamp' => Carbon::parse($event->timestamp)->toIso8601String(),
+                    'timestamp' => ConvertMtgoTimestamp::run($event->logged_at, $event->timestamp)->toIso8601String(),
                     'message' => $message,
                 ];
             })

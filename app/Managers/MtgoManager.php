@@ -251,21 +251,18 @@ class MtgoManager
         // the lock instead of stalling forever.
         $schedule->call(fn () => RunPipeline::run())
             ->everyTwoSeconds()
-            ->name('process_matches')
-            ->withoutOverlapping(2);
+            ->name('process_matches');
 
         // Periodic maintenance (unchanged)
         $schedule->call(fn () => $this->retryUnsubmittedMatches())
             ->everyMinute()
-            ->name('submit_matches')
-            ->withoutOverlapping(60);
+            ->name('submit_matches');
 
         // Pick up new/updated deck XML files so RunPipeline's orphan relinker
         // has fresh DeckVersions to match against.
         $schedule->call(fn () => $this->syncDecks())
             ->everyFiveMinutes()
-            ->name('sync_decks')
-            ->withoutOverlapping(60);
+            ->name('sync_decks');
 
         $schedule->job(new ShipTournamentObservations)
             ->everyThirtySeconds()

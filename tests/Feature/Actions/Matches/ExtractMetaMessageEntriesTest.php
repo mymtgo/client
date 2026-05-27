@@ -1,11 +1,22 @@
 <?php
 
 use App\Actions\Matches\ExtractMetaMessageEntries;
+use App\Facades\AppSettings;
 use App\Models\LogEvent;
 use App\Models\LogInstance;
 use Carbon\Carbon;
+use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 
-uses(\Illuminate\Foundation\Testing\LazilyRefreshDatabase::class);
+uses(LazilyRefreshDatabase::class);
+
+beforeEach(function () {
+    AppSettings::setSystemTimezone('UTC');
+});
+
+function logDate(): Carbon
+{
+    return Carbon::parse('2026-05-26 00:00:00', 'UTC');
+}
 
 function rawWithMeta(string $token, int $matchId, int $gameId, string $text, int $matchTime = 0): string
 {
@@ -41,7 +52,8 @@ it('returns ordered entries for a single-game match', function () {
         'match_id' => 1,
         'game_id' => 100,
         'event_type' => 'game_management_json',
-        'timestamp' => Carbon::parse('2026-05-26 10:00:01'),
+        'timestamp' => '10:00:01',
+        'logged_at' => logDate(),
         'byte_offset_start' => 100,
         'raw_text' => rawWithMeta($token, 1, 100, '@PPlayerA rolled a 1.'),
     ]);
@@ -51,7 +63,8 @@ it('returns ordered entries for a single-game match', function () {
         'match_id' => 1,
         'game_id' => 100,
         'event_type' => 'game_management_json',
-        'timestamp' => Carbon::parse('2026-05-26 10:00:02'),
+        'timestamp' => '10:00:02',
+        'logged_at' => logDate(),
         'byte_offset_start' => 200,
         'raw_text' => rawWithMeta($token, 1, 100, '@PPlayerB rolled a 6.'),
     ]);
@@ -73,7 +86,8 @@ it('skips rows whose MetaMessage carries no recognised text', function () {
         'match_id' => 2,
         'game_id' => 200,
         'event_type' => 'game_management_json',
-        'timestamp' => Carbon::parse('2026-05-26 10:00:01'),
+        'timestamp' => '10:00:01',
+        'logged_at' => logDate(),
         'byte_offset_start' => 100,
         'raw_text' => '02:00:00 [INF] (Game Management|Processing) Message: {"MatchToken":"'.$token.'","MatchID":2,"GameID":200,"MetaMessage":[1,2,3,4,5,6,7,8]}',
     ]);
@@ -83,7 +97,8 @@ it('skips rows whose MetaMessage carries no recognised text', function () {
         'match_id' => 2,
         'game_id' => 200,
         'event_type' => 'game_management_json',
-        'timestamp' => Carbon::parse('2026-05-26 10:00:02'),
+        'timestamp' => '10:00:02',
+        'logged_at' => logDate(),
         'byte_offset_start' => 200,
         'raw_text' => rawWithMeta($token, 2, 200, '@PPlayerA wins the game.'),
     ]);
@@ -101,7 +116,8 @@ it('orders entries by timestamp then byte_offset_start', function () {
         'log_instance_id' => $instance->id,
         'match_token' => $token,
         'event_type' => 'game_management_json',
-        'timestamp' => Carbon::parse('2026-05-26 10:00:02'),
+        'timestamp' => '10:00:02',
+        'logged_at' => logDate(),
         'byte_offset_start' => 200,
         'raw_text' => rawWithMeta($token, 1, 1, '@PSecond rolled a 1.'),
     ]);
@@ -109,7 +125,8 @@ it('orders entries by timestamp then byte_offset_start', function () {
         'log_instance_id' => $instance->id,
         'match_token' => $token,
         'event_type' => 'game_management_json',
-        'timestamp' => Carbon::parse('2026-05-26 10:00:01'),
+        'timestamp' => '10:00:01',
+        'logged_at' => logDate(),
         'byte_offset_start' => 100,
         'raw_text' => rawWithMeta($token, 1, 1, '@PFirst rolled a 2.'),
     ]);
@@ -128,7 +145,8 @@ it('orders entries chronologically across log_instance boundaries', function () 
         'log_instance_id' => $oldInstance->id,
         'match_token' => $token,
         'event_type' => 'game_management_json',
-        'timestamp' => Carbon::parse('2026-05-26 10:00:01'),
+        'timestamp' => '10:00:01',
+        'logged_at' => logDate(),
         'byte_offset_start' => 5000,
         'raw_text' => rawWithMeta($token, 1, 1, '@PAlice rolled a 4.'),
     ]);
@@ -136,7 +154,8 @@ it('orders entries chronologically across log_instance boundaries', function () 
         'log_instance_id' => $newInstance->id,
         'match_token' => $token,
         'event_type' => 'game_management_json',
-        'timestamp' => Carbon::parse('2026-05-26 10:00:02'),
+        'timestamp' => '10:00:02',
+        'logged_at' => logDate(),
         'byte_offset_start' => 100,
         'raw_text' => rawWithMeta($token, 1, 1, '@PBob rolled a 3.'),
     ]);
@@ -154,7 +173,8 @@ it('ignores log_events with a different event_type', function () {
         'log_instance_id' => $instance->id,
         'match_token' => $token,
         'event_type' => 'match_state_changed',
-        'timestamp' => Carbon::parse('2026-05-26 10:00:01'),
+        'timestamp' => '10:00:01',
+        'logged_at' => logDate(),
         'byte_offset_start' => 100,
         'raw_text' => '02:00:00 [INF] (Game Management|Match State Changed for '.$token.' from X to Y)',
     ]);
@@ -170,11 +190,12 @@ it('returns timestamps in ISO8601 string format', function () {
         'log_instance_id' => $instance->id,
         'match_token' => $token,
         'event_type' => 'game_management_json',
-        'timestamp' => Carbon::parse('2026-05-26 10:00:01'),
+        'timestamp' => '10:00:01',
+        'logged_at' => logDate(),
         'byte_offset_start' => 100,
         'raw_text' => rawWithMeta($token, 1, 1, '@PPlayer rolled a 1.'),
     ]);
 
     $entries = ExtractMetaMessageEntries::run($token);
-    expect($entries[0]['timestamp'])->toMatch('/^2026-05-26T\d{2}:00:01/');
+    expect($entries[0]['timestamp'])->toBe('2026-05-26T10:00:01+00:00');
 });

@@ -1,6 +1,7 @@
 <?php
 
 use App\Actions\Matches\GetGameLogEntries;
+use App\Facades\AppSettings;
 use App\Models\Game;
 use App\Models\LogEvent;
 use App\Models\LogInstance;
@@ -9,6 +10,15 @@ use Carbon\Carbon;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 
 uses(LazilyRefreshDatabase::class);
+
+beforeEach(function () {
+    AppSettings::setSystemTimezone('UTC');
+});
+
+function getGameLogEntriesTest_logDate(): Carbon
+{
+    return Carbon::parse('2026-05-26 00:00:00', 'UTC');
+}
 
 function getGameLogEntriesTest_seedMeta(string $token, LogInstance $instance, string $text, int $secondsOffset): void
 {
@@ -26,7 +36,8 @@ function getGameLogEntriesTest_seedMeta(string $token, LogInstance $instance, st
         'match_id' => 1,
         'game_id' => 1,
         'event_type' => 'game_management_json',
-        'timestamp' => Carbon::parse('2026-05-26 10:00:00')->addSeconds($secondsOffset),
+        'timestamp' => sprintf('10:00:%02d', $secondsOffset),
+        'logged_at' => getGameLogEntriesTest_logDate(),
         'byte_offset_start' => $secondsOffset * 100,
         'raw_text' => '02:00:'.str_pad((string) $secondsOffset, 2, '0', STR_PAD_LEFT).' [INF] (Game Management|Processing) Message: {"MatchToken":"'.$token.'","MatchID":1,"GameID":1,"MetaMessage":['.implode(',', $bytes).']}',
     ]);

@@ -3,6 +3,7 @@
 use App\Actions\Pipeline\ResolveMatchFromMetaMessages;
 use App\Enums\MatchOutcome;
 use App\Enums\MatchState;
+use App\Facades\AppSettings;
 use App\Facades\Mtgo;
 use App\Models\Game;
 use App\Models\LogEvent;
@@ -13,6 +14,15 @@ use Carbon\Carbon;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 
 uses(LazilyRefreshDatabase::class);
+
+beforeEach(function () {
+    AppSettings::setSystemTimezone('UTC');
+});
+
+function resolveMetaTest_logDate(): Carbon
+{
+    return Carbon::parse('2026-05-26 00:00:00', 'UTC');
+}
 
 function resolveMetaTest_makeMatch(string $token, MatchState $state = MatchState::InProgress): MtgoMatch
 {
@@ -47,7 +57,8 @@ function resolveMetaTest_seedCompletedSignal(string $token, LogInstance $instanc
         'log_instance_id' => $instance->id,
         'match_token' => $token,
         'event_type' => 'match_state_changed',
-        'timestamp' => Carbon::parse('2026-05-26 10:00:30'),
+        'timestamp' => '10:00:30',
+        'logged_at' => resolveMetaTest_logDate(),
         'byte_offset_start' => 9000,
         'raw_text' => "02:00:30 [INF] (Game Management|Match State Changed for {$token} from LeagueMatchJoinedEventUnderwayState to {$variant})",
     ]);
@@ -69,7 +80,8 @@ function resolveMetaTest_seedMetaMessage(string $token, LogInstance $instance, s
         'match_id' => 123,
         'game_id' => 999,
         'event_type' => 'game_management_json',
-        'timestamp' => Carbon::parse('2026-05-26 10:00:00')->addSeconds($secondsOffset),
+        'timestamp' => sprintf('10:00:%02d', $secondsOffset),
+        'logged_at' => resolveMetaTest_logDate(),
         'byte_offset_start' => $secondsOffset * 100,
         'raw_text' => '02:00:'.str_pad((string) $secondsOffset, 2, '0', STR_PAD_LEFT).' [INF] (Game Management|Processing) Message: {"MatchToken":"'.$token.'","MatchID":123,"GameID":999,"MetaMessage":['.implode(',', $bytes).']}',
     ]);
@@ -133,6 +145,8 @@ it('marks match Complete when CompletedState + decisive entries present', functi
     $match->refresh();
     expect($match->state)->toBe(MatchState::Complete)
         ->and($match->outcome)->toBe(MatchOutcome::Win)
+        ->and($match->games_won)->toBe(2)
+        ->and($match->games_lost)->toBe(0)
         ->and($match->ended_at)->not->toBeNull();
 });
 

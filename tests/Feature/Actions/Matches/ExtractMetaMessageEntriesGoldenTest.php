@@ -31,13 +31,14 @@ function seedLogEventsForMatch(string $matchLogPath, string $token): void
             }
 
             preg_match('/^(\d{2}):(\d{2}):(\d{2})/', $line, $tm);
-            $ts = Carbon::parse('2026-03-18 '.$tm[1].':'.$tm[2].':'.$tm[3]);
+            $ts = $tm[1].':'.$tm[2].':'.$tm[3];
 
             LogEvent::factory()->create([
                 'log_instance_id' => $instance->id,
                 'match_token' => $token,
                 'event_type' => 'game_management_json',
                 'timestamp' => $ts,
+                'logged_at' => Carbon::parse('2026-03-18 00:00:00', 'UTC'),
                 'byte_offset_start' => $offset,
                 'byte_offset_end' => $offset + strlen($line),
                 'raw_text' => trim($line),

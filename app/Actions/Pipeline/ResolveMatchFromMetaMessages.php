@@ -87,6 +87,8 @@ class ResolveMatchFromMetaMessages
         $match->update([
             'outcome' => $outcome,
             'state' => MatchState::Complete,
+            'games_won' => $result['wins'],
+            'games_lost' => $result['losses'],
             'ended_at' => $endedAt,
         ]);
 
