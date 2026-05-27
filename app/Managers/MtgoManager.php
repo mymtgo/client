@@ -241,32 +241,20 @@ class MtgoManager
 
     public function schedule(Schedule $schedule): void
     {
-        // ── Unified pipeline (every 2s) ──────────────────────────────
-        // Single command owns the entire lifecycle: log ingest →
-        // match creation → game log parsing → result resolution.
-        //
-        // withoutOverlapping prevents stacked ticks from racing on
-        // LogCursor creation when a single tick takes longer than 2s
-        // (e.g. catching up a large backlog after recovery from a stuck
-        // pipeline). 2-minute mutex TTL so a genuinely hung tick frees
-        // the lock instead of stalling forever.
         $schedule->call(fn () => RunPipeline::run())
             ->everyTwoSeconds()
-            ->name('process_matches')
-            ->withoutOverlapping(2);
+            ->name('process_matches');
 
         // Periodic maintenance (unchanged)
         $schedule->call(fn () => $this->retryUnsubmittedMatches())
             ->everyMinute()
-            ->name('submit_matches')
-            ->withoutOverlapping(60);
+            ->name('submit_matches');
 
         // Pick up new/updated deck XML files so RunPipeline's orphan relinker
         // has fresh DeckVersions to match against.
         $schedule->call(fn () => $this->syncDecks())
             ->everyFiveMinutes()
-            ->name('sync_decks')
-            ->withoutOverlapping(60);
+            ->name('sync_decks');
 
         $schedule->job(new ShipTournamentObservations)
             ->everyThirtySeconds()
@@ -280,8 +268,7 @@ class MtgoManager
 
         $schedule->call(fn () => EnqueueCardStats::run())
             ->everyMinute()
-            ->name('enqueue_card_stats')
-            ->withoutOverlapping(60);
+            ->name('enqueue_card_stats');
 
         $schedule->call(fn () => $this->downloadArchetypes())
             ->weekly();
