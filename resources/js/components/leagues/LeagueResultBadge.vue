@@ -22,15 +22,15 @@ const label = computed(() => {
 const tone = computed(() => {
     switch (props.classification) {
         case 'TROPHY':
-            return 'border-yellow-500/40 bg-yellow-500/10 text-yellow-400';
+            return 'from-pink-400 via-sky-300 to-blue-400';
         case 'CASH':
-            return 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400';
+            return 'from-emerald-500 to-emerald-600';
         case 'FINISH':
-            return 'border-muted-foreground/30 bg-muted/40 text-muted-foreground';
+            return 'from-neutral-800 to-neutral-800';
         case 'BRICK':
-            return 'border-zinc-700/60 bg-zinc-900/60 text-zinc-500';
+            return 'from-red-900 to-red-900';
         case 'LIVE':
-            return 'border-sky-500/40 bg-sky-500/10 text-sky-400';
+            return 'border-sky-500/40 from-sky-100 to-sky-200 text-sky-400';
         default:
             return '';
     }
@@ -38,14 +38,9 @@ const tone = computed(() => {
 </script>
 
 <template>
-    <div
-        class="relative flex h-16 w-24 shrink-0 flex-col items-center justify-center rounded-md border tabular-nums"
-        :class="tone"
-    >
-        <Trophy
-            v-if="classification === 'TROPHY'"
-            class="absolute -top-2 -right-2 size-4 fill-yellow-500 text-yellow-500"
-        />
-        <span class="text-2xl leading-none font-bold">{{ score }}</span>
+    <div class="relative flex shrink-0 flex-col items-center justify-center rounded-md bg-linear-to-t p-0.5" :class="tone">
+        <div class="rounded-sm bg-background px-3 py-2">
+            <span class="leading-none font-bold">{{ score }}</span>
+        </div>
     </div>
 </template>
