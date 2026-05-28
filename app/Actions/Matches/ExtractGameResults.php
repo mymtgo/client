@@ -50,6 +50,11 @@ class ExtractGameResults
             }
         }
 
+        $forfeit = self::detectTrailingForfeit($entries, $games, $players, $localPlayer);
+        if ($forfeit !== null) {
+            $games[] = $forfeit;
+        }
+
         return [
             'games' => $games,
             'players' => $players,
@@ -94,6 +99,97 @@ class ExtractGameResults
         }
 
         return $games;
+    }
+
+    /**
+     * Detect a deciding game forfeited between games.
+     *
+     * When an opponent drops during sideboarding, the aborted game produces only
+     * a "has conceded" / "lost connection" line with no roll/join, so it is never
+     * split into its own game and the swallowed line is ignored by analyzeGame's
+     * winner guard. The match then looks tied (e.g. 1-1) when the drop in fact
+     * decided it. This rebuilds that game: the dropping player loses it.
+     *
+     * Gated on the match being level — when a player is already ahead, a trailing
+     * leave is just the loser exiting the match, not a forfeited deciding game.
+     *
+     * @param  array<int, array{timestamp: string, message: string}>  $entries
+     * @param  array<int, array<string, mixed>>  $games
+     * @param  array<int, string>  $players
+     * @return array<string, mixed>|null
+     */
+    private static function detectTrailingForfeit(array $entries, array $games, array $players, string $localPlayer): ?array
+    {
+        if (empty($games) || end($games)['winner'] === null) {
+            return null;
+        }
+
+        $wins = 0;
+        $losses = 0;
+        foreach ($games as $game) {
+            $winner = $game['winner'] ?? null;
+            if ($winner === null) {
+                continue;
+            }
+            if ($winner === $localPlayer) {
+                $wins++;
+            } else {
+                $losses++;
+            }
+        }
+
+        if ($wins === 0 || $wins !== $losses) {
+            return null;
+        }
+
+        $lastWinIndex = null;
+        foreach ($entries as $index => $entry) {
+            if (preg_match('/wins the game/', $entry['message'])) {
+                $lastWinIndex = $index;
+            }
+        }
+
+        if ($lastWinIndex === null) {
+            return null;
+        }
+
+        $leaver = null;
+        $endReason = null;
+        $forfeitEntry = null;
+
+        foreach (array_slice($entries, $lastWinIndex + 1, null, true) as $entry) {
+            $msg = $entry['message'];
+
+            // A new game actually started — normal splitting already handled it.
+            if (preg_match('/^@P'.self::PLAYER_PATTERN.' rolled a \d/', $msg) || preg_match('/^@P@P'.self::PLAYER_PATTERN.' joined the game/', $msg)) {
+                return null;
+            }
+
+            if (preg_match('/^@P('.self::PLAYER_PATTERN.') has conceded from the game/', $msg, $m)) {
+                $leaver = $m[1];
+                $endReason = 'concede';
+                $forfeitEntry = $entry;
+            } elseif (preg_match('/^@P('.self::PLAYER_PATTERN.') has lost connection to the game/', $msg, $m)) {
+                $leaver = $m[1];
+                $endReason = 'disconnect';
+                $forfeitEntry = $entry;
+            }
+        }
+
+        if ($leaver === null) {
+            return null;
+        }
+
+        return [
+            'game_index' => count($games),
+            'winner' => self::otherPlayer($leaver, $players),
+            'loser' => $leaver,
+            'end_reason' => $endReason,
+            'on_play' => null,
+            'starting_hands' => [],
+            'started_at' => $forfeitEntry['timestamp'] ?? null,
+            'ended_at' => $forfeitEntry['timestamp'] ?? null,
+        ];
     }
 
     /**
