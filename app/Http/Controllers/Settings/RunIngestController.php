@@ -4,8 +4,8 @@ namespace App\Http\Controllers\Settings;
 
 use App\Actions\Settings\ValidatePath;
 use App\Facades\AppSettings;
-use App\Facades\Mtgo;
 use App\Http\Controllers\Controller;
+use App\Jobs\IngestLogs;
 use Illuminate\Http\RedirectResponse;
 
 class RunIngestController extends Controller
@@ -19,11 +19,7 @@ class RunIngestController extends Controller
             return back()->withErrors(['ingest' => 'File paths are invalid. Fix them before running ingestion.']);
         }
 
-        try {
-            Mtgo::ingestLogs();
-        } catch (\Throwable $e) {
-            return back()->withErrors(['ingest' => 'Ingestion failed: '.$e->getMessage()]);
-        }
+        IngestLogs::dispatch();
 
         return back();
     }
