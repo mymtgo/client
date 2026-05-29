@@ -28,6 +28,8 @@ class League extends Model
         'dropped_at' => 'datetime',
         'completed_at' => 'datetime',
         'state' => LeagueState::class,
+        'manual' => 'boolean',
+        'deck_change_detected' => 'boolean',
     ];
 
     /** @return BelongsTo<DeckVersion, $this> */

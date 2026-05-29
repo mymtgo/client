@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import LeagueCard from '@/components/leagues/LeagueCard.vue';
+import LeagueCreateDialog from '@/components/leagues/LeagueCreateDialog.vue';
 import LeagueFilters from '@/components/leagues/LeagueFilters.vue';
 import LeagueKpis from '@/components/leagues/LeagueKpis.vue';
 import { Button } from '@/components/ui/button';
@@ -8,10 +9,11 @@ import type {
     LeagueFiltersState,
     LeagueKpis as LeagueKpisData,
     LeagueRun,
+    ManualLeagueDeckOption,
 } from '@/types/leagues';
 import { router } from '@inertiajs/vue3';
-import { Trophy } from 'lucide-vue-next';
-import { computed } from 'vue';
+import { Plus, Trophy } from 'lucide-vue-next';
+import { computed, ref } from 'vue';
 
 type PaginatorLink = { url: string | null; label: string; active: boolean };
 
@@ -26,9 +28,12 @@ const props = defineProps<{
     kpis: LeagueKpisData;
     allFormats: string[];
     allDecks: LeagueDeckOption[];
+    manualDeckOptions: ManualLeagueDeckOption[];
     filters: LeagueFiltersState;
     archetypes?: App.Data.Front.ArchetypeData[];
 }>();
+
+const createDialog = ref<InstanceType<typeof LeagueCreateDialog> | null>(null);
 
 const displayed = computed(() => props.leagues.data.filter(Boolean) as LeagueRun[]);
 
@@ -49,6 +54,14 @@ function handleFilterChange(next: LeagueFiltersState) {
 
 <template>
     <div class="flex flex-col gap-4 p-3 lg:p-4">
+        <div class="flex items-center justify-between gap-2">
+            <h1 class="text-base font-semibold tracking-tight">Leagues</h1>
+            <Button size="sm" @click="createDialog?.open()">
+                <Plus class="size-4" />
+                Create league
+            </Button>
+        </div>
+
         <LeagueKpis :kpis="kpis" />
 
         <LeagueFilters
@@ -90,5 +103,7 @@ function handleFilterChange(next: LeagueFiltersState) {
                 />
             </template>
         </div>
+
+        <LeagueCreateDialog ref="createDialog" :decks="manualDeckOptions" />
     </div>
 </template>

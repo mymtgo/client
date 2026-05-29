@@ -16,7 +16,7 @@ export type LeagueMatch = {
     notes: string | null;
 };
 
-export type LeagueClassification = 'TROPHY' | 'CASH' | 'FINISH' | 'BRICK' | 'LIVE';
+export type LeagueClassification = 'TROPHY' | 'CASH' | 'FINISH' | 'BRICK' | 'LIVE' | 'EMPTY';
 
 export type LeagueTimeOfDay = 'morning' | 'afternoon' | 'evening' | 'night';
 
@@ -48,6 +48,7 @@ export type LeagueRun = {
     droppedAtHuman: string | null;
     results: ('W' | 'L' | null)[];
     state: 'active' | 'complete' | 'partial' | 'dropped';
+    manual: boolean;
     notes: string | null;
     classification: LeagueClassification;
     liveRound: number | null;
@@ -80,4 +81,21 @@ export type LeagueFiltersState = {
     deck: number | null;
     q: string;
     sort: string;
+};
+
+export type ManualLeagueDeckOption = {
+    id: number;
+    name: string;
+    format: string;
+};
+
+export type AvailableMatch = {
+    id: number;
+    startedAt: string;
+    startedAtHuman: string;
+    endedAt: string | null;
+    result: 'W' | 'L' | 'D' | null;
+    opponentName: string | null;
+    opponentArchetype: string | null;
+    gameRecord: string;
 };

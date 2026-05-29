@@ -52,9 +52,12 @@ use App\Http\Controllers\Import\ScanMatchesController;
 use App\Http\Controllers\Import\ScanStatusController;
 use App\Http\Controllers\Import\StoreController;
 use App\Http\Controllers\IndexController;
+use App\Http\Controllers\Leagues\AvailableMatchesController;
 use App\Http\Controllers\Leagues\DropController;
+use App\Http\Controllers\Leagues\LinkMatchController;
 use App\Http\Controllers\Leagues\OpponentScoutWindowController;
 use App\Http\Controllers\Leagues\OverlayController;
+use App\Http\Controllers\Leagues\UnlinkMatchController;
 use App\Http\Controllers\Matches\BulkUpdateArchetypeController;
 use App\Http\Controllers\Matches\DeleteController;
 use App\Http\Controllers\Matches\DetectArchetypeController;
@@ -113,11 +116,16 @@ Route::group([], function (Router $router) {
     $router->group([
         'prefix' => 'leagues',
     ], function (Router $group) {
+        $group->post('/', App\Http\Controllers\Leagues\StoreController::class)->name('leagues.store');
         $group->get('/', App\Http\Controllers\Leagues\IndexController::class)->name('leagues.index');
         $group->get('overlay', OverlayController::class)->name('leagues.overlay');
         $group->get('opponent-scout', OpponentScoutWindowController::class)->name('leagues.opponent-scout');
         $group->patch('{league}/notes', App\Http\Controllers\Leagues\UpdateNotesController::class)->name('leagues.update-notes');
         $group->patch('{league}/drop', DropController::class)->name('leagues.drop');
+        $group->post('{league}/matches', LinkMatchController::class)->name('leagues.matches.link');
+        $group->delete('{league}/matches/{mtgoMatch}', UnlinkMatchController::class)->name('leagues.matches.unlink');
+        $group->get('{league}/available-matches', AvailableMatchesController::class)
+            ->name('leagues.available-matches');
     });
 
     $router->group([
