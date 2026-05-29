@@ -5,7 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useSpinGuard } from '@/composables/useSpinGuard';
 import { useToast } from '@/composables/useToast';
 import { router, usePoll } from '@inertiajs/vue3';
-import { RefreshCw } from 'lucide-vue-next';
+import { RefreshCw, RotateCcw } from 'lucide-vue-next';
 
 const { add: toast } = useToast();
 
@@ -47,6 +47,7 @@ const columns = [
     { key: 'head_hash', label: 'Head Hash' },
     { key: 'seal_status', label: 'Seal Status' },
     { key: 'updated_at', label: 'Updated At' },
+    { key: 'actions', label: '' },
 ];
 
 const [refreshing, startRefreshing] = useSpinGuard();
@@ -54,6 +55,18 @@ const [refreshing, startRefreshing] = useSpinGuard();
 function refresh() {
     const stop = startRefreshing();
     router.reload({ preserveScroll: true, onSuccess: () => toast({ type: 'success', title: 'Refreshed', message: 'Log cursors refreshed.', duration: 2000 }), onFinish: stop });
+}
+
+function forceReset(id: number) {
+    router.delete(`/debug/log-cursors/${id}`, {
+        preserveScroll: true,
+        onSuccess: () => toast({
+            type: 'success',
+            title: 'Cursor reset',
+            message: `Cursor #${id} deleted — pipeline will re-ingest from byte 0 on next tick.`,
+            duration: 3000,
+        }),
+    });
 }
 </script>
 
@@ -97,6 +110,18 @@ function refresh() {
                                         {{ cursor.log_instance.seal_reason ?? 'sealed' }}
                                     </span>
                                     <span v-else class="text-emerald-500">active</span>
+                                </template>
+                                <template v-else-if="col.key === 'actions'">
+                                    <Button
+                                        size="sm"
+                                        variant="destructive"
+                                        class="h-7 px-2 text-xs"
+                                        title="Delete this cursor so the pipeline re-ingests its log file from the start."
+                                        @click="forceReset(cursor.id)"
+                                    >
+                                        <RotateCcw class="mr-1 h-3 w-3" />
+                                        Force Reset
+                                    </Button>
                                 </template>
                                 <template v-else>
                                     {{ cursor[col.key] ?? '—' }}

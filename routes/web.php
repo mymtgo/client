@@ -290,6 +290,7 @@ Route::group([], function (Router $router) {
 
         // Log Cursors
         $group->get('log-cursors', App\Http\Controllers\Debug\LogCursors\IndexController::class)->name('debug.log-cursors.index');
+        $group->delete('log-cursors/{logCursor}', App\Http\Controllers\Debug\LogCursors\DestroyController::class)->name('debug.log-cursors.destroy');
 
         // Pipeline Log
         $group->get('pipeline-log', App\Http\Controllers\Debug\PipelineLog\IndexController::class)->name('debug.pipeline-log.index');
