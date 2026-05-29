@@ -11,7 +11,6 @@ use App\Jobs\ComputeCardGameStats;
 use App\Jobs\DetermineMatchArchetypesJob;
 use App\Models\Card;
 use App\Models\Game;
-use App\Models\GameLog;
 use App\Models\ImportScan;
 use App\Models\MtgoMatch;
 use App\Models\Player;
@@ -28,7 +27,6 @@ class ImportMatches
      */
     public static function run(array $matches): array
     {
-        $dataPath = Mtgo::getLogDataPath();
         $imported = 0;
         $skipped = 0;
 
@@ -71,11 +69,6 @@ class ImportMatches
                 'imported' => true,
             ]);
 
-            // Create GameLog record if we have a game log token
-            if ($data['game_log_token'] ?? null) {
-                self::createGameLog($match, $data['game_log_token'], $dataPath);
-            }
-
             if (! empty($data['games']) && $data['local_player']) {
                 self::createGames($match, $data);
 
@@ -107,6 +100,7 @@ class ImportMatches
         $scanMatches = $query->get();
         $imported = 0;
         $skipped = 0;
+        $dataPath = Mtgo::getLogDataPath();
 
         foreach ($scanMatches as $scanMatch) {
             if (MtgoMatch::where('mtgo_id', (string) $scanMatch->history_id)->exists()) {
@@ -130,16 +124,14 @@ class ImportMatches
             $opponentCards = [];
 
             if ($scanMatch->game_log_token && $localPlayer) {
-                $gameLog = GameLog::where('match_token', $scanMatch->game_log_token)
-                    ->whereNotNull('decoded_entries')
-                    ->first();
+                $entries = self::parseGameLogEntries($scanMatch->game_log_token, $dataPath);
 
-                if ($gameLog?->decoded_entries) {
-                    $cardData = ExtractCardsFromGameLog::run($gameLog->decoded_entries);
+                if (! empty($entries)) {
+                    $cardData = ExtractCardsFromGameLog::run($entries);
                     $localCards = $cardData['cards_by_player'][$localPlayer] ?? [];
                     $opponentCards = $cardData['cards_by_player'][$opponent] ?? [];
 
-                    $gameResults = ExtractGameResults::run($gameLog->decoded_entries, $localPlayer);
+                    $gameResults = ExtractGameResults::run($entries, $localPlayer);
                     $cardsByGame = $cardData['cards_by_game'] ?? [];
                     $gameMeta = $cardData['game_meta'] ?? [];
                     $pregameActionsByGame = $cardData['pregame_actions'] ?? [];
@@ -201,12 +193,6 @@ class ImportMatches
                 'outcome' => $outcome,
                 'imported' => true,
             ]);
-
-            // Link existing GameLog to this match
-            if ($scanMatch->game_log_token) {
-                GameLog::where('match_token', $scanMatch->game_log_token)
-                    ->update(['match_token' => $match->token]);
-            }
 
             if (! empty($games) && $localPlayer) {
                 $data = [
@@ -389,39 +375,26 @@ class ImportMatches
         self::hydrateCards(array_values($cards));
     }
 
-    private static function createGameLog(MtgoMatch $match, string $gameLogToken, string $dataPath): void
+    /**
+     * Parse a game log .dat file inline (no GameLog row written).
+     *
+     * @return array<int, array{timestamp: string, message: string}>
+     */
+    private static function parseGameLogEntries(string $gameLogToken, string $dataPath): array
     {
-        // Link an already-decoded GameLog if discovery (or a prior run) processed this token.
-        $existing = GameLog::where('match_token', $gameLogToken)
-            ->whereNotNull('decoded_entries')
-            ->first();
-
-        if ($existing) {
-            $existing->update(['match_token' => $match->token]);
-
-            return;
-        }
-
         $filePath = $dataPath.'/Match_GameLog_'.$gameLogToken.'.dat';
 
         if (! file_exists($filePath)) {
-            return;
+            return [];
         }
 
         $raw = file_get_contents($filePath);
         $parsed = ParseGameLogBinary::run($raw);
 
         if (! $parsed || empty($parsed['entries'])) {
-            return;
+            return [];
         }
 
-        GameLog::create([
-            'match_token' => $match->token,
-            'file_path' => $filePath,
-            'decoded_entries' => $parsed['entries'],
-            'decoded_at' => now(),
-            'byte_offset' => $parsed['byte_offset'],
-            'decoded_version' => ParseGameLogBinary::VERSION,
-        ]);
+        return $parsed['entries'];
     }
 }

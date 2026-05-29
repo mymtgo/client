@@ -100,15 +100,17 @@ class ProcessMatchEvents
         try {
             // No outer transaction here: AdvanceMatchState manages its own
             // atomicity for the match/games create + state transition, and
-            // ResolveGameResults does file I/O (binary game log parse) which
-            // we do NOT want holding the SQLite write lock while it runs.
-            // Holding the lock during file I/O was causing queue worker
-            // `update jobs set reserved_at` queries to time out at 30s.
+            // ResolveMatchFromMetaMessages can run multiple writes as it
+            // syncs per-game results. Avoiding a long-lived outer write
+            // transaction keeps the SQLite write lock from blocking queue
+            // worker `update jobs set reserved_at` queries (previously this
+            // was timing out at 30s under load).
             //
             // Each step below is independently idempotent on retry: an
             // existing match short-circuits AdvanceMatchState's create path,
-            // ResolveGameResults syncs results progressively, and
-            // markEventsProcessed only marks unprocessed rows.
+            // ResolveMatchFromMetaMessages syncs results progressively from
+            // ingested LogEvents, and markEventsProcessed only marks
+            // unprocessed rows.
             $match = AdvanceMatchState::run($matchToken, $matchId);
 
             if (! $match) {
@@ -119,9 +121,9 @@ class ProcessMatchEvents
 
             if (in_array($match->state, [MatchState::InProgress, MatchState::Ended])) {
                 try {
-                    ResolveGameResults::run($match);
+                    ResolveMatchFromMetaMessages::run($match);
                 } catch (\Throwable $e) {
-                    Log::channel('pipeline')->warning("Match {$match->mtgo_id}: game log resolution failed, will retry", [
+                    Log::channel('pipeline')->warning("Match {$match->mtgo_id}: metamessage resolution failed, will retry", [
                         'error' => $e->getMessage(),
                     ]);
                 }

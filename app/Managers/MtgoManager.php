@@ -7,13 +7,13 @@ use App\Actions\Logs\FindMtgoLogPath;
 use App\Actions\Logs\GetLogFilePaths;
 use App\Actions\Logs\IngestLogInstance;
 use App\Actions\Logs\PruneProcessedLogEvents;
-use App\Actions\Pipeline\RunPipeline;
 use App\Actions\RegisterDevice;
 use App\Actions\Settings\ValidatePath;
 use App\Facades\AppSettings;
 use App\Jobs\DownloadArchetypes;
 use App\Jobs\PopulateMissingCardData;
 use App\Jobs\RefreshArchetypes;
+use App\Jobs\RunPipelineJob;
 use App\Jobs\ShipCardStats;
 use App\Jobs\ShipTournamentObservations;
 use App\Jobs\SubmitMatch;
@@ -234,14 +234,17 @@ class MtgoManager
     public function pathsAreValid(): bool
     {
         $logOk = ValidatePath::forLogs($this->getLogPath());
-        $dataOk = ValidatePath::forData($this->getLogDataPath());
 
-        return $logOk['valid'] && $dataOk['valid'];
+        return $logOk['valid'];
     }
 
     public function schedule(Schedule $schedule): void
     {
-        $schedule->call(fn () => RunPipeline::run())
+        // Dispatch the pipeline tick as a unique queued job so a long-running
+        // tick (backlog drain, transient SQLite contention) cannot stack
+        // overlapping runs against each other. RunPipelineJob is ShouldBeUnique;
+        // duplicate dispatches while one is in flight drop silently.
+        $schedule->job(new RunPipelineJob)
             ->everyTwoSeconds()
             ->name('process_matches');
 

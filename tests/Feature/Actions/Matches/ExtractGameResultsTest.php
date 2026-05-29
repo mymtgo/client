@@ -80,6 +80,61 @@ it('extracts instant concede', function () {
     expect($result['games'][0]['end_reason'])->toBeIn(['win', 'concede']);
 });
 
+it('counts a between-games drop at 1-1 as a decisive third game', function () {
+    // Mirrors a real match: opponent drops during sideboarding for game 3,
+    // so the aborted game produces only a terminal line with no roll/join.
+    $entries = [
+        // Game 1 — local player concedes
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@Panticloser rolled a 5.'],
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@Pjanrepuge rolled a 1.'],
+        ['timestamp' => '2026-01-01T00:00:01+00:00', 'message' => '@P@Panticloser joined the game.'],
+        ['timestamp' => '2026-01-01T00:00:01+00:00', 'message' => '@P@Pjanrepuge joined the game.'],
+        ['timestamp' => '2026-01-01T00:00:02+00:00', 'message' => '@Panticloser has conceded from the game.'],
+        ['timestamp' => '2026-01-01T00:00:02+00:00', 'message' => '@Pjanrepuge wins the game.'],
+        // Game 2 — opponent concedes
+        ['timestamp' => '2026-01-01T00:01:00+00:00', 'message' => '@P@Panticloser joined the game.'],
+        ['timestamp' => '2026-01-01T00:01:00+00:00', 'message' => '@P@Pjanrepuge joined the game.'],
+        ['timestamp' => '2026-01-01T00:01:02+00:00', 'message' => '@Pjanrepuge has conceded from the game.'],
+        ['timestamp' => '2026-01-01T00:01:02+00:00', 'message' => '@Panticloser wins the game.'],
+        // Game 3 — opponent drops during sideboarding, no roll/join precedes it
+        ['timestamp' => '2026-01-01T00:02:00+00:00', 'message' => '@Pjanrepuge has lost connection to the game.'],
+    ];
+
+    $result = ExtractGameResults::run($entries, 'anticloser');
+
+    expect($result['games'])->toHaveCount(3);
+    expect($result['games'][0]['winner'])->toBe('janrepuge');
+    expect($result['games'][1]['winner'])->toBe('anticloser');
+    expect($result['games'][2]['winner'])->toBe('anticloser');
+    expect($result['games'][2]['end_reason'])->toBe('disconnect');
+});
+
+it('counts a local between-games concede at 1-1 as a decisive loss', function () {
+    $entries = [
+        // Game 1 — opponent concedes
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@Panticloser rolled a 5.'],
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@Pjanrepuge rolled a 1.'],
+        ['timestamp' => '2026-01-01T00:00:01+00:00', 'message' => '@P@Panticloser joined the game.'],
+        ['timestamp' => '2026-01-01T00:00:01+00:00', 'message' => '@P@Pjanrepuge joined the game.'],
+        ['timestamp' => '2026-01-01T00:00:02+00:00', 'message' => '@Pjanrepuge has conceded from the game.'],
+        ['timestamp' => '2026-01-01T00:00:02+00:00', 'message' => '@Panticloser wins the game.'],
+        // Game 2 — local player concedes
+        ['timestamp' => '2026-01-01T00:01:00+00:00', 'message' => '@P@Panticloser joined the game.'],
+        ['timestamp' => '2026-01-01T00:01:00+00:00', 'message' => '@P@Pjanrepuge joined the game.'],
+        ['timestamp' => '2026-01-01T00:01:02+00:00', 'message' => '@Panticloser has conceded from the game.'],
+        ['timestamp' => '2026-01-01T00:01:02+00:00', 'message' => '@Pjanrepuge wins the game.'],
+        // Game 3 — local player drops during sideboarding
+        ['timestamp' => '2026-01-01T00:02:00+00:00', 'message' => '@Panticloser has conceded from the game.'],
+    ];
+
+    $result = ExtractGameResults::run($entries, 'anticloser');
+
+    expect($result['games'])->toHaveCount(3);
+    expect($result['games'][2]['winner'])->toBe('janrepuge');
+    expect($result['games'][2]['loser'])->toBe('anticloser');
+    expect($result['games'][2]['end_reason'])->toBe('concede');
+});
+
 /*
 |--------------------------------------------------------------------------
 | Metadata Extraction
