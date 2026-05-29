@@ -23,39 +23,33 @@ class ProcessMatchEvents
         $processedTokens = [];
 
         // Discover token → match_id pairs from unprocessed events.
+        //
         // Different event types carry different fields:
         //   match_state_changed  → match_token only
         //   game_state_update    → match_id only
         //   game_management_json → both
-        // Use game_management_json (which has both) to build the mapping,
-        // then resolve orphans from sibling events.
-        $tokenToMatchId = LogEvent::whereNotNull('match_id')
-            ->whereNotNull('match_token')
+        //
+        // Only game_management_json carries both columns, so a positive
+        // filter on that event type alone yields the full discovery set.
+        // The previous whereNotIn blacklist forced SQLite to skip the
+        // covering (event_type, processed_at, match_token, match_id)
+        // index and fall back to a full scan + temp B-tree DISTINCT,
+        // pushing each tick into multi-second scans on ~400k-row
+        // installs. The positive filter is a covering-index seek
+        // (~0.006s) and drops the N+1 sibling lookup that used to
+        // recover orphan tokens.
+        //
+        // Trade-off: orphan match_state_changed rows that arrive before
+        // any game_management_json for the same token sit unprocessed
+        // until the next tick picks one up (the normal case), or are
+        // reaped by markStaleEventsProcessed after 2 minutes.
+        $tokenToMatchId = LogEvent::query()
+            ->where('event_type', 'game_management_json')
             ->whereNull('processed_at')
-            ->whereNotIn('event_type', [
-                'league_joined',
-                'league_join_request',
-                'league_dropped',
-                ...LogEventType::tournamentValues(),
-            ])
+            ->whereNotNull('match_token')
+            ->whereNotNull('match_id')
             ->distinct()
             ->pluck('match_id', 'match_token');
-
-        // State change events only have match_token — resolve match_id from siblings
-        LogEvent::whereNotNull('match_token')
-            ->whereNull('match_id')
-            ->whereNull('processed_at')
-            ->whereNotIn('match_token', $tokenToMatchId->keys())
-            ->whereNotIn('event_type', LogEventType::tournamentValues())
-            ->distinct()
-            ->pluck('match_token')
-            ->each(function (string $token) use ($tokenToMatchId) {
-                $matchId = LogEvent::where('match_token', $token)->whereNotNull('match_id')->value('match_id');
-
-                if ($matchId) {
-                    $tokenToMatchId[$token] = $matchId;
-                }
-            });
 
         foreach ($tokenToMatchId as $matchToken => $matchId) {
             self::processMatch($matchToken, $matchId);
@@ -68,6 +62,7 @@ class ProcessMatchEvents
     private static function processMatch(string $matchToken, int|string $matchId): void
     {
         $existingMatch = MtgoMatch::where('token', $matchToken)->first();
+
         if ($existingMatch?->failed_at !== null) {
             return;
         }
