@@ -90,7 +90,12 @@ const groupedCards = computed<Record<string, DrawOddsCard[]>>(() => {
     );
 });
 
-const isEmpty = computed(() => !props.drawOdds || props.drawOdds.cards.length === 0);
+// No active match at all — nothing to show yet.
+const isWaiting = computed(() => !props.drawOdds);
+// Active match, but the deck couldn't be resolved into usable card data
+// (e.g. a legacy deck format with no card list).
+const hasNoDeckData = computed(() => !!props.drawOdds && props.drawOdds.cards.length === 0);
+const isEmpty = computed(() => isWaiting.value || hasNoDeckData.value);
 
 const getRemaining = (cards: DrawOddsCard[]): number => cards.reduce((sum, c) => sum + c.remaining, 0);
 
@@ -101,7 +106,9 @@ const pct = (value: number, digits = 1): string => `${(value * 100).toFixed(digi
     <div class="relative flex h-full flex-col bg-background text-foreground">
         <!-- Empty / waiting state -->
         <div v-if="isEmpty" class="flex h-full items-center justify-center p-6" style="-webkit-app-region: drag">
-            <p class="text-sm text-muted-foreground">Waiting for match&hellip;</p>
+            <p class="text-sm text-muted-foreground">
+                {{ isWaiting ? 'Waiting for match…' : 'No deck data for this match' }}
+            </p>
         </div>
 
         <template v-else-if="drawOdds">

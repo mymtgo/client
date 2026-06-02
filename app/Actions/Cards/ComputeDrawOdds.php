@@ -46,9 +46,9 @@ class ComputeDrawOdds
             ->get(['mtgo_id', 'name', 'type', 'color_identity', 'image', 'local_image'])
             ->keyBy(fn ($c) => (int) $c->mtgo_id);
 
-        // How many copies of each mtgo_id have left the local player's library.
-        $seenOutside = self::seenOutsideLibrary($match); // [mtgoId => count]; empty for now (Task 4)
-        $liveLibraryCount = self::liveLibraryCount($match); // 0 for now (Task 4)
+        // Copies of each mtgo_id seen outside the local player's library.
+        $seenOutside = self::seenOutsideLibrary($match);
+        $liveLibraryCount = self::liveLibraryCount($match);
 
         $remainingByMtgoId = $deckByMtgoId->map(
             fn (int $qty, int $mtgoId) => max(0, $qty - ($seenOutside[$mtgoId] ?? 0))
