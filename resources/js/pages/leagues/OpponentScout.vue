@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import OverlayLayout from '@/Layouts/OverlayLayout.vue';
+import OpponentScoutComponent, { type OpponentData } from '@/components/leagues/OpponentScout.vue';
 import DrawOddsPanel from '@/components/leagues/DrawOddsPanel.vue';
 import { router } from '@inertiajs/vue3';
 import { onMounted, onUnmounted } from 'vue';
@@ -18,6 +19,7 @@ type DrawOdds = Omit<App.Data.Front.DrawOddsData, 'cards' | 'topFive'> & {
 };
 
 defineProps<{
+    opponent: OpponentData | null;
     drawOdds: DrawOdds | null;
 }>();
 
@@ -32,7 +34,7 @@ const stopPolling = () => {
 
 onMounted(() => {
     interval = setInterval(() => {
-        router.reload({ only: ['drawOdds'] });
+        router.reload({ only: ['opponent', 'drawOdds'] });
     }, 1000);
 });
 
@@ -40,5 +42,19 @@ onUnmounted(stopPolling);
 </script>
 
 <template>
-    <DrawOddsPanel :draw-odds="drawOdds" />
+    <div class="flex h-screen flex-col bg-background text-foreground">
+        <!--
+            Opponent archetype block. Only rendered when an opponent is known so
+            the divider/empty space collapses while we wait for a match. Acts as
+            the drag handle for the frameless overlay window.
+        -->
+        <div v-if="opponent" class="shrink-0 border-b border-border" style="-webkit-app-region: drag">
+            <OpponentScoutComponent :opponent="opponent" />
+        </div>
+
+        <!-- Live draw-odds decklist fills the remaining height. -->
+        <div class="min-h-0 flex-1">
+            <DrawOddsPanel :draw-odds="drawOdds" />
+        </div>
+    </div>
 </template>
