@@ -917,3 +917,51 @@ it('tracks land plays separately from casts in live pipeline', function () {
     expect($stat->cast)->toBe(0);
     expect($stat->played)->toBe(1);
 });
+
+it('counts casts logged under a different printing than the registered deck card', function () {
+    // MTGO can log a cast under a different printing's CatalogID than the one
+    // registered in the deck — most visibly with warp casts, where the warp
+    // variant carries its own CatalogID. The deck and timeline use the base
+    // printing, but the cast line uses the warp printing. Both printings share
+    // one oracle id, so the cast must still be attributed to the deck card.
+    [$match, $deckVersion, $local, $opponent] = createMatchWithGames();
+
+    // Two printings of the same card, same oracle.
+    Card::factory()->create(['oracle_id' => 'oracle-qr', 'mtgo_id' => 1001, 'name' => 'Quantum Riddler']);
+    Card::factory()->create(['oracle_id' => 'oracle-qr', 'mtgo_id' => 1002, 'name' => 'Quantum Riddler']);
+
+    $game = Game::factory()->for($match, 'match')->create([
+        'won' => true,
+        'started_at' => now(),
+    ]);
+
+    // Deck registered under the base printing only.
+    attachPlayers($game, $local, $opponent, deckJson: [
+        ['mtgo_id' => 1001, 'quantity' => 4, 'sideboard' => false],
+    ]);
+
+    // Timeline (drives SEEN) carries the base printing — this already resolves.
+    createTimeline($game, [
+        ['Id' => 10, 'CatalogID' => 1001, 'Zone' => 'Hand', 'Owner' => 0, 'Controller' => 0],
+    ]);
+
+    // Cast is logged under the warp printing (1002 << 1 = 2004), NOT 1001.
+    ccgs_seedLogEntries($match->token, [
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@Ptestplayer joined the game.'],
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@Popponent joined the game.'],
+        ['timestamp' => '2026-01-01T00:00:01+00:00', 'message' => '@Ptestplayer casts @[Quantum Riddler@:2004,100:@] by paying {1U} with warp.'],
+        ['timestamp' => '2026-01-01T00:00:02+00:00', 'message' => '@Ptestplayer wins the game.'],
+    ]);
+
+    (new ComputeCardGameStats($match->id))->handle();
+
+    $stat = DB::table('card_game_stats')
+        ->where('oracle_id', 'oracle-qr')
+        ->where('game_id', $game->id)
+        ->first();
+
+    // SEEN already worked via the base printing; the cast under the warp
+    // printing must resolve to the same oracle instead of being dropped.
+    expect($stat->seen)->toBe(1);
+    expect($stat->cast)->toBe(1);
+});
