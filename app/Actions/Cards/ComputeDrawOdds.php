@@ -136,6 +136,63 @@ class ComputeDrawOdds
      */
     private static function topFive(Collection $cards, int $librarySize): DataCollection
     {
-        return DrawOddsTypeData::collect([], DataCollection::class); // Task 5
+        if ($librarySize <= 0) {
+            return DrawOddsTypeData::collect([], DataCollection::class);
+        }
+
+        $byType = $cards
+            ->groupBy(fn (DrawOddsCardData $c) => self::bucket($c->type))
+            ->map(fn (Collection $group) => (int) $group->sum(fn (DrawOddsCardData $c) => $c->remaining));
+
+        $rows = $byType
+            ->map(fn (int $remaining, string $type) => new DrawOddsTypeData(
+                type: $type,
+                probability: self::atLeastOneInSample($librarySize, $remaining, 5),
+            ))
+            ->filter(fn (DrawOddsTypeData $t) => $t->probability > 0)
+            ->sortByDesc(fn (DrawOddsTypeData $t) => $t->probability)
+            ->values();
+
+        return DrawOddsTypeData::collect($rows->all(), DataCollection::class);
+    }
+
+    /**
+     * P(X >= 1) for drawing a sample of $n from a population of $population
+     * containing $successes successes. Computed as 1 - P(X = 0) via the running
+     * product of (non-success)/(remaining) ratios. Safe for deck-sized populations.
+     */
+    private static function atLeastOneInSample(int $population, int $successes, int $n): float
+    {
+        if ($population <= 0 || $successes <= 0) {
+            return 0.0;
+        }
+
+        if ($successes >= $population) {
+            return 1.0;
+        }
+
+        $n = min($n, $population);
+        $pZero = 1.0;
+
+        for ($i = 0; $i < $n; $i++) {
+            $pZero *= ($population - $successes - $i) / ($population - $i);
+        }
+
+        return min(1.0, max(0.0, 1.0 - $pZero));
+    }
+
+    private static function bucket(string $type): string
+    {
+        if (str_contains($type, 'Land')) {
+            return 'Land';
+        }
+
+        foreach (['Creature', 'Instant', 'Sorcery', 'Artifact', 'Enchantment', 'Planeswalker'] as $known) {
+            if (str_contains($type, $known)) {
+                return $known;
+            }
+        }
+
+        return 'Other';
     }
 }
