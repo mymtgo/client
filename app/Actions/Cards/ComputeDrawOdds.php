@@ -22,7 +22,7 @@ class ComputeDrawOdds
         }
 
         $maindeck = collect($deckVersion->cards)
-            ->reject(fn ($card) => (bool) ($card['sideboard'] ?? false))
+            ->reject(fn ($card) => filter_var($card['sideboard'] ?? false, FILTER_VALIDATE_BOOLEAN))
             ->values();
 
         if ($maindeck->isEmpty()) {

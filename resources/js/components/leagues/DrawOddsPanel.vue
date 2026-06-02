@@ -111,27 +111,18 @@ const pct = (value: number, digits = 1): string => `${(value * 100).toFixed(digi
             </p>
         </div>
 
-        <template v-else-if="drawOdds">
-            <!-- Header -->
-            <div class="shrink-0 p-4" style="-webkit-app-region: drag">
-                <h1 class="text-xl font-bold leading-tight">Draw Odds</h1>
-                <p class="text-sm text-muted-foreground">
-                    Library &middot;
-                    <span class="tabular-nums">{{ drawOdds.librarySize }}</span> cards
-                </p>
-            </div>
-
+        <div v-else-if="drawOdds" class="pt-2">
             <!-- Decklist -->
-            <div class="flex-1 space-y-4 overflow-y-auto px-4 pb-4">
+            <div class="flex-1 space-y-2 overflow-y-auto pb-4">
                 <div v-for="(cards, type) in groupedCards" :key="type" class="mb-3">
-                    <h3 class="mb-0.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground/60">
+                    <h3 class="mb-0.5 text-xs font-semibold px-4 uppercase tracking-wider text-muted-foreground/60">
                         {{ type }} ({{ getRemaining(cards) }})
                     </h3>
                     <div
                         v-for="card in cards"
                         :key="card.mtgoId ?? card.name"
                         :style="borderStyle(card.identity)"
-                        class="flex items-center justify-between gap-2 py-1 pl-2.5 pr-1.5 text-sm"
+                        class="flex items-center justify-between text-xs gap-2 py-0.5 pl-2.5 pr-1.5 text-sm"
                         :class="{ 'opacity-40': card.remaining === 0 }"
                         @mouseenter="onCardEnter(card, $event)"
                         @mouseleave="onCardLeave"
@@ -153,12 +144,12 @@ const pct = (value: number, digits = 1): string => `${(value * 100).toFixed(digi
             <!-- Top-5 footer: P(draw >=1 of type in next 5) -->
             <div
                 v-if="drawOdds.topFive.length"
-                class="shrink-0 border-t border-border px-4 py-2.5"
+                class="shrink-0 border-t border-border px-4 text-xs py-2.5"
             >
                 <h2 class="mb-1 text-[0.625rem] font-semibold uppercase tracking-wider text-muted-foreground/60">
                     In next 5 draws
                 </h2>
-                <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+                <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px]">
                     <span
                         v-for="bucket in drawOdds.topFive"
                         :key="bucket.type"
@@ -184,7 +175,7 @@ const pct = (value: number, digits = 1): string => `${(value * 100).toFixed(digi
                     />
                 </div>
             </Transition>
-        </template>
+        </div>
     </div>
 </template>
 

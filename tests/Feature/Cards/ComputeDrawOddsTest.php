@@ -43,7 +43,7 @@ it('computes full-deck draw chances when there is no game timeline', function ()
     $deck = Deck::factory()->create();
     $deckVersion = DeckVersion::create([
         'deck_id' => $deck->id,
-        'signature' => signatureFor([['101', '20', '0'], ['102', '4', '0']]),
+        'signature' => signatureFor([['101', '20', 'false'], ['102', '4', 'false']]),
         'modified_at' => now(),
     ]);
 
@@ -75,7 +75,7 @@ it('subtracts cards the local player has moved out of library', function () {
     $deck = Deck::factory()->create();
     $deckVersion = DeckVersion::create([
         'deck_id' => $deck->id,
-        'signature' => signatureFor([['101', '20', '0'], ['102', '4', '0']]),
+        'signature' => signatureFor([['101', '20', 'false'], ['102', '4', 'false']]),
         'modified_at' => now(),
     ]);
 
@@ -127,7 +127,7 @@ it('computes top-5 type probabilities as P(>=1 in 5)', function () {
     $deckVersion = DeckVersion::create([
         'deck_id' => $deck->id,
         // 15 lands, 5 instants => 20-card library, no timeline.
-        'signature' => signatureFor([['101', '15', '0'], ['102', '5', '0']]),
+        'signature' => signatureFor([['101', '15', 'false'], ['102', '5', 'false']]),
         'modified_at' => now(),
     ]);
 
@@ -152,6 +152,35 @@ it('computes top-5 type probabilities as P(>=1 in 5)', function () {
     expect(round($instant->probability, 6))->toBe(round($expectedInstant, 6)); // ~0.8056
 });
 
+it('excludes sideboard cards (real "true"/"false" string flags)', function () {
+    Card::create(['mtgo_id' => '101', 'oracle_id' => 'o-mountain', 'name' => 'Mountain', 'type' => 'Basic Land']);
+    Card::create(['mtgo_id' => '301', 'oracle_id' => 'o-rip', 'name' => 'Rest in Peace', 'type' => 'Enchantment']);
+
+    $deck = Deck::factory()->create();
+    $deckVersion = DeckVersion::create([
+        'deck_id' => $deck->id,
+        // Maindeck land (false) + sideboard card (true) — the real signature format.
+        'signature' => signatureFor([['101', '20', 'false'], ['301', '3', 'true']]),
+        'modified_at' => now(),
+    ]);
+
+    $match = MtgoMatch::create([
+        'mtgo_id' => '400006', 'token' => 'mt-d6', 'format' => 'CModern',
+        'match_type' => 'League', 'state' => MatchState::InProgress,
+        'started_at' => now(), 'deck_version_id' => $deckVersion->id,
+    ]);
+
+    $result = ComputeDrawOdds::run($match);
+
+    // Maindeck must resolve (regression: "false" string was truthy, dropping every card).
+    expect($result)->not->toBeNull();
+    expect($result->librarySize)->toBe(20);
+
+    $names = collect($result->cards->all())->pluck('name');
+    expect($names)->toContain('Mountain');
+    expect($names)->not->toContain('Rest in Peace');
+});
+
 it('includes card identity, image, and mtgoId in the payload', function () {
     Card::create([
         'mtgo_id' => '201', 'oracle_id' => 'o-x', 'name' => 'Snapcaster Mage',
@@ -161,7 +190,7 @@ it('includes card identity, image, and mtgoId in the payload', function () {
     $deck = Deck::factory()->create();
     $deckVersion = DeckVersion::create([
         'deck_id' => $deck->id,
-        'signature' => signatureFor([['201', '4', '0']]),
+        'signature' => signatureFor([['201', '4', 'false']]),
         'modified_at' => now(),
     ]);
     $match = MtgoMatch::create([
