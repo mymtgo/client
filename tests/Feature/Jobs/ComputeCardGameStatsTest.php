@@ -4,6 +4,7 @@ use App\Jobs\ComputeCardGameStats;
 use App\Models\Card;
 use App\Models\DeckVersion;
 use App\Models\Game;
+use App\Models\GameLog;
 use App\Models\GameTimeline;
 use App\Models\LogEvent;
 use App\Models\LogInstance;
@@ -482,6 +483,51 @@ it('creates a sided_out row for cards completely moved to sideboard in postboard
     expect((bool) $g2Stat->is_postboard)->toBeTrue();
     expect((bool) $g2Stat->sided_out)->toBeTrue();
     expect((bool) $g2Stat->sided_in)->toBeFalse();
+});
+
+it('sources entries from the decoded game log table when run with fromGameLog (regenerate path)', function () {
+    // Reproduces the regenerate regression: after a match completes, its
+    // log_events are pruned, so regeneration must source entries from the
+    // durable GameLog.decoded_entries instead. With fromGameLog=true and NO
+    // log_events present, cast must still resolve.
+    [$match, $deckVersion, $local, $opponent] = createMatchWithGames();
+
+    $card = Card::factory()->create(['oracle_id' => 'oracle-a', 'mtgo_id' => 1001, 'name' => 'Card A']);
+
+    $game = Game::factory()->for($match, 'match')->create([
+        'won' => true,
+        'started_at' => now(),
+    ]);
+    attachPlayers($game, $local, $opponent, deckJson: [
+        ['mtgo_id' => 1001, 'quantity' => 4, 'sideboard' => false],
+    ]);
+    createTimeline($game, [
+        ['Id' => 10, 'CatalogID' => 1001, 'Zone' => 'Hand', 'Owner' => 0, 'Controller' => 0],
+    ]);
+
+    // Durable decoded game log — same {timestamp,message}[] shape the MetaMessage
+    // path produces. No log_events seeded: simulates a pruned, completed match.
+    GameLog::create([
+        'match_token' => $match->token,
+        'file_path' => '/some/path.dat',
+        'decoded_entries' => [
+            ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@Ptestplayer joined the game.'],
+            ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@Popponent joined the game.'],
+            ['timestamp' => '2026-01-01T00:00:01+00:00', 'message' => '@Ptestplayer casts @[Card A@:2002,100:@].'],
+            ['timestamp' => '2026-01-01T00:00:02+00:00', 'message' => '@Ptestplayer wins the game.'],
+        ],
+    ]);
+
+    expect(LogEvent::where('match_token', $match->token)->count())->toBe(0);
+
+    (new ComputeCardGameStats($match->id, fromGameLog: true))->handle();
+
+    $stat = DB::table('card_game_stats')
+        ->where('oracle_id', 'oracle-a')
+        ->where('game_id', $game->id)
+        ->first();
+
+    expect($stat->cast)->toBe(1);
 });
 
 it('reads cast data from game log instead of timeline zone transitions', function () {

@@ -6,6 +6,7 @@ use App\Actions\Cards\AggregateGameLogCardStats;
 use App\Actions\Cards\CountSeenCardsByOracle;
 use App\Actions\Cards\UpdateGameMetaFromLog;
 use App\Actions\Import\ExtractCardsFromGameLog;
+use App\Actions\Matches\EnsureGameLogForMatch;
 use App\Actions\Matches\ExtractGameHandData;
 use App\Actions\Matches\ExtractMetaMessageEntries;
 use App\Models\Card;
@@ -29,6 +30,7 @@ class ComputeCardGameStats implements ShouldQueue
 
     public function __construct(
         public int $matchId,
+        public bool $fromGameLog = false,
     ) {}
 
     public function handle(): void
@@ -45,7 +47,12 @@ class ComputeCardGameStats implements ShouldQueue
         // leaves stale rows for cards no longer in the deck or no longer signaled by opp.
         CardGameStat::whereIn('game_id', $games->pluck('id'))->delete();
 
-        $entries = ExtractMetaMessageEntries::run($match->token);
+        // Regeneration sources from the durable decoded .dat (GameLog), since a
+        // completed match's log_events get pruned. The live at-Complete path
+        // reads log_events directly, which are still present at that moment.
+        $entries = $this->fromGameLog
+            ? EnsureGameLogForMatch::run($match->token)
+            : ExtractMetaMessageEntries::run($match->token);
 
         $gameLogStats = ! empty($entries)
             ? ExtractCardsFromGameLog::run($entries)

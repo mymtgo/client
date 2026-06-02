@@ -31,7 +31,7 @@ it('queues a ComputeCardGameStats job for each live, complete match in the deck'
     Queue::assertPushed(ComputeCardGameStats::class, 2);
     Queue::assertPushed(
         ComputeCardGameStats::class,
-        fn (ComputeCardGameStats $job) => $job->matchId === $matchA->id,
+        fn (ComputeCardGameStats $job) => $job->matchId === $matchA->id && $job->fromGameLog === true,
     );
     Queue::assertPushed(
         ComputeCardGameStats::class,

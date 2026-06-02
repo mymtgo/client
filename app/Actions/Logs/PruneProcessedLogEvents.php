@@ -31,8 +31,9 @@ class PruneProcessedLogEvents
      * Delete processed log events for completed matches.
      *
      * Once a match is Complete, its log events have been fully projected
-     * into match/game/league records and the .dat file has decoded_entries
-     * stored. The raw log events are no longer needed.
+     * into match/game/league records. The raw log events are no longer needed
+     * for live use — regeneration re-sources game-log data from the durable
+     * on-disk .dat via EnsureGameLogForMatch, not from these rows.
      */
     private static function pruneCompleted(): void
     {

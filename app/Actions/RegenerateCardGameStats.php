@@ -57,7 +57,7 @@ class RegenerateCardGameStats
 
         $queued = 0;
         foreach ($query->pluck('id') as $matchId) {
-            ComputeCardGameStats::dispatch($matchId)->onQueue('default');
+            ComputeCardGameStats::dispatch($matchId, fromGameLog: true)->onQueue('default');
             $queued++;
         }
 
