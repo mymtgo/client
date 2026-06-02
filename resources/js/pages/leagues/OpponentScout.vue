@@ -1,14 +1,24 @@
 <script setup lang="ts">
 import OverlayLayout from '@/Layouts/OverlayLayout.vue';
-import type { OpponentData } from '@/components/leagues/OpponentScout.vue';
-import OpponentScoutComponent from '@/components/leagues/OpponentScout.vue';
+import DrawOddsPanel from '@/components/leagues/DrawOddsPanel.vue';
 import { router } from '@inertiajs/vue3';
-import { onMounted, onUnmounted, watch } from 'vue';
+import { onMounted, onUnmounted } from 'vue';
 
 defineOptions({ layout: OverlayLayout });
 
-const props = defineProps<{
-    opponent: OpponentData | null;
+/**
+ * The backend serializes `cards` and `topFive` as plain arrays at runtime, but
+ * the generated `DrawOddsData` type describes them as keyed records (a Spatie
+ * DataCollection artifact). Override those two members to arrays so the prop
+ * passes straight through to DrawOddsPanel, which expects the same shape.
+ */
+type DrawOdds = Omit<App.Data.Front.DrawOddsData, 'cards' | 'topFive'> & {
+    cards: App.Data.Front.DrawOddsCardData[];
+    topFive: App.Data.Front.DrawOddsTypeData[];
+};
+
+defineProps<{
+    drawOdds: DrawOdds | null;
 }>();
 
 let interval: ReturnType<typeof setInterval> | null = null;
@@ -21,32 +31,14 @@ const stopPolling = () => {
 };
 
 onMounted(() => {
-    if (props.opponent?.lastArchetype) {
-        return;
-    }
-
     interval = setInterval(() => {
-        router.reload({ only: ['opponent'] });
-    }, 5000);
+        router.reload({ only: ['drawOdds'] });
+    }, 1000);
 });
-
-watch(
-    () => props.opponent?.lastArchetype,
-    (archetype) => {
-        if (archetype) {
-            stopPolling();
-        }
-    },
-);
 
 onUnmounted(stopPolling);
 </script>
 
 <template>
-    <div class="h-screen" style="-webkit-app-region: drag">
-        <OpponentScoutComponent v-if="opponent" :opponent="opponent" />
-        <div v-else class="flex h-full items-center justify-center px-4 text-center text-sm text-white opacity-50">
-            Waiting for match...
-        </div>
-    </div>
+    <DrawOddsPanel :draw-odds="drawOdds" />
 </template>
