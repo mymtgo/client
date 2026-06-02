@@ -82,7 +82,7 @@ const resultLines = computed(() => [
         <div class="flex flex-col gap-3 rounded-md border border-border bg-muted/30 px-3 py-3">
             <div class="flex flex-col gap-1.5">
                 <Label for="hyp-card" class="text-xs text-muted-foreground">Card</Label>
-                <NativeSelect id="hyp-card" v-model="selectedName" class="h-8 w-full text-sm">
+                <NativeSelect id="hyp-card" v-model="selectedName" class="h-8 w-full py-1 text-sm">
                     <NativeSelectOption value="" disabled>Select a card…</NativeSelectOption>
                     <NativeSelectOption v-for="card in cards" :key="card.name" :value="card.name">
                         {{ card.name }}
