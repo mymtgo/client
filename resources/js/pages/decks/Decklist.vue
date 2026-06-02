@@ -1,16 +1,17 @@
 <script setup lang="ts">
 import AppLayout from '@/AppLayout.vue';
 import DeckViewLayout from '@/Layouts/DeckViewLayout.vue';
-import DeckList from '@/pages/decks/partials/DeckList.vue';
+import ExportDekController from '@/actions/App/Http/Controllers/Decks/ExportDekController';
+import ScreenshotDataController from '@/actions/App/Http/Controllers/Decks/ScreenshotDataController';
 import ManaSymbols from '@/components/ManaSymbols.vue';
 import DeckScreenshot from '@/components/decks/DeckScreenshot.vue';
-import ScreenshotDataController from '@/actions/App/Http/Controllers/Decks/ScreenshotDataController';
-import ExportDekController from '@/actions/App/Http/Controllers/Decks/ExportDekController';
 import { useScreenshot } from '@/composables/useScreenshot';
 import { useToast } from '@/composables/useToast';
-import type { VersionStats, VersionDecklist } from '@/types/decks';
-import { computed, nextTick, ref } from 'vue';
+import DeckList from '@/pages/decks/partials/DeckList.vue';
+import HypergeometricCalculator from '@/pages/decks/partials/HypergeometricCalculator.vue';
+import type { VersionDecklist, VersionStats } from '@/types/decks';
 import { Camera, Download, Loader2 } from 'lucide-vue-next';
+import { computed, nextTick, ref } from 'vue';
 
 defineOptions({ layout: [AppLayout, DeckViewLayout] });
 
@@ -63,7 +64,7 @@ const colorDistribution = computed((): ColorStat[] => {
     });
 });
 
-const visibleColorDistribution = computed(() => colorDistribution.value.filter(s => s.count > 0));
+const visibleColorDistribution = computed(() => colorDistribution.value.filter((s) => s.count > 0));
 
 type CmcBucket = { cmc: string; count: number };
 
@@ -91,11 +92,14 @@ const cmcDistribution = computed((): CmcBucket[] => {
     return [...result.entries()].map(([cmc, count]) => ({ cmc, count }));
 });
 
-const cmcMax = computed(() => Math.max(...cmcDistribution.value.map(d => d.count), 1));
+const cmcMax = computed(() => Math.max(...cmcDistribution.value.map((d) => d.count), 1));
 
 const decklistOrgUrl = computed(() => {
     const dl = activeDecklist.value;
-    const mainCards = Object.values(dl.maindeck).flat().map((c) => `${c.quantity} ${c.name}`).join('\n');
+    const mainCards = Object.values(dl.maindeck)
+        .flat()
+        .map((c) => `${c.quantity} ${c.name}`)
+        .join('\n');
     const sideCards = dl.sideboard.map((c) => `${c.quantity} ${c.name}`).join('\n');
     const params = new URLSearchParams({
         deckmain: mainCards,
@@ -193,7 +197,11 @@ async function copyDeckScreenshot() {
                 <Download v-else class="size-4" />
                 {{ exporting ? 'Saving…' : 'Download .dek' }}
             </button>
-            <a :href="decklistOrgUrl" target="_blank" class="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground">
+            <a
+                :href="decklistOrgUrl"
+                target="_blank"
+                class="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+            >
                 Deck Registration
             </a>
         </div>
@@ -205,25 +213,20 @@ async function copyDeckScreenshot() {
                 <!-- CMC Distribution -->
                 <div v-if="cmcDistribution.length" class="flex flex-col gap-2">
                     <h3 class="text-sm font-medium text-muted-foreground">Mana Curve <span class="text-xs font-normal">(maindeck, nonland)</span></h3>
-                    <div class="flex items-end gap-1" style="height: 120px;">
-                        <div
-                            v-for="bucket in cmcDistribution"
-                            :key="bucket.cmc"
-                            class="flex flex-1 flex-col items-center gap-1"
-                        >
-                            <span class="text-xs tabular-nums text-muted-foreground">{{ bucket.count }}</span>
-                            <div
-                                class="w-full rounded-t bg-primary/80 transition-all"
-                                :style="{ height: `${(bucket.count / cmcMax) * 90}px` }"
-                            />
-                            <span class="text-xs tabular-nums text-muted-foreground">{{ bucket.cmc }}</span>
+                    <div class="flex items-end gap-1" style="height: 120px">
+                        <div v-for="bucket in cmcDistribution" :key="bucket.cmc" class="flex flex-1 flex-col items-center gap-1">
+                            <span class="text-xs text-muted-foreground tabular-nums">{{ bucket.count }}</span>
+                            <div class="w-full rounded-t bg-primary/80 transition-all" :style="{ height: `${(bucket.count / cmcMax) * 90}px` }" />
+                            <span class="text-xs text-muted-foreground tabular-nums">{{ bucket.cmc }}</span>
                         </div>
                     </div>
                 </div>
 
                 <!-- Color Distribution -->
                 <div v-if="visibleColorDistribution.length" class="flex flex-col gap-2">
-                    <h3 class="text-sm font-medium text-muted-foreground">Color Distribution <span class="text-xs font-normal">(maindeck, nonland)</span></h3>
+                    <h3 class="text-sm font-medium text-muted-foreground">
+                        Color Distribution <span class="text-xs font-normal">(maindeck, nonland)</span>
+                    </h3>
                     <div class="grid grid-cols-2 gap-2">
                         <div
                             v-for="stat in visibleColorDistribution"
@@ -238,10 +241,13 @@ async function copyDeckScreenshot() {
                         </div>
                     </div>
                 </div>
+
+                <!-- Hypergeometric Draw Odds -->
+                <HypergeometricCalculator :maindeck="activeDecklist.maindeck" />
             </div>
         </div>
         <!-- Off-screen screenshot capture -->
-        <div v-if="showScreenshot && screenshotData" style="position: fixed; top: -9999px; left: -9999px; pointer-events: none;">
+        <div v-if="showScreenshot && screenshotData" style="position: fixed; top: -9999px; left: -9999px; pointer-events: none">
             <DeckScreenshot
                 ref="screenshotRef"
                 :name="screenshotData.name"
