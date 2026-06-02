@@ -38,23 +38,22 @@ class SyncDecksTest extends TestCase
         Http::fake();
     }
 
-    public function test_it_soft_deletes_decks_that_are_no_longer_present_in_files()
+    public function test_it_does_not_delete_decks_when_scan_returns_empty()
     {
-        // Ensure FindMtgoLogPath doesn't hit MtgoManager's getLogPath directly if it's cached or something
-        // But since we mocked 'mtgo' facade, it should use the mock.
-
-        // Create a deck in the database
+        // Regression guard: an empty deck-file scan must NOT be treated as
+        // "user deleted every deck". The scan returns [] for legitimate
+        // reasons — MTGO closed, second MTGO account active, transient
+        // I/O on Windows — and wiping the deck history in that case
+        // destroys data we cannot rebuild from logs.
         $deck = Deck::factory()->create(['mtgo_id' => 'test-deck-1', 'name' => 'Old Deck']);
 
-        // Mock GetDeckFiles to return empty array (as if file was deleted)
-        // We can still mock GetDeckFiles directly for this simple test
         $this->mock(GetDeckFiles::class, function ($mock) {
             $mock->shouldReceive('run')->andReturn([]);
         });
 
         SyncDecks::run();
 
-        $this->assertSoftDeleted($deck);
+        $this->assertDatabaseHas('decks', ['id' => $deck->id, 'deleted_at' => null]);
     }
 
     public function test_it_keeps_decks_that_are_present_in_the_active_log_directory()
@@ -99,8 +98,11 @@ XML;
         ]);
     }
 
-    public function test_it_soft_deletes_decks_that_are_only_present_in_stale_directories()
+    public function test_it_does_not_delete_decks_that_are_only_present_in_stale_directories()
     {
+        // Multiple MTGO accounts on the same machine produce more than one
+        // candidate directory. Scanning the "wrong" (stale) account does
+        // not mean the user actually removed those decks — keep them.
         $deckId = '75d11598-f222-488b-a249-14a09e075727';
         $deck = Deck::factory()->create(['mtgo_id' => $deckId, 'name' => 'Stale Deck']);
         Card::factory()->create(['mtgo_id' => 123]);
@@ -116,11 +118,9 @@ XML;
             mkdir($stalePath, 0777, true);
         }
 
-        // Active log is in activePath
         file_put_contents($activePath.'/mtgo.log', 'active');
         touch($activePath.'/mtgo.log', time());
 
-        // Stale deck file is in stalePath
         $xmlContent = <<<XML
 <Grouping Name="Stale Deck" NetDeckId="{$deckId}" GroupingType="Deck" Timestamp="2026-01-21T10:00:00" FormatCode="Standard">
     <Item CatId="123" Quantity="4" IsSideboard="false" />
@@ -130,8 +130,7 @@ XML;
 
         SyncDecks::run();
 
-        // Should be soft deleted because it's not in the active directory
-        $this->assertSoftDeleted($deck);
+        $this->assertDatabaseHas('decks', ['id' => $deck->id, 'deleted_at' => null]);
     }
 
     public function test_it_does_not_overwrite_name_when_original_name_is_populated()

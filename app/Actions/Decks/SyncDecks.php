@@ -101,21 +101,17 @@ class SyncDecks
             $deckIds[] = $deck->id;
         }
 
-        // Batch cleanup and re-linking in a single transaction.
-        TimedTransaction::run('SyncDecks:cleanup', function () use ($deckIds) {
+        // Backfill account_id on orphaned decks that were synced before the
+        // active account existed. We intentionally never auto-delete decks
+        // here: the XML scan can return empty for legitimate reasons (MTGO
+        // closed, second MTGO account active, transient I/O), and treating
+        // that as "user removed every deck" wipes the entire local history.
+        TimedTransaction::run('SyncDecks:backfill', function () use ($deckIds) {
             $accountId = Account::active()->value('id');
+
             if ($accountId) {
-                Deck::where('account_id', $accountId)->whereNotIn('id', $deckIds)->delete();
-
-                // Backfill orphaned decks that were synced before the account existed
                 Deck::whereNull('account_id')->whereIn('id', $deckIds)->update(['account_id' => $accountId]);
-            } else {
-                // No active account — only clean up unowned decks to avoid
-                // accidentally deleting decks belonging to a known account
-                // when the active account is temporarily unavailable.
-                Deck::whereNull('account_id')->whereNotIn('id', $deckIds)->delete();
             }
-
         });
 
         // Re-link complete matches that lost (or never got) their deck association.
