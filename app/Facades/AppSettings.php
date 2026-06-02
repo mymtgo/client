@@ -32,6 +32,8 @@ use Illuminate\Support\Facades\Facade;
  * @method static void setDecksGroupedByArchetype(bool $value)
  * @method static bool hideArchivedDecks()
  * @method static void setHideArchivedDecks(bool $value)
+ * @method static int cardStatsTrust()
+ * @method static void setCardStatsTrust(int $value)
  * @method static bool autostartEnabled()
  * @method static void setAutostartEnabled(bool $value)
  * @method static string systemTimezone()

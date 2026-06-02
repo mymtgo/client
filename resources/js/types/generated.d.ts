@@ -67,6 +67,22 @@ totalWins: number;
 winrate: number | null;
 lastPlayedAt: string | null;
 };
+export type DeckWinrateData = {
+wins: number;
+games: number;
+rate: number;
+};
+export type ExternalCardStatsResponse = {
+stats: { [key: number]: { [key: string]: any } };
+archetypeWinrate: App.Data.Front.DeckWinrateData;
+opponents: { [key: number]: App.Data.Front.ExternalOpponentData };
+refreshedAt: string | null;
+};
+export type ExternalOpponentData = {
+id: number;
+uuid: string;
+name: string;
+};
 export type GameData = {
 id: number;
 players: any | Array<any>;

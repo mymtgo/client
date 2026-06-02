@@ -7,27 +7,39 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTr
 import { ContextMenuItem } from '@/components/ui/context-menu';
 import CardStatScreenshot from '@/components/cards/CardStatScreenshot.vue';
 import CardStatsView from '@/components/cards/CardStatsView.vue';
+import ExternalStatsToggle from '@/components/cards/ExternalStatsToggle.vue';
+import TrustSliderPopover from '@/components/cards/TrustSliderPopover.vue';
+import TimeframeFilter from '@/components/TimeframeFilter.vue';
 import ImageBase64Controller from '@/actions/App/Http/Controllers/Cards/ImageBase64Controller';
 import RegenerateCardStatsController from '@/actions/App/Http/Controllers/Decks/RegenerateCardStatsController';
+import CardStatsController from '@/actions/App/Http/Controllers/Decks/CardStatsController';
 import { useScreenshot } from '@/composables/useScreenshot';
 import { useToast } from '@/composables/useToast';
+import { useTrustSetting } from '@/composables/useTrustSetting';
 import { timeframeLabel } from '@/lib/timeframes';
 import { Skeleton } from '@/components/ui/skeleton';
 import { loadCardStatsVisibility, type CardStatsPerspective } from '@/pages/decks/partials/cardStatsColumns';
 import type { DeckCardStat } from '@/types/decks';
 import type { ReportArchetypeOption } from '@/types/reports';
 import { Deferred, router } from '@inertiajs/vue3';
+import { useTimeAgo } from '@vueuse/core';
 import { CircleHelp, RefreshCw } from 'lucide-vue-next';
-import { computed, nextTick, ref } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 
 const props = defineProps<{
     deckId: number;
+    deckArchetypeId: number | null;
     timeframe?: string;
     deletedAt?: string | null;
     cardStats?: {
         stats: DeckCardStat[];
         archetypes: ReportArchetypeOption[];
         perspective?: CardStatsPerspective;
+        deckWinrate: { wins: number; games: number; rate: number };
+        trust: number;
+        source: 'local' | 'external';
+        refreshedAt: string | null;
+        externalError: boolean;
     };
 }>();
 
@@ -37,8 +49,54 @@ const readonlyTitle = 'Deck deleted on MTGO — read-only';
 const stats = computed(() => props.cardStats?.stats ?? []);
 const archetypes = computed(() => props.cardStats?.archetypes ?? []);
 const perspective = computed<CardStatsPerspective>(() => props.cardStats?.perspective ?? 'mine');
+const deckWinrate = computed(() => props.cardStats?.deckWinrate ?? { wins: 0, games: 0, rate: 0.5 });
+const initialTrust = computed(() => props.cardStats?.trust ?? 50);
+const source = computed<'local' | 'external'>(() => props.cardStats?.source ?? 'local');
+const refreshedAt = computed<string | null>(() => props.cardStats?.refreshedAt ?? null);
+const externalError = computed<boolean>(() => props.cardStats?.externalError ?? false);
+const archetypeMissing = computed<boolean>(() => props.deckArchetypeId === null);
+
+const toggleLoading = ref(false);
+
+// ── Trust + shrinkage ────────────────────────────────────────────────────────
+
+const trust = useTrustSetting(initialTrust.value);
+
+const trustMax = computed<number>(() => {
+    const games = deckWinrate.value.games;
+    if (!Number.isFinite(games) || games <= 0) return 200;
+    return Math.max(200, Math.ceil((games * 2) / 50) * 50);
+});
+
+// ── Freshness badge ──────────────────────────────────────────────────────────
+
+const isExternal = computed<boolean>(() => source.value === 'external');
+const refreshedAgo = computed<string | null>(() => {
+    if (!refreshedAt.value) return null;
+    return useTimeAgo(new Date(refreshedAt.value)).value;
+});
+
+// ── External error toast ─────────────────────────────────────────────────────
 
 const { add: toast } = useToast();
+watch(() => externalError.value, (isError) => {
+    if (isError) {
+        toast({
+            type: 'error',
+            title: 'Community stats unavailable',
+            message: "Couldn't reach the community stats service. Try again later.",
+        });
+    }
+});
+
+// ── Timeframe ────────────────────────────────────────────────────────────────
+
+function setTimeframe(value: string): void {
+    const query: Record<string, string> = {};
+    if (value !== 'alltime') query.timeframe = value;
+    router.get(CardStatsController.url({ deck: props.deckId }), query, { preserveScroll: true });
+}
+
 const regenerateOpen = ref(false);
 const regenerating = ref(false);
 
@@ -178,26 +236,32 @@ async function copyScreenshot(stat: DeckCardStat) {
 </script>
 
 <template>
-    <Deferred data="cardStats">
-        <template #fallback>
-            <Card class="gap-0 overflow-hidden p-0">
-                <CardContent class="flex flex-col gap-2 px-4 py-4">
-                    <Skeleton class="h-8 w-full" />
-                    <Skeleton class="h-8 w-full" />
-                    <Skeleton class="h-8 w-full" />
-                    <Skeleton class="h-8 w-3/4" />
-                </CardContent>
-            </Card>
-        </template>
+    <div class="space-y-3">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+            <TimeframeFilter :model-value="props.timeframe ?? 'alltime'" @update:model-value="setTimeframe" />
 
-        <CardStatsView
-            ref="cardStatsViewRef"
-            :stats="stats"
-            :archetypes="archetypes"
-            :perspective="perspective"
-            @filter-change="handleFilterChange"
-        >
-            <template #toolbar-actions>
+            <div class="flex flex-wrap items-center gap-2">
+                <div
+                    v-if="isExternal && refreshedAgo"
+                    class="select-none text-xs text-muted-foreground"
+                    title="Last refresh of community aggregates"
+                >
+                    Community · Updated {{ refreshedAgo }}
+                </div>
+
+                <TrustSliderPopover
+                    :model-value="trust.value.value"
+                    :max="trustMax"
+                    @update:model-value="trust.setValue"
+                    @reset="trust.reset"
+                />
+
+                <ExternalStatsToggle
+                    :source="source"
+                    :archetype-missing="archetypeMissing"
+                    @update:loading="toggleLoading = $event"
+                />
+
                 <Button
                     variant="ghost"
                     size="sm"
@@ -383,13 +447,38 @@ async function copyScreenshot(stat: DeckCardStat) {
                         </div>
                     </SheetContent>
                 </Sheet>
+            </div>
+        </div>
+
+        <Deferred data="cardStats">
+            <template #fallback>
+                <Card class="gap-0 overflow-hidden p-0">
+                    <CardContent class="flex flex-col gap-2 px-4 py-4">
+                        <Skeleton class="h-8 w-full" />
+                        <Skeleton class="h-8 w-full" />
+                        <Skeleton class="h-8 w-full" />
+                        <Skeleton class="h-8 w-3/4" />
+                    </CardContent>
+                </Card>
             </template>
 
-            <template #row-actions="{ stat }">
-                <ContextMenuItem @click="copyScreenshot(stat)">Copy screenshot</ContextMenuItem>
-            </template>
-        </CardStatsView>
-    </Deferred>
+            <CardStatsView
+                ref="cardStatsViewRef"
+                :stats="stats"
+                :archetypes="archetypes"
+                :perspective="perspective"
+                :deck-winrate-rate="deckWinrate.rate"
+                :source="source"
+                :trust-value="trust.value.value"
+                :loading="toggleLoading"
+                @filter-change="handleFilterChange"
+            >
+                <template #row-actions="{ stat }">
+                    <ContextMenuItem @click="copyScreenshot(stat)">Copy screenshot</ContextMenuItem>
+                </template>
+            </CardStatsView>
+        </Deferred>
+    </div>
 
     <div
         v-if="screenshotStat"

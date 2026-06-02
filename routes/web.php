@@ -84,6 +84,7 @@ use App\Http\Controllers\Settings\UpdateLocalImagesController;
 use App\Http\Controllers\Settings\UpdateLogPathController;
 use App\Http\Controllers\Settings\UpdateOverlaySettingsController;
 use App\Http\Controllers\Settings\UpdateShareStatsController;
+use App\Http\Controllers\Settings\UpdateTrustSettingController;
 use App\Http\Controllers\Settings\UpdateWatcherController;
 use App\Http\Controllers\Settings\UploadOverlayBackgroundController;
 use App\Http\Controllers\Support\DownloadReportBundleController;
@@ -221,6 +222,7 @@ Route::group([], function (Router $router) {
         $group->post('submit-matches', RunSubmitMatchesController::class)->name('settings.submit-matches');
         $group->patch('switch-account', SwitchAccountController::class)->name('settings.switch-account');
         $group->patch('account-tracking', UpdateAccountTrackingController::class)->name('settings.account-tracking');
+        $group->patch('card-stats-trust', UpdateTrustSettingController::class)->name('settings.card-stats-trust');
         $group->post('overlay', UpdateOverlaySettingsController::class)->name('settings.overlay');
         $group->post('overlay/background', UploadOverlayBackgroundController::class)->name('settings.overlay.background.upload');
         $group->delete('overlay/background', DeleteOverlayBackgroundController::class)->name('settings.overlay.background.delete');

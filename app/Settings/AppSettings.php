@@ -281,6 +281,27 @@ class AppSettings
         $this->set('hide_archived_decks', $value);
     }
 
+    public function cardStatsTrust(): int
+    {
+        $value = $this->get('card_stats_trust', 50);
+        $int = is_int($value) ? $value : (int) $value;
+
+        if ($int < 0) {
+            return 0;
+        }
+        if ($int > 100000) {
+            return 100000;
+        }
+
+        return $int;
+    }
+
+    public function setCardStatsTrust(int $value): void
+    {
+        $clamped = max(0, min(100000, $value));
+        $this->set('card_stats_trust', $clamped);
+    }
+
     public function autostartEnabled(): bool
     {
         return (bool) $this->get('autostart_enabled', false);
