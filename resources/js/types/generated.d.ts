@@ -72,6 +72,23 @@ wins: number;
 games: number;
 rate: number;
 };
+export type DrawOddsCardData = {
+name: string;
+type: string;
+remaining: number;
+total: number;
+drawChance: number;
+};
+export type DrawOddsData = {
+cards: { [key: number]: App.Data.Front.DrawOddsCardData };
+topFive: { [key: number]: App.Data.Front.DrawOddsTypeData };
+librarySize: number;
+liveLibraryCount: number;
+};
+export type DrawOddsTypeData = {
+type: string;
+probability: number;
+};
 export type ExternalCardStatsResponse = {
 stats: { [key: number]: { [key: string]: any } };
 archetypeWinrate: App.Data.Front.DeckWinrateData;
@@ -100,6 +117,7 @@ export type LeagueData = {
 name: string;
 startedAt: string;
 format: string;
+manual: boolean;
 matches: Array<any>;
 };
 export type MatchArchetypeData = {
