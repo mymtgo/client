@@ -100,7 +100,7 @@ const pct = (value: number, digits = 1): string => `${(value * 100).toFixed(digi
 <template>
     <div class="relative flex h-full flex-col bg-background text-foreground">
         <!-- Empty / waiting state -->
-        <div v-if="isEmpty" class="flex h-full items-center justify-center p-6">
+        <div v-if="isEmpty" class="flex h-full items-center justify-center p-6" style="-webkit-app-region: drag">
             <p class="text-sm text-muted-foreground">Waiting for match&hellip;</p>
         </div>
 
