@@ -151,3 +151,28 @@ it('computes top-5 type probabilities as P(>=1 in 5)', function () {
     expect(round($land->probability, 6))->toBe(round($expectedLand, 6));     // ~0.99997
     expect(round($instant->probability, 6))->toBe(round($expectedInstant, 6)); // ~0.8056
 });
+
+it('includes card identity, image, and mtgoId in the payload', function () {
+    Card::create([
+        'mtgo_id' => '201', 'oracle_id' => 'o-x', 'name' => 'Snapcaster Mage',
+        'type' => 'Creature', 'color_identity' => 'U', 'image' => 'https://img/snap.jpg',
+    ]);
+
+    $deck = Deck::factory()->create();
+    $deckVersion = DeckVersion::create([
+        'deck_id' => $deck->id,
+        'signature' => signatureFor([['201', '4', '0']]),
+        'modified_at' => now(),
+    ]);
+    $match = MtgoMatch::create([
+        'mtgo_id' => '400005', 'token' => 'mt-d5', 'format' => 'CModern',
+        'match_type' => 'League', 'state' => MatchState::InProgress,
+        'started_at' => now(), 'deck_version_id' => $deckVersion->id,
+    ]);
+
+    $card = collect(ComputeDrawOdds::run($match)->cards->all())->firstWhere('name', 'Snapcaster Mage');
+
+    expect($card->mtgoId)->toBe(201);
+    expect($card->identity)->toBe('U');
+    expect($card->image)->toBe('https://img/snap.jpg');
+});

@@ -73,8 +73,11 @@ games: number;
 rate: number;
 };
 export type DrawOddsCardData = {
+mtgoId: number | null;
 name: string;
 type: string;
+identity: string | null;
+image: string | null;
 remaining: number;
 total: number;
 drawChance: number;

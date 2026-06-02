@@ -43,7 +43,7 @@ class ComputeDrawOdds
             ->mapWithKeys(fn ($c) => [(int) $c['mtgo_id'] => (int) $c['quantity']]);
 
         $cardMeta = Card::whereIn('mtgo_id', $deckByMtgoId->keys())
-            ->get(['mtgo_id', 'name', 'type'])
+            ->get(['mtgo_id', 'name', 'type', 'color_identity', 'image', 'local_image'])
             ->keyBy(fn ($c) => (int) $c->mtgo_id);
 
         // How many copies of each mtgo_id have left the local player's library.
@@ -61,8 +61,11 @@ class ComputeDrawOdds
             $meta = $cardMeta->get($mtgoId);
 
             return new DrawOddsCardData(
+                mtgoId: $mtgoId,
                 name: $meta?->name ?? "#{$mtgoId}",
                 type: $meta?->type ?? 'Unknown',
+                identity: $meta?->color_identity,
+                image: $meta?->image_url,
                 remaining: $remaining,
                 total: $total,
                 drawChance: $librarySize > 0 ? $remaining / $librarySize : 0.0,

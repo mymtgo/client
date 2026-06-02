@@ -8,8 +8,11 @@ use Spatie\LaravelData\Data;
 final class DrawOddsCardData extends Data
 {
     public function __construct(
+        public ?int $mtgoId,
         public string $name,
         public string $type,
+        public ?string $identity,
+        public ?string $image,
         public int $remaining,
         public int $total,
         public float $drawChance,
