@@ -76,7 +76,13 @@
       "mcp__sentry__search_issue_events",
       "Bash(gh release *)",
       "Bash(awk -F'EventId=' '{print $2}')",
-      "Bash(awk '{print $1}')"
+      "Bash(awk '{print $1}')",
+      "Bash(npx tsc *)",
+      "Bash(sqlite3 *)",
+      "Bash(perl -i -pe 's/\\(?<!resolveMetaTest_\\)\\\\bmakeMatch\\\\\\(/resolveMetaTest_makeMatch\\(/g; s/\\(?<!resolveMetaTest_\\)\\\\bseedCompletedSignal\\\\\\(/resolveMetaTest_seedCompletedSignal\\(/g; s/\\(?<!resolveMetaTest_\\)\\\\bseedMetaMessage\\\\\\(/resolveMetaTest_seedMetaMessage\\(/g' tests/Feature/Actions/Pipeline/ResolveMatchFromMetaMessagesTest.php)",
+      "Bash(npx prettier *)",
+      "Bash(npx eslint *)",
+      "Bash(echo \"ESLINT_EXIT=$?\")"
     ]
   },
   "enableAllProjectMcpServers": true,

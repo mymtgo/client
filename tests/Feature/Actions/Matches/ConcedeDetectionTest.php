@@ -184,7 +184,6 @@ it('marks decided when opponent disconnects and disconnectDetected is passed', f
         games: gamePairs([[ME, OPP]]),
         localPlayer: ME,
         stateChanges: $stateChanges,
-        disconnectDetected: true,
     );
 
     expect($result)->toBe(['wins' => 1, 'losses' => 0, 'decided' => true]);
@@ -199,7 +198,6 @@ it('marks decided when opponent disconnects in league match', function () {
         games: gamePairs([[ME, OPP]]),
         localPlayer: ME,
         stateChanges: $stateChanges,
-        disconnectDetected: true,
     );
 
     expect($result)->toBe(['wins' => 1, 'losses' => 0, 'decided' => true]);
@@ -214,7 +212,6 @@ it('marks decided when opponent disconnects with no games played', function () {
         games: [],
         localPlayer: ME,
         stateChanges: $stateChanges,
-        disconnectDetected: true,
     );
 
     expect($result)->toBe(['wins' => 0, 'losses' => 0, 'decided' => true]);

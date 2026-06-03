@@ -80,17 +80,6 @@ it('marks not decided when no signal exists', function () {
         ->and($result['decided'])->toBeFalse();
 });
 
-it('marks decided on disconnect', function () {
-    $result = DetermineMatchResult::run(
-        games: games([['me', 'opp']]),
-        localPlayer: 'me',
-        stateChanges: collect(),
-        disconnectDetected: true,
-    );
-
-    expect($result['decided'])->toBeTrue();
-});
-
 it('prefers MTGO match score over counted winners', function () {
     $result = DetermineMatchResult::run(
         games: games([['me', 'opp']]),

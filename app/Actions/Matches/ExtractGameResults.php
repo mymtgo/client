@@ -81,7 +81,9 @@ class ExtractGameResults
         foreach ($entries as $entry) {
             $msg = $entry['message'];
 
-            if (preg_match('/wins the game|has conceded from the game|has lost connection to the game/', $msg)) {
+            // A disconnect is NOT a game-end signal — the player may reconnect
+            // and the same game continue. Only a win or concede ends a game.
+            if (preg_match('/wins the game|has conceded from the game/', $msg)) {
                 $gameEndSeen = true;
             }
 
@@ -165,13 +167,13 @@ class ExtractGameResults
                 return null;
             }
 
+            // Only a concede fabricates a decisive between-games drop. A
+            // disconnect is not terminal (reconnect possible), so it never
+            // fabricates a game — the stale-match reaper resolves it later
+            // once the match has conclusively gone quiet.
             if (preg_match('/^@P('.self::PLAYER_PATTERN.') has conceded from the game/', $msg, $m)) {
                 $leaver = $m[1];
                 $endReason = 'concede';
-                $forfeitEntry = $entry;
-            } elseif (preg_match('/^@P('.self::PLAYER_PATTERN.') has lost connection to the game/', $msg, $m)) {
-                $leaver = $m[1];
-                $endReason = 'disconnect';
                 $forfeitEntry = $entry;
             }
         }
@@ -267,13 +269,9 @@ class ExtractGameResults
                 }
             }
 
-            if (preg_match('/^@P('.self::PLAYER_PATTERN.') has lost connection to the game/', $msg, $m)) {
-                if ($winner === null) {
-                    $loser = $m[1];
-                    $winner = self::otherPlayer($m[1], $players);
-                    $endReason = 'disconnect';
-                }
-            }
+            // A "lost connection" line is NOT a result — the player may
+            // reconnect. It never declares a winner; the game stays unknown
+            // until a real win/concede line (or the reaper, post-mortem).
         }
 
         return [

@@ -80,9 +80,11 @@ it('extracts instant concede', function () {
     expect($result['games'][0]['end_reason'])->toBeIn(['win', 'concede']);
 });
 
-it('counts a between-games drop at 1-1 as a decisive third game', function () {
-    // Mirrors a real match: opponent drops during sideboarding for game 3,
-    // so the aborted game produces only a terminal line with no roll/join.
+it('does not fabricate a decisive third game from a between-games disconnect at 1-1', function () {
+    // A disconnect is NOT a match-deciding signal — the dropping player may
+    // reconnect. At 1-1 a trailing "lost connection" must leave the match
+    // undecided; resolution waits for a clear end signal (handled by the
+    // stale-match reaper once the match goes quiet).
     $entries = [
         // Game 1 — local player concedes
         ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@Panticloser rolled a 5.'],
@@ -96,17 +98,49 @@ it('counts a between-games drop at 1-1 as a decisive third game', function () {
         ['timestamp' => '2026-01-01T00:01:00+00:00', 'message' => '@P@Pjanrepuge joined the game.'],
         ['timestamp' => '2026-01-01T00:01:02+00:00', 'message' => '@Pjanrepuge has conceded from the game.'],
         ['timestamp' => '2026-01-01T00:01:02+00:00', 'message' => '@Panticloser wins the game.'],
-        // Game 3 — opponent drops during sideboarding, no roll/join precedes it
+        // Trailing disconnect — no roll/join precedes it, so it is NOT a new game
         ['timestamp' => '2026-01-01T00:02:00+00:00', 'message' => '@Pjanrepuge has lost connection to the game.'],
     ];
 
     $result = ExtractGameResults::run($entries, 'anticloser');
 
-    expect($result['games'])->toHaveCount(3);
+    expect($result['games'])->toHaveCount(2);
     expect($result['games'][0]['winner'])->toBe('janrepuge');
     expect($result['games'][1]['winner'])->toBe('anticloser');
-    expect($result['games'][2]['winner'])->toBe('anticloser');
-    expect($result['games'][2]['end_reason'])->toBe('disconnect');
+});
+
+it('does not declare a game winner from a lone disconnect', function () {
+    $entries = [
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@Panticloser rolled a 5.'],
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@Pjanrepuge rolled a 1.'],
+        ['timestamp' => '2026-01-01T00:00:01+00:00', 'message' => '@P@Panticloser joined the game.'],
+        ['timestamp' => '2026-01-01T00:00:01+00:00', 'message' => '@P@Pjanrepuge joined the game.'],
+        ['timestamp' => '2026-01-01T00:00:02+00:00', 'message' => '@Pjanrepuge has lost connection to the game.'],
+    ];
+
+    $result = ExtractGameResults::run($entries, 'anticloser');
+
+    expect($result['games'])->toHaveCount(1);
+    expect($result['games'][0]['winner'])->toBeNull();
+});
+
+it('does not split a single game into two when a player disconnects then reconnects', function () {
+    // Disconnect mid-game followed by continued play (reconnect) is ONE game.
+    // The disconnect must not act as a game boundary.
+    $entries = [
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@Panticloser rolled a 5.'],
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@Pjanrepuge rolled a 1.'],
+        ['timestamp' => '2026-01-01T00:00:01+00:00', 'message' => '@P@Panticloser joined the game.'],
+        ['timestamp' => '2026-01-01T00:00:01+00:00', 'message' => '@P@Pjanrepuge joined the game.'],
+        ['timestamp' => '2026-01-01T00:00:02+00:00', 'message' => '@Pjanrepuge has lost connection to the game.'],
+        // Reconnect: same game continues to a real result
+        ['timestamp' => '2026-01-01T00:00:30+00:00', 'message' => '@Panticloser wins the game.'],
+    ];
+
+    $result = ExtractGameResults::run($entries, 'anticloser');
+
+    expect($result['games'])->toHaveCount(1);
+    expect($result['games'][0]['winner'])->toBe('anticloser');
 });
 
 it('counts a local between-games concede at 1-1 as a decisive loss', function () {

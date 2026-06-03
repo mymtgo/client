@@ -59,16 +59,12 @@ class ResolveMatchFromMetaMessages
             ->where('event_type', 'match_state_changed')
             ->get();
 
-        $disconnectDetected = collect($extracted['games'])
-            ->contains(fn ($g) => ($g['end_reason'] ?? '') === 'disconnect');
-
         $result = DetermineMatchResult::run(
             games: $extracted['games'],
             localPlayer: $username,
             stateChanges: $stateChanges,
             matchScore: $extracted['match_score'],
             matchScoreExists: $extracted['match_decided'],
-            disconnectDetected: $disconnectDetected,
         );
 
         // The CompletedState signal we gated on at the top is itself authoritative
