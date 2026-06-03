@@ -3,7 +3,6 @@
 namespace App\Actions\Pipeline;
 
 use App\Actions\Matches\AdvanceMatchState;
-use App\Enums\LogEventType;
 use App\Enums\MatchState;
 use App\Facades\Mtgo;
 use App\Models\Account;
@@ -52,6 +51,41 @@ class ProcessMatchEvents
             ->pluck('match_id', 'match_token');
 
         foreach ($tokenToMatchId as $matchToken => $matchId) {
+            self::processMatch($matchToken, $matchId);
+            $processedTokens[] = $matchToken;
+        }
+
+        // Second pass: recover orphaned tokens whose only unprocessed events are
+        // trailing match_state_changed rows (e.g. a concede + close sequence that
+        // arrived after the match's game_management_json had all been processed).
+        // The discovery query above keys off game_management_json, so such a
+        // match never gets revisited and stalls in its last state forever. We
+        // resolve each token's match_id from its existing match record (or any
+        // sibling event that carries one) and run the same processMatch path.
+        //
+        // Tokens already handled this tick are filtered in PHP rather than via a
+        // whereNotIn clause, which would force the same full-scan + temp B-tree
+        // the primary discovery query was rewritten to avoid.
+        $orphanTokens = LogEvent::query()
+            ->where('event_type', 'match_state_changed')
+            ->whereNull('processed_at')
+            ->whereNotNull('match_token')
+            ->distinct()
+            ->pluck('match_token')
+            ->diff($processedTokens);
+
+        foreach ($orphanTokens as $matchToken) {
+            $matchId = MtgoMatch::where('token', $matchToken)->value('mtgo_id')
+                ?? LogEvent::where('match_token', $matchToken)
+                    ->whereNotNull('match_id')
+                    ->value('match_id');
+
+            if ($matchId === null) {
+                self::markStaleEventsProcessed($matchToken);
+
+                continue;
+            }
+
             self::processMatch($matchToken, $matchId);
             $processedTokens[] = $matchToken;
         }
