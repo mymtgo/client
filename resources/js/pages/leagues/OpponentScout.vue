@@ -3,7 +3,7 @@ import OverlayLayout from '@/Layouts/OverlayLayout.vue';
 import OpponentScoutComponent, { type OpponentData } from '@/components/leagues/OpponentScout.vue';
 import DrawOddsPanel from '@/components/leagues/DrawOddsPanel.vue';
 import { router } from '@inertiajs/vue3';
-import { onMounted, onUnmounted } from 'vue';
+import { onMounted } from 'vue';
 
 defineOptions({ layout: OverlayLayout });
 
@@ -23,22 +23,11 @@ defineProps<{
     drawOdds: DrawOdds | null;
 }>();
 
-let interval: ReturnType<typeof setInterval> | null = null;
-
-const stopPolling = () => {
-    if (interval) {
-        clearInterval(interval);
-        interval = null;
-    }
-};
-
 onMounted(() => {
-    interval = setInterval(() => {
+    window.Native?.on('App\\Events\\GameCardsSnapshotChanged', () => {
         router.reload({ only: ['opponent', 'drawOdds'] });
-    }, 1000);
+    });
 });
-
-onUnmounted(stopPolling);
 </script>
 
 <template>

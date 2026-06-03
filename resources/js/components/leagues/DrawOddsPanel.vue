@@ -122,7 +122,7 @@ const pct = (value: number, digits = 1): string => `${(value * 100).toFixed(digi
                         v-for="card in cards"
                         :key="card.mtgoId ?? card.name"
                         :style="borderStyle(card.identity)"
-                        class="flex items-center justify-between text-xs gap-2 py-0.5 pl-2.5 pr-1.5 text-sm"
+                        class="flex items-center justify-between gap-2 py-0.5 pl-2.5 pr-1.5 text-sm"
                         :class="{ 'opacity-40': card.remaining === 0 }"
                         @mouseenter="onCardEnter(card, $event)"
                         @mouseleave="onCardLeave"

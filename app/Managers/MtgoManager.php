@@ -284,21 +284,8 @@ class MtgoManager
             ->name('prune_log_events');
 
         $schedule->job(new RefreshArchetypes)
-            ->hourly()
+            ->daily()
             ->name('refresh_archetypes')
             ->withoutOverlapping(120);
-
-        // One-shot cold-start catch-up — runs once per app launch when the
-        // 24h staleness gate trips. Hourly schedule covers the rest.
-        // Wrapped in try/catch because this fires during Artisan boot
-        // (via withSchedule -> Artisan::starting) where sync queue can
-        // execute the job before HTTP/Bus fakes are installed.
-        if (RefreshArchetypes::isStale()) {
-            try {
-                RefreshArchetypes::dispatch();
-            } catch (\Throwable) {
-                // Cold-start is best-effort; hourly schedule handles the rest.
-            }
-        }
     }
 }
