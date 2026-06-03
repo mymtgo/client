@@ -119,6 +119,62 @@ it('subtracts cards the local player has moved out of library', function () {
     expect($result->liveLibraryCount)->toBe(21); // snapshot LibraryCount for local player
 });
 
+it('uses the latest timeline snapshot when multiple rows exist', function () {
+    Card::create(['mtgo_id' => '101', 'oracle_id' => 'o-mountain', 'name' => 'Mountain', 'type' => 'Basic Land']);
+    Card::create(['mtgo_id' => '102', 'oracle_id' => 'o-bolt', 'name' => 'Lightning Bolt', 'type' => 'Instant']);
+
+    $deck = Deck::factory()->create();
+    $deckVersion = DeckVersion::create([
+        'deck_id' => $deck->id,
+        'signature' => signatureFor([['101', '20', 'false'], ['102', '4', 'false']]),
+        'modified_at' => now(),
+    ]);
+
+    $match = MtgoMatch::create([
+        'mtgo_id' => '400007', 'token' => 'mt-d7', 'format' => 'CModern',
+        'match_type' => 'League', 'state' => MatchState::InProgress,
+        'started_at' => now(), 'deck_version_id' => $deckVersion->id,
+    ]);
+
+    $game = Game::create(['match_id' => $match->id, 'mtgo_id' => 'g-d7', 'started_at' => now()]);
+    $local = Player::create(['username' => 'me']);
+    $game->players()->attach($local->id, ['is_local' => 1, 'instance_id' => 1]);
+
+    // Earlier snapshot: nothing out of library yet (inserted last to prove
+    // selection is by timestamp, not insertion order).
+    // Latest snapshot: 1 Bolt in hand, 1 Mountain on battlefield.
+    GameTimeline::create([
+        'game_id' => $game->id,
+        'timestamp' => '10:00:09',
+        'content' => [
+            'Players' => [['Id' => 1, 'LibraryCount' => 22]],
+            'Cards' => [
+                ['Id' => 901, 'CatalogID' => 102, 'Owner' => 1, 'Zone' => 'Hand'],
+                ['Id' => 903, 'CatalogID' => 101, 'Owner' => 1, 'Zone' => 'Battlefield'],
+            ],
+        ],
+    ]);
+
+    GameTimeline::create([
+        'game_id' => $game->id,
+        'timestamp' => '10:00:01',
+        'content' => [
+            'Players' => [['Id' => 1, 'LibraryCount' => 24]],
+            'Cards' => [],
+        ],
+    ]);
+
+    $result = ComputeDrawOdds::run($match);
+
+    $bolt = collect($result->cards->all())->firstWhere('name', 'Lightning Bolt');
+    $mountain = collect($result->cards->all())->firstWhere('name', 'Mountain');
+
+    expect($bolt->remaining)->toBe(3);      // 4 − 1 in hand (latest snapshot)
+    expect($mountain->remaining)->toBe(19); // 20 − 1 on battlefield (latest snapshot)
+    expect($result->librarySize)->toBe(22); // 3 + 19
+    expect($result->liveLibraryCount)->toBe(22); // latest snapshot LibraryCount
+});
+
 it('computes top-5 type probabilities as P(>=1 in 5)', function () {
     Card::create(['mtgo_id' => '101', 'oracle_id' => 'o-mountain', 'name' => 'Mountain', 'type' => 'Basic Land']);
     Card::create(['mtgo_id' => '102', 'oracle_id' => 'o-bolt', 'name' => 'Lightning Bolt', 'type' => 'Instant']);

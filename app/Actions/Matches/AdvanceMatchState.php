@@ -9,6 +9,7 @@ use App\Actions\Util\ExtractKeyValueBlock;
 use App\Enums\LogEventType;
 use App\Enums\MatchState;
 use App\Events\DeckLinkedToMatch;
+use App\Events\GameCardsSnapshotChanged;
 use App\Events\LeagueMatchStarted;
 use App\Facades\Mtgo;
 use App\Jobs\SubmitMatchLogSample;
@@ -173,6 +174,10 @@ class AdvanceMatchState
             // ── Create any games whose events arrived after Started → InProgress ──
             if ($match->state === MatchState::InProgress || $match->state === MatchState::Ended) {
                 CreateOrUpdateGames::run($match, $events);
+
+                if ($match->state === MatchState::InProgress) {
+                    GameCardsSnapshotChanged::dispatch($match->id);
+                }
             }
 
             // ── InProgress → Ended ──────────────────────────────────────

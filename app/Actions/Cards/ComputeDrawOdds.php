@@ -6,7 +6,6 @@ use App\Data\Front\DrawOddsCardData;
 use App\Data\Front\DrawOddsData;
 use App\Data\Front\DrawOddsTypeData;
 use App\Models\Card;
-use App\Models\GameTimeline;
 use App\Models\MtgoMatch;
 use Illuminate\Support\Collection;
 use Spatie\LaravelData\DataCollection;
@@ -37,6 +36,16 @@ class ComputeDrawOdds
      */
     private static function build(MtgoMatch $match, Collection $maindeck): DrawOddsData
     {
+        // Resolve the latest game, its latest snapshot, and the local player's
+        // instance id once — the helpers below thread these through instead of
+        // re-querying the game/timeline on every call.
+        $game = $match->games()->latest('started_at')->first();
+        $snapshot = $game?->timeline()->latest('timestamp')->first();
+        $localInstanceId = (int) ($game?->localPlayers->first()?->pivot->instance_id ?? 1);
+
+        /** @var array<string, mixed> $snapshotContent */
+        $snapshotContent = $snapshot->content ?? [];
+
         // Aggregate quantities per mtgo_id (deck signature lists each card once).
         $deckByMtgoId = $maindeck
             ->filter(fn ($c) => ! empty($c['mtgo_id']))
@@ -47,8 +56,8 @@ class ComputeDrawOdds
             ->keyBy(fn ($c) => (int) $c->mtgo_id);
 
         // Copies of each mtgo_id seen outside the local player's library.
-        $seenOutside = self::seenOutsideLibrary($match);
-        $liveLibraryCount = self::liveLibraryCount($match);
+        $seenOutside = self::seenOutsideLibrary($snapshotContent, $localInstanceId);
+        $liveLibraryCount = self::liveLibraryCount($snapshotContent, $localInstanceId);
 
         $remainingByMtgoId = $deckByMtgoId->map(
             fn (int $qty, int $mtgoId) => max(0, $qty - ($seenOutside[$mtgoId] ?? 0))
@@ -84,19 +93,12 @@ class ComputeDrawOdds
     }
 
     /**
+     * @param  array<string, mixed>  $snapshotContent
      * @return array<int, int>
      */
-    private static function seenOutsideLibrary(MtgoMatch $match): array
+    private static function seenOutsideLibrary(array $snapshotContent, int $localInstanceId): array
     {
-        $snapshot = self::latestSnapshot($match);
-
-        if (! $snapshot) {
-            return [];
-        }
-
-        $localInstanceId = self::localInstanceId($match);
-
-        return collect($snapshot->content['Cards'] ?? [])
+        return collect($snapshotContent['Cards'] ?? [])
             ->filter(fn ($c) => (int) ($c['Owner'] ?? -1) === $localInstanceId
                 && ($c['Zone'] ?? null) !== 'Library')
             ->groupBy(fn ($c) => (int) $c['CatalogID'])
@@ -104,34 +106,15 @@ class ComputeDrawOdds
             ->all();
     }
 
-    private static function liveLibraryCount(MtgoMatch $match): int
+    /**
+     * @param  array<string, mixed>  $snapshotContent
+     */
+    private static function liveLibraryCount(array $snapshotContent, int $localInstanceId): int
     {
-        $snapshot = self::latestSnapshot($match);
-
-        if (! $snapshot) {
-            return 0;
-        }
-
-        $localInstanceId = self::localInstanceId($match);
-
-        $local = collect($snapshot->content['Players'] ?? [])
+        $local = collect($snapshotContent['Players'] ?? [])
             ->first(fn ($p) => (int) ($p['Id'] ?? -1) === $localInstanceId);
 
         return (int) ($local['LibraryCount'] ?? 0);
-    }
-
-    private static function latestSnapshot(MtgoMatch $match): ?GameTimeline
-    {
-        $game = $match->games()->latest('started_at')->first();
-
-        return $game?->timeline->sortBy('timestamp')->last();
-    }
-
-    private static function localInstanceId(MtgoMatch $match): int
-    {
-        $game = $match->games()->latest('started_at')->first();
-
-        return (int) ($game?->localPlayers->first()?->pivot->instance_id ?? 1);
     }
 
     /**

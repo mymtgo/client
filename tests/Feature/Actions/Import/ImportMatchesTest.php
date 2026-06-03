@@ -3,12 +3,14 @@
 use App\Actions\Import\ImportMatches;
 use App\Enums\MatchOutcome;
 use App\Enums\MatchState;
+use App\Events\GameCardsSnapshotChanged;
 use App\Models\Card;
 use App\Models\CardGameStat;
 use App\Models\Deck;
 use App\Models\DeckVersion;
 use App\Models\MtgoMatch;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Http;
 
 uses(RefreshDatabase::class);
@@ -235,6 +237,36 @@ it('populates opponent deck_json from per-game opponent cards', function () {
     expect($opponent->pivot->deck_json)->toHaveCount(2);
     expect($opponent->pivot->deck_json[0]['mtgo_id'])->toBe(300);
     expect($opponent->pivot->deck_json[0]['quantity'])->toBe(1);
+});
+
+it('does not dispatch GameCardsSnapshotChanged when importing matches', function () {
+    $importData = [
+        [
+            'history_id' => 66666666,
+            'started_at' => '2025-06-01T12:00:00Z',
+            'opponent' => 'testopponent',
+            'format_raw' => 'CMODERN',
+            'games_won' => 2,
+            'games_lost' => 1,
+            'outcome' => 'win',
+            'round' => 0,
+            'has_game_log' => true,
+            'game_log_token' => 'abc-123',
+            'local_player' => 'anticloser',
+            'games' => [
+                ['game_index' => 0, 'won' => true, 'on_play' => true, 'starting_hand_size' => 7, 'opponent_hand_size' => 7, 'started_at' => '2025-06-01T12:00:00Z', 'ended_at' => '2025-06-01T12:15:00Z', 'local_cards' => [['mtgo_id' => 100, 'name' => 'Card A']], 'opponent_cards' => []],
+            ],
+            'local_cards' => [['mtgo_id' => 100, 'name' => 'Card A']],
+            'game_ids' => [111],
+            'deck_version_id' => null,
+        ],
+    ];
+
+    Event::fake();
+
+    ImportMatches::run($importData);
+
+    Event::assertNotDispatched(GameCardsSnapshotChanged::class);
 });
 
 it('hydrateCards creates stubs and resolves oracle_ids by name', function () {
