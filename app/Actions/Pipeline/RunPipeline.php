@@ -3,6 +3,7 @@
 namespace App\Actions\Pipeline;
 
 use App\Actions\Leagues\ProcessLeagueEvents;
+use App\Actions\Matches\AbandonStaleMatches;
 use App\Actions\Matches\LinkMatchToTournament;
 use App\Actions\Matches\RelinkOrphanMatches;
 use App\Actions\Tournaments\EnqueueTournamentObservations;
@@ -29,6 +30,13 @@ class RunPipeline
             // Phase 2: Process matches. Resolution now fires from inside
             // ProcessMatchEvents via ResolveMatchFromMetaMessages.
             ProcessMatchEvents::run();
+
+            // Phase 2.5: Abandon in_progress matches that will never resolve.
+            // Runs after ProcessMatchEvents so any match still resolvable from
+            // its events (e.g. orphaned end signals) is advanced first; only
+            // genuinely dead matches (client killed mid-match, no close logged)
+            // remain for the reaper.
+            AbandonStaleMatches::run();
 
             // Phase 3: Backfill tournament tokens on matches whose round_info
             // event arrived after the match itself was created.
