@@ -19,7 +19,10 @@ class RefreshArchetypeDecklist implements ShouldQueue
     /** @var int[] */
     public array $backoff = [10, 60, 300];
 
-    public function __construct(public int $archetypeId) {}
+    public function __construct(public int $archetypeId)
+    {
+        $this->onQueue('archetypes');
+    }
 
     public function handle(): void
     {

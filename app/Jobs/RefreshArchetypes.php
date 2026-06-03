@@ -18,9 +18,21 @@ class RefreshArchetypes implements ShouldQueue
 
     public int $timeout = 1800;
 
+    public function __construct()
+    {
+        $this->onQueue('archetypes');
+    }
+
     public function handle(): void
     {
-        if (! self::isStale()) {
+        // Guard against re-entry. NativePHP respawns `schedule:run` mid-tick,
+        // and the scheduler's `withoutOverlapping` only covers the milliseconds
+        // it takes to push this parent job onto the queue — not the long-lived
+        // batch this parent dispatches. Without this check, every fresh
+        // schedule:run within the daily-eligible minute would queue another
+        // parent, each spawning a full 700+ child batch. See
+        // memory/refresh_archetypes_re_entry_trap.md.
+        if (! self::isStale() || AppSettings::archetypesRefreshInProgress()) {
             return;
         }
 
