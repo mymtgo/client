@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Leagues;
 
+use App\Actions\Cards\ComputeDrawOdds;
 use App\Actions\Leagues\FetchOpponentLeagueArchetype;
 use App\Enums\MatchOutcome;
 use App\Enums\MatchState;
@@ -36,9 +37,13 @@ class OpponentScoutWindowController extends Controller
 
         return Inertia::render('leagues/OpponentScout', [
             'opponent' => $opponent,
+            'drawOdds' => $currentMatch ? ComputeDrawOdds::run($currentMatch) : null,
         ]);
     }
 
+    /**
+     * @return array{username: string, previousMatches: int, wins: int, losses: int, lastArchetype: ?string, lastArchetypeColors: ?string, source: string}
+     */
     private function buildOpponentPayload(MtgoMatch $currentMatch, Player $opponentPlayer): array
     {
         $leagueArchetype = Cache::remember(
