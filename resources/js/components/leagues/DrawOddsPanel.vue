@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import ManaSymbols from '@/components/ManaSymbols.vue';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 /**
  * Presentational draw-odds overlay. Mirrors the visual language of the deck
@@ -100,6 +100,42 @@ const isEmpty = computed(() => isWaiting.value || hasNoDeckData.value);
 const getRemaining = (cards: DrawOddsCard[]): number => cards.reduce((sum, c) => sum + c.remaining, 0);
 
 const pct = (value: number, digits = 1): string => `${(value * 100).toFixed(digits)}%`;
+
+// Track per-card remaining so we can flash a row briefly when its count
+// changes between snapshots — both decreases (drawn / discarded / milled)
+// and increases (Lembas-style shuffle-back). Keyed by mtgoId or, as a
+// fallback, the card name. Highlight clears after 1.2s per card.
+const HIGHLIGHT_MS = 1200;
+const cardKey = (card: DrawOddsCard): string | number => card.mtgoId ?? card.name;
+const previousRemaining = new Map<string | number, number>();
+const highlighted = ref<Set<string | number>>(new Set());
+
+watch(
+    () => props.drawOdds?.cards,
+    (cards) => {
+        if (!cards) return;
+
+        const next = new Set(highlighted.value);
+
+        for (const card of cards) {
+            const key = cardKey(card);
+            const prev = previousRemaining.get(key);
+
+            if (prev !== undefined && prev !== card.remaining) {
+                next.add(key);
+                window.setTimeout(() => {
+                    const after = new Set(highlighted.value);
+                    after.delete(key);
+                    highlighted.value = after;
+                }, HIGHLIGHT_MS);
+            }
+
+            previousRemaining.set(key, card.remaining);
+        }
+
+        highlighted.value = next;
+    },
+);
 </script>
 
 <template>
@@ -122,13 +158,16 @@ const pct = (value: number, digits = 1): string => `${(value * 100).toFixed(digi
                         v-for="card in cards"
                         :key="card.mtgoId ?? card.name"
                         :style="borderStyle(card.identity)"
-                        class="flex items-center justify-between gap-2 py-0.5 pl-2.5 pr-1.5 text-sm"
-                        :class="{ 'opacity-40': card.remaining === 0 }"
+                        class="card-row flex items-center justify-between gap-2 py-0.5 pl-2.5 pr-1.5 text-sm transition-colors duration-300"
+                        :class="{
+                            'opacity-40': card.remaining === 0,
+                            'is-flashing': highlighted.has(cardKey(card)),
+                        }"
                         @mouseenter="onCardEnter(card, $event)"
                         @mouseleave="onCardLeave"
                     >
                         <span class="min-w-0 truncate" :class="{ 'line-through': card.remaining === 0 }">
-                            <span class="font-semibold tabular-nums">{{ card.remaining }}/{{ card.total }}</span>
+                            <span class="font-semibold tabular-nums">{{ card.remaining }}</span>
                             {{ card.name }}
                         </span>
                         <div class="flex shrink-0 items-center gap-2">
@@ -183,4 +222,14 @@ const pct = (value: number, digits = 1): string => `${(value * 100).toFixed(digi
 .fade-enter-active { transition: opacity 0.1s ease; }
 .fade-leave-active { transition: opacity 0.05s ease; }
 .fade-enter-from, .fade-leave-to { opacity: 0; }
+
+.card-row.is-flashing {
+    animation: card-flash 1.2s ease-out;
+}
+
+@keyframes card-flash {
+    0%   { background-color: rgba(250, 204, 21, 0.22); }
+    60%  { background-color: rgba(250, 204, 21, 0.12); }
+    100% { background-color: transparent; }
+}
 </style>
