@@ -2,7 +2,9 @@
 
 namespace App\Actions\Matches;
 
+use App\Enums\MatchOutcome;
 use App\Enums\MatchState;
+use App\Facades\Mtgo;
 use App\Models\LogEvent;
 use App\Models\MtgoMatch;
 use Illuminate\Support\Carbon;
@@ -13,14 +15,18 @@ use Illuminate\Support\Str;
 class AbandonStaleMatches
 {
     /**
-     * Mark in_progress matches that will never resolve as Abandoned.
+     * Give a terminal state to in_progress matches that have gone quiet.
      *
      * MTGO writes no closing state when the client is killed mid-match (e.g.
      * quitting during sideboarding), leaving the match stuck in_progress
-     * forever. A match is abandoned when it carries no match-end signal AND
-     * has seen no new log activity within the configured window. Matches that
-     * DO carry an end signal are left untouched — those are resolvable by
-     * reprocessing in ProcessMatchEvents.
+     * forever. Once a match carries no match-end signal AND has seen no new
+     * log activity within the configured window, it is resolved post-mortem:
+     *   - if the final logged action was a disconnect, the surviving player
+     *     wins the match (a no-return disconnect is a forfeit);
+     *   - otherwise there is nothing to decide it on, so it is Abandoned.
+     *
+     * Matches that DO carry an end signal are left untouched — those are
+     * resolvable by reprocessing in ProcessMatchEvents.
      */
     public static function run(): void
     {
@@ -45,7 +51,18 @@ class AbandonStaleMatches
 
         $lastActivity = self::lastActivityAt($match);
 
+        // Still active (or active recently) — a disconnect here may still be
+        // followed by a reconnect, so we must not decide anything yet.
         if ($lastActivity === null || $lastActivity->greaterThan($cutoff)) {
+            return;
+        }
+
+        // The match has conclusively gone quiet. If its last logged action was
+        // a disconnect, the survivor wins; otherwise there is nothing to
+        // resolve it on and it is abandoned.
+        if (self::resolveByDisconnect($match)) {
+            self::stopRediscovery($match);
+
             return;
         }
 
@@ -54,12 +71,102 @@ class AbandonStaleMatches
             'ended_at' => $lastActivity,
         ]);
 
-        // Stop the match's trailing events from being rediscovered each tick.
+        self::stopRediscovery($match);
+
+        Log::channel('pipeline')->info("Match {$match->mtgo_id}: marked Abandoned (no end signal, inactive since {$lastActivity->toDateTimeString()})");
+    }
+
+    /**
+     * Resolve a quiet match whose final logged action was a disconnect: the
+     * player who did NOT disconnect wins the match. Returns false (leaving the
+     * caller to abandon) when there is no terminal disconnect or the local
+     * player cannot be identified.
+     */
+    private static function resolveByDisconnect(MtgoMatch $match): bool
+    {
+        $entries = ExtractMetaMessageEntries::run($match->token);
+
+        $disconnect = self::lastActionDisconnect($entries);
+
+        if ($disconnect === null) {
+            return false;
+        }
+
+        $players = ExtractGameResults::detectPlayers($entries);
+        $local = Mtgo::resolveUsername($players);
+
+        if ($local === null || ! in_array($local, $players, true)) {
+            return false;
+        }
+
+        $survivor = self::otherPlayer($disconnect['player'], $players);
+
+        if ($survivor === null) {
+            return false;
+        }
+
+        $outcome = $survivor === $local ? MatchOutcome::Win : MatchOutcome::Loss;
+        $endedAt = $disconnect['timestamp'] ? Carbon::parse($disconnect['timestamp']) : now();
+
+        $match->update([
+            'state' => MatchState::Complete,
+            'outcome' => $outcome,
+            'ended_at' => $endedAt,
+        ]);
+
+        Log::channel('pipeline')->info("Match {$match->mtgo_id}: resolved by disconnect — {$disconnect['player']} dropped, {$survivor} wins ({$outcome->value})");
+
+        return true;
+    }
+
+    /**
+     * Return the player who disconnected as the match's final action, or null
+     * when the last terminal action was something else (a later win, concede,
+     * or match-win line means the disconnect was not the deciding event).
+     *
+     * @param  array<int, array{timestamp: string, message: string}>  $entries
+     * @return array{player: string, timestamp: ?string}|null
+     */
+    private static function lastActionDisconnect(array $entries): ?array
+    {
+        $pattern = ExtractGameResults::PLAYER_PATTERN;
+        $disconnect = null;
+
+        foreach ($entries as $entry) {
+            $message = $entry['message'];
+
+            if (preg_match('/^@P('.$pattern.') has lost connection to the game/', $message, $m)) {
+                $disconnect = ['player' => $m[1], 'timestamp' => $entry['timestamp'] ?? null];
+            } elseif (preg_match('/wins the game|has conceded from the game|wins the match/', $message)) {
+                $disconnect = null;
+            }
+        }
+
+        return $disconnect;
+    }
+
+    /**
+     * @param  array<int, string>  $players
+     */
+    private static function otherPlayer(string $player, array $players): ?string
+    {
+        foreach ($players as $candidate) {
+            if ($candidate !== $player) {
+                return $candidate;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Stop the match's trailing events from being rediscovered each tick.
+     */
+    private static function stopRediscovery(MtgoMatch $match): void
+    {
         LogEvent::where('match_token', $match->token)
             ->whereNull('processed_at')
             ->update(['processed_at' => now()]);
-
-        Log::channel('pipeline')->info("Match {$match->mtgo_id}: marked Abandoned (no end signal, inactive since {$lastActivity->toDateTimeString()})");
     }
 
     /**
