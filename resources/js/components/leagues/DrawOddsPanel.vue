@@ -87,7 +87,10 @@ const FALLBACK_COLOR = '#888';
 
 function colorBorder(identity: string | null): string {
     if (!identity) return FALLBACK_COLOR;
-    const colors = identity.split(',').map((c) => COLOR_MAP[c.trim()]).filter(Boolean);
+    const colors = identity
+        .split(',')
+        .map((c) => COLOR_MAP[c.trim()])
+        .filter(Boolean);
     if (colors.length === 0) return FALLBACK_COLOR;
     if (colors.length === 1) return colors[0];
     const pct = 100 / colors.length;
@@ -119,9 +122,7 @@ const groupedCards = computed<Record<string, DrawOddsCard[]>>(() => {
         const key = normalizeType(card.type);
         (merged[key] ??= []).push(card);
     }
-    return Object.fromEntries(
-        Object.entries(merged).sort(([a], [b]) => (TYPE_ORDER[a] ?? 99) - (TYPE_ORDER[b] ?? 99)),
-    );
+    return Object.fromEntries(Object.entries(merged).sort(([a], [b]) => (TYPE_ORDER[a] ?? 99) - (TYPE_ORDER[b] ?? 99)));
 });
 
 // No active match at all — nothing to show yet.
@@ -192,12 +193,10 @@ watch(
             </p>
         </div>
 
-        <div v-else-if="drawOdds" class="pt-2">
+        <div v-else-if="drawOdds" class="flex h-full min-h-0 flex-col">
             <!-- Sample-size stepper -->
-            <div
-                class="sticky top-0 z-10 flex items-center justify-between gap-2 border-b border-border bg-background px-4 py-2"
-            >
-                <span class="text-[0.625rem] font-semibold uppercase tracking-wider text-muted-foreground/60">
+            <div class="flex shrink-0 items-center justify-between gap-2 bg-background px-4 py-2">
+                <span class="text-[0.625rem] font-semibold tracking-wider text-muted-foreground/60 uppercase">
                     Next {{ sampleSize === 1 ? 'draw' : 'draws' }}
                 </span>
                 <div class="flex items-center gap-1">
@@ -224,33 +223,37 @@ watch(
             </div>
 
             <!-- Decklist -->
-            <div class="flex-1 space-y-2 overflow-y-auto pb-4">
-                <div v-for="(cards, type) in groupedCards" :key="type" class="mb-3">
-                    <h3 class="mb-1 flex items-baseline justify-between gap-2 pl-4 pr-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground/60">
-                        <span>{{ type }} ({{ getRemaining(cards) }})</span>
-                        <span class="w-12 shrink-0 text-right tabular-nums text-muted-foreground">{{ pct(typeChance(cards), 0) }}</span>
-                    </h3>
-                    <div
-                        v-for="card in cards"
-                        :key="card.mtgoId ?? card.name"
-                        :style="borderStyle(card.identity)"
-                        class="card-row flex items-center justify-between gap-2 py-0.5 pl-2.5 pr-1.5 text-sm transition-colors duration-300"
-                        :class="{
-                            'opacity-40': card.remaining === 0,
-                            'is-flashing': highlighted.has(cardKey(card)),
-                        }"
-                        @mouseenter="onCardEnter(card, $event)"
-                        @mouseleave="onCardLeave"
+            <div class="min-h-0 flex-1 overflow-y-auto pb-4">
+                <div v-for="(cards, type) in groupedCards" :key="type">
+                    <h3
+                        class="flex items-baseline justify-between gap-2 border-y py-2 pr-1.5 pl-4 text-[10px] font-semibold tracking-wider text-muted-foreground/60 uppercase"
                     >
-                        <span class="min-w-0 truncate" :class="{ 'line-through': card.remaining === 0 }">
-                            <span class="font-semibold tabular-nums">{{ card.remaining }}</span>
-                            {{ card.name }}
-                        </span>
-                        <div class="flex shrink-0 items-center gap-2">
-                            <ManaSymbols :symbols="card.identity" class="shrink-0" />
-                            <span class="w-12 text-right font-medium tabular-nums text-muted-foreground">
-                                {{ pct(drawChance(card)) }}
+                        <span>{{ type }} ({{ getRemaining(cards) }})</span>
+                        <span class="w-12 shrink-0 text-right text-muted-foreground tabular-nums">{{ pct(typeChance(cards), 0) }}</span>
+                    </h3>
+                    <div class="divide-y text-xs">
+                        <div
+                            v-for="card in cards"
+                            :key="card.mtgoId ?? card.name"
+                            class="flex items-center gap-2 text-sm transition-colors duration-300"
+                            :class="{
+                                'opacity-20': card.remaining === 0,
+                                'is-flashing': highlighted.has(cardKey(card)),
+                            }"
+                            @mouseenter="onCardEnter(card, $event)"
+                            @mouseleave="onCardLeave"
+                        >
+                            <span class="min-w-0 w-8 text-center shrink-0 border-r bg-black/20 px-2 py-1">
+                                <span class="font-semibold tabular-nums">{{ card.remaining }}</span>
                             </span>
+                            <span class="min-w-0 grow truncate">
+                                {{ card.name }}
+                            </span>
+                            <div class="flex shrink-0 items-center gap-2 px-2">
+                                <span class="w-12 text-right font-medium text-muted-foreground tabular-nums">
+                                    {{ pct(drawChance(card)) }}
+                                </span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -258,16 +261,8 @@ watch(
 
             <!-- Card image preview (inside window, anchored top-right) -->
             <Transition name="fade">
-                <div
-                    v-if="hoveredCard?.image"
-                    class="pointer-events-none fixed right-2 z-50"
-                    :style="{ top: `${previewTop}px` }"
-                >
-                    <img
-                        :src="hoveredCard.image"
-                        :alt="hoveredCard.name"
-                        class="w-[200px] rounded-lg shadow-xl ring-1 ring-border"
-                    />
+                <div v-if="hoveredCard?.image" class="pointer-events-none fixed right-2 z-50" :style="{ top: `${previewTop}px` }">
+                    <img :src="hoveredCard.image" :alt="hoveredCard.name" class="w-[200px] rounded-lg shadow-xl ring-1 ring-border" />
                 </div>
             </Transition>
         </div>
@@ -275,17 +270,30 @@ watch(
 </template>
 
 <style scoped>
-.fade-enter-active { transition: opacity 0.1s ease; }
-.fade-leave-active { transition: opacity 0.05s ease; }
-.fade-enter-from, .fade-leave-to { opacity: 0; }
+.fade-enter-active {
+    transition: opacity 0.1s ease;
+}
+.fade-leave-active {
+    transition: opacity 0.05s ease;
+}
+.fade-enter-from,
+.fade-leave-to {
+    opacity: 0;
+}
 
 .card-row.is-flashing {
     animation: card-flash 1.2s ease-out;
 }
 
 @keyframes card-flash {
-    0%   { background-color: rgba(250, 204, 21, 0.22); }
-    60%  { background-color: rgba(250, 204, 21, 0.12); }
-    100% { background-color: transparent; }
+    0% {
+        background-color: rgba(250, 204, 21, 0.22);
+    }
+    60% {
+        background-color: rgba(250, 204, 21, 0.12);
+    }
+    100% {
+        background-color: transparent;
+    }
 }
 </style>
