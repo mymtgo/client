@@ -127,6 +127,13 @@ const isEmpty = computed(() => isWaiting.value || hasNoDeckData.value);
 
 const getRemaining = (cards: DrawOddsCard[]): number => cards.reduce((sum, c) => sum + c.remaining, 0);
 
+// P(at least one card of this type in the next `sampleSize` draws), summing the
+// type's remaining copies as the success pool.
+function typeChance(cards: DrawOddsCard[]): number {
+    const library = props.drawOdds?.librarySize ?? 0;
+    return hypergeometric(library, getRemaining(cards), sampleSize.value, 1).atLeast;
+}
+
 const pct = (value: number, digits = 1): string => `${(value * 100).toFixed(digits)}%`;
 
 // Track per-card remaining so we can flash a row briefly when its count
@@ -209,8 +216,9 @@ watch(
             <!-- Decklist -->
             <div class="flex-1 space-y-2 overflow-y-auto pb-4">
                 <div v-for="(cards, type) in groupedCards" :key="type" class="mb-3">
-                    <h3 class="mb-0.5 text-xs font-semibold px-4 uppercase tracking-wider text-muted-foreground/60">
-                        {{ type }} ({{ getRemaining(cards) }})
+                    <h3 class="mb-0.5 flex items-baseline justify-between gap-2 pl-4 pr-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground/60">
+                        <span>{{ type }} ({{ getRemaining(cards) }})</span>
+                        <span class="tabular-nums">{{ pct(typeChance(cards), 0) }}</span>
                     </h3>
                     <div
                         v-for="card in cards"
