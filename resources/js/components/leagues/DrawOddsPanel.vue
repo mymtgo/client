@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import ManaSymbols from '@/components/ManaSymbols.vue';
+import { hypergeometric } from '@/composables/useHypergeometric';
 import { computed, ref, watch } from 'vue';
 
 /**
@@ -7,21 +8,48 @@ import { computed, ref, watch } from 'vue';
  * popout (resources/js/pages/decks/Popout.vue) — cards grouped by type with a
  * color left-border, a leading bold count, the card name, and mana symbols on
  * the right, plus a hover card-image preview anchored top-right inside the
- * window. The extras over the popout are a per-card remaining/total count, a
- * next-draw percentage per card, and a top-5 type-probability footer.
+ * window. The extras over the popout are a per-card remaining/total count and
+ * a player-controlled sample-size stepper showing the per-card chance to draw
+ * at least one copy in the next N draws.
  *
- * The backend serializes `cards` and `topFive` as plain arrays at runtime, but
- * the generated types describe them as keyed records (a Spatie DataCollection
- * artifact). Override those two members to arrays so we get array semantics.
+ * The backend serializes `cards` as plain arrays at runtime, but the generated
+ * types describe them as keyed records (a Spatie DataCollection artifact).
+ * Override that member to an array so we get array semantics.
  */
 type DrawOddsCard = App.Data.Front.DrawOddsCardData;
-type DrawOddsType = App.Data.Front.DrawOddsTypeData;
-type DrawOdds = Omit<App.Data.Front.DrawOddsData, 'cards' | 'topFive'> & {
+type DrawOdds = Omit<App.Data.Front.DrawOddsData, 'cards'> & {
     cards: DrawOddsCard[];
-    topFive: DrawOddsType[];
 };
 
 const props = defineProps<{ drawOdds: DrawOdds | null }>();
+
+const sampleSize = ref(1);
+
+// Library only ever shrinks during a game; cap the sample at what's left.
+const maxSample = computed(() => Math.max(1, props.drawOdds?.librarySize ?? 1));
+
+const canDecrement = computed(() => sampleSize.value > 1);
+const canIncrement = computed(() => sampleSize.value < maxSample.value);
+
+function decrement(): void {
+    if (canDecrement.value) sampleSize.value--;
+}
+
+function increment(): void {
+    if (canIncrement.value) sampleSize.value++;
+}
+
+// When the library shrinks below the chosen sample, pull the stepper back in
+// so its value never exceeds its own max.
+watch(maxSample, (max) => {
+    if (sampleSize.value > max) sampleSize.value = max;
+});
+
+// P(at least one copy of this card in the next `sampleSize` draws).
+function drawChance(card: DrawOddsCard): number {
+    const library = props.drawOdds?.librarySize ?? 0;
+    return hypergeometric(library, card.remaining, sampleSize.value, 1).atLeast;
+}
 
 const hoveredCard = ref<DrawOddsCard | null>(null);
 const previewTop = ref(0);
@@ -148,6 +176,36 @@ watch(
         </div>
 
         <div v-else-if="drawOdds" class="pt-2">
+            <!-- Sample-size stepper -->
+            <div
+                class="sticky top-0 z-10 flex items-center justify-between gap-2 border-b border-border bg-background px-4 py-2"
+            >
+                <span class="text-[0.625rem] font-semibold uppercase tracking-wider text-muted-foreground/60">
+                    Next {{ sampleSize === 1 ? 'draw' : 'draws' }}
+                </span>
+                <div class="flex items-center gap-1">
+                    <button
+                        type="button"
+                        class="flex h-6 w-6 items-center justify-center rounded border border-border text-muted-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-30"
+                        :disabled="!canDecrement"
+                        aria-label="Decrease sample size"
+                        @click="decrement"
+                    >
+                        −
+                    </button>
+                    <span class="w-6 text-center text-sm font-semibold tabular-nums">{{ sampleSize }}</span>
+                    <button
+                        type="button"
+                        class="flex h-6 w-6 items-center justify-center rounded border border-border text-muted-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-30"
+                        :disabled="!canIncrement"
+                        aria-label="Increase sample size"
+                        @click="increment"
+                    >
+                        +
+                    </button>
+                </div>
+            </div>
+
             <!-- Decklist -->
             <div class="flex-1 space-y-2 overflow-y-auto pb-4">
                 <div v-for="(cards, type) in groupedCards" :key="type" class="mb-3">
@@ -173,30 +231,10 @@ watch(
                         <div class="flex shrink-0 items-center gap-2">
                             <ManaSymbols :symbols="card.identity" class="shrink-0" />
                             <span class="w-12 text-right font-medium tabular-nums text-muted-foreground">
-                                {{ pct(card.drawChance) }}
+                                {{ pct(drawChance(card)) }}
                             </span>
                         </div>
                     </div>
-                </div>
-            </div>
-
-            <!-- Top-5 footer: P(draw >=1 of type in next 5) -->
-            <div
-                v-if="drawOdds.topFive.length"
-                class="shrink-0 border-t border-border px-4 text-xs py-2.5"
-            >
-                <h2 class="mb-1 text-[0.625rem] font-semibold uppercase tracking-wider text-muted-foreground/60">
-                    In next 5 draws
-                </h2>
-                <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px]">
-                    <span
-                        v-for="bucket in drawOdds.topFive"
-                        :key="bucket.type"
-                        class="inline-flex items-baseline gap-1"
-                    >
-                        <span class="text-muted-foreground">{{ bucket.type }}</span>
-                        <span class="font-semibold tabular-nums">{{ pct(bucket.probability, 0) }}</span>
-                    </span>
                 </div>
             </div>
 
