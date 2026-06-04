@@ -45,8 +45,14 @@ watch(maxSample, (max) => {
     if (sampleSize.value > max) sampleSize.value = max;
 });
 
-// P(at least one copy of this card in the next `sampleSize` draws).
+// P(at least one copy of this card in the next `sampleSize` draws). A card with
+// no copies left can never be drawn — short-circuit to 0 (the shared composable
+// clamps the wanted count down to 0 when there are 0 successes, which would
+// otherwise report P(X>=0) = 100%).
 function drawChance(card: DrawOddsCard): number {
+    if (card.remaining <= 0) {
+        return 0;
+    }
     const library = props.drawOdds?.librarySize ?? 0;
     return hypergeometric(library, card.remaining, sampleSize.value, 1).atLeast;
 }
@@ -128,10 +134,14 @@ const isEmpty = computed(() => isWaiting.value || hasNoDeckData.value);
 const getRemaining = (cards: DrawOddsCard[]): number => cards.reduce((sum, c) => sum + c.remaining, 0);
 
 // P(at least one card of this type in the next `sampleSize` draws), summing the
-// type's remaining copies as the success pool.
+// type's remaining copies as the success pool. Zero remaining → 0 (see drawChance).
 function typeChance(cards: DrawOddsCard[]): number {
+    const remaining = getRemaining(cards);
+    if (remaining <= 0) {
+        return 0;
+    }
     const library = props.drawOdds?.librarySize ?? 0;
-    return hypergeometric(library, getRemaining(cards), sampleSize.value, 1).atLeast;
+    return hypergeometric(library, remaining, sampleSize.value, 1).atLeast;
 }
 
 const pct = (value: number, digits = 1): string => `${(value * 100).toFixed(digits)}%`;
@@ -216,9 +226,9 @@ watch(
             <!-- Decklist -->
             <div class="flex-1 space-y-2 overflow-y-auto pb-4">
                 <div v-for="(cards, type) in groupedCards" :key="type" class="mb-3">
-                    <h3 class="mb-0.5 flex items-baseline justify-between gap-2 pl-4 pr-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground/60">
+                    <h3 class="mb-1 flex items-baseline justify-between gap-2 pl-4 pr-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground/60">
                         <span>{{ type }} ({{ getRemaining(cards) }})</span>
-                        <span class="tabular-nums">{{ pct(typeChance(cards), 0) }}</span>
+                        <span class="w-12 shrink-0 text-right tabular-nums text-muted-foreground">{{ pct(typeChance(cards), 0) }}</span>
                     </h3>
                     <div
                         v-for="card in cards"
