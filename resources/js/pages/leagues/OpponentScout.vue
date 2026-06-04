@@ -8,14 +8,13 @@ import { onMounted } from 'vue';
 defineOptions({ layout: OverlayLayout });
 
 /**
- * The backend serializes `cards` and `topFive` as plain arrays at runtime, but
- * the generated `DrawOddsData` type describes them as keyed records (a Spatie
- * DataCollection artifact). Override those two members to arrays so the prop
- * passes straight through to DrawOddsPanel, which expects the same shape.
+ * The backend serializes `cards` as a plain array at runtime, but the generated
+ * `DrawOddsData` type describes it as a keyed record (a Spatie DataCollection
+ * artifact). Override that member to an array so the prop passes straight
+ * through to DrawOddsPanel, which expects the same shape.
  */
-type DrawOdds = Omit<App.Data.Front.DrawOddsData, 'cards' | 'topFive'> & {
+type DrawOdds = Omit<App.Data.Front.DrawOddsData, 'cards'> & {
     cards: App.Data.Front.DrawOddsCardData[];
-    topFive: App.Data.Front.DrawOddsTypeData[];
 };
 
 defineProps<{
