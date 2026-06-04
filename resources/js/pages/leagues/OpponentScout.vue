@@ -30,7 +30,7 @@ onMounted(() => {
 </script>
 
 <template>
-    <div class="flex h-screen flex-col bg-background text-foreground">
+    <div class="flex h-screen flex-col bg-transparent text-foreground">
         <!--
             Opponent archetype block. Only rendered when an opponent is known so
             the divider/empty space collapses while we wait for a match. Acts as

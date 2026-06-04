@@ -21,7 +21,7 @@ class OpponentScoutWindowController extends Controller
             ->latest('started_at')
             ->first();
 
-        $currentMatch = MtgoMatch::find(39);
+        $currentMatch = MtgoMatch::find(36);
 
         $opponent = null;
 
