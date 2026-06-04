@@ -11,8 +11,6 @@ final class DrawOddsData extends Data
     public function __construct(
         /** @var DataCollection<int, DrawOddsCardData> */
         public DataCollection $cards,
-        /** @var DataCollection<int, DrawOddsTypeData> */
-        public DataCollection $topFive,
         public int $librarySize,
         public int $liveLibraryCount,
     ) {}

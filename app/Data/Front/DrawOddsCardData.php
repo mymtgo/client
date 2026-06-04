@@ -15,6 +15,5 @@ final class DrawOddsCardData extends Data
         public ?string $image,
         public int $remaining,
         public int $total,
-        public float $drawChance,
     ) {}
 }
