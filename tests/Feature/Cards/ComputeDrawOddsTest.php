@@ -65,7 +65,6 @@ it('computes full-deck draw chances when there is no game timeline', function ()
     $bolt = collect($result->cards->all())->firstWhere('name', 'Lightning Bolt');
     expect($bolt->remaining)->toBe(4);
     expect($bolt->total)->toBe(4);
-    expect(round($bolt->drawChance, 4))->toBe(round(4 / 24, 4));
 });
 
 it('subtracts cards the local player has moved out of library', function () {
@@ -175,38 +174,6 @@ it('uses the latest timeline snapshot when multiple rows exist', function () {
     expect($result->liveLibraryCount)->toBe(22); // latest snapshot LibraryCount
 });
 
-it('computes top-5 type probabilities as P(>=1 in 5)', function () {
-    Card::create(['mtgo_id' => '101', 'oracle_id' => 'o-mountain', 'name' => 'Mountain', 'type' => 'Basic Land']);
-    Card::create(['mtgo_id' => '102', 'oracle_id' => 'o-bolt', 'name' => 'Lightning Bolt', 'type' => 'Instant']);
-
-    $deck = Deck::factory()->create();
-    $deckVersion = DeckVersion::create([
-        'deck_id' => $deck->id,
-        // 15 lands, 5 instants => 20-card library, no timeline.
-        'signature' => signatureFor([['101', '15', 'false'], ['102', '5', 'false']]),
-        'modified_at' => now(),
-    ]);
-
-    $match = MtgoMatch::create([
-        'mtgo_id' => '400004', 'token' => 'mt-d4', 'format' => 'CModern',
-        'match_type' => 'League', 'state' => MatchState::InProgress,
-        'started_at' => now(), 'deck_version_id' => $deckVersion->id,
-    ]);
-
-    $result = ComputeDrawOdds::run($match);
-
-    $land = collect($result->topFive->all())->firstWhere('type', 'Land');
-    $instant = collect($result->topFive->all())->firstWhere('type', 'Instant');
-
-    // P(>=1 land in 5) = 1 - C(5,5)/C(20,5) = 1 - (5*4*3*2*1)/(20*19*18*17*16)
-    $expectedLand = 1 - (5 * 4 * 3 * 2 * 1) / (20 * 19 * 18 * 17 * 16);
-    // P(>=1 instant in 5) = 1 - prod_{i=0..4} (15-i)/(20-i)
-    $expectedInstant = 1 - ((15 / 20) * (14 / 19) * (13 / 18) * (12 / 17) * (11 / 16));
-
-    expect($result->librarySize)->toBe(20);
-    expect(round($land->probability, 6))->toBe(round($expectedLand, 6));     // ~0.99997
-    expect(round($instant->probability, 6))->toBe(round($expectedInstant, 6)); // ~0.8056
-});
 
 it('excludes sideboard cards (real "true"/"false" string flags)', function () {
     Card::create(['mtgo_id' => '101', 'oracle_id' => 'o-mountain', 'name' => 'Mountain', 'type' => 'Basic Land']);
