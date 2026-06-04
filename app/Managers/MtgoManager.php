@@ -245,7 +245,7 @@ class MtgoManager
         // overlapping runs against each other. RunPipelineJob is ShouldBeUnique;
         // duplicate dispatches while one is in flight drop silently.
         $schedule->job(new RunPipelineJob)
-            ->everyTwoSeconds()
+            ->everySecond()
             ->name('process_matches');
 
         // Periodic maintenance (unchanged)
