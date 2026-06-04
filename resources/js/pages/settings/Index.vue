@@ -308,9 +308,9 @@ const sampleOpponent: OpponentData = {
 
                     <div class="flex items-center justify-between">
                         <div>
-                            <Label>Deck list window</Label>
+                            <Label>Deck odds</Label>
                             <p class="text-sm text-muted-foreground">
-                                Show your most recently used deck in a separate window.
+                                Show live draw odds for your deck in a separate window during matches.
                             </p>
                         </div>
                         <Switch

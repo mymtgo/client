@@ -17,7 +17,7 @@ class OpenOpponentScoutWindow
         Window::open('opponent-scout')
             ->route('leagues.opponent-scout')
             ->width(340)
-            ->height(520)
+            ->height(200)
             ->minWidth(280)
             ->alwaysOnTop(true, 'screen-saver')
             ->frameless()

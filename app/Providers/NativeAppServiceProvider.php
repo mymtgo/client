@@ -2,7 +2,7 @@
 
 namespace App\Providers;
 
-use App\Actions\Decks\OpenMostRecentDeckPopout;
+use App\Actions\Decks\OpenDeckPopoutWindow;
 use App\Actions\Leagues\OpenOpponentScoutWindow;
 use App\Actions\Leagues\OpenOverlayWindow;
 use App\Actions\Tray\CreateTrayMenuBar;
@@ -58,7 +58,7 @@ class NativeAppServiceProvider implements ProvidesPhpIni
         }
 
         if (AppSettings::showDeckWindow()) {
-            OpenMostRecentDeckPopout::run();
+            OpenDeckPopoutWindow::run();
         }
     }
 

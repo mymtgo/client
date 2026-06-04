@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Settings;
 
 use App\Actions\Decks\CloseDeckPopoutWindow;
-use App\Actions\Decks\OpenMostRecentDeckPopout;
+use App\Actions\Decks\OpenDeckPopoutWindow;
 use App\Actions\Leagues\CloseOpponentScoutWindow;
 use App\Actions\Leagues\CloseOverlayWindow;
 use App\Actions\Leagues\OpenOpponentScoutWindow;
@@ -47,7 +47,7 @@ class UpdateOverlaySettingsController extends Controller
             AppSettings::setShowDeckWindow($validated['deck_window']);
 
             if ($validated['deck_window']) {
-                OpenMostRecentDeckPopout::run();
+                OpenDeckPopoutWindow::run();
             } else {
                 CloseDeckPopoutWindow::run();
             }

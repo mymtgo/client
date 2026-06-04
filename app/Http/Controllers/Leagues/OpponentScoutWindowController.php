@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Leagues;
 
-use App\Actions\Cards\ComputeDrawOdds;
 use App\Actions\Leagues\FetchOpponentLeagueArchetype;
 use App\Enums\MatchOutcome;
 use App\Enums\MatchState;
@@ -21,8 +20,6 @@ class OpponentScoutWindowController extends Controller
             ->latest('started_at')
             ->first();
 
-        $currentMatch = MtgoMatch::find(36);
-
         $opponent = null;
 
         if ($currentMatch) {
@@ -39,7 +36,6 @@ class OpponentScoutWindowController extends Controller
 
         return Inertia::render('leagues/OpponentScout', [
             'opponent' => $opponent,
-            'drawOdds' => $currentMatch ? ComputeDrawOdds::run($currentMatch) : null,
         ]);
     }
 

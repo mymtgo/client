@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { Link, router } from '@inertiajs/vue3';
-import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import ManaSymbols from '@/components/ManaSymbols.vue';
 import EditableDeckName from '@/components/decks/EditableDeckName.vue';
@@ -13,11 +12,9 @@ import TournamentsController from '@/actions/App/Http/Controllers/Decks/Tourname
 import MatchupsController from '@/actions/App/Http/Controllers/Decks/MatchupsController';
 import DecklistController from '@/actions/App/Http/Controllers/Decks/DecklistController';
 import SettingsController from '@/actions/App/Http/Controllers/Decks/SettingsController';
-import OpenPopoutController from '@/actions/App/Http/Controllers/Decks/OpenPopoutController';
 import type { VersionStats } from '@/types/decks';
-import { ExternalLink, LayoutDashboard, BarChart3, Boxes, Swords, Trophy as TrophyIcon, Award, ScrollText, List, SettingsIcon } from 'lucide-vue-next';
+import { LayoutDashboard, BarChart3, Boxes, Swords, Trophy as TrophyIcon, Award, ScrollText, List, SettingsIcon } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
-import { Button } from '@/components/ui/button';
 
 const props = defineProps<{
     deck: App.Data.Front.DeckData;
@@ -136,16 +133,6 @@ const navItems = computed(() => [
             </Link>
         </nav>
 
-        <!-- Actions -->
-        <div class="flex flex-col gap-1.5 border-t border-border px-4 py-3">
-            <button
-                @click="router.post(OpenPopoutController.url({ deck: deck.id }))"
-                class="flex items-center gap-2 rounded-md px-2 py-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
-            >
-                <ExternalLink class="size-3.5" />
-                Popout Deck
-            </button>
-        </div>
     </div>
 </template>
 

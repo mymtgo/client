@@ -28,7 +28,6 @@ use App\Http\Controllers\Decks\LeaguesController;
 use App\Http\Controllers\Decks\MatchesController;
 use App\Http\Controllers\Decks\MatchupDetailController;
 use App\Http\Controllers\Decks\MatchupsController;
-use App\Http\Controllers\Decks\OpenPopoutController;
 use App\Http\Controllers\Decks\PopoutController;
 use App\Http\Controllers\Decks\RegenerateCardStatsController;
 use App\Http\Controllers\Decks\ScreenshotDataController;
@@ -151,6 +150,7 @@ Route::group([], function (Router $router) {
         'prefix' => 'decks',
     ], function (Router $group) {
         $group->get('/', App\Http\Controllers\Decks\IndexController::class)->name('decks.index');
+        $group->get('popout', PopoutController::class)->name('decks.popout');
         $group->get('{deck:id}', DashboardController::class)->name('decks.show')->withTrashed();
         $group->get('{deck:id}/card-stats', CardStatsController::class)->name('decks.card-stats')->withTrashed();
         $group->post('{deck:id}/card-stats/regenerate', RegenerateCardStatsController::class)->name('decks.card-stats.regenerate')->withTrashed();
@@ -163,8 +163,6 @@ Route::group([], function (Router $router) {
         $group->post('{deck:id}/archetypes/detect', TriggerArchetypeDetectionController::class)->name('decks.archetypes.detect')->withTrashed();
         $group->get('{deck:id}/decklist', DecklistController::class)->name('decks.decklist')->withTrashed();
         $group->get('{deck:id}/screenshot-data', ScreenshotDataController::class)->name('decks.screenshot-data')->withTrashed();
-        $group->get('{deck:id}/popout', PopoutController::class)->name('decks.popout')->withTrashed();
-        $group->post('{deck:id}/popout', OpenPopoutController::class)->name('decks.open-popout')->withTrashed();
         $group->get('{deck:id}/settings', SettingsController::class)->name('decks.settings')->withTrashed();
         $group->get('{deck:id}/cover-art-options', CoverArtOptionsController::class)->name('decks.cover-art-options')->withTrashed();
         $group->patch('{deck:id}/cover-art', UpdateCoverArtController::class)->name('decks.update-cover-art')->withTrashed();
