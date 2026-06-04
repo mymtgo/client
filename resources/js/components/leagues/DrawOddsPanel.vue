@@ -145,7 +145,19 @@ function typeChance(cards: DrawOddsCard[]): number {
     return hypergeometric(library, remaining, sampleSize.value, 1).atLeast;
 }
 
-const pct = (value: number, digits = 1): string => `${(value * 100).toFixed(digits)}%`;
+// Format a probability as a percentage. Crucially, an uncertain outcome
+// (0 < value < 1) must never *round* to 0% or 100% — that would claim
+// impossibility/certainty the math doesn't support (e.g. 99.82% at 0 digits).
+// Clamp the displayed number just inside the bounds unless the true value is
+// exactly 0 or 1.
+const pct = (value: number, digits = 1): string => {
+    let display = value * 100;
+    if (value > 0 && value < 1) {
+        const step = 10 ** -digits;
+        display = Math.min(Math.max(display, step), 100 - step);
+    }
+    return `${display.toFixed(digits)}%`;
+};
 
 // Track per-card remaining so we can flash a row briefly when its count
 // changes between snapshots — both decreases (drawn / discarded / milled)
