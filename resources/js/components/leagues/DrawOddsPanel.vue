@@ -241,7 +241,7 @@ watch(
                         class="flex items-baseline justify-between gap-2 border-y py-2 pr-1.5 pl-4 text-[10px] font-semibold tracking-wider text-muted-foreground/60 uppercase"
                     >
                         <span>{{ type }} ({{ getRemaining(cards) }})</span>
-                        <span class="w-12 shrink-0 text-right text-muted-foreground tabular-nums">{{ pct(typeChance(cards), 0) }}</span>
+                        <span class="w-12 shrink-0 text-right text-muted-foreground tabular-nums">{{ pct(typeChance(cards)) }}</span>
                     </h3>
                     <div class="divide-y text-xs">
                         <div
