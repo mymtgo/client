@@ -44,6 +44,8 @@ use Illuminate\Support\Facades\Facade;
  * @method static void setApiKey(?string $key)
  * @method static ?string apiKeyExpiresAt()
  * @method static void setApiKeyExpiresAt(?string $expiresAt)
+ * @method static bool donationPromptSeen()
+ * @method static void setDonationPromptSeen(bool $value)
  * @method static ?string archetypesLastRefreshedAt()
  * @method static void setArchetypesLastRefreshedAt(string $value)
  * @method static bool archetypesRefreshInProgress()

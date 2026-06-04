@@ -87,7 +87,7 @@ use App\Http\Controllers\Settings\UpdateTrustSettingController;
 use App\Http\Controllers\Settings\UpdateWatcherController;
 use App\Http\Controllers\Settings\UploadOverlayBackgroundController;
 use App\Http\Controllers\Support\DownloadReportBundleController;
-use App\Http\Controllers\Support\OpenKofiController;
+use App\Http\Controllers\Support\MarkDonationPromptSeenController;
 use App\Http\Controllers\Updates\InstallController;
 use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Route;
@@ -252,7 +252,7 @@ Route::group([], function (Router $router) {
         'prefix' => 'support',
     ], function (Router $group) {
         $group->get('report', DownloadReportBundleController::class)->name('support.report.download');
-        $group->post('kofi', OpenKofiController::class)->name('support.kofi.open');
+        $group->post('donation/seen', MarkDonationPromptSeenController::class)->name('support.donation.seen');
     });
 
     $router->group([

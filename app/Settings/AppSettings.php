@@ -213,6 +213,16 @@ class AppSettings
         $this->set('league_window', $value);
     }
 
+    public function donationPromptSeen(): bool
+    {
+        return (bool) $this->get('donation_prompt_seen', false);
+    }
+
+    public function setDonationPromptSeen(bool $value): void
+    {
+        $this->set('donation_prompt_seen', $value);
+    }
+
     public function showOpponentWindow(): bool
     {
         return (bool) $this->get('opponent_window', false);
