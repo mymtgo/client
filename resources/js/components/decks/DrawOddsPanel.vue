@@ -206,12 +206,12 @@ watch(
         </div>
 
         <div v-else-if="drawOdds" class="flex h-full min-h-0 flex-col">
-            <!-- Sample-size stepper -->
-            <div class="flex shrink-0 items-center justify-between gap-2 bg-background px-4 py-2">
+            <!-- Sample-size stepper. Acts as the drag handle for the frameless window. -->
+            <div class="flex shrink-0 items-center justify-between gap-2 bg-background px-4 py-2" style="-webkit-app-region: drag">
                 <span class="text-[0.625rem] font-semibold tracking-wider text-muted-foreground/60 uppercase">
                     Next {{ sampleSize === 1 ? 'draw' : 'draws' }}
                 </span>
-                <div class="flex items-center gap-1">
+                <div class="flex items-center gap-1" style="-webkit-app-region: no-drag">
                     <button
                         type="button"
                         class="flex h-6 w-6 items-center justify-center rounded border border-border text-muted-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-30"
