@@ -39,28 +39,42 @@ class EstimateArchetypeLocally
      */
     public static function run(Collection $cards, string $format): ?array
     {
-        // Capture full input size BEFORE filtering — unresolved cards still
-        // dilute confidence so partial card lists don't produce false matches.
+        // Collapse duplicate mtgo_ids, summing quantities.
         $allInput = $cards->groupBy('mtgo_id')->map(fn ($group) => [
             'mtgo_id' => $group->first()['mtgo_id'],
             'quantity' => $group->sum(fn ($c) => $c['quantity']),
         ]);
 
-        $inputDistinct = $allInput->count();
-        $inputTotalQty = $allInput->sum('quantity');
+        if ($allInput->isEmpty()) {
+            return null;
+        }
+
+        // Resolve mtgo_ids → oracle_ids + type for printing-agnostic matching.
+        $mtgoIds = $allInput->pluck('mtgo_id')->values()->toArray();
+        $cardMeta = Card::whereIn('mtgo_id', $mtgoIds)
+            ->whereNotNull('oracle_id')
+            ->get(['mtgo_id', 'oracle_id', 'type'])
+            ->keyBy('mtgo_id');
+
+        // Lands appear across nearly every deck, so they cannot discriminate
+        // archetypes. Drop known lands entirely — they neither match nor count
+        // toward the denominator. Unresolved cards remain so partial card
+        // lists still dilute confidence.
+        $nonLandInput = $allInput->reject(function ($card) use ($cardMeta) {
+            $meta = $cardMeta->get($card['mtgo_id']);
+
+            return $meta && str_contains((string) $meta->type, 'Land');
+        });
+
+        $inputDistinct = $nonLandInput->count();
+        $inputTotalQty = $nonLandInput->sum('quantity');
 
         if ($inputDistinct === 0) {
             return null;
         }
 
-        // Resolve mtgo_ids → oracle_ids for printing-agnostic matching
-        $mtgoIds = $allInput->pluck('mtgo_id')->values()->toArray();
-        $oracleMap = Card::whereIn('mtgo_id', $mtgoIds)
-            ->whereNotNull('oracle_id')
-            ->pluck('oracle_id', 'mtgo_id');
-
-        $inputCards = $allInput->map(fn ($card) => [
-            'oracle_id' => $oracleMap->get($card['mtgo_id']),
+        $inputCards = $nonLandInput->map(fn ($card) => [
+            'oracle_id' => $cardMeta->get($card['mtgo_id'])?->oracle_id,
             'quantity' => $card['quantity'],
         ])->filter(fn ($card) => $card['oracle_id'] !== null)
             ->groupBy('oracle_id')
@@ -79,7 +93,7 @@ class EstimateArchetypeLocally
             ->whereHas('archetype', fn ($q) => $q->where('format', $normalizedFormat))
             ->with([
                 'archetype:id',
-                'cards' => fn ($q) => $q->select('cards.id', 'cards.mtgo_id', 'cards.oracle_id'),
+                'cards' => fn ($q) => $q->select('cards.id', 'cards.mtgo_id', 'cards.oracle_id', 'cards.type'),
             ])
             ->get();
 
@@ -91,7 +105,7 @@ class EstimateArchetypeLocally
 
         foreach ($candidateDecks as $deck) {
             $deckCards = $deck->cards
-                ->filter(fn ($c) => $c->oracle_id !== null)
+                ->filter(fn ($c) => $c->oracle_id !== null && ! str_contains((string) $c->type, 'Land'))
                 ->keyBy('oracle_id');
             $deckDistinct = $deckCards->count();
 
