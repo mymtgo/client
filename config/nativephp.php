@@ -153,9 +153,15 @@ return [
      * docs/superpowers/plans/2026-04-22-sqlite-transient-error-retention.md.
      */
     'queue_workers' => [
+        'pipeline' => [
+            'queues' => ['pipeline'],
+            'memory_limit' => 2048,
+            'timeout' => 60,
+            'sleep' => 3,
+        ],
         'writer' => [
             'queues' => ['default', 'importer', 'match_archetypes', 'archetypes'],
-            'memory_limit' => 2048,
+            'memory_limit' => 1024,
             'timeout' => 300,
             'sleep' => 3,
         ],

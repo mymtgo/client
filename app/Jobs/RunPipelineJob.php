@@ -29,6 +29,11 @@ class RunPipelineJob implements ShouldBeUnique, ShouldQueue
 
     public int $uniqueFor = 300;
 
+    public function __construct()
+    {
+        $this->onQueue('pipeline');
+    }
+
     public function uniqueId(): string
     {
         return 'pipeline:run';
