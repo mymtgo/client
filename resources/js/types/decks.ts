@@ -1,3 +1,6 @@
+import type { ReportArchetypeOption } from '@/types/reports';
+import type { CardStatsPerspective } from '@/pages/decks/partials/cardStatsColumns';
+
 export type VersionStats = {
     id: number | null;
     label: string;
@@ -88,6 +91,23 @@ export type VersionDecklist = {
     maindeck: Record<string, App.Data.Front.CardData[]>;
     sideboard: App.Data.Front.CardData[];
 };
+
+export interface DeckWinrate {
+    readonly wins: number;
+    readonly games: number;
+    readonly rate: number;
+}
+
+export interface CardStatsPayload {
+    stats: DeckCardStat[];
+    archetypes: ReportArchetypeOption[];
+    perspective?: CardStatsPerspective;
+    deckWinrate: DeckWinrate;
+    trust: number;
+    source: 'local' | 'external';
+    refreshedAt: string | null;
+    externalError: boolean;
+}
 
 export type DeckCardStat = {
     name: string;

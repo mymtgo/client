@@ -15,6 +15,7 @@ class LeagueData extends Data
         public string $name,
         public Carbon $startedAt,
         public string $format,
+        public bool $manual,
         public Collection $matches,
     ) {}
 
@@ -24,6 +25,7 @@ class LeagueData extends Data
             name: $league->name,
             startedAt: $league->started_at,
             format: MtgoMatch::displayFormat($league->format),
+            manual: (bool) $league->manual,
             matches: MatchData::collect($league->matches),
         );
     }

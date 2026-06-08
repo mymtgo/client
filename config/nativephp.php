@@ -143,18 +143,25 @@ return [
     /**
      * The queue workers that get auto-started on your application start.
      *
-     * NOTE: `default`, `importer`, and `match_archetypes` share a single
-     * worker to prevent writer-vs-writer contention on the SQLite file.
-     * Queues are listed in priority order — the worker drains `default`
+     * NOTE: `default`, `importer`, `match_archetypes`, and `archetypes` share
+     * a single worker to prevent writer-vs-writer contention on the SQLite
+     * file. Queues are listed in priority order — the worker drains `default`
      * first (live match pipeline, highest urgency), then `importer` (bulk
      * imports, heavy but rare), then `match_archetypes` (post-match
-     * enrichment). See
+     * enrichment), then `archetypes` (daily decklist refresh — bulk and
+     * non-urgent, must never block live work). See
      * docs/superpowers/plans/2026-04-22-sqlite-transient-error-retention.md.
      */
     'queue_workers' => [
-        'writer' => [
-            'queues' => ['default', 'importer', 'match_archetypes'],
+        'pipeline' => [
+            'queues' => ['pipeline'],
             'memory_limit' => 2048,
+            'timeout' => 60,
+            'sleep' => 3,
+        ],
+        'writer' => [
+            'queues' => ['default', 'importer', 'match_archetypes', 'archetypes'],
+            'memory_limit' => 1024,
             'timeout' => 300,
             'sleep' => 3,
         ],

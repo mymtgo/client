@@ -209,6 +209,7 @@ class FormatLeagueRuns
             'name' => $league->name,
             'format' => MtgoMatch::displayFormat($league->format),
             'state' => $league->state->value,
+            'manual' => (bool) $league->manual,
             'startedAt' => $league->started_at,
             'startedAtHuman' => $league->started_at ? Carbon::parse($league->started_at)->toLocal()->diffForHumans() : null,
             'droppedAt' => $league->dropped_at,
@@ -237,6 +238,10 @@ class FormatLeagueRuns
      */
     private static function classifyRun(League $league, Collection $matches): array
     {
+        if ($matches->isEmpty() && $league->manual) {
+            return ['classification' => 'EMPTY', 'liveRound' => null];
+        }
+
         $wins = $matches->where('outcome', 'win')->count();
         $state = $league->state->value;
 
@@ -356,6 +361,10 @@ class FormatLeagueRuns
         $format = MtgoMatch::displayFormat($league->format);
 
         if ($state === 'complete') {
+            if ($matches->isEmpty()) {
+                return null;
+            }
+
             return LeagueEvTable::netTix($format, $wins, $losses);
         }
 

@@ -23,7 +23,6 @@ class DetermineMatchResult
      * @param  Collection<int, LogEvent>  $stateChanges  Match state change events
      * @param  array{0: int, 1: int}|null  $matchScore  MTGO-authoritative score [localWins, opponentWins]
      * @param  bool  $matchScoreExists  Whether a "wins the match" line was seen
-     * @param  bool  $disconnectDetected  Whether a disconnect was detected
      * @return array{wins: int, losses: int, decided: bool}
      */
     public static function run(
@@ -32,7 +31,6 @@ class DetermineMatchResult
         Collection $stateChanges,
         ?array $matchScore = null,
         bool $matchScoreExists = false,
-        bool $disconnectDetected = false,
     ): array {
         [$wins, $losses] = self::countWinsAndLosses($games, $localPlayer, $matchScore);
 
@@ -41,7 +39,10 @@ class DetermineMatchResult
         $conceded = static::localPlayerConceded($stateChanges);
         $matchCompleted = static::matchCompletedByServer($stateChanges);
 
-        $decided = $thresholdMet || $conceded || $matchCompleted || $matchScoreExists || $disconnectDetected;
+        // A disconnect is deliberately NOT a deciding signal here — it is not
+        // terminal (the player may reconnect). Disconnect-terminated matches
+        // are resolved post-mortem by the stale-match reaper.
+        $decided = $thresholdMet || $conceded || $matchCompleted || $matchScoreExists;
 
         return [
             'wins' => $wins,

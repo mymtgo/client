@@ -238,6 +238,50 @@ it('returns null when no deck has any card overlap', function () {
     expect(EstimateArchetypeLocally::run($input, 'modern'))->toBeNull();
 });
 
+it('ignores lands when matching — they are too broad to discriminate archetypes', function () {
+    createArchetypeWithCards(
+        ['name' => 'Dimir Murktide', 'format' => 'modern'],
+        [
+            ['oracle_id' => 'field', 'mtgo_id' => 93534, 'name' => 'Field of Ruin', 'type' => 'Land', 'quantity' => 4],
+            ['oracle_id' => 'murktide', 'mtgo_id' => 500, 'name' => 'Murktide Regent', 'quantity' => 4],
+            ['oracle_id' => 'dragon', 'mtgo_id' => 501, 'name' => 'Dragons Rage Channeler', 'quantity' => 4],
+        ]
+    );
+
+    // Input only shares the land — must not match.
+    $inputCards = collect([
+        ['mtgo_id' => 93534, 'quantity' => 3],
+    ]);
+
+    expect(EstimateArchetypeLocally::run($inputCards, 'modern'))->toBeNull();
+});
+
+it('does not count lands toward quantity overlap', function () {
+    ['archetype' => $burn] = createArchetypeWithCards(
+        ['name' => 'Burn', 'format' => 'modern'],
+        [
+            ['oracle_id' => 'bolt', 'mtgo_id' => 100, 'name' => 'Lightning Bolt', 'quantity' => 4],
+            ['oracle_id' => 'spike', 'mtgo_id' => 101, 'name' => 'Lava Spike', 'quantity' => 4],
+            ['oracle_id' => 'mountain', 'mtgo_id' => 102, 'name' => 'Mountain', 'type' => 'Basic Land', 'quantity' => 12],
+        ]
+    );
+
+    // A pile of lands plus two real spells — score must come from the spells,
+    // not the lands inflating quantity overlap.
+    $inputCards = collect([
+        ['mtgo_id' => 100, 'quantity' => 4],
+        ['mtgo_id' => 101, 'quantity' => 4],
+        ['mtgo_id' => 102, 'quantity' => 20],
+    ]);
+
+    $result = EstimateArchetypeLocally::run($inputCards, 'modern');
+
+    expect($result)->not->toBeNull();
+    expect($result['archetype_id'])->toBe($burn->id);
+    // 2 of 2 non-land cards matched → high confidence, lands excluded entirely.
+    expect($result['confidence'])->toBeGreaterThan(0.9);
+});
+
 it('skips archetypes with no decks', function () {
     Archetype::factory()->create(['format' => 'modern', 'decklist_downloaded_at' => now()]);
     Card::factory()->create(['oracle_id' => 'a', 'mtgo_id' => '1']);

@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Log;
 class DetermineDeckArchetype
 {
     /** Minimum local confidence to skip the API call. */
-    private const LOCAL_CONFIDENCE_THRESHOLD = 0.5;
+    private const LOCAL_CONFIDENCE_THRESHOLD = 0.8;
 
     public static function run(Collection $cards, string $format, ?int $matchId = null, ?int $playerId = null): ?array
     {

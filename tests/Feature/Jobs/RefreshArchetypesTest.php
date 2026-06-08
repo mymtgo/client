@@ -78,6 +78,17 @@ it('skips manual, fallback, and merged archetypes', function () {
     Bus::assertBatched(fn ($batch) => $batch->jobs->count() === 1);
 });
 
+it('no-ops when a refresh is already in progress', function () {
+    AppSettings::forget('archetypes_last_refreshed_at');
+    AppSettings::setArchetypesRefreshInProgress(true);
+    Archetype::factory()->create(['is_fallback' => false, 'manual' => false, 'merged_into_id' => null, 'format' => 'modern']);
+    Bus::fake();
+
+    (new RefreshArchetypes)->handle();
+
+    Bus::assertNothingBatched();
+});
+
 it('sets refresh_in_progress to true before dispatching', function () {
     AppSettings::forget('archetypes_last_refreshed_at');
     AppSettings::setArchetypesRefreshInProgress(false);
@@ -87,4 +98,23 @@ it('sets refresh_in_progress to true before dispatching', function () {
     (new RefreshArchetypes)->handle();
 
     expect(AppSettings::archetypesRefreshInProgress())->toBeTrue();
+});
+
+it('queues both parent and child jobs on the archetypes queue', function () {
+    expect((new RefreshArchetypes)->queue)->toBe('archetypes');
+    expect((new RefreshArchetypeDecklist(1))->queue)->toBe('archetypes');
+});
+
+it('parent re-dispatching does not stack batches while one is in progress', function () {
+    AppSettings::forget('archetypes_last_refreshed_at');
+    AppSettings::setArchetypesRefreshInProgress(false);
+    Archetype::factory()->create(['is_fallback' => false, 'manual' => false, 'merged_into_id' => null, 'format' => 'modern']);
+
+    Bus::fake();
+
+    (new RefreshArchetypes)->handle();
+    (new RefreshArchetypes)->handle(); // simulated re-dispatch within the daily window
+    (new RefreshArchetypes)->handle();
+
+    Bus::assertBatchCount(1);
 });

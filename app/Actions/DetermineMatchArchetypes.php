@@ -70,7 +70,6 @@ class DetermineMatchArchetypes
                 ];
             }
         }
-
         $homebrewId = null;
 
         foreach ($opponentDecks as $opponentId => $opponentCards) {

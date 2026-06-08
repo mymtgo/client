@@ -38,7 +38,11 @@ it('is idempotent for completed matches — running twice produces same result',
 
 it('second loop skips matches already processed in first loop', function () {
     // Create a match with unprocessed events AND in InProgress state
-    // It should be processed in the first loop only
+    // It should be processed in the first loop only.
+    //
+    // Discovery keys off game_management_json — the only event type that
+    // carries both match_token and match_id in real logs (game_state_update
+    // rows carry match_id only and are swept up by token once discovered).
     $match = MtgoMatch::factory()->inProgress()->create([
         'token' => 'dual-loop-test',
         'mtgo_id' => '55555',
@@ -47,7 +51,7 @@ it('second loop skips matches already processed in first loop', function () {
     createPipelineLogEvent([
         'match_id' => '55555',
         'match_token' => 'dual-loop-test',
-        'event_type' => 'game_state_update',
+        'event_type' => 'game_management_json',
         'context' => 'MatchJoinedEventUnderwayState',
         'username' => 'testplayer',
     ]);

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import AppHeader from '@/components/AppHeader.vue';
 import AppNav from '@/components/AppNav.vue';
+import DonationModal from '@/components/DonationModal.vue';
 import StatusBar from '@/components/StatusBar.vue';
 import ToastContainer from '@/components/ToastContainer.vue';
 import UpdateBanner from '@/components/UpdateBanner.vue';
@@ -35,5 +36,6 @@ onMounted(() => {
         </div>
         <StatusBar />
         <ToastContainer />
+        <DonationModal />
     </div>
 </template>

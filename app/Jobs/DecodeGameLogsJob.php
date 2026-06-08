@@ -2,8 +2,8 @@
 
 namespace App\Jobs;
 
+use App\Actions\Matches\DecodeGameLog;
 use App\Actions\Matches\ExtractGameResults;
-use App\Actions\Matches\ParseGameLogBinary;
 use App\Models\GameLog;
 use App\Models\ImportScan;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -91,31 +91,7 @@ class DecodeGameLogsJob implements ShouldQueue
 
     private function decodeLog(GameLog $gameLog): void
     {
-        if (! $gameLog->file_path || ! file_exists($gameLog->file_path)) {
-            return;
-        }
-
-        try {
-            $raw = file_get_contents($gameLog->file_path);
-            $parsed = ParseGameLogBinary::run($raw);
-
-            if ($parsed && ! empty($parsed['entries'])) {
-                $players = ExtractGameResults::detectPlayers($parsed['entries']);
-
-                $gameLog->update([
-                    'decoded_entries' => $parsed['entries'],
-                    'decoded_at' => now(),
-                    'byte_offset' => $parsed['byte_offset'],
-                    'decoded_version' => ParseGameLogBinary::VERSION,
-                    'first_timestamp' => $parsed['entries'][0]['timestamp'] ?? null,
-                    'players' => $players,
-                ]);
-            }
-        } catch (\Throwable $e) {
-            Log::channel('pipeline')->warning("DecodeGameLogsJob: failed to decode {$gameLog->file_path}", [
-                'error' => $e->getMessage(),
-            ]);
-        }
+        DecodeGameLog::run($gameLog);
     }
 
     public function failed(\Throwable $e): void

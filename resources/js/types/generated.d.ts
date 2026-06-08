@@ -67,6 +67,36 @@ totalWins: number;
 winrate: number | null;
 lastPlayedAt: string | null;
 };
+export type DeckWinrateData = {
+wins: number;
+games: number;
+rate: number;
+};
+export type DrawOddsCardData = {
+mtgoId: number | null;
+name: string;
+type: string;
+identity: string | null;
+image: string | null;
+remaining: number;
+total: number;
+};
+export type DrawOddsData = {
+cards: { [key: number]: App.Data.Front.DrawOddsCardData };
+librarySize: number;
+liveLibraryCount: number;
+};
+export type ExternalCardStatsResponse = {
+stats: { [key: number]: { [key: string]: any } };
+archetypeWinrate: App.Data.Front.DeckWinrateData;
+opponents: { [key: number]: App.Data.Front.ExternalOpponentData };
+refreshedAt: string | null;
+};
+export type ExternalOpponentData = {
+id: number;
+uuid: string;
+name: string;
+};
 export type GameData = {
 id: number;
 players: any | Array<any>;
@@ -84,6 +114,7 @@ export type LeagueData = {
 name: string;
 startedAt: string;
 format: string;
+manual: boolean;
 matches: Array<any>;
 };
 export type MatchArchetypeData = {

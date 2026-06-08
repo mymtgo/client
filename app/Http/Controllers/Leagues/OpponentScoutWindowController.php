@@ -39,6 +39,9 @@ class OpponentScoutWindowController extends Controller
         ]);
     }
 
+    /**
+     * @return array{username: string, previousMatches: int, wins: int, losses: int, lastArchetype: ?string, lastArchetypeColors: ?string, source: string}
+     */
     private function buildOpponentPayload(MtgoMatch $currentMatch, Player $opponentPlayer): array
     {
         $leagueArchetype = Cache::remember(

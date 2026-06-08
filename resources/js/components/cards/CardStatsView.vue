@@ -12,9 +12,12 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Table, TableBody, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import SegmentedControl from '@/components/SegmentedControl.vue';
 import DeckCardStatsRow from '@/pages/decks/partials/DeckCardStatsRow.vue';
+import { useShrinkage, type ShrunkStat } from '@/composables/useShrinkage';
+import type { ShrinkKey } from '@/lib/stats/shrinkage';
 import {
     CARD_STATS_COLUMNS,
     LOCAL_ONLY_COLUMNS,
@@ -46,11 +49,16 @@ import {
     Zap,
 } from 'lucide-vue-next';
 import { computed, ref, watch, type Component } from 'vue';
+import { router } from '@inertiajs/vue3';
 
 const props = defineProps<{
     stats: DeckCardStat[];
     archetypes: ReportArchetypeOption[];
     perspective: CardStatsPerspective;
+    deckWinrateRate: number;
+    trustValue: number;
+    source?: 'local' | 'external';
+    loading?: boolean;
     /**
      * Keys that are currently active in the filter query, used to initialise
      * the filter controls.  The host reads these from query-string props.
@@ -80,6 +88,26 @@ const selectedPlayDraw = ref<string>(props.currentPlayDraw ?? '__all__');
 const selectedBoard = ref<string>(props.currentBoard ?? '__all__');
 const selectedPerspective = ref<CardStatsPerspective>(props.perspective);
 const searchQuery = ref('');
+
+// ── Trust + shrinkage ────────────────────────────────────────────────────────
+
+const isExternal = computed<boolean>(() => props.source === 'external');
+
+function useMine(): void {
+    router.reload({
+        data: { card_stats_source: undefined },
+        only: ['cardStats'],
+        preserveScroll: true,
+        preserveState: true,
+    });
+}
+
+const shrunkStats = useShrinkage({
+    stats: () => props.stats,
+    prior: () => props.deckWinrateRate,
+    strength: () => props.trustValue,
+    perspective: () => props.perspective ?? 'mine',
+});
 
 watch(() => props.perspective, (val) => {
     selectedPerspective.value = val;
@@ -267,99 +295,56 @@ function toggleSort(key: SortKey) {
     }
 }
 
-/**
- * Wilson score lower bound (99% CI). Strict enough that a 1/1 (100%) sits below
- * a 12/20 (60%) and a 6/6 (100%) sits below a 92/137 (67%). Used for any
- * rate-based sort to neutralise low-sample noise.
- */
-function wilsonLower(won: number, total: number): number {
-    if (total <= 0) return -1;
-    const z = 2.5758; // 99% confidence
-    const p = won / total;
-    const denom = 1 + (z * z) / total;
-    const center = p + (z * z) / (2 * total);
-    const margin = z * Math.sqrt((p * (1 - p)) / total + (z * z) / (4 * total * total));
-    return (center - margin) / denom;
+const SHRINK_KEY_BY_SORT: Partial<Record<SortKey, ShrinkKey>> = {
+    keptWinPct: 'kept',
+    castWinPct: 'cast',
+    seenWinPct: 'seen',
+    pregameWinPct: 'pregame',
+};
+
+function rateOrNeg(num: number, denom: number): number {
+    return denom > 0 ? num / denom : -1;
 }
 
-function sortValue(stat: DeckCardStat, key: SortKey): number | string {
-    const winNum = (won: number, lost: number) => (props.perspective === 'theirs' ? lost : won);
+function sortValue(entry: ShrunkStat<DeckCardStat>, key: SortKey): number | string {
+    const stat = entry.raw;
+    const shrinkKey = SHRINK_KEY_BY_SORT[key];
+    if (shrinkKey) {
+        return entry.shrunk[shrinkKey];
+    }
 
     switch (key) {
-        case 'name':
-            return stat.name;
-        case 'keptPct':
-            return wilsonLower(stat.keptGames, stat.totalGames);
-        case 'keptWinPct':
-            return wilsonLower(winNum(stat.keptWon, stat.keptLost), stat.keptWon + stat.keptLost);
-        case 'seenPct':
-            return wilsonLower(stat.seenGames, stat.totalGames);
-        case 'seenWinPct':
-            return wilsonLower(winNum(stat.seenWon, stat.seenLost), stat.seenWon + stat.seenLost);
-        case 'castPct':
-            return wilsonLower(stat.castGames, stat.totalGames);
-        case 'castWinPct':
-            return wilsonLower(winNum(stat.castWon, stat.castLost), stat.castWon + stat.castLost);
-        case 'playedPct':
-            return wilsonLower(stat.playedGames, stat.totalGames);
-        case 'kicked':
-            return stat.totalKicked;
-        case 'activated':
-            return stat.totalActivated;
-        case 'pregamePct':
-            return wilsonLower(stat.pregameGames, stat.totalGames);
-        case 'pregameWinPct':
-            return wilsonLower(winNum(stat.pregameWon, stat.pregameLost), stat.pregameWon + stat.pregameLost);
-        case 'sbOutPct':
-            return wilsonLower(stat.sidedOutGames, stat.postboardGames);
-        case 'sbInPct':
-            return wilsonLower(stat.sidedInGames, stat.postboardGames);
-        case 'games':
-            return stat.totalGames;
+        case 'name': return stat.name;
+        case 'keptPct': return rateOrNeg(stat.keptGames, stat.totalGames);
+        case 'seenPct': return rateOrNeg(stat.seenGames, stat.totalGames);
+        case 'castPct': return rateOrNeg(stat.castGames, stat.totalGames);
+        case 'playedPct': return rateOrNeg(stat.playedGames, stat.totalGames);
+        case 'kicked': return stat.totalKicked;
+        case 'activated': return stat.totalActivated;
+        case 'pregamePct': return rateOrNeg(stat.pregameGames, stat.totalGames);
+        case 'sbOutPct': return rateOrNeg(stat.sidedOutGames, stat.postboardGames);
+        case 'sbInPct': return rateOrNeg(stat.sidedInGames, stat.postboardGames);
+        case 'games': return stat.totalGames;
+        default: return 0;
     }
 }
 
-const LOW_DATA_THRESHOLD = 20;
-
-const WIN_SAMPLE: Partial<Record<SortKey, (s: DeckCardStat) => number>> = {
-    keptWinPct: (s) => s.keptWon + s.keptLost,
-    castWinPct: (s) => s.castWon + s.castLost,
-    seenWinPct: (s) => s.seenWon + s.seenLost,
-    pregameWinPct: (s) => s.pregameWon + s.pregameLost,
-};
-
-const filteredAndSortedStats = computed<{ main: DeckCardStat[]; lowData: DeckCardStat[] }>(() => {
+const filteredAndSortedStats = computed<ShrunkStat<DeckCardStat>[]>(() => {
     const q = searchQuery.value.toLowerCase();
-    const filtered = props.stats.filter((s) => passesFilter(s) && (!q || s.name.toLowerCase().includes(q)));
+    const filtered = shrunkStats.value.filter(
+        (entry) => passesFilter(entry.raw) && (!q || entry.raw.name.toLowerCase().includes(q)),
+    );
 
     const sortKey = sortBy.value;
     const desc = sortDesc.value;
 
-    type Decorated = { stat: DeckCardStat; key: number | string };
+    const decorated = filtered.map((entry) => ({ entry, key: sortValue(entry, sortKey) }));
+    decorated.sort((a, b) => {
+        const cmp = a.key < b.key ? -1 : a.key > b.key ? 1 : 0;
+        return desc ? -cmp : cmp;
+    });
 
-    const sortDecorated = (items: Decorated[]): DeckCardStat[] => {
-        items.sort((a, b) => {
-            const cmp = a.key < b.key ? -1 : a.key > b.key ? 1 : 0;
-            return desc ? -cmp : cmp;
-        });
-        return items.map((d) => d.stat);
-    };
-
-    const sampleFn = WIN_SAMPLE[sortKey];
-
-    if (!sampleFn) {
-        const decorated = filtered.map((stat) => ({ stat, key: sortValue(stat, sortKey) }));
-        return { main: sortDecorated(decorated), lowData: [] };
-    }
-
-    const main: Decorated[] = [];
-    const lowData: Decorated[] = [];
-    for (const stat of filtered) {
-        const decorated = { stat, key: sortValue(stat, sortKey) };
-        (sampleFn(stat) >= LOW_DATA_THRESHOLD ? main : lowData).push(decorated);
-    }
-
-    return { main: sortDecorated(main), lowData: sortDecorated(lowData) };
+    return decorated.map((d) => d.entry);
 });
 
 // ── Card image hover ────────────────────────────────────────────────────────
@@ -397,6 +382,7 @@ defineExpose({ selectedArchetype, selectedPlayDraw, selectedBoard, visibleColumn
             </div>
 
             <SegmentedControl
+                v-if="source == 'local'"
                 :modelValue="selectedPerspective"
                 :options="[
                     { value: 'mine', label: 'My Cards' },
@@ -508,13 +494,29 @@ defineExpose({ selectedArchetype, selectedPlayDraw, selectedBoard, visibleColumn
                     </DropdownMenuContent>
                 </DropdownMenu>
 
-                <!-- Slot for host-specific toolbar buttons (e.g. regenerate, help) -->
-                <slot name="toolbar-actions" />
             </div>
         </div>
     </div>
 
-    <div v-if="!stats.length && perspective === 'theirs'" class="flex flex-col items-center gap-3 py-16 text-center">
+    <Card v-if="loading" class="gap-0 overflow-hidden p-0">
+        <CardContent class="flex flex-col gap-2 px-4 py-4">
+            <Skeleton class="h-8 w-full" />
+            <Skeleton class="h-8 w-full" />
+            <Skeleton class="h-8 w-full" />
+            <Skeleton class="h-8 w-3/4" />
+        </CardContent>
+    </Card>
+
+    <div v-else-if="isExternal && !stats.length" class="flex flex-col items-center gap-3 py-16 text-center">
+        <BarChart3 class="size-10 text-muted-foreground/40" />
+        <p class="font-medium">No community data yet for this archetype</p>
+        <p class="max-w-sm text-sm text-muted-foreground">
+            Check back as more matches are reported. Community stats are refreshed daily.
+        </p>
+        <Button variant="outline" size="sm" class="mt-2" @click="useMine">Use mine</Button>
+    </div>
+
+    <div v-else-if="!stats.length && perspective === 'theirs'" class="flex flex-col items-center gap-3 py-16 text-center">
         <BarChart3 class="size-10 text-muted-foreground/40" />
         <p class="font-medium">No opponent cards tracked yet</p>
         <p class="max-w-sm text-sm text-muted-foreground">
@@ -530,7 +532,7 @@ defineExpose({ selectedArchetype, selectedPlayDraw, selectedBoard, visibleColumn
         </p>
     </div>
 
-    <div v-else-if="!filteredAndSortedStats.main.length && !filteredAndSortedStats.lowData.length" class="flex flex-col items-center gap-3 py-16 text-center">
+    <div v-else-if="!filteredAndSortedStats.length" class="flex flex-col items-center gap-3 py-16 text-center">
         <Filter class="size-10 text-muted-foreground/40" />
         <p class="font-medium">All card types are hidden</p>
         <p class="max-w-sm text-sm text-muted-foreground">Enable some card types in the filter to view stats.</p>
@@ -619,10 +621,13 @@ defineExpose({ selectedArchetype, selectedPlayDraw, selectedBoard, visibleColumn
                     </TableRow>
                 </TableHeader>
                 <TableBody>
-                    <ContextMenu v-for="stat in filteredAndSortedStats.main" :key="stat.oracleId">
+                    <ContextMenu v-for="entry in filteredAndSortedStats" :key="entry.raw.oracleId">
                         <ContextMenuTrigger asChild>
                             <DeckCardStatsRow
-                                :stat="stat"
+                                :stat="entry.raw"
+                                :shrunk="entry.shrunk"
+                                :raw-rates="entry.rawRates"
+                                :samples="entry.samples"
                                 :visible-columns="effectiveVisibleColumns"
                                 :perspective="perspective"
                                 @image-enter="onRowEnter"
@@ -632,34 +637,7 @@ defineExpose({ selectedArchetype, selectedPlayDraw, selectedBoard, visibleColumn
                         </ContextMenuTrigger>
                         <ContextMenuContent>
                             <!-- Slot for host-specific row context menu items (e.g. screenshot) -->
-                            <slot name="row-actions" :stat="stat" />
-                        </ContextMenuContent>
-                    </ContextMenu>
-
-                    <TableRow v-if="filteredAndSortedStats.lowData.length" class="pointer-events-none">
-                        <TableCell :colspan="visibleColumnCount" class="py-1.5 bg-yellow-500/10">
-                            <div class="flex items-center gap-3">
-                                <div class="h-px flex-1 bg-border" />
-                                <span class="text-xs text-yellow-200">Low sample size</span>
-                                <div class="h-px flex-1 bg-border" />
-                            </div>
-                        </TableCell>
-                    </TableRow>
-
-                    <ContextMenu v-for="stat in filteredAndSortedStats.lowData" :key="stat.oracleId">
-                        <ContextMenuTrigger asChild>
-                            <DeckCardStatsRow
-                                :stat="stat"
-                                :visible-columns="effectiveVisibleColumns"
-                                :perspective="perspective"
-                                @image-enter="onRowEnter"
-                                @image-move="onRowMove"
-                                @image-leave="onRowLeave"
-                            />
-                        </ContextMenuTrigger>
-                        <ContextMenuContent>
-                            <!-- Slot for host-specific row context menu items (e.g. screenshot) -->
-                            <slot name="row-actions" :stat="stat" />
+                            <slot name="row-actions" :stat="entry.raw" />
                         </ContextMenuContent>
                     </ContextMenu>
                 </TableBody>

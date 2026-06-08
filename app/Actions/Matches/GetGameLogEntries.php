@@ -3,16 +3,15 @@
 namespace App\Actions\Matches;
 
 use App\Models\Game;
-use App\Models\GameLog;
 use Carbon\Carbon;
 
 class GetGameLogEntries
 {
     /**
-     * Get cleaned, display-ready game log entries for a specific game.
+     * Display-ready game-log entries for a single game.
      *
-     * Filters the match's decoded log entries to the game's time window
-     * and cleans up MTGO formatting (@P prefixes, card reference markup).
+     * Sources entries from log_events MetaMessage rows (live matches).
+     * Imported matches have no log_events; returns [].
      *
      * @return array<int, array{timestamp: string, message: string}>
      */
@@ -24,15 +23,7 @@ class GetGameLogEntries
             return [];
         }
 
-        $gameLog = GameLog::where('match_token', $match->token)
-            ->whereNotNull('decoded_entries')
-            ->first();
-
-        if (! $gameLog) {
-            return [];
-        }
-
-        $entries = $gameLog->decoded_entries ?? [];
+        $entries = ExtractMetaMessageEntries::run($match->token);
 
         if (empty($entries)) {
             return [];
@@ -56,17 +47,11 @@ class GetGameLogEntries
             ->all();
     }
 
-    /**
-     * Clean up raw game log message for display.
-     */
     private static function cleanMessage(string $message): string
     {
-        // Remove @P@P (join messages) and @P (regular player prefix)
         $message = preg_replace('/^@P@P/', '', $message);
         $message = preg_replace('/^@P/', '', $message);
         $message = str_replace('@P', '', $message);
-
-        // Clean card references: @[Card Name@:catalogId,instanceId:@] → Card Name
         $message = preg_replace('/@\[([^@]+)@:[^]]+@\]/', '$1', $message);
 
         return $message;

@@ -10,6 +10,7 @@ use App\Models\Account;
 use App\Models\Archetype;
 use App\Models\Deck;
 use App\Models\League;
+use App\Models\MtgoMatch;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -77,11 +78,24 @@ class IndexController extends Controller
 
         $kpis = GetLeagueKpis::run($base);
 
+        $manualDeckOptions = Deck::query()
+            ->where('account_id', $activeAccountId)
+            ->orderBy('name')
+            ->get(['id', 'name', 'format'])
+            ->map(fn (Deck $d) => [
+                'id' => $d->id,
+                'name' => $d->name,
+                'format' => MtgoMatch::displayFormat($d->format),
+            ])
+            ->values()
+            ->all();
+
         return Inertia::render('leagues/Index', [
             'leagues' => $leagues,
             'kpis' => $kpis,
             'allFormats' => $allFormats,
             'allDecks' => $allDecks,
+            'manualDeckOptions' => $manualDeckOptions,
             'filters' => [
                 'format' => $format ?? '',
                 'state' => $state ?? 'all',
@@ -99,8 +113,14 @@ class IndexController extends Controller
     private function buildQuery(?string $format, ?string $state, ?string $deckId, ?string $search): Builder
     {
         return League::query()
-            ->whereHas('matches', fn ($mq) => $mq->where('state', 'complete'))
-            ->when($format, fn ($q, $f) => $q->whereHas('matches', fn ($mq) => $mq->where('format', $f)->where('state', 'complete')))
+            ->where(function ($q) {
+                $q->where('manual', true)
+                    ->orWhereHas('matches', fn ($mq) => $mq->where('state', 'complete'));
+            })
+            ->when($format, fn ($q, $f) => $q->where(function ($w) use ($f) {
+                $w->where('format', $f)
+                    ->orWhereHas('matches', fn ($mq) => $mq->where('format', $f)->where('state', 'complete'));
+            }))
             ->when($state === 'live', fn ($q) => $q->where('state', 'active'))
             ->when($state === 'trophies', fn ($q) => $q
                 ->where('state', 'complete')

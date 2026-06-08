@@ -6,12 +6,13 @@ use App\Actions\Cards\AggregateGameLogCardStats;
 use App\Actions\Cards\CountSeenCardsByOracle;
 use App\Actions\Cards\UpdateGameMetaFromLog;
 use App\Actions\Import\ExtractCardsFromGameLog;
+use App\Actions\Matches\EnsureGameLogForMatch;
 use App\Actions\Matches\ExtractGameHandData;
+use App\Actions\Matches\ExtractMetaMessageEntries;
 use App\Models\Card;
 use App\Models\CardGameStat;
 use App\Models\DeckVersion;
 use App\Models\Game;
-use App\Models\GameLog;
 use App\Models\MtgoMatch;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -29,6 +30,7 @@ class ComputeCardGameStats implements ShouldQueue
 
     public function __construct(
         public int $matchId,
+        public bool $fromGameLog = false,
     ) {}
 
     public function handle(): void
@@ -45,12 +47,15 @@ class ComputeCardGameStats implements ShouldQueue
         // leaves stale rows for cards no longer in the deck or no longer signaled by opp.
         CardGameStat::whereIn('game_id', $games->pluck('id'))->delete();
 
-        $gameLog = GameLog::where('match_token', $match->token)
-            ->whereNotNull('decoded_entries')
-            ->first();
+        // Regeneration sources from the durable decoded .dat (GameLog), since a
+        // completed match's log_events get pruned. The live at-Complete path
+        // reads log_events directly, which are still present at that moment.
+        $entries = $this->fromGameLog
+            ? EnsureGameLogForMatch::run($match->token)
+            : ExtractMetaMessageEntries::run($match->token);
 
-        $gameLogStats = $gameLog?->decoded_entries
-            ? ExtractCardsFromGameLog::run($gameLog->decoded_entries)
+        $gameLogStats = ! empty($entries)
+            ? ExtractCardsFromGameLog::run($entries)
             : null;
 
         $sideboardOracleIds = $this->resolveSideboardOracleIds($match->deck_version_id);
@@ -167,7 +172,14 @@ class ComputeCardGameStats implements ShouldQueue
             }
         }
 
-        $catalogToOracle = $mtgoToOracle->toArray();
+        // MTGO can log a cast under a different printing's CatalogID than the
+        // one registered in the deck (most visibly warp casts, which carry the
+        // warp variant's CatalogID). Widen the deck-scoped map with every
+        // printing the local player actually touched in the timeline and game
+        // log so those casts resolve to the deck card's oracle instead of being
+        // silently dropped. SEEN/KEPT already resolve via the base printing.
+        $catalogToOracle = $mtgoToOracle->toArray()
+            + $this->buildSeenCatalogToOracle($game, $localInstanceId, $gameLogStats, $gameIndex, $localPlayer->username);
 
         try {
             $handData = ExtractGameHandData::run($game);
@@ -297,7 +309,7 @@ class ComputeCardGameStats implements ShouldQueue
             $oppInstanceId = (int) $opponent->pivot->instance_id;
             $oppName = $opponent->username;
 
-            $catalogToOracle = $this->buildOpponentCatalogToOracle($game, $oppInstanceId, $gameLogStats, $gameIndex, $oppName);
+            $catalogToOracle = $this->buildSeenCatalogToOracle($game, $oppInstanceId, $gameLogStats, $gameIndex, $oppName);
 
             if (empty($catalogToOracle)) {
                 continue;
@@ -450,15 +462,17 @@ class ComputeCardGameStats implements ShouldQueue
     }
 
     /**
-     * Catalog-id => oracle-id from cards we observed for this opponent.
-     * Source union: (a) timeline cards owned by the opp instance, and (b) mtgo_ids
-     * the opp interacted with in the game log. Imported matches have no timeline,
-     * so the game-log fallback is the only path that surfaces opp cards there.
+     * Catalog-id => oracle-id from cards we observed for a single player instance.
+     * Source union: (a) timeline cards owned by the instance, and (b) mtgo_ids
+     * the player interacted with in the game log. Imported matches have no
+     * timeline, so the game-log fallback is the only path that surfaces cards
+     * there. Used for opponents (whose decklist is unknown) and to widen the
+     * local player's deck-scoped map with printings only seen in play.
      *
      * @param  array<string, mixed>|null  $gameLogStats
      * @return array<string, string>
      */
-    private function buildOpponentCatalogToOracle(Game $game, int $oppInstanceId, ?array $gameLogStats, int $gameIndex, string $oppName): array
+    private function buildSeenCatalogToOracle(Game $game, int $instanceId, ?array $gameLogStats, int $gameIndex, string $playerName): array
     {
         $catalogIds = [];
 
@@ -466,7 +480,7 @@ class ComputeCardGameStats implements ShouldQueue
             $cards = $snapshot->content['Cards'] ?? [];
 
             foreach ($cards as $card) {
-                if ((int) ($card['Owner'] ?? -1) !== $oppInstanceId) {
+                if ((int) ($card['Owner'] ?? -1) !== $instanceId) {
                     continue;
                 }
                 $catalogId = (string) ($card['CatalogID'] ?? '');
@@ -478,14 +492,14 @@ class ComputeCardGameStats implements ShouldQueue
         }
 
         if ($gameLogStats) {
-            foreach ($gameLogStats['cards_by_game'][$gameIndex][$oppName] ?? [] as $card) {
+            foreach ($gameLogStats['cards_by_game'][$gameIndex][$playerName] ?? [] as $card) {
                 $mtgoId = (string) ($card['mtgo_id'] ?? '');
                 if ($mtgoId !== '') {
                     $catalogIds[$mtgoId] = true;
                 }
             }
 
-            foreach ($gameLogStats['pregame_actions'][$gameIndex][$oppName] ?? [] as $action) {
+            foreach ($gameLogStats['pregame_actions'][$gameIndex][$playerName] ?? [] as $action) {
                 $mtgoId = (string) ($action['mtgo_id'] ?? '');
                 if ($mtgoId !== '') {
                     $catalogIds[$mtgoId] = true;

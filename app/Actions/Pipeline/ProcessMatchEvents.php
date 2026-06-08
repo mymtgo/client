@@ -3,7 +3,6 @@
 namespace App\Actions\Pipeline;
 
 use App\Actions\Matches\AdvanceMatchState;
-use App\Enums\LogEventType;
 use App\Enums\MatchState;
 use App\Facades\Mtgo;
 use App\Models\Account;
@@ -56,6 +55,41 @@ class ProcessMatchEvents
             $processedTokens[] = $matchToken;
         }
 
+        // Second pass: recover orphaned tokens whose only unprocessed events are
+        // trailing match_state_changed rows (e.g. a concede + close sequence that
+        // arrived after the match's game_management_json had all been processed).
+        // The discovery query above keys off game_management_json, so such a
+        // match never gets revisited and stalls in its last state forever. We
+        // resolve each token's match_id from its existing match record (or any
+        // sibling event that carries one) and run the same processMatch path.
+        //
+        // Tokens already handled this tick are filtered in PHP rather than via a
+        // whereNotIn clause, which would force the same full-scan + temp B-tree
+        // the primary discovery query was rewritten to avoid.
+        $orphanTokens = LogEvent::query()
+            ->where('event_type', 'match_state_changed')
+            ->whereNull('processed_at')
+            ->whereNotNull('match_token')
+            ->distinct()
+            ->pluck('match_token')
+            ->diff($processedTokens);
+
+        foreach ($orphanTokens as $matchToken) {
+            $matchId = MtgoMatch::where('token', $matchToken)->value('mtgo_id')
+                ?? LogEvent::where('match_token', $matchToken)
+                    ->whereNotNull('match_id')
+                    ->value('match_id');
+
+            if ($matchId === null) {
+                self::markStaleEventsProcessed($matchToken);
+
+                continue;
+            }
+
+            self::processMatch($matchToken, $matchId);
+            $processedTokens[] = $matchToken;
+        }
+
         return $processedTokens;
     }
 
@@ -95,15 +129,17 @@ class ProcessMatchEvents
         try {
             // No outer transaction here: AdvanceMatchState manages its own
             // atomicity for the match/games create + state transition, and
-            // ResolveGameResults does file I/O (binary game log parse) which
-            // we do NOT want holding the SQLite write lock while it runs.
-            // Holding the lock during file I/O was causing queue worker
-            // `update jobs set reserved_at` queries to time out at 30s.
+            // ResolveMatchFromMetaMessages can run multiple writes as it
+            // syncs per-game results. Avoiding a long-lived outer write
+            // transaction keeps the SQLite write lock from blocking queue
+            // worker `update jobs set reserved_at` queries (previously this
+            // was timing out at 30s under load).
             //
             // Each step below is independently idempotent on retry: an
             // existing match short-circuits AdvanceMatchState's create path,
-            // ResolveGameResults syncs results progressively, and
-            // markEventsProcessed only marks unprocessed rows.
+            // ResolveMatchFromMetaMessages syncs results progressively from
+            // ingested LogEvents, and markEventsProcessed only marks
+            // unprocessed rows.
             $match = AdvanceMatchState::run($matchToken, $matchId);
 
             if (! $match) {
@@ -114,9 +150,9 @@ class ProcessMatchEvents
 
             if (in_array($match->state, [MatchState::InProgress, MatchState::Ended])) {
                 try {
-                    ResolveGameResults::run($match);
+                    ResolveMatchFromMetaMessages::run($match);
                 } catch (\Throwable $e) {
-                    Log::channel('pipeline')->warning("Match {$match->mtgo_id}: game log resolution failed, will retry", [
+                    Log::channel('pipeline')->warning("Match {$match->mtgo_id}: metamessage resolution failed, will retry", [
                         'error' => $e->getMessage(),
                     ]);
                 }

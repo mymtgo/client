@@ -113,6 +113,7 @@ class MatchesController extends Controller
             'CLEGACY' => 'legacy',
             'CVINTAGE' => 'vintage',
             'CPREMODERN' => 'premodern',
+            'CPIONEER' => 'pioneer',
         ];
         $archetypeFormat = $formatMap[$deck->format] ?? strtolower($deck->format);
 

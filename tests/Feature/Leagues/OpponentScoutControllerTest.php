@@ -162,5 +162,6 @@ it('renders null opponent when no active match exists', function () {
     $response->assertInertia(fn ($page) => $page
         ->component('leagues/OpponentScout')
         ->where('opponent', null)
+        ->missing('drawOdds')
     );
 });

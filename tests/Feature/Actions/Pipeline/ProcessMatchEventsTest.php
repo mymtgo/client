@@ -137,6 +137,69 @@ it('drops match as phantom when fallback attributes to wrong multi-account user'
     expect(MtgoMatch::where('token', 'tok-phantom')->exists())->toBeFalse();
 });
 
+it('reprocesses an in_progress match whose only unprocessed events are trailing match_state_changed end signals', function () {
+    Account::create(['username' => 'alec', 'active' => true, 'tracked' => true]);
+
+    $match = MtgoMatch::create([
+        'mtgo_id' => '900',
+        'token' => 'tok-orphan',
+        'format' => 'Modern',
+        'match_type' => 'Swiss',
+        'started_at' => now(),
+        'state' => MatchState::InProgress,
+    ]);
+
+    $base = [
+        'log_instance_id' => LogInstance::factory()->create()->id,
+        'file_path' => '/tmp/orphan.log',
+        'timestamp' => now()->format('H:i:s'),
+        'level' => 'Info',
+        'ingested_at' => now(),
+        'logged_at' => now(),
+        'username' => 'alec',
+        'category' => 'Match',
+        'match_id' => '900',
+        'match_token' => 'tok-orphan',
+        'event_type' => 'match_state_changed',
+    ];
+
+    // Already-processed join event — satisfies AdvanceMatchState's join gate.
+    LogEvent::create(array_merge($base, [
+        'byte_offset_start' => 1,
+        'byte_offset_end' => 2,
+        'context' => 'Match State Changed for tok-orphan from MatchJoinedWaitingForGameToStartState to MatchJoinedEventUnderwayState',
+        'raw_text' => '(Game Management|Match State Changed for tok-orphan from MatchJoinedWaitingForGameToStartState to MatchJoinedEventUnderwayState)',
+        'processed_at' => now(),
+    ]));
+
+    // Trailing end-signal events left UNPROCESSED, with no accompanying
+    // unprocessed game_management_json — the orphaned-discovery case.
+    LogEvent::create(array_merge($base, [
+        'byte_offset_start' => 3,
+        'byte_offset_end' => 4,
+        'context' => 'Match State Changed for tok-orphan from MatchNotJoinedEventUnderwayState to MatchJoinedCompletedState',
+        'raw_text' => '(Game Management|Match State Changed for tok-orphan from MatchNotJoinedEventUnderwayState to MatchJoinedCompletedState)',
+        'processed_at' => null,
+    ]));
+
+    LogEvent::create(array_merge($base, [
+        'byte_offset_start' => 5,
+        'byte_offset_end' => 6,
+        'context' => 'Match State Changed for tok-orphan from MatchJoinedCompletedState to MatchClosedState',
+        'raw_text' => '(Game Management|Match State Changed for tok-orphan from MatchJoinedCompletedState to MatchClosedState)',
+        'processed_at' => null,
+    ]));
+
+    ProcessMatchEvents::run();
+
+    $match->refresh();
+
+    // Discovery surfaced the orphaned token; AdvanceMatchState advanced it past
+    // InProgress on the strength of the MatchClosedState signal.
+    expect($match->state)->not->toBe(MatchState::InProgress);
+    expect(LogEvent::where('match_token', 'tok-orphan')->whereNull('processed_at')->count())->toBe(0);
+});
+
 it('does not consume a retry attempt when commit fails with a readonly-database error', function () {
     Account::create(['username' => 'alec', 'active' => true, 'tracked' => true]);
 

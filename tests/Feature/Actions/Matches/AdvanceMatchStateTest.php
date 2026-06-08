@@ -3,11 +3,13 @@
 use App\Actions\Matches\AdvanceMatchState;
 use App\Enums\LogEventType;
 use App\Enums\MatchState;
+use App\Events\GameCardsSnapshotChanged;
 use App\Models\LogEvent;
 use App\Models\LogInstance;
 use App\Models\MtgoMatch;
 use App\Models\Player;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Event;
 
 uses(RefreshDatabase::class);
 
@@ -361,4 +363,42 @@ it('creates a match when game state confirms local player with opponent', functi
     expect($result)->not->toBeNull();
     expect($result->mtgo_id)->toBe($matchId);
     expect(MtgoMatch::where('mtgo_id', $matchId)->exists())->toBeTrue();
+});
+
+it('dispatches GameCardsSnapshotChanged on a live InProgress tick', function () {
+    $matchId = '10020';
+    $matchToken = 'token-snapshot-event';
+
+    createLogEvent([
+        'match_id' => $matchId,
+        'match_token' => $matchToken,
+        'event_type' => LogEventType::MATCH_STATE_CHANGED->value,
+        'context' => 'MatchJoinedEventUnderwayState',
+        'raw_text' => buildJoinRawText(),
+    ]);
+
+    $stateJson = json_encode(['Players' => [
+        ['Id' => 1, 'Name' => 'LocalPlayer'],
+        ['Id' => 2, 'Name' => 'Opponent'],
+    ], 'Cards' => []]);
+
+    createLogEvent([
+        'match_id' => $matchId,
+        'match_token' => $matchToken,
+        'event_type' => LogEventType::GAME_STATE_UPDATE->value,
+        'game_id' => 50020,
+        'username' => 'LocalPlayer',
+        'raw_text' => "12:00:01 [INF] (GameState|Update) Game ID: 50020, Match ID: {$matchId}\n{$stateJson}",
+    ]);
+
+    Event::fake();
+
+    $result = AdvanceMatchState::run($matchToken, $matchId);
+
+    expect($result->state)->toBe(MatchState::InProgress);
+
+    Event::assertDispatched(
+        GameCardsSnapshotChanged::class,
+        fn (GameCardsSnapshotChanged $event) => $event->matchId === $result->id,
+    );
 });

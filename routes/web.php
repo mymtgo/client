@@ -28,7 +28,6 @@ use App\Http\Controllers\Decks\LeaguesController;
 use App\Http\Controllers\Decks\MatchesController;
 use App\Http\Controllers\Decks\MatchupDetailController;
 use App\Http\Controllers\Decks\MatchupsController;
-use App\Http\Controllers\Decks\OpenPopoutController;
 use App\Http\Controllers\Decks\PopoutController;
 use App\Http\Controllers\Decks\RegenerateCardStatsController;
 use App\Http\Controllers\Decks\ScreenshotDataController;
@@ -52,9 +51,12 @@ use App\Http\Controllers\Import\ScanMatchesController;
 use App\Http\Controllers\Import\ScanStatusController;
 use App\Http\Controllers\Import\StoreController;
 use App\Http\Controllers\IndexController;
+use App\Http\Controllers\Leagues\AvailableMatchesController;
 use App\Http\Controllers\Leagues\DropController;
+use App\Http\Controllers\Leagues\LinkMatchController;
 use App\Http\Controllers\Leagues\OpponentScoutWindowController;
 use App\Http\Controllers\Leagues\OverlayController;
+use App\Http\Controllers\Leagues\UnlinkMatchController;
 use App\Http\Controllers\Matches\BulkUpdateArchetypeController;
 use App\Http\Controllers\Matches\DeleteController;
 use App\Http\Controllers\Matches\DetectArchetypeController;
@@ -81,10 +83,11 @@ use App\Http\Controllers\Settings\UpdateLocalImagesController;
 use App\Http\Controllers\Settings\UpdateLogPathController;
 use App\Http\Controllers\Settings\UpdateOverlaySettingsController;
 use App\Http\Controllers\Settings\UpdateShareStatsController;
+use App\Http\Controllers\Settings\UpdateTrustSettingController;
 use App\Http\Controllers\Settings\UpdateWatcherController;
 use App\Http\Controllers\Settings\UploadOverlayBackgroundController;
 use App\Http\Controllers\Support\DownloadReportBundleController;
-use App\Http\Controllers\Support\OpenKofiController;
+use App\Http\Controllers\Support\MarkDonationPromptSeenController;
 use App\Http\Controllers\Updates\InstallController;
 use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Route;
@@ -113,11 +116,16 @@ Route::group([], function (Router $router) {
     $router->group([
         'prefix' => 'leagues',
     ], function (Router $group) {
+        $group->post('/', App\Http\Controllers\Leagues\StoreController::class)->name('leagues.store');
         $group->get('/', App\Http\Controllers\Leagues\IndexController::class)->name('leagues.index');
         $group->get('overlay', OverlayController::class)->name('leagues.overlay');
         $group->get('opponent-scout', OpponentScoutWindowController::class)->name('leagues.opponent-scout');
         $group->patch('{league}/notes', App\Http\Controllers\Leagues\UpdateNotesController::class)->name('leagues.update-notes');
         $group->patch('{league}/drop', DropController::class)->name('leagues.drop');
+        $group->post('{league}/matches', LinkMatchController::class)->name('leagues.matches.link');
+        $group->delete('{league}/matches/{mtgoMatch}', UnlinkMatchController::class)->name('leagues.matches.unlink');
+        $group->get('{league}/available-matches', AvailableMatchesController::class)
+            ->name('leagues.available-matches');
     });
 
     $router->group([
@@ -142,6 +150,7 @@ Route::group([], function (Router $router) {
         'prefix' => 'decks',
     ], function (Router $group) {
         $group->get('/', App\Http\Controllers\Decks\IndexController::class)->name('decks.index');
+        $group->get('popout', PopoutController::class)->name('decks.popout');
         $group->get('{deck:id}', DashboardController::class)->name('decks.show')->withTrashed();
         $group->get('{deck:id}/card-stats', CardStatsController::class)->name('decks.card-stats')->withTrashed();
         $group->post('{deck:id}/card-stats/regenerate', RegenerateCardStatsController::class)->name('decks.card-stats.regenerate')->withTrashed();
@@ -154,8 +163,6 @@ Route::group([], function (Router $router) {
         $group->post('{deck:id}/archetypes/detect', TriggerArchetypeDetectionController::class)->name('decks.archetypes.detect')->withTrashed();
         $group->get('{deck:id}/decklist', DecklistController::class)->name('decks.decklist')->withTrashed();
         $group->get('{deck:id}/screenshot-data', ScreenshotDataController::class)->name('decks.screenshot-data')->withTrashed();
-        $group->get('{deck:id}/popout', PopoutController::class)->name('decks.popout')->withTrashed();
-        $group->post('{deck:id}/popout', OpenPopoutController::class)->name('decks.open-popout')->withTrashed();
         $group->get('{deck:id}/settings', SettingsController::class)->name('decks.settings')->withTrashed();
         $group->get('{deck:id}/cover-art-options', CoverArtOptionsController::class)->name('decks.cover-art-options')->withTrashed();
         $group->patch('{deck:id}/cover-art', UpdateCoverArtController::class)->name('decks.update-cover-art')->withTrashed();
@@ -213,6 +220,7 @@ Route::group([], function (Router $router) {
         $group->post('submit-matches', RunSubmitMatchesController::class)->name('settings.submit-matches');
         $group->patch('switch-account', SwitchAccountController::class)->name('settings.switch-account');
         $group->patch('account-tracking', UpdateAccountTrackingController::class)->name('settings.account-tracking');
+        $group->patch('card-stats-trust', UpdateTrustSettingController::class)->name('settings.card-stats-trust');
         $group->post('overlay', UpdateOverlaySettingsController::class)->name('settings.overlay');
         $group->post('overlay/background', UploadOverlayBackgroundController::class)->name('settings.overlay.background.upload');
         $group->delete('overlay/background', DeleteOverlayBackgroundController::class)->name('settings.overlay.background.delete');
@@ -244,7 +252,7 @@ Route::group([], function (Router $router) {
         'prefix' => 'support',
     ], function (Router $group) {
         $group->get('report', DownloadReportBundleController::class)->name('support.report.download');
-        $group->post('kofi', OpenKofiController::class)->name('support.kofi.open');
+        $group->post('donation/seen', MarkDonationPromptSeenController::class)->name('support.donation.seen');
     });
 
     $router->group([

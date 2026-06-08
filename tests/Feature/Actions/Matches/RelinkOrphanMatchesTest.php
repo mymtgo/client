@@ -2,11 +2,13 @@
 
 use App\Actions\Decks\GenerateDeckSignature;
 use App\Actions\Matches\RelinkOrphanMatches;
+use App\Enums\LeagueState;
 use App\Enums\MatchState;
 use App\Models\Account;
 use App\Models\Card;
 use App\Models\Deck;
 use App\Models\DeckVersion;
+use App\Models\League;
 use App\Models\LogEvent;
 use App\Models\MtgoMatch;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -149,4 +151,151 @@ it('skips matches outside the recency window by started_at', function () {
     RelinkOrphanMatches::run();
 
     expect($match->fresh()->deck_version_id)->toBeNull();
+});
+
+/*
+|--------------------------------------------------------------------------
+| League backfill
+|--------------------------------------------------------------------------
+*/
+
+function makeJoinedStateEvent(string $matchToken, string $leagueToken, string $format = 'CPAUP'): LogEvent
+{
+    $rawText = <<<TEXT
+12:00:00 [INF] (Game Management|Processing Registered Handler for GsMessageMessage in LeagueMatchJoinedEventUnderwayState) Processor: LeagueMatchJoinedEventUnderwayState Message: {"MatchToken":"{$matchToken}","MatchID":123456789,"GameID":987654321} Receiver:
+League Token={$leagueToken}
+PlayFormatCd={$format}
+GameStructureCd=League
+TEXT;
+
+    return LogEvent::factory()->create([
+        'event_type' => 'game_management_json',
+        'context' => 'Game Management|Processing Registered Handler for GsMessageMessage in LeagueMatchJoinedEventUnderwayState',
+        'match_token' => $matchToken,
+        'raw_text' => $rawText,
+        'logged_at' => now()->subMinutes(5),
+    ]);
+}
+
+it('assigns a league to an orphan match when the joined-state event carries a League Token', function () {
+    $deckVersion = DeckVersion::factory()->create();
+    $match = MtgoMatch::factory()->create([
+        'state' => MatchState::Complete,
+        'deck_version_id' => $deckVersion->id,
+        'league_id' => null,
+        'tournament_event_id' => null,
+        'started_at' => now()->subMinutes(10),
+        'ended_at' => now()->subMinutes(1),
+    ]);
+
+    makeJoinedStateEvent($match->token, 'league-token-pauper-1');
+
+    RelinkOrphanMatches::run();
+
+    $match->refresh();
+    expect($match->league_id)->not->toBeNull();
+    expect($match->league->token)->toBe('league-token-pauper-1');
+});
+
+it('reuses an existing active league when re-running the league backfill on the same match', function () {
+    $deckVersion = DeckVersion::factory()->create();
+    $match = MtgoMatch::factory()->create([
+        'state' => MatchState::Complete,
+        'deck_version_id' => $deckVersion->id,
+        'league_id' => null,
+        'tournament_event_id' => null,
+        'started_at' => now()->subMinutes(10),
+        'ended_at' => now()->subMinutes(1),
+    ]);
+
+    makeJoinedStateEvent($match->token, 'league-token-pauper-2');
+
+    RelinkOrphanMatches::run();
+    $firstLeagueId = $match->fresh()->league_id;
+
+    RelinkOrphanMatches::run();
+
+    expect($match->fresh()->league_id)->toBe($firstLeagueId);
+    expect(League::where('token', 'league-token-pauper-2')->count())->toBe(1);
+});
+
+it('does not backfill a league when no joined-state event exists for the match', function () {
+    $deckVersion = DeckVersion::factory()->create();
+    $match = MtgoMatch::factory()->create([
+        'state' => MatchState::Complete,
+        'deck_version_id' => $deckVersion->id,
+        'league_id' => null,
+        'tournament_event_id' => null,
+        'started_at' => now()->subMinutes(10),
+        'ended_at' => now()->subMinutes(1),
+    ]);
+
+    RelinkOrphanMatches::run();
+
+    expect($match->fresh()->league_id)->toBeNull();
+});
+
+it('does not backfill a league for tournament matches', function () {
+    $deckVersion = DeckVersion::factory()->create();
+    $match = MtgoMatch::factory()->create([
+        'state' => MatchState::Complete,
+        'deck_version_id' => $deckVersion->id,
+        'league_id' => null,
+        'tournament_event_id' => 12345,
+        'started_at' => now()->subMinutes(10),
+        'ended_at' => now()->subMinutes(1),
+    ]);
+
+    makeJoinedStateEvent($match->token, 'league-token-pauper-3');
+
+    RelinkOrphanMatches::run();
+
+    expect($match->fresh()->league_id)->toBeNull();
+});
+
+it('does not backfill a league when the joined-state event has no League Token', function () {
+    $deckVersion = DeckVersion::factory()->create();
+    $match = MtgoMatch::factory()->create([
+        'state' => MatchState::Complete,
+        'deck_version_id' => $deckVersion->id,
+        'league_id' => null,
+        'tournament_event_id' => null,
+        'started_at' => now()->subMinutes(10),
+        'ended_at' => now()->subMinutes(1),
+    ]);
+
+    LogEvent::factory()->create([
+        'event_type' => 'game_management_json',
+        'context' => 'Game Management|Processing Registered Handler for GsMessageMessage in MatchJoinedEventUnderwayState',
+        'match_token' => $match->token,
+        'raw_text' => '12:00:00 [INF] (foo|bar) Receiver:'."\n".'PlayFormatCd=CMODERN'."\n".'GameStructureCd=Constructed',
+        'logged_at' => now()->subMinutes(5),
+    ]);
+
+    RelinkOrphanMatches::run();
+
+    expect($match->fresh()->league_id)->toBeNull();
+});
+
+it('leaves an already-assigned league untouched', function () {
+    $deckVersion = DeckVersion::factory()->create();
+    $league = League::factory()->create([
+        'token' => 'pre-existing-league',
+        'state' => LeagueState::Active,
+    ]);
+
+    $match = MtgoMatch::factory()->create([
+        'state' => MatchState::Complete,
+        'deck_version_id' => $deckVersion->id,
+        'league_id' => $league->id,
+        'tournament_event_id' => null,
+        'started_at' => now()->subMinutes(10),
+        'ended_at' => now()->subMinutes(1),
+    ]);
+
+    makeJoinedStateEvent($match->token, 'different-token');
+
+    RelinkOrphanMatches::run();
+
+    expect($match->fresh()->league_id)->toBe($league->id);
 });

@@ -6,12 +6,42 @@ use App\Models\DeckVersion;
 use App\Models\Game;
 use App\Models\GameLog;
 use App\Models\GameTimeline;
+use App\Models\LogEvent;
+use App\Models\LogInstance;
 use App\Models\MtgoMatch;
 use App\Models\Player;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 uses(RefreshDatabase::class);
+
+function ccgs_seedLogEntries(string $matchToken, array $entries): void
+{
+    $instance = LogInstance::factory()->create();
+    foreach ($entries as $i => $entry) {
+        $text = $entry['message'];
+        $textBytes = array_map('ord', str_split($text));
+        $len = strlen($text);
+        $bytes = array_merge(
+            [$len + 24, 0, 0, 0, 3, 17, 186, 129, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [$len, 0, 0, 0],
+            $textBytes
+        );
+        LogEvent::factory()->create([
+            'log_instance_id' => $instance->id,
+            'match_token' => $matchToken,
+            'event_type' => 'game_management_json',
+            'timestamp' => Carbon::parse($entry['timestamp'] ?? '2026-05-26 10:00:00')->addSeconds($i)->format('H:i:s'),
+            'byte_offset_start' => $i * 1000,
+            'raw_text' => sprintf(
+                '00:00:00 [INF] (Game Management|Processing) Message: {"MatchToken":"%s","MatchID":1,"GameID":1,"MetaMessage":[%s]}',
+                $matchToken,
+                implode(',', $bytes)
+            ),
+        ]);
+    }
+}
 
 function createMatchWithGames(array $overrides = []): array
 {
@@ -348,16 +378,12 @@ it('counts multiple casts of the same card instance via zone transitions', funct
         ],
     ]);
 
-    GameLog::create([
-        'match_token' => $match->token,
-        'file_path' => '/fake/path.dat',
-        'decoded_entries' => [
-            ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@Ptestplayer joined the game.'],
-            ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@Popponent joined the game.'],
-            ['timestamp' => '2026-01-01T09:01:00+00:00', 'message' => '@Ptestplayer casts @[Card A@:2002,101:@].'],
-            ['timestamp' => '2026-01-01T09:04:00+00:00', 'message' => '@Ptestplayer casts @[Card A@:2002,101:@].'],
-            ['timestamp' => '2026-01-01T09:05:00+00:00', 'message' => '@Ptestplayer wins the game.'],
-        ],
+    ccgs_seedLogEntries($match->token, [
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@Ptestplayer joined the game.'],
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@Popponent joined the game.'],
+        ['timestamp' => '2026-01-01T09:01:00+00:00', 'message' => '@Ptestplayer casts @[Card A@:2002,101:@].'],
+        ['timestamp' => '2026-01-01T09:04:00+00:00', 'message' => '@Ptestplayer casts @[Card A@:2002,101:@].'],
+        ['timestamp' => '2026-01-01T09:05:00+00:00', 'message' => '@Ptestplayer wins the game.'],
     ]);
 
     (new ComputeCardGameStats($match->id))->handle();
@@ -459,6 +485,51 @@ it('creates a sided_out row for cards completely moved to sideboard in postboard
     expect((bool) $g2Stat->sided_in)->toBeFalse();
 });
 
+it('sources entries from the decoded game log table when run with fromGameLog (regenerate path)', function () {
+    // Reproduces the regenerate regression: after a match completes, its
+    // log_events are pruned, so regeneration must source entries from the
+    // durable GameLog.decoded_entries instead. With fromGameLog=true and NO
+    // log_events present, cast must still resolve.
+    [$match, $deckVersion, $local, $opponent] = createMatchWithGames();
+
+    $card = Card::factory()->create(['oracle_id' => 'oracle-a', 'mtgo_id' => 1001, 'name' => 'Card A']);
+
+    $game = Game::factory()->for($match, 'match')->create([
+        'won' => true,
+        'started_at' => now(),
+    ]);
+    attachPlayers($game, $local, $opponent, deckJson: [
+        ['mtgo_id' => 1001, 'quantity' => 4, 'sideboard' => false],
+    ]);
+    createTimeline($game, [
+        ['Id' => 10, 'CatalogID' => 1001, 'Zone' => 'Hand', 'Owner' => 0, 'Controller' => 0],
+    ]);
+
+    // Durable decoded game log — same {timestamp,message}[] shape the MetaMessage
+    // path produces. No log_events seeded: simulates a pruned, completed match.
+    GameLog::create([
+        'match_token' => $match->token,
+        'file_path' => '/some/path.dat',
+        'decoded_entries' => [
+            ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@Ptestplayer joined the game.'],
+            ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@Popponent joined the game.'],
+            ['timestamp' => '2026-01-01T00:00:01+00:00', 'message' => '@Ptestplayer casts @[Card A@:2002,100:@].'],
+            ['timestamp' => '2026-01-01T00:00:02+00:00', 'message' => '@Ptestplayer wins the game.'],
+        ],
+    ]);
+
+    expect(LogEvent::where('match_token', $match->token)->count())->toBe(0);
+
+    (new ComputeCardGameStats($match->id, fromGameLog: true))->handle();
+
+    $stat = DB::table('card_game_stats')
+        ->where('oracle_id', 'oracle-a')
+        ->where('game_id', $game->id)
+        ->first();
+
+    expect($stat->cast)->toBe(1);
+});
+
 it('reads cast data from game log instead of timeline zone transitions', function () {
     [$match, $deckVersion, $local, $opponent] = createMatchWithGames();
 
@@ -476,15 +547,11 @@ it('reads cast data from game log instead of timeline zone transitions', functio
         ['Id' => 10, 'CatalogID' => 1001, 'Zone' => 'Hand', 'Owner' => 0, 'Controller' => 0],
     ]);
 
-    GameLog::create([
-        'match_token' => $match->token,
-        'file_path' => '/fake/path.dat',
-        'decoded_entries' => [
-            ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@Ptestplayer joined the game.'],
-            ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@Popponent joined the game.'],
-            ['timestamp' => '2026-01-01T00:00:01+00:00', 'message' => '@Ptestplayer casts @[Card A@:2002,100:@] with kicker.'],
-            ['timestamp' => '2026-01-01T00:00:02+00:00', 'message' => '@Ptestplayer wins the game.'],
-        ],
+    ccgs_seedLogEntries($match->token, [
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@Ptestplayer joined the game.'],
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@Popponent joined the game.'],
+        ['timestamp' => '2026-01-01T00:00:01+00:00', 'message' => '@Ptestplayer casts @[Card A@:2002,100:@] with kicker.'],
+        ['timestamp' => '2026-01-01T00:00:02+00:00', 'message' => '@Ptestplayer wins the game.'],
     ]);
 
     (new ComputeCardGameStats($match->id))->handle();
@@ -523,19 +590,15 @@ it('flags pregame_revealed and pregame_played from game log in live pipeline', f
     ]);
 
     // mtgo_id 5001 → CatalogID 10002 (5001 << 1), 5002 → 10004
-    GameLog::create([
-        'match_token' => $match->token,
-        'file_path' => '/fake/path.dat',
-        'decoded_entries' => [
-            ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@Ptestplayer joined the game.'],
-            ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@Popponent joined the game.'],
-            ['timestamp' => '2026-01-01T00:00:01+00:00', 'message' => '@Popponent begins the game with seven cards in hand.'],
-            ['timestamp' => '2026-01-01T00:00:01+00:00', 'message' => '@Ptestplayer begins the game with seven cards in hand.'],
-            ['timestamp' => '2026-01-01T00:00:02+00:00', 'message' => '@Ptestplayer reveals @[Devourer of Destiny@:10002,101:@] from their opening hand.'],
-            ['timestamp' => '2026-01-01T00:00:02+00:00', 'message' => '@Ptestplayer puts @[Leyline of the Guildpact@:10004,102:@] onto the battlefield.'],
-            ['timestamp' => '2026-01-01T00:00:03+00:00', 'message' => '@PTurn 1: testplayer'],
-            ['timestamp' => '2026-01-01T00:00:10+00:00', 'message' => '@Ptestplayer wins the game.'],
-        ],
+    ccgs_seedLogEntries($match->token, [
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@Ptestplayer joined the game.'],
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@Popponent joined the game.'],
+        ['timestamp' => '2026-01-01T00:00:01+00:00', 'message' => '@Popponent begins the game with seven cards in hand.'],
+        ['timestamp' => '2026-01-01T00:00:01+00:00', 'message' => '@Ptestplayer begins the game with seven cards in hand.'],
+        ['timestamp' => '2026-01-01T00:00:02+00:00', 'message' => '@Ptestplayer reveals @[Devourer of Destiny@:10002,101:@] from their opening hand.'],
+        ['timestamp' => '2026-01-01T00:00:02+00:00', 'message' => '@Ptestplayer puts @[Leyline of the Guildpact@:10004,102:@] onto the battlefield.'],
+        ['timestamp' => '2026-01-01T00:00:03+00:00', 'message' => '@PTurn 1: testplayer'],
+        ['timestamp' => '2026-01-01T00:00:10+00:00', 'message' => '@Ptestplayer wins the game.'],
     ]);
 
     (new ComputeCardGameStats($match->id))->handle();
@@ -572,17 +635,13 @@ it('writes pregame flags as false when game log has no pregame actions', functio
         ['Id' => 10, 'CatalogID' => 6001, 'Zone' => 'Hand', 'Owner' => 0, 'Controller' => 0],
     ]);
 
-    GameLog::create([
-        'match_token' => $match->token,
-        'file_path' => '/fake/path.dat',
-        'decoded_entries' => [
-            ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@Ptestplayer joined the game.'],
-            ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@Popponent joined the game.'],
-            ['timestamp' => '2026-01-01T00:00:01+00:00', 'message' => '@Popponent begins the game with seven cards in hand.'],
-            ['timestamp' => '2026-01-01T00:00:01+00:00', 'message' => '@Ptestplayer begins the game with seven cards in hand.'],
-            ['timestamp' => '2026-01-01T00:00:03+00:00', 'message' => '@PTurn 1: testplayer'],
-            ['timestamp' => '2026-01-01T00:00:10+00:00', 'message' => '@Ptestplayer wins the game.'],
-        ],
+    ccgs_seedLogEntries($match->token, [
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@Ptestplayer joined the game.'],
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@Popponent joined the game.'],
+        ['timestamp' => '2026-01-01T00:00:01+00:00', 'message' => '@Popponent begins the game with seven cards in hand.'],
+        ['timestamp' => '2026-01-01T00:00:01+00:00', 'message' => '@Ptestplayer begins the game with seven cards in hand.'],
+        ['timestamp' => '2026-01-01T00:00:03+00:00', 'message' => '@PTurn 1: testplayer'],
+        ['timestamp' => '2026-01-01T00:00:10+00:00', 'message' => '@Ptestplayer wins the game.'],
     ]);
 
     (new ComputeCardGameStats($match->id))->handle();
@@ -618,16 +677,12 @@ it('processes imported-style match (no timeline) using game log and deck version
     // attachPlayers passes deckJson empty by default — pivot fallback will kick in
     attachPlayers($game, $local, $opponent);
 
-    GameLog::create([
-        'match_token' => $match->token,
-        'file_path' => '/fake/path.dat',
-        'decoded_entries' => [
-            ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@Ptestplayer joined the game.'],
-            ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@Popponent joined the game.'],
-            ['timestamp' => '2026-01-01T09:00:00+00:00', 'message' => '@Ptestplayer casts @[Bolt@:8002,500:@].'],
-            ['timestamp' => '2026-01-01T09:00:30+00:00', 'message' => '@Popponent casts @[Counter@:8004,600:@].'],
-            ['timestamp' => '2026-01-01T09:02:00+00:00', 'message' => '@Popponent wins the game.'],
-        ],
+    ccgs_seedLogEntries($match->token, [
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@Ptestplayer joined the game.'],
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@Popponent joined the game.'],
+        ['timestamp' => '2026-01-01T09:00:00+00:00', 'message' => '@Ptestplayer casts @[Bolt@:8002,500:@].'],
+        ['timestamp' => '2026-01-01T09:00:30+00:00', 'message' => '@Popponent casts @[Counter@:8004,600:@].'],
+        ['timestamp' => '2026-01-01T09:02:00+00:00', 'message' => '@Popponent wins the game.'],
     ]);
 
     (new ComputeCardGameStats($match->id))->handle();
@@ -755,15 +810,11 @@ it('writes opponent rows with cast and seen data from game log and timeline', fu
         ],
     ]);
 
-    GameLog::create([
-        'match_token' => $match->token,
-        'file_path' => '/fake/path.dat',
-        'decoded_entries' => [
-            ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@Ptestplayer joined the game.'],
-            ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@Popponent joined the game.'],
-            ['timestamp' => '2026-01-01T09:00:00+00:00', 'message' => '@Popponent casts @[Bolt@:14002,200:@].'],
-            ['timestamp' => '2026-01-01T09:02:00+00:00', 'message' => '@Popponent wins the game.'],
-        ],
+    ccgs_seedLogEntries($match->token, [
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@Ptestplayer joined the game.'],
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@Popponent joined the game.'],
+        ['timestamp' => '2026-01-01T09:00:00+00:00', 'message' => '@Popponent casts @[Bolt@:14002,200:@].'],
+        ['timestamp' => '2026-01-01T09:02:00+00:00', 'message' => '@Popponent wins the game.'],
     ]);
 
     (new ComputeCardGameStats($match->id))->handle();
@@ -808,14 +859,10 @@ it('does not write opponent rows when no signals are present for that card', fun
     ]);
     createTimeline($game, []);
 
-    GameLog::create([
-        'match_token' => $match->token,
-        'file_path' => '/fake/path.dat',
-        'decoded_entries' => [
-            ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@Ptestplayer joined the game.'],
-            ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@Popponent joined the game.'],
-            ['timestamp' => '2026-01-01T09:02:00+00:00', 'message' => '@Ptestplayer wins the game.'],
-        ],
+    ccgs_seedLogEntries($match->token, [
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@Ptestplayer joined the game.'],
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@Popponent joined the game.'],
+        ['timestamp' => '2026-01-01T09:02:00+00:00', 'message' => '@Ptestplayer wins the game.'],
     ]);
 
     (new ComputeCardGameStats($match->id))->handle();
@@ -856,15 +903,11 @@ it('allows local and opponent rows for the same oracle in the same game', functi
         ],
     ]);
 
-    GameLog::create([
-        'match_token' => $match->token,
-        'file_path' => '/fake/path.dat',
-        'decoded_entries' => [
-            ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@Ptestplayer joined the game.'],
-            ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@Popponent joined the game.'],
-            ['timestamp' => '2026-01-01T09:00:00+00:00', 'message' => '@Popponent casts @[Bolt@:18002,300:@].'],
-            ['timestamp' => '2026-01-01T09:02:00+00:00', 'message' => '@Ptestplayer wins the game.'],
-        ],
+    ccgs_seedLogEntries($match->token, [
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@Ptestplayer joined the game.'],
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@Popponent joined the game.'],
+        ['timestamp' => '2026-01-01T09:00:00+00:00', 'message' => '@Popponent casts @[Bolt@:18002,300:@].'],
+        ['timestamp' => '2026-01-01T09:02:00+00:00', 'message' => '@Ptestplayer wins the game.'],
     ]);
 
     (new ComputeCardGameStats($match->id))->handle();
@@ -903,15 +946,11 @@ it('tracks land plays separately from casts in live pipeline', function () {
         ['Id' => 10, 'CatalogID' => 2001, 'Zone' => 'Battlefield', 'Owner' => 0, 'Controller' => 0],
     ]);
 
-    GameLog::create([
-        'match_token' => $match->token,
-        'file_path' => '/fake/path.dat',
-        'decoded_entries' => [
-            ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@Ptestplayer joined the game.'],
-            ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@Popponent joined the game.'],
-            ['timestamp' => '2026-01-01T00:00:01+00:00', 'message' => '@Ptestplayer plays @[Forest@:4002,100:@].'],
-            ['timestamp' => '2026-01-01T00:00:02+00:00', 'message' => '@Ptestplayer wins the game.'],
-        ],
+    ccgs_seedLogEntries($match->token, [
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@Ptestplayer joined the game.'],
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@Popponent joined the game.'],
+        ['timestamp' => '2026-01-01T00:00:01+00:00', 'message' => '@Ptestplayer plays @[Forest@:4002,100:@].'],
+        ['timestamp' => '2026-01-01T00:00:02+00:00', 'message' => '@Ptestplayer wins the game.'],
     ]);
 
     (new ComputeCardGameStats($match->id))->handle();
@@ -923,4 +962,52 @@ it('tracks land plays separately from casts in live pipeline', function () {
 
     expect($stat->cast)->toBe(0);
     expect($stat->played)->toBe(1);
+});
+
+it('counts casts logged under a different printing than the registered deck card', function () {
+    // MTGO can log a cast under a different printing's CatalogID than the one
+    // registered in the deck — most visibly with warp casts, where the warp
+    // variant carries its own CatalogID. The deck and timeline use the base
+    // printing, but the cast line uses the warp printing. Both printings share
+    // one oracle id, so the cast must still be attributed to the deck card.
+    [$match, $deckVersion, $local, $opponent] = createMatchWithGames();
+
+    // Two printings of the same card, same oracle.
+    Card::factory()->create(['oracle_id' => 'oracle-qr', 'mtgo_id' => 1001, 'name' => 'Quantum Riddler']);
+    Card::factory()->create(['oracle_id' => 'oracle-qr', 'mtgo_id' => 1002, 'name' => 'Quantum Riddler']);
+
+    $game = Game::factory()->for($match, 'match')->create([
+        'won' => true,
+        'started_at' => now(),
+    ]);
+
+    // Deck registered under the base printing only.
+    attachPlayers($game, $local, $opponent, deckJson: [
+        ['mtgo_id' => 1001, 'quantity' => 4, 'sideboard' => false],
+    ]);
+
+    // Timeline (drives SEEN) carries the base printing — this already resolves.
+    createTimeline($game, [
+        ['Id' => 10, 'CatalogID' => 1001, 'Zone' => 'Hand', 'Owner' => 0, 'Controller' => 0],
+    ]);
+
+    // Cast is logged under the warp printing (1002 << 1 = 2004), NOT 1001.
+    ccgs_seedLogEntries($match->token, [
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@Ptestplayer joined the game.'],
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@Popponent joined the game.'],
+        ['timestamp' => '2026-01-01T00:00:01+00:00', 'message' => '@Ptestplayer casts @[Quantum Riddler@:2004,100:@] by paying {1U} with warp.'],
+        ['timestamp' => '2026-01-01T00:00:02+00:00', 'message' => '@Ptestplayer wins the game.'],
+    ]);
+
+    (new ComputeCardGameStats($match->id))->handle();
+
+    $stat = DB::table('card_game_stats')
+        ->where('oracle_id', 'oracle-qr')
+        ->where('game_id', $game->id)
+        ->first();
+
+    // SEEN already worked via the base printing; the cast under the warp
+    // printing must resolve to the same oracle instead of being dropped.
+    expect($stat->seen)->toBe(1);
+    expect($stat->cast)->toBe(1);
 });

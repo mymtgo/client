@@ -3,6 +3,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { TableCell, TableRow } from '@/components/ui/table';
 import { Check, Image } from 'lucide-vue-next';
 import { DEFAULT_CARD_STATS_VISIBILITY, type CardStatsPerspective, type CardStatsVisibility } from '@/pages/decks/partials/cardStatsColumns';
+import type { ShrinkKey } from '@/lib/stats/shrinkage';
 
 type CardStat = {
     name: string;
@@ -45,6 +46,9 @@ type CardStat = {
 const props = withDefaults(
     defineProps<{
         stat: CardStat;
+        shrunk: Readonly<Record<ShrinkKey, number>>;
+        rawRates: Readonly<Record<ShrinkKey, number | null>>;
+        samples: Readonly<Record<ShrinkKey, number>>;
         visibleColumns?: CardStatsVisibility;
         perspective?: CardStatsPerspective;
     }>(),
@@ -64,19 +68,18 @@ function pct(num: number, denom: number): number | null {
     return denom > 0 ? Math.round((num / denom) * 100) : null;
 }
 
-/**
- * Win-rate display: in opponent view, the value flips to "their win rate" so a
- * dangerous card reads as a high number. Color follows the displayed value, so
- * high stays red (their wins = bad for us) and low stays green.
- */
-function winPct(won: number, lost: number): number | null {
-    const raw = pct(won, won + lost);
-    if (raw === null) return null;
-    return props.perspective === 'theirs' ? 100 - raw : raw;
+function shrunkWinPct(key: ShrinkKey): number {
+    return Math.round(props.shrunk[key] * 100);
 }
 
-function winRateClass(pctVal: number | null): string {
-    if (pctVal === null) return 'text-muted-foreground';
+function rawWinPctLabel(key: ShrinkKey): string {
+    const raw = props.rawRates[key];
+    const games = props.samples[key];
+    if (raw === null || games === 0) return 'no data';
+    return `Raw ${Math.round(raw * 100)}% (${games} game${games === 1 ? '' : 's'})`;
+}
+
+function winRateClass(pctVal: number): string {
     if (props.perspective === 'theirs') {
         if (pctVal > 55) return 'text-destructive';
         if (pctVal < 45) return 'text-success';
@@ -114,13 +117,21 @@ function winRateClass(pctVal: number | null): string {
             <span v-else class="text-muted-foreground">-</span>
         </TableCell>
         <TableCell v-if="visibleColumns.keptWinPct" class="text-right tabular-nums">
-            <template v-if="winPct(stat.keptWon, stat.keptLost) !== null">
-                <span class="font-medium" :class="winRateClass(winPct(stat.keptWon, stat.keptLost))">
-                    {{ winPct(stat.keptWon, stat.keptLost) }}%
-                </span>
-                <span class="text-[10px] text-muted-foreground">({{ stat.keptWon + stat.keptLost }})</span>
-            </template>
-            <span v-else class="text-muted-foreground">-</span>
+            <TooltipProvider>
+                <Tooltip>
+                    <TooltipTrigger as-child>
+                        <span class="cursor-default border-b border-dotted border-muted-foreground/40">
+                            <span class="font-medium" :class="winRateClass(shrunkWinPct('kept'))">
+                                {{ shrunkWinPct('kept') }}%
+                            </span>
+                            <span class="text-[10px] text-muted-foreground">({{ samples.kept }})</span>
+                        </span>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" class="text-xs">
+                        {{ rawWinPctLabel('kept') }}
+                    </TooltipContent>
+                </Tooltip>
+            </TooltipProvider>
         </TableCell>
         <TableCell v-if="visibleColumns.castPct" class="text-right tabular-nums">
             <template v-if="pct(stat.castGames, stat.totalGames) !== null">
@@ -147,13 +158,21 @@ function winRateClass(pctVal: number | null): string {
             <span v-else class="text-muted-foreground">-</span>
         </TableCell>
         <TableCell v-if="visibleColumns.castWinPct" class="text-right tabular-nums">
-            <template v-if="winPct(stat.castWon, stat.castLost) !== null">
-                <span class="font-medium" :class="winRateClass(winPct(stat.castWon, stat.castLost))">
-                    {{ winPct(stat.castWon, stat.castLost) }}%
-                </span>
-                <span class="text-[10px] text-muted-foreground">({{ stat.castWon + stat.castLost }})</span>
-            </template>
-            <span v-else class="text-muted-foreground">-</span>
+            <TooltipProvider>
+                <Tooltip>
+                    <TooltipTrigger as-child>
+                        <span class="cursor-default border-b border-dotted border-muted-foreground/40">
+                            <span class="font-medium" :class="winRateClass(shrunkWinPct('cast'))">
+                                {{ shrunkWinPct('cast') }}%
+                            </span>
+                            <span class="text-[10px] text-muted-foreground">({{ samples.cast }})</span>
+                        </span>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" class="text-xs">
+                        {{ rawWinPctLabel('cast') }}
+                    </TooltipContent>
+                </Tooltip>
+            </TooltipProvider>
         </TableCell>
         <TableCell v-if="visibleColumns.playedPct" class="text-right tabular-nums">
             <template v-if="pct(stat.playedGames, stat.totalGames) !== null">
@@ -197,13 +216,21 @@ function winRateClass(pctVal: number | null): string {
             <span v-else class="text-muted-foreground">-</span>
         </TableCell>
         <TableCell v-if="visibleColumns.pregameWinPct" class="text-right tabular-nums">
-            <template v-if="winPct(stat.pregameWon, stat.pregameLost) !== null">
-                <span class="font-medium" :class="winRateClass(winPct(stat.pregameWon, stat.pregameLost))">
-                    {{ winPct(stat.pregameWon, stat.pregameLost) }}%
-                </span>
-                <span class="text-[10px] text-muted-foreground">({{ stat.pregameWon + stat.pregameLost }})</span>
-            </template>
-            <span v-else class="text-muted-foreground">-</span>
+            <TooltipProvider>
+                <Tooltip>
+                    <TooltipTrigger as-child>
+                        <span class="cursor-default border-b border-dotted border-muted-foreground/40">
+                            <span class="font-medium" :class="winRateClass(shrunkWinPct('pregame'))">
+                                {{ shrunkWinPct('pregame') }}%
+                            </span>
+                            <span class="text-[10px] text-muted-foreground">({{ samples.pregame }})</span>
+                        </span>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" class="text-xs">
+                        {{ rawWinPctLabel('pregame') }}
+                    </TooltipContent>
+                </Tooltip>
+            </TooltipProvider>
         </TableCell>
         <TableCell v-if="visibleColumns.seenPct" class="text-right tabular-nums">
             <template v-if="pct(stat.seenGames, stat.totalGames) !== null">
@@ -213,13 +240,21 @@ function winRateClass(pctVal: number | null): string {
             <span v-else class="text-muted-foreground">-</span>
         </TableCell>
         <TableCell v-if="visibleColumns.seenWinPct" class="text-right tabular-nums">
-            <template v-if="winPct(stat.seenWon, stat.seenLost) !== null">
-                <span class="font-medium" :class="winRateClass(winPct(stat.seenWon, stat.seenLost))">
-                    {{ winPct(stat.seenWon, stat.seenLost) }}%
-                </span>
-                <span class="text-[10px] text-muted-foreground">({{ stat.seenWon + stat.seenLost }})</span>
-            </template>
-            <span v-else class="text-muted-foreground">-</span>
+            <TooltipProvider>
+                <Tooltip>
+                    <TooltipTrigger as-child>
+                        <span class="cursor-default border-b border-dotted border-muted-foreground/40">
+                            <span class="font-medium" :class="winRateClass(shrunkWinPct('seen'))">
+                                {{ shrunkWinPct('seen') }}%
+                            </span>
+                            <span class="text-[10px] text-muted-foreground">({{ samples.seen }})</span>
+                        </span>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" class="text-xs">
+                        {{ rawWinPctLabel('seen') }}
+                    </TooltipContent>
+                </Tooltip>
+            </TooltipProvider>
         </TableCell>
         <TableCell v-if="visibleColumns.sbOutPct" class="text-right tabular-nums">
             <template v-if="pct(stat.sidedOutGames, stat.postboardGames) !== null">

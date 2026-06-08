@@ -7,7 +7,6 @@ use App\Actions\Logs\ConvertMtgoTimestamp;
 use App\Actions\Util\ExtractJson;
 use App\Facades\Mtgo;
 use App\Models\Game;
-use App\Models\GameLog;
 use App\Models\GameTimeline;
 use App\Models\LogEvent;
 use App\Models\MtgoMatch;
@@ -84,20 +83,20 @@ class CreateGames
      */
     private static function extractPerGameData(MtgoMatch $match, int $gameIndex): array
     {
-        $storedLog = GameLog::where('match_token', $match->token)->first();
+        $entries = ExtractMetaMessageEntries::run($match->token);
 
-        if (! $storedLog || empty($storedLog->decoded_entries)) {
+        if (empty($entries)) {
             return [null, Mtgo::resolveUsername()];
         }
 
-        $candidates = ExtractGameResults::detectPlayers($storedLog->decoded_entries);
+        $candidates = ExtractGameResults::detectPlayers($entries);
         $username = Mtgo::resolveUsername($candidates);
 
         if (! $username) {
             return [null, null];
         }
 
-        $extracted = ExtractGameResults::run($storedLog->decoded_entries, $username);
+        $extracted = ExtractGameResults::run($entries, $username);
         $gameData = $extracted['games'][$gameIndex] ?? null;
 
         return [$gameData, $username];
