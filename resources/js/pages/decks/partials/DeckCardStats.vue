@@ -288,6 +288,30 @@ async function copyScreenshot(stat: DeckCardStat) {
                         </SheetHeader>
                         <div class="flex flex-col gap-6 px-4 pb-6">
                             <section>
+                                <h3 class="mb-1 text-sm font-semibold">How Win Rates Are Calculated</h3>
+                                <p class="text-sm text-muted-foreground">
+                                    Win % columns are <span class="font-medium">adjusted for sample size</span>. A card with only a few games
+                                    gets pulled toward your deck's overall win rate, so a lucky 2-0 doesn't show as a misleading 100%. The more
+                                    games a card has, the closer its displayed value is to the raw win rate. Hover any win % to see the raw
+                                    numbers behind it.
+                                </p>
+                                <p class="mt-1 text-sm text-muted-foreground">
+                                    The <span class="font-medium">Trust</span> slider controls how many games a card needs before its own
+                                    results outweigh the deck baseline. Set it to 0 to see raw win rates; raise it to be more skeptical of
+                                    small samples.
+                                </p>
+                                <p class="mt-1 text-sm text-muted-foreground">
+                                    Cards with no recorded games for a column show <span class="font-mono">-</span> and sort below cards with
+                                    data.
+                                </p>
+                                <div class="mt-2 rounded-md bg-muted px-3 py-2 text-xs">
+                                    <span class="font-medium">Example:</span> a card that went 2-0 shows around
+                                    <span class="font-mono">52%</span> rather than <span class="font-mono">100%</span> when your deck wins 48%
+                                    overall &mdash; two games isn't enough evidence to stray far from the baseline.
+                                </div>
+                            </section>
+
+                            <section>
                                 <h3 class="mb-1 text-sm font-semibold">Kept %</h3>
                                 <p class="text-sm text-muted-foreground">
                                     The percentage of games where this card appeared in your opening hand and was kept (not mulliganed away). The

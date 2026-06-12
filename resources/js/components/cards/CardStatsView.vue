@@ -310,7 +310,11 @@ function sortValue(entry: ShrunkStat<DeckCardStat>, key: SortKey): number | stri
     const stat = entry.raw;
     const shrinkKey = SHRINK_KEY_BY_SORT[key];
     if (shrinkKey) {
-        return entry.shrunk[shrinkKey];
+        // No samples means no data — sort below every card that has any.
+        // Sort on the rounded display percentage (not the raw shrunk value) so
+        // cards showing the same % tie and fall through to the sample-size
+        // tiebreaker instead of ordering on invisible decimal places.
+        return entry.samples[shrinkKey] > 0 ? Math.round(entry.shrunk[shrinkKey] * 100) : -1;
     }
 
     switch (key) {
@@ -338,9 +342,16 @@ const filteredAndSortedStats = computed<ShrunkStat<DeckCardStat>[]>(() => {
     const sortKey = sortBy.value;
     const desc = sortDesc.value;
 
-    const decorated = filtered.map((entry) => ({ entry, key: sortValue(entry, sortKey) }));
+    // Win-rate sorts tie-break on sample size so e.g. 82% over 78 games
+    // ranks above 82% over 11 games.
+    const tieShrinkKey = SHRINK_KEY_BY_SORT[sortKey];
+    const decorated = filtered.map((entry) => ({
+        entry,
+        key: sortValue(entry, sortKey),
+        tie: tieShrinkKey ? entry.samples[tieShrinkKey] : 0,
+    }));
     decorated.sort((a, b) => {
-        const cmp = a.key < b.key ? -1 : a.key > b.key ? 1 : 0;
+        const cmp = a.key < b.key ? -1 : a.key > b.key ? 1 : a.tie - b.tie;
         return desc ? -cmp : cmp;
     });
 
@@ -628,6 +639,8 @@ defineExpose({ selectedArchetype, selectedPlayDraw, selectedBoard, visibleColumn
                                 :shrunk="entry.shrunk"
                                 :raw-rates="entry.rawRates"
                                 :samples="entry.samples"
+                                :prior="deckWinrateRate"
+                                :trust="trustValue"
                                 :visible-columns="effectiveVisibleColumns"
                                 :perspective="perspective"
                                 @image-enter="onRowEnter"
