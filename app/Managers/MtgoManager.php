@@ -240,13 +240,12 @@ class MtgoManager
 
     public function schedule(Schedule $schedule): void
     {
-        // Dispatch the pipeline tick as a unique queued job so a long-running
-        // tick (backlog drain, transient SQLite contention) cannot stack
-        // overlapping runs against each other. RunPipelineJob is ShouldBeUnique;
-        // duplicate dispatches while one is in flight drop silently.
+        // Backstop for the mtgo:watch daemon: the job no-ops while the daemon
+        // heartbeat is fresh and runs the full pipeline when it is not. The
+        // daemon (started in NativeAppServiceProvider) owns the hot path.
         $schedule->job(new RunPipelineJob)
-            ->everySecond()
-            ->name('process_matches');
+            ->everyThirtySeconds()
+            ->name('pipeline_backstop');
 
         // Periodic maintenance (unchanged)
         $schedule->call(fn () => $this->retryUnsubmittedMatches())

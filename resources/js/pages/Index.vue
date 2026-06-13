@@ -11,6 +11,7 @@ import DashboardMatchupSpread from '@/pages/partials/DashboardMatchupSpread.vue'
 import DashboardRollingForm from '@/pages/partials/DashboardRollingForm.vue';
 import DashboardLeagueResults from '@/pages/partials/DashboardLeagueResults.vue';
 import DashboardRecentMatches from '@/pages/partials/DashboardRecentMatches.vue';
+import { useReloadOnMatchCompleted } from '@/composables/useReloadOnMatchCompleted';
 
 type ActiveLeague = {
     name: string;
@@ -95,6 +96,26 @@ const props = defineProps<{
     leagueDistribution?: LeagueDistribution;
     recentMatches?: App.Data.Front.MatchData[];
 }>();
+
+useReloadOnMatchCompleted([
+    'matchesWon',
+    'matchesLost',
+    'gamesWon',
+    'gamesLost',
+    'matchWinrate',
+    'gameWinrate',
+    'activeLeague',
+    'deckStats',
+    'streak',
+    'matchWinrateDelta',
+    'gameWinrateDelta',
+    'playDrawSplit',
+    'lastSession',
+    'matchupSpread',
+    'rollingForm',
+    'leagueDistribution',
+    'recentMatches',
+]);
 
 const hasData = computed(() => props.matchesWon + props.matchesLost > 0);
 

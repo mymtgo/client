@@ -11,6 +11,7 @@ use App\Facades\AppSettings;
 use App\Facades\Mtgo;
 use Native\Desktop\Contracts\ProvidesPhpIni;
 use Native\Desktop\Facades\App as NativeApp;
+use Native\Desktop\Facades\ChildProcess;
 use Native\Desktop\Facades\Menu;
 use Native\Desktop\Facades\System;
 use Native\Desktop\Facades\Window;
@@ -47,6 +48,11 @@ class NativeAppServiceProvider implements ProvidesPhpIni
             ->title('mymtgo');
 
         Mtgo::runInitialSetup();
+
+        // Resident ingestion watcher — the canonical hot path. persistent:true
+        // restarts it on crash or self-recycle; RunPipelineJob backstops the gap.
+        ChildProcess::artisan('mtgo:watch', 'ingest-watcher', persistent: true);
+
         Mtgo::retryUnsubmittedMatches();
 
         if (AppSettings::showLeagueWindow()) {

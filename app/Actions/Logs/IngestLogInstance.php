@@ -13,8 +13,6 @@ use Illuminate\Support\Facades\Log;
 
 class IngestLogInstance
 {
-    public const STUCK_THRESHOLD = 60;
-
     protected static array $ignoredCategories = [
         // Mirror IngestLog::$ignoredCategories — empty in the source file.
     ];
@@ -37,11 +35,22 @@ class IngestLogInstance
 
         $cursor = $instance->cursor ?? static::createCursor($instance);
 
-        // Stuck-tick force-reset before ingesting.
-        if ($cursor->stuck_ticks >= self::STUCK_THRESHOLD) {
+        // Stuck-cursor force-reset before ingesting: the file grew this tick,
+        // a previous tick already observed growth without the cursor advancing
+        // (stuck_ticks > 0), and no advance has happened within the configured
+        // wall-clock window. stuck_ticks itself is telemetry only.
+        $stuckSince = $cursor->last_advance_at ?? $cursor->created_at;
+
+        if (
+            $cursor->stuck_ticks > 0
+            && $observed['size'] > $cursor->last_observed_size
+            && $stuckSince !== null
+            && $stuckSince->lte(now()->subSeconds((int) config('mtgo.cursor_stuck_after_seconds', 60)))
+        ) {
             Log::channel('pipeline')->error('Cursor stuck past threshold — force-sealing instance', [
                 'instance_id' => $instance->id,
                 'stuck_ticks' => $cursor->stuck_ticks,
+                'stuck_since' => $stuckSince->toDateTimeString(),
                 'file' => $logPath,
             ]);
             SealLogInstance::run($instance, 'stuck_force_reset');

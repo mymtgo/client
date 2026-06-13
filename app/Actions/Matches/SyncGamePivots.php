@@ -2,6 +2,7 @@
 
 namespace App\Actions\Matches;
 
+use App\Events\GameResultRecorded;
 use App\Models\Game;
 use Carbon\Carbon;
 
@@ -60,6 +61,10 @@ class SyncGamePivots
 
         if (! empty($updates)) {
             $game->update($updates);
+
+            if (array_key_exists('won', $updates)) {
+                GameResultRecorded::dispatch($game->match_id);
+            }
         }
     }
 

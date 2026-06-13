@@ -123,18 +123,64 @@ it('resets stuck_ticks to zero after cursor advances', function () {
     expect(LogCursor::first()->stuck_ticks)->toBe(0);
 });
 
-it('force-seals the instance after stuck_ticks exceeds threshold', function () {
+it('force-seals the instance when growth without advance persists past the wall-clock threshold', function () {
     writeLog($this->logPath, "GARBAGE\n");
     IngestLogInstance::run($this->logPath);
 
-    // Drive stuck_ticks past threshold (60). Do this by manually incrementing
-    // to avoid 60 file-grow cycles in the test.
-    LogCursor::first()->update(['stuck_ticks' => 60]);
+    // One observed growth-without-advance episode, last advance over a minute ago.
+    LogCursor::first()->update([
+        'stuck_ticks' => 1,
+        'last_advance_at' => now()->subSeconds(61),
+    ]);
 
     file_put_contents($this->logPath, "MORE GARBAGE\n", FILE_APPEND);
     IngestLogInstance::run($this->logPath);
 
     expect(LogInstance::query()->whereNotNull('sealed_at')->where('seal_reason', 'stuck_force_reset')->count())->toBe(1);
+});
+
+it('does not force-seal when the last advance is within the threshold', function () {
+    writeLog($this->logPath, "GARBAGE\n");
+    IngestLogInstance::run($this->logPath);
+
+    LogCursor::first()->update([
+        'stuck_ticks' => 1,
+        'last_advance_at' => now()->subSeconds(10),
+    ]);
+
+    file_put_contents($this->logPath, "MORE GARBAGE\n", FILE_APPEND);
+    IngestLogInstance::run($this->logPath);
+
+    expect(LogInstance::query()->whereNotNull('sealed_at')->count())->toBe(0);
+});
+
+it('falls back to cursor created_at when last_advance_at is null', function () {
+    writeLog($this->logPath, "GARBAGE\n");
+    IngestLogInstance::run($this->logPath);
+
+    // Cursor never advanced (last_advance_at null); age the cursor itself.
+    LogCursor::first()->update(['stuck_ticks' => 1]);
+    LogCursor::query()->update(['created_at' => now()->subSeconds(61)]);
+
+    file_put_contents($this->logPath, "MORE GARBAGE\n", FILE_APPEND);
+    IngestLogInstance::run($this->logPath);
+
+    expect(LogInstance::query()->whereNotNull('sealed_at')->where('seal_reason', 'stuck_force_reset')->count())->toBe(1);
+});
+
+it('does not force-seal an idle file regardless of cursor age', function () {
+    writeLog($this->logPath, "GARBAGE\n");
+    IngestLogInstance::run($this->logPath);
+
+    LogCursor::first()->update([
+        'stuck_ticks' => 1,
+        'last_advance_at' => now()->subHours(2),
+    ]);
+
+    // No append — file did not grow, so the stuck path must not trigger.
+    IngestLogInstance::run($this->logPath);
+
+    expect(LogInstance::query()->whereNotNull('sealed_at')->count())->toBe(0);
 });
 
 it('does nothing for a non-existent path', function () {

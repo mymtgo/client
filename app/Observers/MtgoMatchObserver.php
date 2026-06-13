@@ -7,6 +7,7 @@ use App\Enums\LeagueState;
 use App\Enums\MatchOutcome;
 use App\Enums\MatchState;
 use App\Events\AppNotification;
+use App\Events\MatchCompleted;
 use App\Jobs\ComputeCardGameStats;
 use App\Jobs\DetermineMatchArchetypesJob;
 use App\Jobs\SubmitMatch;
@@ -51,6 +52,8 @@ class MtgoMatchObserver
                 message: $won ? 'Win' : 'Loss',
                 route: '/matches/'.$match->id,
             );
+
+            MatchCompleted::dispatch($match->id);
 
             // League completion check
             if (($league = $match->league) && $league->state === LeagueState::Active

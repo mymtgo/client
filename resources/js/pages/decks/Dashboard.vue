@@ -6,6 +6,7 @@ import TimeframeFilter from '@/components/TimeframeFilter.vue';
 import DashboardController from '@/actions/App/Http/Controllers/Decks/DashboardController';
 import { router } from '@inertiajs/vue3';
 import type { VersionStats } from '@/types/decks';
+import { useReloadOnMatchCompleted } from '@/composables/useReloadOnMatchCompleted';
 
 defineOptions({ layout: [AppLayout, DeckViewLayout] });
 
@@ -35,6 +36,26 @@ const props = defineProps<{
     standoutCards?: Record<string, any>;
     latestLeague?: any;
 }>();
+
+useReloadOnMatchCompleted([
+    'matchesWon',
+    'matchesLost',
+    'gamesWon',
+    'gamesLost',
+    'matchWinrate',
+    'gameWinrate',
+    'gamesOtpWon',
+    'gamesOtpLost',
+    'otpRate',
+    'gamesOtdWon',
+    'gamesOtdLost',
+    'otdRate',
+    'chartData',
+    'peerChart',
+    'matchupSpread',
+    'leagueResults',
+    'standoutCards',
+]);
 
 function setTimeframe(value: string) {
     const query: Record<string, string> = {};

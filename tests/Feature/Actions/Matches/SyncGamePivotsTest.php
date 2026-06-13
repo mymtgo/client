@@ -1,10 +1,12 @@
 <?php
 
 use App\Actions\Matches\SyncGamePivots;
+use App\Events\GameResultRecorded;
 use App\Models\Game;
 use App\Models\MtgoMatch;
 use App\Models\Player;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Event;
 
 uses(RefreshDatabase::class);
 
@@ -185,4 +187,39 @@ it('returns silently when local username does not match any pivot row', function
     ], 'unrelated');
 
     expect($game->fresh()->won)->toBeNull();
+});
+
+it('dispatches GameResultRecorded when won is first set', function () {
+    $game = freshSyncPivotGame();
+    attachSyncPivotPlayers($game, 'LocalHero', 'OppoGuy');
+    Event::fake([GameResultRecorded::class]);
+
+    SyncGamePivots::forGame($game->fresh(['players']), ['winner' => 'LocalHero'], 'LocalHero');
+
+    expect($game->fresh()->won)->toBeTrue();
+    Event::assertDispatched(GameResultRecorded::class, fn ($e) => $e->matchId === $game->match_id);
+});
+
+it('does not dispatch GameResultRecorded when won is unchanged', function () {
+    $game = freshSyncPivotGame();
+    attachSyncPivotPlayers($game, 'LocalHero', 'OppoGuy');
+    SyncGamePivots::forGame($game->fresh(['players']), ['winner' => 'LocalHero'], 'LocalHero');
+
+    Event::fake([GameResultRecorded::class]);
+
+    SyncGamePivots::forGame($game->fresh(['players']), ['winner' => 'LocalHero'], 'LocalHero');
+
+    Event::assertNotDispatched(GameResultRecorded::class);
+});
+
+it('does not dispatch GameResultRecorded when only ended_at updates', function () {
+    $game = freshSyncPivotGame();
+    attachSyncPivotPlayers($game, 'LocalHero', 'OppoGuy');
+    SyncGamePivots::forGame($game->fresh(['players']), ['winner' => 'LocalHero'], 'LocalHero');
+
+    Event::fake([GameResultRecorded::class]);
+
+    SyncGamePivots::forGame($game->fresh(['players']), ['ended_at' => now()->toIso8601String()], 'LocalHero');
+
+    Event::assertNotDispatched(GameResultRecorded::class);
 });

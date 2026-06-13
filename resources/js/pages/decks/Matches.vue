@@ -6,6 +6,7 @@ import TimeframeFilter from '@/components/TimeframeFilter.vue';
 import MatchesController from '@/actions/App/Http/Controllers/Decks/MatchesController';
 import { router } from '@inertiajs/vue3';
 import type { VersionStats } from '@/types/decks';
+import { useReloadOnMatchCompleted } from '@/composables/useReloadOnMatchCompleted';
 
 defineOptions({ layout: [AppLayout, DeckViewLayout] });
 
@@ -21,6 +22,8 @@ const props = defineProps<{
     unknownArchetypeCount: number;
     pendingArchetypeCount: number;
 }>();
+
+useReloadOnMatchCompleted(['matches', 'unknownArchetypeCount', 'pendingArchetypeCount']);
 
 function setTimeframe(value: string) {
     const query: Record<string, string> = {};

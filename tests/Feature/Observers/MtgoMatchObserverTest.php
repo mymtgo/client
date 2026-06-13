@@ -3,6 +3,7 @@
 use App\Enums\MatchOutcome;
 use App\Enums\MatchState;
 use App\Events\AppNotification;
+use App\Events\MatchCompleted;
 use App\Jobs\ComputeCardGameStats;
 use App\Jobs\DetermineMatchArchetypesJob;
 use App\Jobs\SubmitMatch;
@@ -163,4 +164,26 @@ it('does not dispatch ComputeCardGameStats when deck_version_id is cleared (unli
     $match->update(['deck_version_id' => null]);
 
     Queue::assertNotPushed(ComputeCardGameStats::class);
+});
+
+it('dispatches MatchCompleted when a match transitions to Complete', function () {
+    Queue::fake();
+    Event::fake([MatchCompleted::class]);
+
+    $match = MtgoMatch::factory()->create(['state' => MatchState::InProgress]);
+
+    $match->update(['state' => MatchState::Complete, 'outcome' => MatchOutcome::Win]);
+
+    Event::assertDispatched(MatchCompleted::class, fn ($e) => $e->matchId === $match->id);
+});
+
+it('does not dispatch MatchCompleted on non-completion updates', function () {
+    Queue::fake();
+    $match = MtgoMatch::factory()->create(['state' => MatchState::InProgress]);
+
+    Event::fake([MatchCompleted::class]);
+
+    $match->update(['tournament_round' => 2]);
+
+    Event::assertNotDispatched(MatchCompleted::class);
 });
