@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import * as fmt from '@/components/cards/cardStatFormat';
 import { TableCell, TableRow } from '@/components/ui/table';
-import { Check, Image } from 'lucide-vue-next';
-import { DEFAULT_CARD_STATS_VISIBILITY, type CardStatsPerspective, type CardStatsVisibility } from '@/pages/decks/partials/cardStatsColumns';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { ShrinkKey } from '@/lib/stats/shrinkage';
+import { DEFAULT_CARD_STATS_VISIBILITY, type CardStatsPerspective, type CardStatsVisibility } from '@/pages/decks/partials/cardStatsColumns';
+import { Check, Image } from 'lucide-vue-next';
 
 type CardStat = {
     name: string;
@@ -68,40 +69,18 @@ const emit = defineEmits<{
     imageLeave: [];
 }>();
 
-function pct(num: number, denom: number): number | null {
-    return denom > 0 ? Math.round((num / denom) * 100) : null;
-}
+const pct = fmt.pct;
 
 function shrunkWinPct(key: ShrinkKey): number {
-    return Math.round(props.shrunk[key] * 100);
-}
-
-/**
- * Deck baseline win rate from this perspective, as a display percentage.
- */
-function baselinePct(): number {
-    const adjusted = props.perspective === 'theirs' ? 1 - props.prior : props.prior;
-    return Math.round(adjusted * 100);
+    return fmt.shrunkWinPct(props.shrunk, key);
 }
 
 function rawWinPctLabel(key: ShrinkKey): string {
-    const raw = props.rawRates[key];
-    const games = props.samples[key];
-    if (raw === null || games === 0) return 'no data';
-    const rawLabel = `Raw ${Math.round(raw * 100)}% over ${games} game${games === 1 ? '' : 's'}`;
-    if (props.trust <= 0) return rawLabel;
-    return `${rawLabel} · adjusted toward ${baselinePct()}% deck baseline`;
+    return fmt.rawWinPctLabel(props.rawRates, props.samples, key, props.trust, props.prior, props.perspective);
 }
 
 function winRateClass(pctVal: number): string {
-    if (props.perspective === 'theirs') {
-        if (pctVal > 55) return 'text-destructive';
-        if (pctVal < 45) return 'text-success';
-        return '';
-    }
-    if (pctVal > 55) return 'text-success';
-    if (pctVal < 45) return 'text-destructive';
-    return '';
+    return fmt.winRateClass(pctVal, props.perspective);
 }
 </script>
 
@@ -135,9 +114,7 @@ function winRateClass(pctVal: number): string {
                 <Tooltip>
                     <TooltipTrigger as-child>
                         <span class="cursor-default border-b border-dotted border-muted-foreground/40">
-                            <span class="font-medium" :class="winRateClass(shrunkWinPct('kept'))">
-                                {{ shrunkWinPct('kept') }}%
-                            </span>
+                            <span class="font-medium" :class="winRateClass(shrunkWinPct('kept'))"> {{ shrunkWinPct('kept') }}% </span>
                             <span class="text-[10px] text-muted-foreground">({{ samples.kept }})</span>
                         </span>
                     </TooltipTrigger>
@@ -161,7 +138,9 @@ function winRateClass(pctVal: number): string {
                         <TooltipContent side="top" class="text-xs">
                             <span v-if="stat.totalFlashback > 0">{{ stat.totalFlashback }} flashback</span>
                             <span v-if="stat.totalMadness > 0">{{ stat.totalFlashback > 0 ? ', ' : '' }}{{ stat.totalMadness }} madness</span>
-                            <span v-if="stat.totalEvoked > 0">{{ (stat.totalFlashback > 0 || stat.totalMadness > 0) ? ', ' : '' }}{{ stat.totalEvoked }} evoke</span>
+                            <span v-if="stat.totalEvoked > 0"
+                                >{{ stat.totalFlashback > 0 || stat.totalMadness > 0 ? ', ' : '' }}{{ stat.totalEvoked }} evoke</span
+                            >
                         </TooltipContent>
                     </Tooltip>
                 </TooltipProvider>
@@ -177,9 +156,7 @@ function winRateClass(pctVal: number): string {
                 <Tooltip>
                     <TooltipTrigger as-child>
                         <span class="cursor-default border-b border-dotted border-muted-foreground/40">
-                            <span class="font-medium" :class="winRateClass(shrunkWinPct('cast'))">
-                                {{ shrunkWinPct('cast') }}%
-                            </span>
+                            <span class="font-medium" :class="winRateClass(shrunkWinPct('cast'))"> {{ shrunkWinPct('cast') }}% </span>
                             <span class="text-[10px] text-muted-foreground">({{ samples.cast }})</span>
                         </span>
                     </TooltipTrigger>
@@ -236,9 +213,7 @@ function winRateClass(pctVal: number): string {
                 <Tooltip>
                     <TooltipTrigger as-child>
                         <span class="cursor-default border-b border-dotted border-muted-foreground/40">
-                            <span class="font-medium" :class="winRateClass(shrunkWinPct('pregame'))">
-                                {{ shrunkWinPct('pregame') }}%
-                            </span>
+                            <span class="font-medium" :class="winRateClass(shrunkWinPct('pregame'))"> {{ shrunkWinPct('pregame') }}% </span>
                             <span class="text-[10px] text-muted-foreground">({{ samples.pregame }})</span>
                         </span>
                     </TooltipTrigger>
@@ -261,9 +236,7 @@ function winRateClass(pctVal: number): string {
                 <Tooltip>
                     <TooltipTrigger as-child>
                         <span class="cursor-default border-b border-dotted border-muted-foreground/40">
-                            <span class="font-medium" :class="winRateClass(shrunkWinPct('seen'))">
-                                {{ shrunkWinPct('seen') }}%
-                            </span>
+                            <span class="font-medium" :class="winRateClass(shrunkWinPct('seen'))"> {{ shrunkWinPct('seen') }}% </span>
                             <span class="text-[10px] text-muted-foreground">({{ samples.seen }})</span>
                         </span>
                     </TooltipTrigger>
