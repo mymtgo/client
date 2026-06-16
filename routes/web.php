@@ -11,6 +11,7 @@ use App\Http\Controllers\Archetypes\ScanMatchController;
 use App\Http\Controllers\Archetypes\UnmergeController;
 use App\Http\Controllers\Archetypes\UploadDekController;
 use App\Http\Controllers\Archetypes\Variants\ReassignController;
+use App\Http\Controllers\Cards\ArchetypesController;
 use App\Http\Controllers\Cards\ImageBase64Controller;
 use App\Http\Controllers\Debug\Cards\PopulateController;
 use App\Http\Controllers\Debug\Decks\SyncController;
@@ -96,6 +97,13 @@ Route::group([], function (Router $router) {
     $router->get('/', IndexController::class)->name('home');
 
     $router->group([
+        'prefix' => 'cards',
+    ], function (Router $group) {
+        $group->get('/', App\Http\Controllers\Cards\IndexController::class)->name('cards.index');
+        $group->post('populate', App\Http\Controllers\Cards\PopulateController::class)->name('cards.populate');
+    });
+
+    $router->group([
         'prefix' => 'matches',
     ], function (Router $group) {
         $group->get('{id}', ShowController::class)->name('matches.show');
@@ -144,6 +152,8 @@ Route::group([], function (Router $router) {
         'prefix' => 'cards',
     ], function (Router $group) {
         $group->get('{oracleId}/image-base64', ImageBase64Controller::class)->name('cards.image-base64');
+        $group->get('{group}/archetypes', ArchetypesController::class)
+            ->name('cards.archetypes');
     });
 
     $router->group([

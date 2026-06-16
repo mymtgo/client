@@ -15,6 +15,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import SegmentedControl from '@/components/SegmentedControl.vue';
+import CardTypeFilter from '@/components/cards/CardTypeFilter.vue';
+import { CARD_TYPE_KEYS, type CardTypeKey } from '@/components/cards/cardTypes';
 import DeckCardStatsRow from '@/pages/decks/partials/DeckCardStatsRow.vue';
 import { useShrinkage, type ShrunkStat } from '@/composables/useShrinkage';
 import type { ShrinkKey } from '@/lib/stats/shrinkage';
@@ -29,26 +31,8 @@ import {
 } from '@/pages/decks/partials/cardStatsColumns';
 import type { DeckCardStat } from '@/types/decks';
 import type { ReportArchetypeOption } from '@/types/reports';
-import {
-    BarChart3,
-    Check,
-    ChevronDown,
-    ChevronUp,
-    ChevronsUpDown,
-    Columns3,
-    Filter,
-    Flame,
-    Gem,
-    HandFist,
-    Lock,
-    MountainSnow,
-    Origami,
-    PanelRightOpen,
-    ScrollText,
-    Search,
-    Zap,
-} from 'lucide-vue-next';
-import { computed, ref, watch, type Component } from 'vue';
+import { BarChart3, Check, ChevronDown, ChevronUp, ChevronsUpDown, Columns3, Filter, Lock, Search } from 'lucide-vue-next';
+import { computed, ref, watch } from 'vue';
 import { router } from '@inertiajs/vue3';
 
 const props = defineProps<{
@@ -144,29 +128,20 @@ function filterByPerspective(value: string) {
 
 // ── Type filter ──────────────────────────────────────────────────────────────
 
-type FilterKey = 'Creature' | 'Instant' | 'Sorcery' | 'Land' | 'Artifact' | 'Enchantment' | 'Planeswalker' | 'Sideboard';
+type FilterKey = CardTypeKey;
 
-const FILTER_CONFIG: { key: FilterKey; label: string; icon: Component }[] = [
-    { key: 'Creature', label: 'Creatures', icon: Origami },
-    { key: 'Instant', label: 'Instants', icon: Zap },
-    { key: 'Sorcery', label: 'Sorceries', icon: Flame },
-    { key: 'Enchantment', label: 'Enchantments', icon: ScrollText },
-    { key: 'Artifact', label: 'Artifacts', icon: Gem },
-    { key: 'Land', label: 'Lands', icon: MountainSnow },
-    { key: 'Planeswalker', label: 'Planeswalkers', icon: HandFist },
-    { key: 'Sideboard', label: 'Sideboard', icon: PanelRightOpen },
-];
+const FILTER_KEYS: FilterKey[] = [...CARD_TYPE_KEYS, 'Sideboard'];
 
 const STORAGE_KEY = 'cardStatsTypeFilters';
 
-const ALL_ENABLED = Object.fromEntries(FILTER_CONFIG.map((f) => [f.key, true])) as Record<FilterKey, boolean>;
+const ALL_ENABLED = Object.fromEntries(FILTER_KEYS.map((key) => [key, true])) as Record<FilterKey, boolean>;
 
 function loadFilters(): Record<FilterKey, boolean> {
     try {
         const stored = localStorage.getItem(STORAGE_KEY);
         if (stored) {
             const parsed = JSON.parse(stored);
-            const hasAllKeys = FILTER_CONFIG.every((f) => f.key in parsed);
+            const hasAllKeys = FILTER_KEYS.every((key) => key in parsed);
             if (hasAllKeys) return parsed;
         }
     } catch {}
@@ -179,8 +154,8 @@ function saveFilters(filters: Record<FilterKey, boolean>) {
 
 const typeFilters = ref<Record<FilterKey, boolean>>(loadFilters());
 
-function setFilter(key: FilterKey, value: boolean) {
-    typeFilters.value[key] = value;
+function onTypeFiltersUpdate(value: Partial<Record<FilterKey, boolean>>) {
+    typeFilters.value = { ...typeFilters.value, ...value };
     saveFilters(typeFilters.value);
 }
 
@@ -196,32 +171,20 @@ const presentTypes = computed(() => {
 
 watch(presentTypes, (present) => {
     let changed = false;
-    for (const filter of FILTER_CONFIG) {
-        if (!present.has(filter.key) && !typeFilters.value[filter.key]) {
-            typeFilters.value[filter.key] = true;
+    for (const key of FILTER_KEYS) {
+        if (!present.has(key) && !typeFilters.value[key]) {
+            typeFilters.value[key] = true;
             changed = true;
         }
     }
     if (changed) saveFilters(typeFilters.value);
 });
 
-const visibleFilters = computed(() => FILTER_CONFIG.filter((f) => presentTypes.value.has(f.key)));
-
-const activeFilterCount = computed(() => visibleFilters.value.filter((f) => !typeFilters.value[f.key]).length);
-
-const allVisible = computed(() => visibleFilters.value.every((f) => typeFilters.value[f.key]));
-
-function toggleAll() {
-    const newVal = !allVisible.value;
-    for (const filter of visibleFilters.value) {
-        typeFilters.value[filter.key] = newVal;
-    }
-    saveFilters(typeFilters.value);
-}
+const visibleFilters = computed(() => FILTER_KEYS.filter((key) => presentTypes.value.has(key)));
 
 function normalizeType(raw: string | null): string {
     if (!raw) return 'Other';
-    const canonical: FilterKey[] = ['Creature', 'Planeswalker', 'Instant', 'Sorcery', 'Enchantment', 'Artifact', 'Land'];
+    const canonical: FilterKey[] = ['Creature', 'Planeswalker', 'Battle', 'Instant', 'Sorcery', 'Enchantment', 'Artifact', 'Land'];
     for (const type of canonical) {
         if (raw.includes(type)) return type;
     }
@@ -436,38 +399,14 @@ defineExpose({ selectedArchetype, selectedPlayDraw, selectedBoard, visibleColumn
                     </SelectContent>
                 </Select>
 
-                <DropdownMenu>
-                    <DropdownMenuTrigger as-child>
-                        <Button variant="ghost" class="bevel py-2 gap-1.5 rounded-md border border-black/60 px-3 text-xs">
-                            <Filter class="size-3.5" />
-                            <span v-if="activeFilterCount > 0">{{ activeFilterCount }} hidden</span>
-                            <span v-else>Card types</span>
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" class="w-48">
-                        <div class="flex items-center justify-between px-2 py-1.5">
-                            <span class="text-xs font-semibold">Filter by type</span>
-                            <button class="text-xs text-muted-foreground hover:text-foreground" @click="toggleAll">
-                                {{ allVisible ? 'Hide all' : 'Show all' }}
-                            </button>
-                        </div>
-                        <DropdownMenuSeparator />
-                        <template v-for="filter in visibleFilters" :key="filter.key">
-                            <DropdownMenuSeparator v-if="filter.key === 'Sideboard'" />
-                            <DropdownMenuCheckboxItem
-                                :modelValue="typeFilters[filter.key]"
-                                @update:modelValue="(val: boolean) => setFilter(filter.key, val)"
-                                @select.prevent
-                            >
-                                <template #indicator-icon>
-                                    <Check class="size-4 text-success" />
-                                </template>
-                                <component :is="filter.icon" class="mr-2 size-3.5 text-muted-foreground" />
-                                {{ filter.label }}
-                            </DropdownMenuCheckboxItem>
-                        </template>
-                    </DropdownMenuContent>
-                </DropdownMenu>
+                <CardTypeFilter
+                    :modelValue="typeFilters"
+                    :keys="visibleFilters"
+                    separator-before="Sideboard"
+                    align="end"
+                    trigger-class="bevel border-black/60 text-xs"
+                    @update:modelValue="onTypeFiltersUpdate"
+                />
 
                 <DropdownMenu>
                     <DropdownMenuTrigger as-child>
