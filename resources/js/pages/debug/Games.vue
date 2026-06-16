@@ -3,7 +3,7 @@ import DebugNav from '@/components/debug/DebugNav.vue';
 import EditableCell from '@/components/debug/EditableCell.vue';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 import { Table, TableBody, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useSpinGuard } from '@/composables/useSpinGuard';
 import { useToast } from '@/composables/useToast';
@@ -88,17 +88,12 @@ function refresh() {
             <div class="mb-4 flex flex-wrap items-end gap-4">
                 <div class="flex flex-col gap-1">
                     <Label class="text-xs">Match</Label>
-                    <Select :modelValue="matchFilter || undefined" @update:modelValue="(val: string) => (matchFilter = val === '__all__' ? '' : val)">
-                        <SelectTrigger class="h-8 w-64 text-xs">
-                            <SelectValue placeholder="All matches" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="__all__">All matches</SelectItem>
-                            <SelectItem v-for="opt in matchOptions" :key="opt.value" :value="opt.value">
-                                {{ opt.label }}
-                            </SelectItem>
-                        </SelectContent>
-                    </Select>
+                    <NativeSelect v-model="matchFilter" class="h-8 w-64 text-xs">
+                        <NativeSelectOption value="">All matches</NativeSelectOption>
+                        <NativeSelectOption v-for="opt in matchOptions" :key="opt.value" :value="opt.value">
+                            {{ opt.label }}
+                        </NativeSelectOption>
+                    </NativeSelect>
                 </div>
                 <Button size="sm" class="h-8" @click="applyFilters">Filter</Button>
                 <Button size="sm" variant="outline" class="h-8" @click="clearFilters">Clear</Button>

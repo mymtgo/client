@@ -4,7 +4,7 @@ import EditableCell from '@/components/debug/EditableCell.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 import { Table, TableBody, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useSpinGuard } from '@/composables/useSpinGuard';
 import { useToast } from '@/composables/useToast';
@@ -126,31 +126,21 @@ const columns = [
                 </div>
                 <div class="flex flex-col gap-1">
                     <Label class="text-xs">Event Type</Label>
-                    <Select :modelValue="eventTypeFilter || undefined" @update:modelValue="(val: string) => (eventTypeFilter = val === '__all__' ? '' : val)">
-                        <SelectTrigger class="h-8 w-48 text-xs">
-                            <SelectValue placeholder="All types" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="__all__">All types</SelectItem>
-                            <SelectItem v-for="opt in eventTypeOptions" :key="opt.value" :value="opt.value">
-                                {{ opt.label }}
-                            </SelectItem>
-                        </SelectContent>
-                    </Select>
+                    <NativeSelect v-model="eventTypeFilter" class="h-8 w-48 text-xs">
+                        <NativeSelectOption value="">All types</NativeSelectOption>
+                        <NativeSelectOption v-for="opt in eventTypeOptions" :key="opt.value" :value="opt.value">
+                            {{ opt.label }}
+                        </NativeSelectOption>
+                    </NativeSelect>
                 </div>
                 <div class="flex flex-col gap-1">
                     <Label class="text-xs">Category</Label>
-                    <Select :modelValue="categoryFilter || undefined" @update:modelValue="(val: string) => (categoryFilter = val === '__all__' ? '' : val)">
-                        <SelectTrigger class="h-8 w-48 text-xs">
-                            <SelectValue placeholder="All" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="__all__">All</SelectItem>
-                            <SelectItem v-for="opt in categoryOptions" :key="opt.value" :value="opt.value">
-                                {{ opt.label }}
-                            </SelectItem>
-                        </SelectContent>
-                    </Select>
+                    <NativeSelect v-model="categoryFilter" class="h-8 w-48 text-xs">
+                        <NativeSelectOption value="">All</NativeSelectOption>
+                        <NativeSelectOption v-for="opt in categoryOptions" :key="opt.value" :value="opt.value">
+                            {{ opt.label }}
+                        </NativeSelectOption>
+                    </NativeSelect>
                 </div>
                 <Button size="sm" class="h-8" @click="applyFilters">Filter</Button>
                 <Button size="sm" variant="outline" class="h-8" @click="clearFilters">Clear</Button>

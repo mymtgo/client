@@ -2,7 +2,7 @@
 import DebugNav from '@/components/debug/DebugNav.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 import { useSpinGuard } from '@/composables/useSpinGuard';
 import { useToast } from '@/composables/useToast';
 import { router, usePoll } from '@inertiajs/vue3';
@@ -52,14 +52,10 @@ function levelClass(line: string): string {
         <DebugNav />
         <div class="flex flex-1 flex-col overflow-hidden p-4">
             <div class="mb-4 flex shrink-0 items-center gap-2">
-                <Select :modelValue="selectedFile" @update:modelValue="(val: string) => { selectedFile = val; applyFilters(); }">
-                    <SelectTrigger class="h-8 w-56 text-xs">
-                        <SelectValue :placeholder="files.length === 0 ? 'No log files' : 'Select log file'" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem v-for="f in files" :key="f" :value="f">{{ f }}</SelectItem>
-                    </SelectContent>
-                </Select>
+                <NativeSelect v-model="selectedFile" class="h-8 w-56 text-xs" :disabled="files.length === 0" @change="applyFilters">
+                    <NativeSelectOption value="" disabled>{{ files.length === 0 ? 'No log files' : 'Select log file' }}</NativeSelectOption>
+                    <NativeSelectOption v-for="f in files" :key="f" :value="f">{{ f }}</NativeSelectOption>
+                </NativeSelect>
                 <Input
                     v-model="filterInput"
                     type="text"

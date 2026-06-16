@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { DateTimePicker } from '@/components/ui/date-time-picker';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 import { Switch } from '@/components/ui/switch';
 import { ref, watch } from 'vue';
 
@@ -55,17 +55,17 @@ function onDateTimeChange(val: string | null) {
     >
         <span v-if="type === 'readonly'" class="text-xs text-muted-foreground">{{ modelValue ?? '—' }}</span>
 
-        <Select v-else-if="type === 'select'" :modelValue="String(modelValue ?? '__null__')" @update:modelValue="onSelect">
-            <SelectTrigger class="h-7 text-xs">
-                <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-                <SelectItem v-if="nullable" value="__null__">—</SelectItem>
-                <SelectItem v-for="opt in options" :key="opt.value" :value="opt.value">
-                    {{ opt.label }}
-                </SelectItem>
-            </SelectContent>
-        </Select>
+        <NativeSelect
+            v-else-if="type === 'select'"
+            :modelValue="String(modelValue ?? '__null__')"
+            class="h-7 w-full truncate border-black/60 bg-black/20 px-2 py-0 pr-7 text-xs"
+            @change="onSelect(($event.target as HTMLSelectElement).value)"
+        >
+            <NativeSelectOption v-if="nullable" value="__null__">—</NativeSelectOption>
+            <NativeSelectOption v-for="opt in options" :key="opt.value" :value="opt.value">
+                {{ opt.label }}
+            </NativeSelectOption>
+        </NativeSelect>
 
         <Switch
             v-else-if="type === 'switch'"

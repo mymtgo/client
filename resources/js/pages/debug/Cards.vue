@@ -2,7 +2,7 @@
 import DebugNav from '@/components/debug/DebugNav.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useSpinGuard } from '@/composables/useSpinGuard';
 import { useToast } from '@/composables/useToast';
@@ -107,17 +107,12 @@ const columns = [
                     @keyup.enter="applyFilters"
                 />
 
-                <Select :modelValue="statusFilter || '__all__'" @update:modelValue="(val: string) => { statusFilter = val === '__all__' ? '' : val; applyFilters(); }">
-                    <SelectTrigger class="h-8 w-36 text-xs">
-                        <SelectValue placeholder="All cards" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="__all__">All cards</SelectItem>
-                        <SelectItem value="missing">Missing data</SelectItem>
-                        <SelectItem value="missing_art">Missing artwork</SelectItem>
-                        <SelectItem value="complete">Complete</SelectItem>
-                    </SelectContent>
-                </Select>
+                <NativeSelect v-model="statusFilter" class="h-8 w-36 text-xs" @change="applyFilters">
+                    <NativeSelectOption value="">All cards</NativeSelectOption>
+                    <NativeSelectOption value="missing">Missing data</NativeSelectOption>
+                    <NativeSelectOption value="missing_art">Missing artwork</NativeSelectOption>
+                    <NativeSelectOption value="complete">Complete</NativeSelectOption>
+                </NativeSelect>
 
                 <Button size="sm" variant="outline" class="h-8" @click="applyFilters">Filter</Button>
                 <Button size="sm" variant="outline" class="h-8" @click="clearFilters">Clear</Button>
