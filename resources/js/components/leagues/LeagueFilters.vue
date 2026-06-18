@@ -16,6 +16,7 @@ const props = defineProps<{
     filters: LeagueFiltersState;
     formats: string[];
     decks: LeagueDeckOption[];
+    archetypes: App.Data.Front.ArchetypeData[];
 }>();
 
 const emit = defineEmits<{ change: [LeagueFiltersState] }>();
@@ -24,9 +25,11 @@ const local = ref<LeagueFiltersState>({ ...props.filters });
 
 const ALL_FORMATS = '__all_formats__';
 const ALL_DECKS = '__all_decks__';
+const ALL_ARCHETYPES = '__all_archetypes__';
 
 const formatModel = ref(local.value.format || ALL_FORMATS);
 const deckModel = ref(local.value.deck === null ? ALL_DECKS : String(local.value.deck));
+const archetypeModel = ref(local.value.archetype === null ? ALL_ARCHETYPES : String(local.value.archetype));
 
 const chips = [
     { key: 'all', label: 'All' },
@@ -53,6 +56,11 @@ watch(formatModel, (next) => {
 
 watch(deckModel, (next) => {
     local.value.deck = next === ALL_DECKS ? null : Number(next);
+    emitNow();
+});
+
+watch(archetypeModel, (next) => {
+    local.value.archetype = next === ALL_ARCHETYPES ? null : Number(next);
     emitNow();
 });
 
@@ -103,6 +111,18 @@ watch(
                 <SelectItem :value="ALL_DECKS">All decks</SelectItem>
                 <SelectItem v-for="d in decks" :key="d.id" :value="String(d.id)">
                     {{ d.name }}
+                </SelectItem>
+            </SelectContent>
+        </Select>
+
+        <Select v-if="archetypes.length" v-model="archetypeModel">
+            <SelectTrigger class="h-8 w-40">
+                <SelectValue placeholder="Archetype" />
+            </SelectTrigger>
+            <SelectContent>
+                <SelectItem :value="ALL_ARCHETYPES">All archetypes</SelectItem>
+                <SelectItem v-for="a in archetypes" :key="a.id" :value="String(a.id)">
+                    {{ a.name }}
                 </SelectItem>
             </SelectContent>
         </Select>

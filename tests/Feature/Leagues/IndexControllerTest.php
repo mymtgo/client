@@ -116,6 +116,35 @@ it('filters by deck', function () {
         ->assertInertia(fn ($p) => $p->has('leagues.data', 1)->etc());
 });
 
+it('filters by deck archetype', function () {
+    $archA = Archetype::factory()->create(['name' => 'Yawgmoth']);
+    $archB = Archetype::factory()->create(['name' => 'Burn']);
+
+    $deckA = Deck::factory()->create(['archetype_id' => $archA->id]);
+    $dvA = DeckVersion::factory()->for($deckA)->create();
+    $deckB = Deck::factory()->create(['archetype_id' => $archB->id]);
+    $dvB = DeckVersion::factory()->for($deckB)->create();
+
+    feedLeague($dvA, LeagueState::Complete, 5, 0);
+    feedLeague($dvB, LeagueState::Complete, 4, 1);
+
+    $this->get('/leagues?archetype='.$archA->id)
+        ->assertSuccessful()
+        ->assertInertia(fn ($p) => $p->has('leagues.data', 1)->etc());
+});
+
+it('exposes deckArchetypes for the filter dropdown', function () {
+    $arch = Archetype::factory()->create(['name' => 'Yawgmoth']);
+    $deck = Deck::factory()->create(['archetype_id' => $arch->id]);
+    $dv = DeckVersion::factory()->for($deck)->create();
+
+    feedLeague($dv, LeagueState::Complete, 5, 0);
+
+    $this->get('/leagues')
+        ->assertSuccessful()
+        ->assertInertia(fn ($p) => $p->has('deckArchetypes')->etc());
+});
+
 it('filters by opponent username search', function () {
     $league1 = feedLeague($this->dv, LeagueState::Complete, 5, 0);
     feedLeague($this->dv, LeagueState::Complete, 4, 1);

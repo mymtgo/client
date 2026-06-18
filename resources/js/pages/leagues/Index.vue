@@ -30,6 +30,7 @@ const props = defineProps<{
     allDecks: LeagueDeckOption[];
     manualDeckOptions: ManualLeagueDeckOption[];
     filters: LeagueFiltersState;
+    deckArchetypes: App.Data.Front.ArchetypeData[];
     archetypes?: App.Data.Front.ArchetypeData[];
 }>();
 
@@ -44,6 +45,7 @@ function handleFilterChange(next: LeagueFiltersState) {
             format: next.format || undefined,
             state: next.state === 'all' ? undefined : next.state,
             deck: next.deck ?? undefined,
+            archetype: next.archetype ?? undefined,
             q: next.q || undefined,
             sort: next.sort === 'newest' ? undefined : next.sort,
         },
@@ -68,6 +70,7 @@ function handleFilterChange(next: LeagueFiltersState) {
             :filters="filters"
             :formats="allFormats"
             :decks="allDecks"
+            :archetypes="deckArchetypes"
             @change="handleFilterChange"
         />
 
@@ -81,6 +84,7 @@ function handleFilterChange(next: LeagueFiltersState) {
                 Adjust filters or wait for new runs to ingest.
             </p>
         </div>
+
 
         <div v-else class="flex flex-col gap-3">
             <LeagueCard

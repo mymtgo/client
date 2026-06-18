@@ -26,10 +26,11 @@ class IndexController extends Controller
         $format = $request->input('format');
         $state = $request->input('state', 'all');
         $deckId = $request->input('deck');
+        $archetypeId = $request->input('archetype');
         $search = $request->input('q');
         $sort = $request->input('sort', 'newest');
 
-        $base = $this->buildQuery($format, $state, $deckId, $search);
+        $base = $this->buildQuery($format, $state, $deckId, $archetypeId, $search);
 
         $leaguesQuery = (clone $base)->with(['deckVersion.deck.cover']);
 
@@ -63,15 +64,18 @@ class IndexController extends Controller
             ->values()
             ->all();
 
-        $allDecks = Deck::query()
+        $decks = Deck::query()
             ->whereIn('id', function ($q) {
                 $q->select('dv.deck_id')
                     ->from('deck_versions as dv')
                     ->join('leagues as l', 'l.deck_version_id', '=', 'dv.id')
                     ->whereNull('l.deleted_at');
             })
+            ->with('archetype')
             ->orderBy('name')
-            ->get(['id', 'name'])
+            ->get(['id', 'name', 'archetype_id']);
+
+        $allDecks = $decks
             ->map(fn ($d) => ['id' => $d->id, 'name' => $d->name])
             ->values()
             ->all();
@@ -80,6 +84,7 @@ class IndexController extends Controller
 
         $manualDeckOptions = Deck::query()
             ->where('account_id', $activeAccountId)
+
             ->orderBy('name')
             ->get(['id', 'name', 'format'])
             ->map(fn (Deck $d) => [
@@ -90,6 +95,8 @@ class IndexController extends Controller
             ->values()
             ->all();
 
+        $archetypes = $decks->pluck('archetype')->filter()->unique('id')->sortBy('name')->values();
+
         return Inertia::render('leagues/Index', [
             'leagues' => $leagues,
             'kpis' => $kpis,
@@ -99,10 +106,12 @@ class IndexController extends Controller
             'filters' => [
                 'format' => $format ?? '',
                 'state' => $state ?? 'all',
+                'archetype' => $archetypeId ? (int) $archetypeId : null,
                 'deck' => $deckId ? (int) $deckId : null,
                 'q' => $search ?? '',
                 'sort' => $sort,
             ],
+            'deckArchetypes' => ArchetypeData::collect($archetypes),
             'archetypes' => Inertia::defer(fn () => Archetype::query()
                 ->orderBy('name')
                 ->get()
@@ -110,7 +119,7 @@ class IndexController extends Controller
         ]);
     }
 
-    private function buildQuery(?string $format, ?string $state, ?string $deckId, ?string $search): Builder
+    private function buildQuery(?string $format, ?string $state, ?string $deckId, ?string $archetypeId, ?string $search): Builder
     {
         return League::query()
             ->where(function ($q) {
@@ -133,6 +142,7 @@ class IndexController extends Controller
                 ->whereHas('matches', fn ($mq) => $mq->where('outcome', 'win')->where('state', 'complete'), '<', 4))
             ->when($state === 'bricks', fn ($q) => $q->where('state', 'dropped'))
             ->when($deckId, fn ($q, $id) => $q->whereHas('deckVersion', fn ($dq) => $dq->where('deck_id', $id)))
+            ->when($archetypeId, fn ($q, $id) => $q->whereHas('deckVersion.deck', fn ($dq) => $dq->where('archetype_id', $id)))
             ->when($search, fn ($q, $term) => $q->whereHas('matches', function ($mq) use ($term) {
                 $mq->where('state', 'complete')
                     ->where(function ($w) use ($term) {

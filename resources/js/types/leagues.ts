@@ -79,6 +79,7 @@ export type LeagueFiltersState = {
     format: string;
     state: string;
     deck: number | null;
+    archetype: number | null;
     q: string;
     sort: string;
 };
