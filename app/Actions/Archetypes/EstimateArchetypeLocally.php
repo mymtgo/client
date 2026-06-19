@@ -18,6 +18,14 @@ class EstimateArchetypeLocally
 
     private const AMBIGUITY_PENALTY = 0.7;
 
+    /**
+     * Matched distinct non-land cards needed for full local confidence. Below
+     * this, confidence is scaled down so thin observations (e.g. an opponent
+     * who only revealed a few cards) defer to the API instead of locking in a
+     * match on weak evidence. Full coverage of a small deck bypasses this.
+     */
+    private const MIN_CONFIDENT_MATCHES = 8;
+
     private const FORMAT_MAP = [
         'cmodern' => 'modern',
         'cpauper' => 'pauper',
@@ -143,6 +151,8 @@ class EstimateArchetypeLocally
                 'archetype_id' => $deck->archetype_id,
                 'archetype_deck_id' => $deck->id,
                 'score' => $score,
+                'matched_distinct' => $matchedDistinct,
+                'deck_coverage' => $deckCoverage,
             ];
         }
 
@@ -163,6 +173,16 @@ class EstimateArchetypeLocally
                 $confidence *= self::AMBIGUITY_PENALTY;
             }
         }
+
+        // Scale confidence by how much evidence backs the match. Few matched
+        // cards relative to MIN_CONFIDENT_MATCHES drags confidence down, unless
+        // we have covered most of a genuinely small deck.
+        $evidenceFactor = min(1.0, max(
+            $best['matched_distinct'] / self::MIN_CONFIDENT_MATCHES,
+            $best['deck_coverage'],
+        ));
+
+        $confidence *= $evidenceFactor;
 
         return [
             'archetype_id' => $best['archetype_id'],

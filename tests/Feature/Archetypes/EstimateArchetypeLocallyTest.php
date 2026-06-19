@@ -290,3 +290,70 @@ it('skips archetypes with no decks', function () {
 
     expect(EstimateArchetypeLocally::run($input, 'modern'))->toBeNull();
 });
+
+/**
+ * Build a 15-distinct-card archetype deck for sample-size tests.
+ *
+ * @return array<int, array{oracle_id: string, mtgo_id: int, name: string, quantity: int}>
+ */
+function largeDeckCards(): array
+{
+    $cards = [];
+    for ($i = 1; $i <= 15; $i++) {
+        $cards[] = ['oracle_id' => "c{$i}", 'mtgo_id' => 1000 + $i, 'name' => "Card {$i}", 'quantity' => 4];
+    }
+
+    return $cards;
+}
+
+it('does not short-circuit on thin observations of a large deck', function () {
+    createArchetypeWithCards(['name' => 'Big Deck', 'format' => 'pauper'], largeDeckCards());
+
+    // Only two of the deck's fifteen distinct non-land cards were observed.
+    $inputCards = collect([
+        ['mtgo_id' => 1001, 'quantity' => 4],
+        ['mtgo_id' => 1002, 'quantity' => 4],
+    ]);
+
+    $result = EstimateArchetypeLocally::run($inputCards, 'pauper');
+
+    expect($result)->not->toBeNull();
+    expect($result['archetype_id'])->not->toBeNull();
+    // Two cards is too little evidence to confidently classify. Confidence must
+    // fall below the 0.8 local short-circuit threshold so the API is consulted.
+    expect($result['confidence'])->toBeLessThan(0.8);
+});
+
+it('still short-circuits when many distinct cards of a large deck are observed', function () {
+    createArchetypeWithCards(['name' => 'Big Deck', 'format' => 'pauper'], largeDeckCards());
+
+    // Observed nine of the fifteen distinct cards — strong evidence.
+    $inputCards = collect(range(1, 9))
+        ->map(fn ($i) => ['mtgo_id' => 1000 + $i, 'quantity' => 4]);
+
+    $result = EstimateArchetypeLocally::run($inputCards, 'pauper');
+
+    expect($result)->not->toBeNull();
+    expect($result['confidence'])->toBeGreaterThanOrEqual(0.8);
+});
+
+it('stays confident when a small deck is fully observed', function () {
+    createArchetypeWithCards(
+        ['name' => 'Tiny Deck', 'format' => 'pauper'],
+        [
+            ['oracle_id' => 'a', 'mtgo_id' => 2001, 'name' => 'A', 'quantity' => 4],
+            ['oracle_id' => 'b', 'mtgo_id' => 2002, 'name' => 'B', 'quantity' => 4],
+        ]
+    );
+
+    $inputCards = collect([
+        ['mtgo_id' => 2001, 'quantity' => 4],
+        ['mtgo_id' => 2002, 'quantity' => 4],
+    ]);
+
+    $result = EstimateArchetypeLocally::run($inputCards, 'pauper');
+
+    expect($result)->not->toBeNull();
+    // Full coverage of a genuinely small deck stays trustworthy despite few cards.
+    expect($result['confidence'])->toBeGreaterThanOrEqual(0.8);
+});
