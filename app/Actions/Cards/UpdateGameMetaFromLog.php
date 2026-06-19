@@ -27,7 +27,7 @@ class UpdateGameMetaFromLog
         $localName = $game->players->first(fn ($p) => $p->pivot->is_local)?->username;
         $opponentName = $game->players->first(fn ($p) => ! $p->pivot->is_local)?->username;
 
-        if ($localName && ! empty($meta['dice_rolls'])) {
+        if ($localName && (! empty($meta['dice_rolls']) || ! empty($meta['mulligans']))) {
             DB::table('game_player')
                 ->where('game_id', $game->id)
                 ->where('is_local', true)
