@@ -174,7 +174,6 @@ it('uses the latest timeline snapshot when multiple rows exist', function () {
     expect($result->liveLibraryCount)->toBe(22); // latest snapshot LibraryCount
 });
 
-
 it('excludes sideboard cards (real "true"/"false" string flags)', function () {
     Card::create(['mtgo_id' => '101', 'oracle_id' => 'o-mountain', 'name' => 'Mountain', 'type' => 'Basic Land']);
     Card::create(['mtgo_id' => '301', 'oracle_id' => 'o-rip', 'name' => 'Rest in Peace', 'type' => 'Enchantment']);
