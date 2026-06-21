@@ -69,10 +69,12 @@ class SubmitMatchToApi
             'format' => $match->format,
             'is_tournament' => $isTournament,
             'league_token' => $leagueToken,
+            'league_run' => $match->league?->id,
             'challenge_token' => $match->tournament_token,
             'tournament_round' => $match->tournament_round,
             'played_at' => $match->started_at->toIso8601String(),
             'deck' => $deck,
+            'opponent_deck' => self::buildOpponentDeckPayload($match),
             'games' => $gamesPayload,
         ];
 
@@ -109,6 +111,32 @@ class SubmitMatchToApi
             'X-Device-Id' => AppSettings::deviceId(),
             'X-Api-Key' => RegisterDevice::retrieveKey(),
         ]);
+    }
+
+    /**
+     * Aggregate known opponent cards seen across the match's games.
+     *
+     * Sums quantities per mtgo_id (capped at 4) from each opponent
+     * game_player's deck_json. Seen cards carry no reliable sideboard
+     * signal, so all entries are reported in the main zone.
+     *
+     * @return array<int, array{mtgo_id: int, quantity: int, zone: string}>
+     */
+    private static function buildOpponentDeckPayload(MtgoMatch $match): array
+    {
+        return $match->games
+            ->flatMap(fn ($game) => $game->players
+                ->filter(fn ($player) => ! $player->pivot->is_local)
+                ->flatMap(fn ($player) => $player->pivot->deck_json ?? []))
+            ->filter(fn ($card) => ! empty($card['mtgo_id']))
+            ->groupBy('mtgo_id')
+            ->map(fn ($group, $mtgoId) => [
+                'mtgo_id' => (int) $mtgoId,
+                'quantity' => min(4, $group->sum('quantity')),
+                'zone' => 'main',
+            ])
+            ->values()
+            ->all();
     }
 
     private static function buildDeckPayload(?DeckVersion $deckVersion): array
