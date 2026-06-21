@@ -14,7 +14,7 @@ class GetDeckStats
     /**
      * Compute match, game, and OTP/OTD stats for a deck within a date range.
      *
-     * @return array{wins: int, losses: int, gamesWon: int, gamesLost: int, matchWinrate: int, gameWinrate: int, otpWon: int, otpLost: int, otpRate: int, otdWon: int, otdLost: int, otdRate: int, trophies: int, allMatchIds: Collection}
+     * @return array{wins: int, losses: int, draws: int, total: int, gamesWon: int, gamesLost: int, matchWinrate: int, gameWinrate: int, otpWon: int, otpLost: int, otpRate: int, otdWon: int, otdLost: int, otdRate: int, trophies: int, allMatchIds: Collection}
      */
     public static function run(Deck $deck, Carbon $from, Carbon $to, ?DeckVersion $deckVersion = null): array
     {
@@ -22,24 +22,46 @@ class GetDeckStats
             ->whereBetween('matches.started_at', [$from, $to])
             ->when($deckVersion, fn ($q) => $q->where('matches.deck_version_id', $deckVersion->id));
 
-        // Query 1: Match + game outcomes in one joined query
-        $stats = $matchesQuery->clone()
+        // Query 1: Match-level outcome counts. Kept off the games table so
+        // gameless imported matches are still counted; draws/unknown outcomes
+        // fall out of wins/losses but remain in the total.
+        $matchCounts = $matchesQuery->clone()
             ->toBase()
-            ->join('games', 'games.match_id', '=', 'matches.id')
             ->selectRaw("
-                COUNT(DISTINCT CASE WHEN matches.outcome = 'win' THEN matches.id END) as wins,
-                COUNT(DISTINCT CASE WHEN matches.outcome = 'loss' THEN matches.id END) as losses,
-                SUM(CASE WHEN games.won = 1 THEN 1 ELSE 0 END) as games_won,
-                SUM(CASE WHEN games.won = 0 THEN 1 ELSE 0 END) as games_lost
+                COUNT(*) as total,
+                SUM(CASE WHEN matches.outcome = 'win' THEN 1 ELSE 0 END) as wins,
+                SUM(CASE WHEN matches.outcome = 'loss' THEN 1 ELSE 0 END) as losses
             ")
             ->first();
 
-        $wins = (int) ($stats->wins ?? 0);
-        $losses = (int) ($stats->losses ?? 0);
-        $gamesWon = (int) ($stats->games_won ?? 0);
-        $gamesLost = (int) ($stats->games_lost ?? 0);
+        $total = (int) ($matchCounts->total ?? 0);
+        $wins = (int) ($matchCounts->wins ?? 0);
+        $losses = (int) ($matchCounts->losses ?? 0);
+        $draws = max(0, $total - $wins - $losses);
 
-        // Query 2: OTP/OTD stats
+        // Query 2: Game counts from real game rows.
+        $gameRowCounts = $matchesQuery->clone()
+            ->toBase()
+            ->join('games', 'games.match_id', '=', 'matches.id')
+            ->whereNotNull('games.won')
+            ->selectRaw('
+                SUM(CASE WHEN games.won = 1 THEN 1 ELSE 0 END) as games_won,
+                SUM(CASE WHEN games.won = 0 THEN 1 ELSE 0 END) as games_lost
+            ')
+            ->first();
+
+        // Gameless imported matches have match-level games_won/games_lost but
+        // zero game rows; fold their tallies into the game totals.
+        $gamelessCounts = $matchesQuery->clone()
+            ->toBase()
+            ->whereNotExists(fn ($q) => $q->selectRaw('1')->from('games')->whereColumn('games.match_id', 'matches.id'))
+            ->selectRaw('SUM(COALESCE(matches.games_won, 0)) as games_won, SUM(COALESCE(matches.games_lost, 0)) as games_lost')
+            ->first();
+
+        $gamesWon = (int) ($gameRowCounts->games_won ?? 0) + (int) ($gamelessCounts->games_won ?? 0);
+        $gamesLost = (int) ($gameRowCounts->games_lost ?? 0) + (int) ($gamelessCounts->games_lost ?? 0);
+
+        // Query 3: OTP/OTD stats
         $otpStats = $matchesQuery->clone()
             ->toBase()
             ->join('games', 'games.match_id', '=', 'matches.id')
@@ -78,6 +100,8 @@ class GetDeckStats
         return [
             'wins' => $wins,
             'losses' => $losses,
+            'draws' => $draws,
+            'total' => $total,
             'gamesWon' => $gamesWon,
             'gamesLost' => $gamesLost,
             'matchWinrate' => Winrate::percentage($wins, $losses),

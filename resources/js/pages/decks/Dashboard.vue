@@ -18,6 +18,7 @@ const props = defineProps<{
     timeframe: string;
     matchesWon: number;
     matchesLost: number;
+    matchesDrawn: number;
     gamesWon: number;
     gamesLost: number;
     matchWinrate: number;
@@ -49,6 +50,7 @@ function setTimeframe(value: string) {
         <DeckDashboard
             :matches-won="matchesWon"
             :matches-lost="matchesLost"
+            :matches-drawn="matchesDrawn"
             :match-winrate="matchWinrate"
             :games-won="gamesWon"
             :games-lost="gamesLost"

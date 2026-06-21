@@ -49,6 +49,10 @@ defineProps<{
                             <span>{{ deck.matchesWon }}W</span>
                             <span class="mx-0.5">-</span>
                             <span class="text-destructive">{{ deck.matchesLost }}L</span>
+                            <template v-if="deck.matchesDrawn > 0">
+                                <span class="mx-0.5">-</span>
+                                <span>{{ deck.matchesDrawn }}D</span>
+                            </template>
                         </div>
                     </div>
                 </div>

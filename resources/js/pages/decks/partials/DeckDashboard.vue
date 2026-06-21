@@ -12,6 +12,7 @@ import { computed } from 'vue';
 const props = defineProps<{
     matchesWon: number;
     matchesLost: number;
+    matchesDrawn: number;
     matchWinrate: number;
     gamesWon: number;
     gamesLost: number;
@@ -31,6 +32,13 @@ const props = defineProps<{
 }>();
 
 const MIN_MATCHES_THRESHOLD = 3;
+
+const matchesPlayed = computed(() => props.matchesWon + props.matchesLost + props.matchesDrawn);
+const matchRecord = computed(() =>
+    props.matchesDrawn > 0
+        ? `${props.matchesWon}-${props.matchesLost}-${props.matchesDrawn}`
+        : `${props.matchesWon}-${props.matchesLost}`,
+);
 
 const bestArchetype = computed(() => {
     if (!props.matchupSpread?.length) return null;
@@ -68,7 +76,7 @@ const leagueResultsBuckets = ['5-0', '4-1', '3-2', '2-3', '1-4', '0-5'];
                         :class="matchWinrate > 50 ? 'text-success' : matchWinrate < 50 ? 'text-destructive' : ''"
                     >{{ matchWinrate }}%</span>
                     <span class="text-sm text-muted-foreground">
-                        {{ matchesWon }}-{{ matchesLost }}
+                        {{ matchRecord }}
                     </span>
                 </CardContent>
             </Card>
@@ -88,10 +96,10 @@ const leagueResultsBuckets = ['5-0', '4-1', '3-2', '2-3', '1-4', '0-5'];
                 <CardContent class="flex flex-col gap-0.5 p-3">
                     <span class="text-xs tracking-wide text-muted-foreground uppercase">Match Record</span>
                     <span class="text-3xl font-bold tabular-nums">
-                        {{ matchesWon }}-{{ matchesLost }}
+                        {{ matchRecord }}
                     </span>
                     <span class="text-sm text-muted-foreground">
-                        {{ matchesWon + matchesLost }} played
+                        {{ matchesPlayed }} played
                     </span>
                 </CardContent>
             </Card>

@@ -24,3 +24,14 @@ it('deletedAt is null for live decks', function () {
 
     expect($data->deletedAt)->toBeNull();
 });
+
+it('reports drawn matches as total minus wins and losses', function () {
+    $deck = Deck::factory()->create();
+    $deck->setAttribute('matches_count', 187);
+    $deck->setAttribute('won_matches_count', 83);
+    $deck->setAttribute('lost_matches_count', 98);
+
+    $data = DeckData::fromModel($deck);
+
+    expect($data->matchesDrawn)->toBe(6);
+});

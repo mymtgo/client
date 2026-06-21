@@ -45,6 +45,7 @@ class DashboardController extends Controller
             // KPI stats — eager
             'matchesWon' => $stats['wins'],
             'matchesLost' => $stats['losses'],
+            'matchesDrawn' => $stats['draws'],
             'gamesWon' => $stats['gamesWon'],
             'gamesLost' => $stats['gamesLost'],
             'matchWinrate' => $stats['matchWinrate'],

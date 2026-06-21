@@ -40,6 +40,18 @@ class GetDeckVersionStats
             ->get()
             ->keyBy('deck_version_id');
 
+        // Gameless imported matches have match-level games_won/games_lost but zero
+        // game rows. Fold their match-level tallies into the per-version game totals.
+        $versionGamelessCounts = DB::table('matches as m')
+            ->whereIn('m.deck_version_id', $versions->pluck('id'))
+            ->where('m.state', 'complete')
+            ->whereBetween('m.started_at', [$from, $to])
+            ->whereNotExists(fn ($q) => $q->selectRaw('1')->from('games as g')->whereColumn('g.match_id', 'm.id'))
+            ->selectRaw('m.deck_version_id, SUM(COALESCE(m.games_won, 0)) as games_won, SUM(COALESCE(m.games_lost, 0)) as games_lost')
+            ->groupBy('m.deck_version_id')
+            ->get()
+            ->keyBy('deck_version_id');
+
         $latestVersionId = $versions->last()?->id;
         $versionIds = $versions->pluck('id');
 
@@ -60,8 +72,8 @@ class GetDeckVersionStats
         // Compute aggregate across all versions
         $totalWins = $versions->sum('won_matches_count');
         $totalLosses = $versions->sum('lost_matches_count');
-        $totalGamesWon = (int) $versionGameCounts->sum('games_won');
-        $totalGamesLost = (int) $versionGameCounts->sum('games_lost');
+        $totalGamesWon = (int) $versionGameCounts->sum('games_won') + (int) $versionGamelessCounts->sum('games_won');
+        $totalGamesLost = (int) $versionGameCounts->sum('games_lost') + (int) $versionGamelessCounts->sum('games_lost');
         $allOtp = $otpStats->flatten(1)->where('on_play', 1);
         $allOtd = $otpStats->flatten(1)->where('on_play', 0);
         $aggOtpWon = (int) $allOtp->sum('won');
@@ -100,8 +112,8 @@ class GetDeckVersionStats
                 dateLabel: $dateLabel,
                 wins: (int) ($version->won_matches_count ?? 0),
                 losses: (int) ($version->lost_matches_count ?? 0),
-                gamesWon: (int) ($versionGameCounts->get($version->id)->games_won ?? 0),
-                gamesLost: (int) ($versionGameCounts->get($version->id)->games_lost ?? 0),
+                gamesWon: (int) ($versionGameCounts->get($version->id)->games_won ?? 0) + (int) ($versionGamelessCounts->get($version->id)->games_won ?? 0),
+                gamesLost: (int) ($versionGameCounts->get($version->id)->games_lost ?? 0) + (int) ($versionGamelessCounts->get($version->id)->games_lost ?? 0),
                 otpWon: (int) ($vOtp->won ?? 0),
                 otpLost: (int) ($vOtp->lost ?? 0),
                 otdWon: (int) ($vOtd->won ?? 0),

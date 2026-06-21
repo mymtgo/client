@@ -45,6 +45,7 @@ format: string;
 matchesCount: number;
 matchesWon: number;
 matchesLost: number;
+matchesDrawn: number;
 winrate: number;
 colorIdentity: string | null;
 coverArt: string | null;
