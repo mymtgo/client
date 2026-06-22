@@ -75,6 +75,26 @@ it('formats a tournament with derived W-L and per-match data', function () {
     expect($row['matches_count'])->toBe(2);
 });
 
+it('does not crash when the tournament format is null', function () {
+    $deck = Deck::factory()->create();
+    $version = DeckVersion::factory()->create(['deck_id' => $deck->id]);
+    $tournament = Tournament::factory()->create([
+        'format' => null,
+    ]);
+    MtgoMatch::factory()->create([
+        'tournament_id' => $tournament->id,
+        'deck_version_id' => $version->id,
+        'outcome' => MatchOutcome::Win,
+        'state' => MatchState::Complete,
+        'started_at' => now()->subHours(2),
+        'ended_at' => now()->subHours(2)->addMinutes(10),
+    ]);
+
+    $rows = FormatTournamentRuns::run(Tournament::query()->get(), $deck);
+
+    expect($rows[0]['format'])->toBe('');
+});
+
 it('returns results array with no padding (length = matches played)', function () {
     $deck = Deck::factory()->create();
     $version = DeckVersion::factory()->create(['deck_id' => $deck->id]);

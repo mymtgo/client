@@ -135,8 +135,12 @@ class MtgoMatch extends Model
         return MatchOutcome::Unknown;
     }
 
-    public static function displayFormat(string $format): string
+    public static function displayFormat(?string $format): string
     {
+        if ($format === null || $format === '') {
+            return '';
+        }
+
         // MTGO format codes are prefixed with 'C' (e.g. CModern, CStandard)
         $raw = preg_match('/^C[A-Z]/', $format) ? substr($format, 1) : $format;
 

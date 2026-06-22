@@ -6,6 +6,7 @@ use App\Models\LogEvent;
 use App\Models\LogInstance;
 use App\Models\TournamentObservationQueue;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Log;
 
 uses(RefreshDatabase::class);
 
@@ -84,10 +85,11 @@ it('ignores non-tournament log events', function () {
     expect(TournamentObservationQueue::count())->toBe(0);
 });
 
-it('skips events whose extracted payload is empty', function () {
+it('records a terminal skipped row for events whose extracted payload is empty', function () {
     // A tournament_state_changed event whose raw_text does NOT match the
-    // extractor regex. Extraction returns [], so the row must not be enqueued
-    // — the API would 422 on an empty payload.
+    // extractor regex. Extraction returns [], so it must never be shipped
+    // — but it MUST be recorded with a terminal status so it is not
+    // re-selected (and re-logged) on every pipeline run.
     LogEvent::factory()->create([
         'event_type' => LogEventType::TOURNAMENT_STATE_CHANGED->value,
         'raw_text' => 'garbage line with no from/to',
@@ -97,5 +99,29 @@ it('skips events whose extracted payload is empty', function () {
     $inserted = EnqueueTournamentObservations::run();
 
     expect($inserted)->toBe(0);
-    expect(TournamentObservationQueue::count())->toBe(0);
+
+    $row = TournamentObservationQueue::sole();
+    expect($row->status)->toBe('skipped');
+});
+
+it('does not re-process empty-payload events on subsequent runs', function () {
+    // Regression: empty-payload events used to be logged-and-skipped without
+    // being recorded, so the whereNotIn(queue) subquery re-selected them every
+    // run — spamming the log file with hundreds of thousands of warnings.
+    LogEvent::factory()->create([
+        'event_type' => LogEventType::TOURNAMENT_STATE_CHANGED->value,
+        'raw_text' => 'garbage line with no from/to',
+        'tournament_token' => 'deadbeef-dead-beef-dead-beefdeadbeef',
+    ]);
+
+    Log::spy();
+
+    EnqueueTournamentObservations::run();
+    EnqueueTournamentObservations::run();
+    EnqueueTournamentObservations::run();
+
+    expect(TournamentObservationQueue::count())->toBe(1);
+    Log::shouldHaveReceived('warning')
+        ->with('EnqueueTournamentObservations: skipping event with empty payload', Mockery::any())
+        ->once();
 });

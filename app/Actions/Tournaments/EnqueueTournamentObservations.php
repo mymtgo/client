@@ -31,10 +31,27 @@ class EnqueueTournamentObservations
             $payload = ExtractTournamentPayload::run($event);
 
             if (empty($payload)) {
+                // Record a terminal 'skipped' row so this un-shippable event is
+                // not re-selected (and re-logged) on every pipeline run. The
+                // unique FK on log_event_id keeps this idempotent, so the
+                // warning fires at most once per event rather than forever.
                 Log::warning('EnqueueTournamentObservations: skipping event with empty payload', [
                     'log_event_id' => $event->id,
                     'event_type' => $event->event_type,
                     'raw_text_preview' => mb_substr($event->raw_text, 0, 200),
+                ]);
+
+                TournamentObservationQueue::query()->insertOrIgnore([
+                    'log_event_id' => $event->id,
+                    'tournament_token' => $event->tournament_token,
+                    'match_token' => $event->match_token,
+                    'event_type' => $event->event_type,
+                    'payload' => json_encode([]),
+                    'client_observed_at' => $event->ingested_at,
+                    'status' => 'skipped',
+                    'attempts' => 0,
+                    'created_at' => now(),
+                    'updated_at' => now(),
                 ]);
 
                 continue;
