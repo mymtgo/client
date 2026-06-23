@@ -72,4 +72,10 @@ class Game extends Model
     {
         return $this->hasOne(CardStatShipQueue::class);
     }
+
+    /** @return HasMany<GameDeck, $this> */
+    public function decks(): HasMany
+    {
+        return $this->hasMany(GameDeck::class);
+    }
 }
