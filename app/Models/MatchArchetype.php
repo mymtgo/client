@@ -15,6 +15,13 @@ class MatchArchetype extends Model
 {
     protected $guarded = [];
 
+    protected function casts(): array
+    {
+        return [
+            'is_opponent' => 'bool',
+        ];
+    }
+
     /** @return BelongsTo<MtgoMatch, $this> */
     public function match(): BelongsTo
     {
