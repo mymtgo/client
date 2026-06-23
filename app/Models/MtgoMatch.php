@@ -175,6 +175,18 @@ class MtgoMatch extends Model
         return $this->belongsTo(Tournament::class);
     }
 
+    /** @return BelongsTo<Account, $this> */
+    public function account(): BelongsTo
+    {
+        return $this->belongsTo(Account::class);
+    }
+
+    /** @return BelongsTo<Opponent, $this> */
+    public function opponent(): BelongsTo
+    {
+        return $this->belongsTo(Opponent::class);
+    }
+
     public function scopeForAccount(Builder $query, int $accountId): Builder
     {
         return $query->whereHas('deckVersion', fn ($q) => $q->whereHas('deck', fn ($q2) => $q2->where('account_id', $accountId)));

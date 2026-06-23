@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\MtgoMatch;
 use App\Models\Opponent;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -17,3 +18,10 @@ it('enforces a unique username', function () {
     Opponent::factory()->create(['username' => 'dup']);
     Opponent::factory()->create(['username' => 'dup']);
 })->throws(QueryException::class);
+
+it('has many matches via opponent_id', function () {
+    $opponent = Opponent::factory()->create();
+    MtgoMatch::factory()->create(['opponent_id' => $opponent->id]);
+
+    expect($opponent->matches)->toHaveCount(1);
+});
