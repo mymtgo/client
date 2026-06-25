@@ -71,11 +71,7 @@ class BackfillDeckJsonAndCardStats implements ShouldQueue
 
     private function rebuildDeckJsonForGame(Game $game, $deckEvents): bool
     {
-        $game->loadMissing('players');
-
-        $localPlayer = $game->players->first(fn ($p) => $p->pivot->is_local);
-
-        if (! $localPlayer) {
+        if ($game->local_instance === null) {
             return false;
         }
 
@@ -108,7 +104,7 @@ class BackfillDeckJsonAndCardStats implements ShouldQueue
         }
 
         $content = $firstSnapshot->content;
-        $instanceId = (int) $localPlayer->pivot->instance_id;
+        $instanceId = (int) $game->local_instance;
 
         // Count actual sideboard cards from first snapshot
         $sideboardCounts = [];
@@ -133,11 +129,11 @@ class BackfillDeckJsonAndCardStats implements ShouldQueue
             }
         }
 
-        // Update the pivot directly
-        DB::table('game_player')
-            ->where('game_id', $game->id)
-            ->where('player_id', $localPlayer->id)
-            ->update(['deck_json' => json_encode($deck)]);
+        // Update game_decks table for the local player's deck snapshot
+        DB::table('game_decks')->updateOrInsert(
+            ['game_id' => $game->id, 'is_opponent' => false],
+            ['deck_json' => json_encode($deck)],
+        );
 
         return true;
     }

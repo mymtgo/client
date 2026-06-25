@@ -7,7 +7,6 @@ use App\Models\Deck;
 use App\Models\DeckVersion;
 use App\Models\Game;
 use App\Models\MtgoMatch;
-use App\Models\Player;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 
@@ -18,29 +17,26 @@ function setupDeckStatsData(): array
     $account = Account::create(['username' => 'testplayer', 'active' => true, 'tracked' => true]);
     $deck = Deck::factory()->create(['account_id' => $account->id]);
     $version = DeckVersion::factory()->create(['deck_id' => $deck->id]);
-    $player = Player::firstOrCreate(['username' => 'testplayer']);
 
-    return [$deck, $version, $player];
+    return [$deck, $version];
 }
 
 it('computes deck stats with bounded query count', function () {
-    [$deck, $version, $player] = setupDeckStatsData();
+    [$deck, $version] = setupDeckStatsData();
 
     for ($i = 0; $i < 5; $i++) {
         $match = MtgoMatch::factory()->won()->create([
             'deck_version_id' => $version->id,
             'started_at' => now()->subHours($i),
         ]);
-        $game = Game::create([
+        Game::create([
             'match_id' => $match->id,
             'mtgo_id' => fake()->unique()->randomNumber(8),
             'started_at' => $match->started_at,
             'won' => true,
-        ]);
-        $game->players()->attach($player, [
-            'on_play' => $i % 2 === 0,
-            'is_local' => true,
-            'instance_id' => 1,
+            'local_on_play' => $i % 2 === 0,
+            'local_instance' => 0,
+            'opp_instance' => 1,
         ]);
     }
 
@@ -60,7 +56,7 @@ it('computes deck stats with bounded query count', function () {
 });
 
 it('counts draws and folds gameless imported games into totals', function () {
-    [$deck, $version, $player] = setupDeckStatsData();
+    [$deck, $version] = setupDeckStatsData();
 
     // Tracked win with a real game row.
     $tracked = MtgoMatch::factory()->won()->create([
@@ -103,7 +99,7 @@ it('counts draws and folds gameless imported games into totals', function () {
 });
 
 it('handles empty deck gracefully', function () {
-    [$deck, $version, $player] = setupDeckStatsData();
+    [$deck, $version] = setupDeckStatsData();
 
     $result = GetDeckStats::run($deck, now()->subWeek(), now());
 

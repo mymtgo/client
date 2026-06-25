@@ -27,14 +27,14 @@ it('returns positive delta when current period is better', function () {
     [$account, $version] = setupDeltaAccount();
 
     // Previous week: 1W 1L (50%)
-    MtgoMatch::factory()->won()->create(['deck_version_id' => $version->id, 'started_at' => now()->subDays(10)]);
-    MtgoMatch::factory()->lost()->create(['deck_version_id' => $version->id, 'started_at' => now()->subDays(9)]);
+    MtgoMatch::factory()->won()->create(['account_id' => $account->id, 'deck_version_id' => $version->id, 'started_at' => now()->subDays(10)]);
+    MtgoMatch::factory()->lost()->create(['account_id' => $account->id, 'deck_version_id' => $version->id, 'started_at' => now()->subDays(9)]);
 
     // Current week: 3W 1L (75%)
-    MtgoMatch::factory()->won()->create(['deck_version_id' => $version->id, 'started_at' => now()->subDays(2)]);
-    MtgoMatch::factory()->won()->create(['deck_version_id' => $version->id, 'started_at' => now()->subDays(2)]);
-    MtgoMatch::factory()->won()->create(['deck_version_id' => $version->id, 'started_at' => now()->subDay()]);
-    MtgoMatch::factory()->lost()->create(['deck_version_id' => $version->id, 'started_at' => now()->subDay()]);
+    MtgoMatch::factory()->won()->create(['account_id' => $account->id, 'deck_version_id' => $version->id, 'started_at' => now()->subDays(2)]);
+    MtgoMatch::factory()->won()->create(['account_id' => $account->id, 'deck_version_id' => $version->id, 'started_at' => now()->subDays(2)]);
+    MtgoMatch::factory()->won()->create(['account_id' => $account->id, 'deck_version_id' => $version->id, 'started_at' => now()->subDay()]);
+    MtgoMatch::factory()->lost()->create(['account_id' => $account->id, 'deck_version_id' => $version->id, 'started_at' => now()->subDay()]);
 
     $result = GetWinrateDelta::run($account->id, now()->subDays(7)->startOfDay(), now()->endOfDay(), 'week');
     expect($result['matchDelta'])->toBe(25);
@@ -44,16 +44,16 @@ it('returns negative delta when current period is worse', function () {
     [$account, $version] = setupDeltaAccount();
 
     // Previous week: 3W 1L (75%)
-    MtgoMatch::factory()->won()->create(['deck_version_id' => $version->id, 'started_at' => now()->subDays(10)]);
-    MtgoMatch::factory()->won()->create(['deck_version_id' => $version->id, 'started_at' => now()->subDays(10)]);
-    MtgoMatch::factory()->won()->create(['deck_version_id' => $version->id, 'started_at' => now()->subDays(9)]);
-    MtgoMatch::factory()->lost()->create(['deck_version_id' => $version->id, 'started_at' => now()->subDays(9)]);
+    MtgoMatch::factory()->won()->create(['account_id' => $account->id, 'deck_version_id' => $version->id, 'started_at' => now()->subDays(10)]);
+    MtgoMatch::factory()->won()->create(['account_id' => $account->id, 'deck_version_id' => $version->id, 'started_at' => now()->subDays(10)]);
+    MtgoMatch::factory()->won()->create(['account_id' => $account->id, 'deck_version_id' => $version->id, 'started_at' => now()->subDays(9)]);
+    MtgoMatch::factory()->lost()->create(['account_id' => $account->id, 'deck_version_id' => $version->id, 'started_at' => now()->subDays(9)]);
 
     // Current week: 1W 3L (25%)
-    MtgoMatch::factory()->won()->create(['deck_version_id' => $version->id, 'started_at' => now()->subDay()]);
-    MtgoMatch::factory()->lost()->create(['deck_version_id' => $version->id, 'started_at' => now()->subDay()]);
-    MtgoMatch::factory()->lost()->create(['deck_version_id' => $version->id, 'started_at' => now()->subDay()]);
-    MtgoMatch::factory()->lost()->create(['deck_version_id' => $version->id, 'started_at' => now()->subDay()]);
+    MtgoMatch::factory()->won()->create(['account_id' => $account->id, 'deck_version_id' => $version->id, 'started_at' => now()->subDay()]);
+    MtgoMatch::factory()->lost()->create(['account_id' => $account->id, 'deck_version_id' => $version->id, 'started_at' => now()->subDay()]);
+    MtgoMatch::factory()->lost()->create(['account_id' => $account->id, 'deck_version_id' => $version->id, 'started_at' => now()->subDay()]);
+    MtgoMatch::factory()->lost()->create(['account_id' => $account->id, 'deck_version_id' => $version->id, 'started_at' => now()->subDay()]);
 
     $result = GetWinrateDelta::run($account->id, now()->subDays(7)->startOfDay(), now()->endOfDay(), 'week');
     expect($result['matchDelta'])->toBe(-50);

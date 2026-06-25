@@ -56,7 +56,7 @@ class CreateController extends Controller
             ->limit($limit);
 
         if ($search) {
-            $query->whereHas('games.opponents', function ($q) use ($search) {
+            $query->whereHas('opponent', function ($q) use ($search) {
                 $q->where('username', 'like', '%'.$search.'%');
             });
         }

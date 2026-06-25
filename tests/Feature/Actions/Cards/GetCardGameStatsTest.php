@@ -6,7 +6,6 @@ use App\Models\Deck;
 use App\Models\DeckVersion;
 use App\Models\Game;
 use App\Models\MtgoMatch;
-use App\Models\Player;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 
@@ -247,18 +246,10 @@ it('filters by on_play', function () {
 
     $card = Card::factory()->create(['oracle_id' => 'test-oracle-3', 'name' => 'Dark Ritual', 'type' => 'Instant', 'color_identity' => 'B', 'image' => null]);
 
-    $localPlayer = Player::create(['username' => 'localuser']);
-    $opponent = Player::create(['username' => 'opponent']);
-
     $match = MtgoMatch::factory()->create(['deck_version_id' => $v1->id]);
 
-    $gameOnPlay = Game::factory()->for($match, 'match')->create(['won' => true]);
-    $gameOnPlay->players()->attach($localPlayer->id, ['instance_id' => 1, 'is_local' => true, 'on_play' => true, 'starting_hand_size' => 7]);
-    $gameOnPlay->players()->attach($opponent->id, ['instance_id' => 2, 'is_local' => false, 'on_play' => false, 'starting_hand_size' => 7]);
-
-    $gameOnDraw = Game::factory()->for($match, 'match')->create(['won' => false]);
-    $gameOnDraw->players()->attach($localPlayer->id, ['instance_id' => 3, 'is_local' => true, 'on_play' => false, 'starting_hand_size' => 7]);
-    $gameOnDraw->players()->attach($opponent->id, ['instance_id' => 4, 'is_local' => false, 'on_play' => true, 'starting_hand_size' => 7]);
+    $gameOnPlay = Game::factory()->for($match, 'match')->create(['won' => true, 'local_on_play' => true]);
+    $gameOnDraw = Game::factory()->for($match, 'match')->create(['won' => false, 'local_on_play' => false]);
 
     insertCardGameStat(['deck_version_id' => $v1->id, 'game_id' => $gameOnPlay->id, 'oracle_id' => $card->oracle_id, 'kept' => 2, 'won' => true]);
     insertCardGameStat(['deck_version_id' => $v1->id, 'game_id' => $gameOnDraw->id, 'oracle_id' => $card->oracle_id, 'kept' => 1, 'won' => false]);

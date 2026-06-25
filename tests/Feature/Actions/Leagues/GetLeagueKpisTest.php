@@ -7,10 +7,9 @@ use App\Enums\MatchState;
 use App\Models\Archetype;
 use App\Models\Deck;
 use App\Models\DeckVersion;
-use App\Models\Game;
 use App\Models\League;
 use App\Models\MtgoMatch;
-use App\Models\Player;
+use App\Models\Opponent;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 
@@ -88,28 +87,17 @@ it('returns top matchup with record and play count', function () {
     $league = seedLeagueRun($this->dv, LeagueState::Complete, 3, 0);
 
     $arch = Archetype::factory()->create(['name' => 'Yawgmoth']);
-    $players = Player::factory()->count(3)->create();
 
-    foreach ($league->matches->take(3) as $i => $match) {
+    foreach ($league->matches->take(3) as $match) {
+        $opponent = Opponent::factory()->create();
+        $match->update(['opponent_id' => $opponent->id]);
+
         DB::table('match_archetypes')->insert([
             'mtgo_match_id' => $match->id,
             'archetype_id' => $arch->id,
-            'player_id' => $players[$i]->id,
+            'is_opponent' => true,
             'created_at' => now(),
             'updated_at' => now(),
-        ]);
-
-        $game = Game::factory()->create([
-            'match_id' => $match->id,
-            'won' => 1,
-            'started_at' => now(),
-        ]);
-
-        DB::table('game_player')->insert([
-            'game_id' => $game->id,
-            'player_id' => $players[$i]->id,
-            'is_local' => false,
-            'instance_id' => 0,
         ]);
     }
 

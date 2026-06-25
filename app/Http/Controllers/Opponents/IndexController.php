@@ -20,21 +20,18 @@ class IndexController extends Controller
         $sort = $request->input('sort', 'most_played');
         $format = $request->input('format');
 
-        $query = DB::table('game_player as gp')
-            ->join('players as p', 'p.id', '=', 'gp.player_id')
-            ->join('games as g', 'g.id', '=', 'gp.game_id')
-            ->join('matches as m', 'm.id', '=', 'g.match_id')
+        $query = DB::table('opponents as o')
+            ->join('matches as m', 'm.opponent_id', '=', 'o.id')
             ->join('deck_versions as dv', 'dv.id', '=', 'm.deck_version_id')
             ->join('decks as d', 'd.id', '=', 'dv.deck_id')
-            ->where('gp.is_local', false)
             ->where('m.state', 'complete')
             ->when($activeAccountId, fn ($q, $id) => $q->where('d.account_id', $id))
             ->when($format, fn ($q, $f) => $q->where('m.format', $f))
-            ->when($search, fn ($q, $s) => $q->where('p.username', 'like', "%{$s}%"))
-            ->groupBy('p.id', 'p.username')
+            ->when($search, fn ($q, $s) => $q->where('o.username', 'like', "%{$s}%"))
+            ->groupBy('o.id', 'o.username')
             ->selectRaw("
-                p.id as player_id,
-                p.username,
+                o.id as opponent_id,
+                o.username,
                 COUNT(DISTINCT CASE WHEN m.outcome = 'win' THEN m.id END) as matches_won,
                 COUNT(DISTINCT CASE WHEN m.outcome = 'loss' THEN m.id END) as matches_lost,
                 COUNT(DISTINCT m.id) as total_matches,
@@ -51,45 +48,44 @@ class IndexController extends Controller
         $opponents = $query->paginate(25)->withQueryString();
 
         // Batch load archetypes for the current page only
-        $playerIds = collect($opponents->items())->pluck('player_id');
-        $archetypesByPlayer = collect();
-        $formatsByPlayer = collect();
+        $opponentIds = collect($opponents->items())->pluck('opponent_id');
+        $archetypesByOpponent = collect();
+        $formatsByOpponent = collect();
 
-        if ($playerIds->isNotEmpty()) {
-            $archetypesByPlayer = DB::table('match_archetypes as ma')
+        if ($opponentIds->isNotEmpty()) {
+            $archetypesByOpponent = DB::table('match_archetypes as ma')
                 ->join('archetypes as a', 'a.id', '=', 'ma.archetype_id')
-                ->whereIn('ma.player_id', $playerIds)
-                ->select('ma.player_id', 'a.name', 'a.color_identity')
+                ->join('matches as m', 'm.id', '=', 'ma.mtgo_match_id')
+                ->whereIn('m.opponent_id', $opponentIds)
+                ->where('ma.is_opponent', true)
+                ->select('m.opponent_id', 'a.name', 'a.color_identity')
                 ->distinct()
                 ->get()
-                ->groupBy('player_id');
+                ->groupBy('opponent_id');
 
-            $formatsByPlayer = DB::table('game_player as gp')
-                ->join('games as g', 'g.id', '=', 'gp.game_id')
-                ->join('matches as m', 'm.id', '=', 'g.match_id')
-                ->where('gp.is_local', false)
+            $formatsByOpponent = DB::table('matches as m')
+                ->whereIn('m.opponent_id', $opponentIds)
                 ->where('m.state', 'complete')
-                ->whereIn('gp.player_id', $playerIds)
-                ->selectRaw('DISTINCT gp.player_id, m.format')
+                ->selectRaw('DISTINCT m.opponent_id, m.format')
                 ->get()
-                ->groupBy('player_id');
+                ->groupBy('opponent_id');
         }
 
         // Transform paginated results
-        $opponents->through(function ($row) use ($archetypesByPlayer, $formatsByPlayer) {
-            $archetypes = ($archetypesByPlayer[$row->player_id] ?? collect())
+        $opponents->through(function ($row) use ($archetypesByOpponent, $formatsByOpponent) {
+            $archetypes = ($archetypesByOpponent[$row->opponent_id] ?? collect())
                 ->map(fn ($a) => [
                     'name' => $a->name,
                     'colorIdentity' => $a->color_identity,
                 ])->values()->all();
 
-            $formats = ($formatsByPlayer[$row->player_id] ?? collect())
+            $formats = ($formatsByOpponent[$row->opponent_id] ?? collect())
                 ->pluck('format')->unique()
                 ->map(fn ($f) => MtgoMatch::displayFormat($f))
                 ->sort()->values()->all();
 
             return [
-                'playerId' => (int) $row->player_id,
+                'playerId' => (int) $row->opponent_id,
                 'username' => $row->username,
                 'matchesWon' => (int) $row->matches_won,
                 'matchesLost' => (int) $row->matches_lost,
@@ -103,12 +99,10 @@ class IndexController extends Controller
         });
 
         // Format options for filter
-        $allFormats = DB::table('game_player as gp')
-            ->join('games as g', 'g.id', '=', 'gp.game_id')
-            ->join('matches as m', 'm.id', '=', 'g.match_id')
+        $allFormats = DB::table('matches as m')
             ->join('deck_versions as dv', 'dv.id', '=', 'm.deck_version_id')
             ->join('decks as d', 'd.id', '=', 'dv.deck_id')
-            ->where('gp.is_local', false)
+            ->whereNotNull('m.opponent_id')
             ->where('m.state', 'complete')
             ->when($activeAccountId, fn ($q, $id) => $q->where('d.account_id', $id))
             ->distinct()

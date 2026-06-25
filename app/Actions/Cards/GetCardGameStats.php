@@ -62,14 +62,8 @@ class GetCardGameStats
                 $q->join('games as g', 'g.id', '=', 'cgs.game_id')
                     ->join('match_archetypes as ma', function ($join) use ($opponentArchetypeId) {
                         $join->on('ma.mtgo_match_id', '=', 'g.match_id')
-                            ->where('ma.archetype_id', $opponentArchetypeId);
-                    })
-                    ->whereExists(function ($sub) {
-                        $sub->select(DB::raw(1))
-                            ->from('game_player as gp')
-                            ->whereRaw('gp.game_id = g.id')
-                            ->whereRaw('gp.player_id = ma.player_id')
-                            ->where('gp.is_local', false);
+                            ->where('ma.archetype_id', $opponentArchetypeId)
+                            ->where('ma.is_opponent', true);
                     });
             }
 
@@ -78,13 +72,7 @@ class GetCardGameStats
                     $q->join('games as g', 'g.id', '=', 'cgs.game_id');
                 }
 
-                $q->whereExists(function ($sub) use ($onPlay) {
-                    $sub->select(DB::raw(1))
-                        ->from('game_player as local_gp')
-                        ->whereRaw('local_gp.game_id = g.id')
-                        ->where('local_gp.is_local', true)
-                        ->where('local_gp.on_play', $onPlay);
-                });
+                $q->where('g.local_on_play', $onPlay);
             }
         };
 
@@ -207,14 +195,7 @@ class GetCardGameStats
         return Archetype::query()
             ->whereHas('matchArchetypes', function ($q) use ($deckVersionIds) {
                 $q->whereHas('match', fn ($mq) => $mq->whereIn('deck_version_id', $deckVersionIds))
-                    ->whereExists(function ($sub) {
-                        $sub->select(DB::raw(1))
-                            ->from('game_player as gp')
-                            ->join('games as g', 'g.id', '=', 'gp.game_id')
-                            ->whereRaw('g.match_id = match_archetypes.mtgo_match_id')
-                            ->whereRaw('gp.player_id = match_archetypes.player_id')
-                            ->where('gp.is_local', false);
-                    });
+                    ->where('is_opponent', true);
             })
             ->orderBy('name')
             ->get()

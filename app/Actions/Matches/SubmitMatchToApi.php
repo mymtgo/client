@@ -19,7 +19,7 @@ class SubmitMatchToApi
             return;
         }
 
-        $match = MtgoMatch::with(['league', 'archetypes.archetype', 'games.timeline', 'games.players'])->find($matchId);
+        $match = MtgoMatch::with(['league', 'archetypes.archetype', 'games.timeline', 'games.decks'])->find($matchId);
 
         if (! $match) {
             return;
@@ -34,10 +34,9 @@ class SubmitMatchToApi
         }
 
         $opponentArchetype = $match->opponentArchetypes()->with('archetype')->first();
-        $opponentPlayerIds = $match->opponentArchetypes()->pluck('player_id')->toArray();
 
         $playerArchetype = $match->archetypes()
-            ->whereNotIn('player_id', $opponentPlayerIds)
+            ->where('is_opponent', false)
             ->with('archetype')
             ->first();
 
@@ -62,7 +61,7 @@ class SubmitMatchToApi
 
         $payload = [
             'match_token' => $match->token,
-            'username' => $match->games->first()->localPlayers->first()->username,
+            'username' => $match->account?->username ?? '',
             'player_archetype_uuid' => $playerArchetype->archetype->uuid,
             'opponent_archetype_uuid' => $opponentArchetype?->archetype?->uuid,
             'result' => $match->isWin() ? 'win' : 'loss',
@@ -125,9 +124,7 @@ class SubmitMatchToApi
     private static function buildOpponentDeckPayload(MtgoMatch $match): array
     {
         return $match->games
-            ->flatMap(fn ($game) => $game->players
-                ->filter(fn ($player) => ! $player->pivot->is_local)
-                ->flatMap(fn ($player) => $player->pivot->deck_json ?? []))
+            ->flatMap(fn ($game) => $game->opponentDeck()?->deck_json ?? [])
             ->filter(fn ($card) => ! empty($card['mtgo_id']))
             ->groupBy('mtgo_id')
             ->map(fn ($group, $mtgoId) => [

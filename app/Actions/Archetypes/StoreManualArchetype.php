@@ -67,32 +67,20 @@ class StoreManualArchetype
 
     private static function linkOpponentToArchetype(int $matchId, int $archetypeId): void
     {
-        $match = MtgoMatch::with('games.players')->find($matchId);
+        $match = MtgoMatch::find($matchId);
 
         if (! $match) {
             return;
         }
 
-        $opponentIds = collect();
-
-        foreach ($match->games as $game) {
-            foreach ($game->players as $player) {
-                if (! $player->pivot->is_local) {
-                    $opponentIds->push($player->id);
-                }
-            }
-        }
-
-        foreach ($opponentIds->unique() as $opponentId) {
-            MatchArchetype::updateOrCreate(
-                [
-                    'mtgo_match_id' => $matchId,
-                    'player_id' => $opponentId,
-                ],
-                [
-                    'archetype_id' => $archetypeId,
-                ],
-            );
-        }
+        MatchArchetype::updateOrCreate(
+            [
+                'mtgo_match_id' => $matchId,
+                'is_opponent' => true,
+            ],
+            [
+                'archetype_id' => $archetypeId,
+            ],
+        );
     }
 }

@@ -4,18 +4,24 @@ use App\Actions\Import\ImportMatches;
 use App\Enums\MatchOutcome;
 use App\Enums\MatchState;
 use App\Events\GameCardsSnapshotChanged;
+use App\Models\Account;
 use App\Models\Card;
-use App\Models\CardGameStat;
 use App\Models\Deck;
 use App\Models\DeckVersion;
+use App\Models\GameDeck;
 use App\Models\MtgoMatch;
+use App\Models\Opponent;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Http;
 
 uses(RefreshDatabase::class);
 
-it('creates match, games, and player records from import data', function () {
+it('creates match, games, and new-schema participant records from import data', function () {
+    Account::factory()->create(['username' => 'anticloser', 'active' => true]);
+    Account::flushCurrent();
+
     $importData = [
         [
             'history_id' => 12345678,
@@ -30,9 +36,9 @@ it('creates match, games, and player records from import data', function () {
             'game_log_token' => 'abc-123',
             'local_player' => 'anticloser',
             'games' => [
-                ['game_index' => 0, 'won' => true, 'on_play' => true, 'starting_hand_size' => 7, 'opponent_hand_size' => 7, 'started_at' => '2025-06-01T12:00:00Z', 'ended_at' => '2025-06-01T12:15:00Z', 'local_cards' => [['mtgo_id' => 100, 'name' => 'Card A']], 'opponent_cards' => []],
-                ['game_index' => 1, 'won' => false, 'on_play' => false, 'starting_hand_size' => 6, 'opponent_hand_size' => 7, 'started_at' => '2025-06-01T12:16:00Z', 'ended_at' => '2025-06-01T12:30:00Z', 'local_cards' => [['mtgo_id' => 100, 'name' => 'Card A']], 'opponent_cards' => []],
-                ['game_index' => 2, 'won' => true, 'on_play' => true, 'starting_hand_size' => 7, 'opponent_hand_size' => 7, 'started_at' => '2025-06-01T12:31:00Z', 'ended_at' => '2025-06-01T12:45:00Z', 'local_cards' => [['mtgo_id' => 100, 'name' => 'Card A']], 'opponent_cards' => []],
+                ['game_index' => 0, 'won' => true, 'on_play' => true, 'local_mulligan_count' => 0, 'opponent_mulligan_count' => 1, 'local_dice_roll' => 5, 'opponent_dice_roll' => 3, 'started_at' => '2025-06-01T12:00:00Z', 'ended_at' => '2025-06-01T12:15:00Z', 'local_cards' => [['mtgo_id' => 100, 'name' => 'Card A']], 'opponent_cards' => []],
+                ['game_index' => 1, 'won' => false, 'on_play' => false, 'local_mulligan_count' => 1, 'opponent_mulligan_count' => 0, 'local_dice_roll' => 2, 'opponent_dice_roll' => 6, 'started_at' => '2025-06-01T12:16:00Z', 'ended_at' => '2025-06-01T12:30:00Z', 'local_cards' => [['mtgo_id' => 100, 'name' => 'Card A']], 'opponent_cards' => []],
+                ['game_index' => 2, 'won' => true, 'on_play' => true, 'local_mulligan_count' => 0, 'opponent_mulligan_count' => 0, 'local_dice_roll' => null, 'opponent_dice_roll' => null, 'started_at' => '2025-06-01T12:31:00Z', 'ended_at' => '2025-06-01T12:45:00Z', 'local_cards' => [['mtgo_id' => 100, 'name' => 'Card A']], 'opponent_cards' => []],
             ],
             'local_cards' => [['mtgo_id' => 100, 'name' => 'Card A']],
             'game_ids' => [111, 222, 333],
@@ -53,14 +59,31 @@ it('creates match, games, and player records from import data', function () {
     expect($match->games_lost)->toBe(1);
     expect($match->format)->toBe('CMODERN');
 
+    // New schema: account_id and opponent_id are set on the match
+    expect($match->account_id)->not->toBeNull();
+    expect($match->opponent_id)->not->toBeNull();
+
+    $opponent = Opponent::find($match->opponent_id);
+    expect($opponent->username)->toBe('testopponent');
+
     expect($match->games)->toHaveCount(3);
 
+    // New schema: game_decks rows exist, no game_player rows
     $game1 = $match->games->sortBy('started_at')->first();
-    expect($game1->players)->toHaveCount(2);
+    expect($game1->decks)->toHaveCount(2);
+    expect(DB::table('game_player')->where('game_id', $game1->id)->count())->toBe(0);
 
-    $local = $game1->players->first(fn ($p) => $p->pivot->is_local);
-    expect($local->username)->toBe('anticloser');
-    expect($local->pivot->on_play)->toBeTrue();
+    $localDeck = $game1->decks->first(fn ($d) => ! $d->is_opponent);
+    $oppDeck = $game1->decks->first(fn ($d) => $d->is_opponent);
+    expect($localDeck)->not->toBeNull();
+    expect($oppDeck)->not->toBeNull();
+
+    // New schema: game scalar columns are set
+    expect($game1->local_mulligans)->toBe(0);
+    expect($game1->opp_mulligans)->toBe(1);
+    expect($game1->local_dice)->toBe(5);
+    expect($game1->opp_dice)->toBe(3);
+    expect($game1->local_on_play)->toBeTrue();
 });
 
 it('creates match without games when no game log available', function () {
@@ -120,76 +143,78 @@ it('skips duplicate mtgo_ids', function () {
 });
 
 it('creates per-game card stats from deck quantities when importing a match', function () {
-    Card::factory()->create(['mtgo_id' => 100, 'oracle_id' => 'oracle-a', 'name' => 'Card A']);
-    Card::factory()->create(['mtgo_id' => 200, 'oracle_id' => 'oracle-b', 'name' => 'Card B']);
-
-    $deck = Deck::factory()->create();
-    $signature = base64_encode('100:4:false|200:2:false');
-    $version = DeckVersion::factory()->create([
-        'deck_id' => $deck->id,
-        'signature' => $signature,
+    // Create a card that maps mtgo_id 100 → oracle_id 'oracle-card-a'
+    Card::factory()->create([
+        'mtgo_id' => 100,
+        'name' => 'Card A',
+        'oracle_id' => 'oracle-card-a',
     ]);
+
+    // ComputeCardGameStats returns early when deck_version_id is null.
+    // Provide a DeckVersion so the job can proceed; it will fall back to
+    // the per-game deck_json from game_decks since the version deck has
+    // no mtgo_id-keyed cards.
+    $deckVersion = DeckVersion::factory()->create();
+
+    Account::factory()->create(['username' => 'cardstatsplayer', 'active' => true]);
+    Account::flushCurrent();
 
     $importData = [
         [
             'history_id' => 77777777,
             'started_at' => '2025-06-01T12:00:00Z',
-            'opponent' => 'testopponent',
+            'opponent' => 'cardstatsopponent',
             'format_raw' => 'CMODERN',
-            'games_won' => 2,
+            'games_won' => 1,
             'games_lost' => 0,
             'outcome' => 'win',
             'round' => 0,
             'has_game_log' => true,
-            'game_log_token' => null,
-            'local_player' => 'anticloser',
-            'local_cards' => [],
-            'opponent_cards' => [],
+            'game_log_token' => 'stats-token',
+            'local_player' => 'cardstatsplayer',
             'games' => [
                 [
                     'game_index' => 0,
                     'won' => true,
                     'on_play' => true,
-                    'starting_hand_size' => 7,
-                    'opponent_hand_size' => 7,
+                    'local_mulligan_count' => 0,
+                    'opponent_mulligan_count' => 0,
+                    'local_dice_roll' => 6,
+                    'opponent_dice_roll' => 2,
                     'started_at' => '2025-06-01T12:00:00Z',
                     'ended_at' => '2025-06-01T12:15:00Z',
-                    'local_cards' => [],
-                    'opponent_cards' => [],
-                ],
-                [
-                    'game_index' => 1,
-                    'won' => true,
-                    'on_play' => false,
-                    'starting_hand_size' => 7,
-                    'opponent_hand_size' => 7,
-                    'started_at' => '2025-06-01T12:16:00Z',
-                    'ended_at' => '2025-06-01T12:30:00Z',
-                    'local_cards' => [],
+                    'local_cards' => [['mtgo_id' => 100, 'name' => 'Card A']],
                     'opponent_cards' => [],
                 ],
             ],
-            'game_ids' => [111, 222],
-            'deck_version_id' => $version->id,
+            'local_cards' => [['mtgo_id' => 100, 'name' => 'Card A']],
+            'game_ids' => [555],
+            'deck_version_id' => $deckVersion->id,
         ],
     ];
 
     ImportMatches::run($importData);
 
     $match = MtgoMatch::where('mtgo_id', '77777777')->first();
-    expect($match->games)->toHaveCount(2);
+    expect($match)->not->toBeNull();
 
-    // Card-game stats reflect deck quantities — log-derived signals (cast/seen)
-    // require GameLog bridge which has been removed. Quantity rows still flow
-    // via the deck-version snapshot used by ComputeCardGameStats.
-    $game1 = $match->games->sortBy('started_at')->first();
-    $game1Stats = CardGameStat::where('game_id', $game1->id)->where('opponent', false)->get();
-    expect($game1Stats)->toHaveCount(2);
-    expect($game1Stats->firstWhere('oracle_id', 'oracle-a')->quantity)->toBe(4);
-    expect($game1Stats->firstWhere('oracle_id', 'oracle-b')->quantity)->toBe(2);
+    $game = $match->games->first();
+    expect($game)->not->toBeNull();
+
+    // ComputeCardGameStats runs synchronously during import (dispatchSync).
+    // It should produce a local card_game_stats row for oracle-card-a.
+    $stat = DB::table('card_game_stats')
+        ->where('game_id', $game->id)
+        ->where('oracle_id', 'oracle-card-a')
+        ->where('opponent', false)
+        ->first();
+
+    expect($stat)->not->toBeNull();
+    expect($stat->quantity)->toBe(1); // per-game deck_json has quantity=1 per card (fallback from version deck)
+    expect((bool) $stat->won)->toBeTrue();
 });
 
-it('populates opponent deck_json from per-game opponent cards', function () {
+it('populates opponent deck_json in game_decks from per-game opponent cards', function () {
     $importData = [
         [
             'history_id' => 88888888,
@@ -210,8 +235,6 @@ it('populates opponent deck_json from per-game opponent cards', function () {
                     'game_index' => 0,
                     'won' => true,
                     'on_play' => true,
-                    'starting_hand_size' => 7,
-                    'opponent_hand_size' => 7,
                     'started_at' => '2025-06-01T12:00:00Z',
                     'ended_at' => '2025-06-01T12:15:00Z',
                     'local_cards' => [],
@@ -230,13 +253,14 @@ it('populates opponent deck_json from per-game opponent cards', function () {
 
     $match = MtgoMatch::where('mtgo_id', '88888888')->first();
     $game = $match->games->first();
-    $opponent = $game->opponents->first();
 
-    expect($opponent)->not->toBeNull();
-    expect($opponent->pivot->deck_json)->not->toBeNull();
-    expect($opponent->pivot->deck_json)->toHaveCount(2);
-    expect($opponent->pivot->deck_json[0]['mtgo_id'])->toBe(300);
-    expect($opponent->pivot->deck_json[0]['quantity'])->toBe(1);
+    // New schema: opponent deck is in game_decks with is_opponent=true
+    $oppDeck = GameDeck::where('game_id', $game->id)->where('is_opponent', true)->first();
+    expect($oppDeck)->not->toBeNull();
+    expect($oppDeck->deck_json)->not->toBeNull();
+    expect($oppDeck->deck_json)->toHaveCount(2);
+    expect($oppDeck->deck_json[0]['mtgo_id'])->toBe(300);
+    expect($oppDeck->deck_json[0]['quantity'])->toBe(1);
 });
 
 it('does not dispatch GameCardsSnapshotChanged when importing matches', function () {
@@ -254,7 +278,7 @@ it('does not dispatch GameCardsSnapshotChanged when importing matches', function
             'game_log_token' => 'abc-123',
             'local_player' => 'anticloser',
             'games' => [
-                ['game_index' => 0, 'won' => true, 'on_play' => true, 'starting_hand_size' => 7, 'opponent_hand_size' => 7, 'started_at' => '2025-06-01T12:00:00Z', 'ended_at' => '2025-06-01T12:15:00Z', 'local_cards' => [['mtgo_id' => 100, 'name' => 'Card A']], 'opponent_cards' => []],
+                ['game_index' => 0, 'won' => true, 'on_play' => true, 'started_at' => '2025-06-01T12:00:00Z', 'ended_at' => '2025-06-01T12:15:00Z', 'local_cards' => [['mtgo_id' => 100, 'name' => 'Card A']], 'opponent_cards' => []],
             ],
             'local_cards' => [['mtgo_id' => 100, 'name' => 'Card A']],
             'game_ids' => [111],

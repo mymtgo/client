@@ -3,7 +3,7 @@
 use App\Facades\AppSettings;
 use App\Models\Game;
 use App\Models\MtgoMatch;
-use App\Models\Player;
+use App\Models\Opponent;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 
@@ -15,16 +15,11 @@ beforeEach(function () {
 
 function createMatchWithGamesAndOpponent(int $count = 5): void
 {
-    $opponent = Player::firstOrCreate(['username' => 'TestOpponent']);
+    $opponent = Opponent::firstOrCreate(['username' => 'TestOpponent']);
 
     for ($i = 0; $i < $count; $i++) {
-        $match = MtgoMatch::factory()->create();
-        $game = Game::factory()->create(['match_id' => $match->id]);
-        $game->players()->attach($opponent->id, [
-            'instance_id' => 1,
-            'is_local' => false,
-            'on_play' => false,
-        ]);
+        $match = MtgoMatch::factory()->create(['opponent_id' => $opponent->id]);
+        Game::factory()->create(['match_id' => $match->id, 'opp_instance' => 1]);
     }
 }
 

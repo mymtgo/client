@@ -155,12 +155,9 @@ class IndexController extends Controller
                         })
                             ->orWhereExists(function ($sub) use ($term) {
                                 $sub->select(DB::raw(1))
-                                    ->from('game_player as gp')
-                                    ->join('games as g', 'g.id', '=', 'gp.game_id')
-                                    ->join('players as p', 'p.id', '=', 'gp.player_id')
-                                    ->whereColumn('g.match_id', 'matches.id')
-                                    ->where('gp.is_local', false)
-                                    ->where('p.username', 'like', '%'.$term.'%');
+                                    ->from('opponents as o')
+                                    ->whereColumn('o.id', 'matches.opponent_id')
+                                    ->where('o.username', 'like', '%'.$term.'%');
                             });
                     });
             }));

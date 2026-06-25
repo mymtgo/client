@@ -6,8 +6,8 @@ use App\Models\Archetype;
 use App\Models\Deck;
 use App\Models\DeckVersion;
 use App\Models\Game;
+use App\Models\GameDeck;
 use App\Models\MtgoMatch;
-use App\Models\Player;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 
@@ -111,14 +111,11 @@ it('uses deck archetype for player instead of calling estimate API', function ()
         'state' => 'complete',
     ]);
 
-    $player = Player::create(['username' => 'local_player']);
-    $game = Game::factory()->create(['match_id' => $match->id]);
-    $game->players()->attach($player->id, [
-        'instance_id' => 1,
-        'is_local' => true,
-        'on_play' => true,
-        'starting_hand_size' => 7,
-        'deck_json' => json_encode([['mtgo_id' => '123', 'quantity' => 4]]),
+    $game = Game::factory()->create(['match_id' => $match->id, 'local_instance' => 1]);
+    GameDeck::create([
+        'game_id' => $game->id,
+        'is_opponent' => false,
+        'deck_json' => [['mtgo_id' => '123', 'quantity' => 4]],
     ]);
 
     // If the estimate API is called, it should fail — we don't want it called
@@ -129,7 +126,7 @@ it('uses deck archetype for player instead of calling estimate API', function ()
 
     DetermineMatchArchetypes::run($match);
 
-    $playerArchetype = $match->archetypes()->where('player_id', $player->id)->first();
+    $playerArchetype = $match->archetypes()->where('is_opponent', false)->first();
     expect($playerArchetype)->not->toBeNull();
     expect($playerArchetype->archetype_id)->toBe($archetype->id);
     expect((float) $playerArchetype->confidence)->toBe(1.0);

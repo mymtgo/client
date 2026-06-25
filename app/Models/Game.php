@@ -6,15 +6,12 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
 /**
- * @property-read Collection<int, Player> $players
- * @property-read Collection<int, Player> $localPlayers
- * @property-read Collection<int, Player> $opponents
  * @property-read Collection<int, GameTimeline> $timeline
+ * @property-read Collection<int, GameDeck> $decks
  */
 class Game extends Model
 {
@@ -46,26 +43,6 @@ class Game extends Model
         return $this->belongsTo(MtgoMatch::class, 'match_id');
     }
 
-    /** @return BelongsToMany<Player, $this, GamePlayer, 'pivot'> */
-    public function players(): BelongsToMany
-    {
-        return $this->belongsToMany(Player::class)
-            ->using(GamePlayer::class)
-            ->withPivot(['on_play', 'instance_id', 'starting_hand_size', 'deck_json', 'is_local']);
-    }
-
-    /** @return BelongsToMany<Player, $this, GamePlayer, 'pivot'> */
-    public function localPlayers(): BelongsToMany
-    {
-        return $this->players()->wherePivot('is_local', 1);
-    }
-
-    /** @return BelongsToMany<Player, $this, GamePlayer, 'pivot'> */
-    public function opponents(): BelongsToMany
-    {
-        return $this->players()->wherePivot('is_local', 0);
-    }
-
     /** @return HasMany<GameTimeline, $this> */
     public function timeline(): HasMany
     {
@@ -88,5 +65,31 @@ class Game extends Model
     public function decks(): HasMany
     {
         return $this->hasMany(GameDeck::class);
+    }
+
+    /**
+     * Returns the local player's deck snapshot for this game, or null if not yet recorded.
+     * Reads from the eager-loaded `decks` collection when available; falls back to a query.
+     */
+    public function localDeck(): ?GameDeck
+    {
+        if ($this->relationLoaded('decks')) {
+            return $this->decks->firstWhere('is_opponent', false);
+        }
+
+        return $this->decks()->where('is_opponent', false)->first();
+    }
+
+    /**
+     * Returns the opponent's deck snapshot for this game, or null if not yet recorded.
+     * Reads from the eager-loaded `decks` collection when available; falls back to a query.
+     */
+    public function opponentDeck(): ?GameDeck
+    {
+        if ($this->relationLoaded('decks')) {
+            return $this->decks->firstWhere('is_opponent', true);
+        }
+
+        return $this->decks()->where('is_opponent', true)->first();
     }
 }

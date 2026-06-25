@@ -4,10 +4,8 @@ use App\Models\Account;
 use App\Models\Archetype;
 use App\Models\Deck;
 use App\Models\DeckVersion;
-use App\Models\Game;
 use App\Models\MatchArchetype;
 use App\Models\MtgoMatch;
-use App\Models\Player;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -39,8 +37,6 @@ it('renders matches page with selection and reports match count', function () {
     $versionB = DeckVersion::factory()->create(['deck_id' => $deckB->id]);
 
     foreach ([$versionA, $versionB] as $version) {
-        $local = Player::firstOrCreate(['username' => 'local_'.$version->id]);
-        $opp = Player::firstOrCreate(['username' => 'opp_'.$version->id]);
         $match = MtgoMatch::factory()->create([
             'deck_version_id' => $version->id,
             'format' => 'CModern',
@@ -50,11 +46,9 @@ it('renders matches page with selection and reports match count', function () {
         MatchArchetype::create([
             'mtgo_match_id' => $match->id,
             'archetype_id' => $opponentArchetype->id,
-            'player_id' => $opp->id,
+            'is_opponent' => true,
+            'confidence' => 0.9,
         ]);
-        $game = Game::factory()->create(['match_id' => $match->id, 'won' => true]);
-        $game->players()->attach($local->id, ['is_local' => true, 'on_play' => true, 'instance_id' => fake()->randomNumber(6)]);
-        $game->players()->attach($opp->id, ['is_local' => false, 'on_play' => false, 'instance_id' => fake()->randomNumber(6)]);
     }
 
     $response = $this->get(route('reports.matches', [

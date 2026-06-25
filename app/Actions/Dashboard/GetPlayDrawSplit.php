@@ -32,14 +32,13 @@ class GetPlayDrawSplit
         }
 
         $stats = DB::table('games as g')
-            ->join('game_player as gp', 'gp.game_id', '=', 'g.id')
             ->whereIn('g.match_id', $matchIds)
-            ->where('gp.is_local', true)
+            ->whereNotNull('g.local_on_play')
             ->selectRaw('
-                SUM(CASE WHEN gp.on_play = 1 AND g.won = 1 THEN 1 ELSE 0 END) as otp_won,
-                SUM(CASE WHEN gp.on_play = 1 THEN 1 ELSE 0 END) as otp_total,
-                SUM(CASE WHEN gp.on_play = 0 AND g.won = 1 THEN 1 ELSE 0 END) as otd_won,
-                SUM(CASE WHEN gp.on_play = 0 THEN 1 ELSE 0 END) as otd_total
+                SUM(CASE WHEN g.local_on_play = 1 AND g.won = 1 THEN 1 ELSE 0 END) as otp_won,
+                SUM(CASE WHEN g.local_on_play = 1 THEN 1 ELSE 0 END) as otp_total,
+                SUM(CASE WHEN g.local_on_play = 0 AND g.won = 1 THEN 1 ELSE 0 END) as otd_won,
+                SUM(CASE WHEN g.local_on_play = 0 THEN 1 ELSE 0 END) as otd_total
             ')
             ->first();
 

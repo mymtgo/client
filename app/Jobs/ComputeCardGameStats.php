@@ -35,7 +35,7 @@ class ComputeCardGameStats implements ShouldQueue
 
     public function handle(): void
     {
-        $match = MtgoMatch::with('games.players', 'games.timeline')->find($this->matchId);
+        $match = MtgoMatch::with('games.decks', 'games.timeline')->find($this->matchId);
 
         if (! $match || ! $match->deck_version_id) {
             return;
@@ -72,7 +72,7 @@ class ComputeCardGameStats implements ShouldQueue
 
         foreach ($games as $index => $game) {
             $isPostboard = $index > 0;
-            $next = $this->processGame($game, $match->deck_version_id, $isPostboard, $game1Quantities, $gameLogStats, $index, $sideboardOracleIds, $imported);
+            $next = $this->processGame($game, $match, $match->deck_version_id, $isPostboard, $game1Quantities, $gameLogStats, $index, $sideboardOracleIds, $imported);
 
             if (! $isPostboard && $trackSideboarding) {
                 $game1Quantities = $next;
@@ -109,21 +109,19 @@ class ComputeCardGameStats implements ShouldQueue
      * @param  array<int, string>  $sideboardOracleIds
      * @return array<string, int>|null oracle_id => quantity for game 1 (forwarded for sideboard comparison)
      */
-    private function processGame(Game $game, int $deckVersionId, bool $isPostboard, ?array $game1Quantities, ?array $gameLogStats, int $gameIndex, array $sideboardOracleIds, bool $imported): ?array
+    private function processGame(Game $game, MtgoMatch $match, int $deckVersionId, bool $isPostboard, ?array $game1Quantities, ?array $gameLogStats, int $gameIndex, array $sideboardOracleIds, bool $imported): ?array
     {
         if ($game->won === null) {
             return null;
         }
 
-        $localPlayer = $game->players->first(fn ($p) => $p->pivot->is_local);
-
-        if (! $localPlayer) {
+        if ($game->local_instance === null && $game->localDeck() === null) {
             return null;
         }
 
-        $nextGame1Quantities = $this->processLocalSide($game, $localPlayer, $deckVersionId, $isPostboard, $game1Quantities, $gameLogStats, $gameIndex, $sideboardOracleIds, $imported);
+        $nextGame1Quantities = $this->processLocalSide($game, $match, $deckVersionId, $isPostboard, $game1Quantities, $gameLogStats, $gameIndex, $sideboardOracleIds, $imported);
 
-        $this->processOpponentSide($game, $deckVersionId, $isPostboard, $gameLogStats, $gameIndex);
+        $this->processOpponentSide($game, $match, $deckVersionId, $isPostboard, $gameLogStats, $gameIndex);
 
         if ($gameLogStats) {
             UpdateGameMetaFromLog::run($game, $gameLogStats, $gameIndex);
@@ -138,10 +136,11 @@ class ComputeCardGameStats implements ShouldQueue
      * @param  array<int, string>  $sideboardOracleIds
      * @return array<string, int>|null oracle_id => maindeck quantity (game-1 only)
      */
-    private function processLocalSide(Game $game, $localPlayer, int $deckVersionId, bool $isPostboard, ?array $game1Quantities, ?array $gameLogStats, int $gameIndex, array $sideboardOracleIds, bool $imported): ?array
+    private function processLocalSide(Game $game, MtgoMatch $match, int $deckVersionId, bool $isPostboard, ?array $game1Quantities, ?array $gameLogStats, int $gameIndex, array $sideboardOracleIds, bool $imported): ?array
     {
-        $localInstanceId = (int) $localPlayer->pivot->instance_id;
-        $deckJson = $this->resolveDeckJson($localPlayer, $deckVersionId, $imported);
+        $localInstanceId = (int) ($game->local_instance ?? 0);
+        $localUsername = $match->account?->username ?? '';
+        $deckJson = $this->resolveDeckJsonFromGame($game, $deckVersionId, $imported);
 
         if (empty($deckJson)) {
             return null;
@@ -179,7 +178,7 @@ class ComputeCardGameStats implements ShouldQueue
         // log so those casts resolve to the deck card's oracle instead of being
         // silently dropped. SEEN/KEPT already resolve via the base printing.
         $catalogToOracle = $mtgoToOracle->toArray()
-            + $this->buildSeenCatalogToOracle($game, $localInstanceId, $gameLogStats, $gameIndex, $localPlayer->username);
+            + $this->buildSeenCatalogToOracle($game, $localInstanceId, $gameLogStats, $gameIndex, $localUsername);
 
         try {
             $handData = ExtractGameHandData::run($game);
@@ -198,7 +197,7 @@ class ComputeCardGameStats implements ShouldQueue
         }
 
         $logStats = $gameLogStats
-            ? AggregateGameLogCardStats::run($gameLogStats, $gameIndex, $localPlayer->username, $catalogToOracle)
+            ? AggregateGameLogCardStats::run($gameLogStats, $gameIndex, $localUsername, $catalogToOracle)
             : $this->emptyLogStats();
 
         $seenByOracle = $this->resolveSeenByOracle($game, $localInstanceId, $catalogToOracle, self::LOCAL_VISIBLE_ZONES, $logStats);
@@ -294,78 +293,69 @@ class ComputeCardGameStats implements ShouldQueue
     /**
      * @param  array<string, mixed>|null  $gameLogStats
      */
-    private function processOpponentSide(Game $game, int $deckVersionId, bool $isPostboard, ?array $gameLogStats, int $gameIndex): void
+    private function processOpponentSide(Game $game, MtgoMatch $match, int $deckVersionId, bool $isPostboard, ?array $gameLogStats, int $gameIndex): void
     {
-        $opponents = $game->players->filter(fn ($p) => ! $p->pivot->is_local);
+        $oppInstanceId = (int) ($game->opp_instance ?? 1);
+        $oppName = $match->opponent?->username ?? '';
 
-        if ($opponents->isEmpty()) {
+        $catalogToOracle = $this->buildSeenCatalogToOracle($game, $oppInstanceId, $gameLogStats, $gameIndex, $oppName);
+
+        if (empty($catalogToOracle)) {
             return;
         }
 
+        $logStats = $gameLogStats
+            ? AggregateGameLogCardStats::run($gameLogStats, $gameIndex, $oppName, $catalogToOracle)
+            : $this->emptyLogStats();
+
+        $seenByOracle = $this->resolveSeenByOracle($game, $oppInstanceId, $catalogToOracle, self::OPPONENT_VISIBLE_ZONES, $logStats);
+
+        $oracleIds = array_unique(array_values($catalogToOracle));
         $rows = [];
         $now = now();
 
-        foreach ($opponents as $opponent) {
-            $oppInstanceId = (int) $opponent->pivot->instance_id;
-            $oppName = $opponent->username;
+        foreach ($oracleIds as $oracleId) {
+            $seen = $seenByOracle[$oracleId] ?? 0;
+            $cast = $logStats['cast'][$oracleId] ?? 0;
+            $played = $logStats['played'][$oracleId] ?? 0;
+            $activated = $logStats['activated'][$oracleId] ?? 0;
+            $kicked = $logStats['kicked'][$oracleId] ?? 0;
+            $flashback = $logStats['flashback'][$oracleId] ?? 0;
+            $madness = $logStats['madness'][$oracleId] ?? 0;
+            $evoked = $logStats['evoked'][$oracleId] ?? 0;
+            $pregameRevealed = isset($logStats['pregame_revealed'][$oracleId]);
+            $pregamePlayed = isset($logStats['pregame_played'][$oracleId]);
 
-            $catalogToOracle = $this->buildSeenCatalogToOracle($game, $oppInstanceId, $gameLogStats, $gameIndex, $oppName);
+            $hasSignal = $seen > 0
+                || $cast > 0
+                || $played > 0
+                || $activated > 0
+                || $kicked > 0
+                || $flashback > 0
+                || $madness > 0
+                || $evoked > 0
+                || $pregameRevealed
+                || $pregamePlayed;
 
-            if (empty($catalogToOracle)) {
+            if (! $hasSignal) {
                 continue;
             }
 
-            $logStats = $gameLogStats
-                ? AggregateGameLogCardStats::run($gameLogStats, $gameIndex, $oppName, $catalogToOracle)
-                : $this->emptyLogStats();
-
-            $seenByOracle = $this->resolveSeenByOracle($game, $oppInstanceId, $catalogToOracle, self::OPPONENT_VISIBLE_ZONES, $logStats);
-
-            $oracleIds = array_unique(array_values($catalogToOracle));
-
-            foreach ($oracleIds as $oracleId) {
-                $seen = $seenByOracle[$oracleId] ?? 0;
-                $cast = $logStats['cast'][$oracleId] ?? 0;
-                $played = $logStats['played'][$oracleId] ?? 0;
-                $activated = $logStats['activated'][$oracleId] ?? 0;
-                $kicked = $logStats['kicked'][$oracleId] ?? 0;
-                $flashback = $logStats['flashback'][$oracleId] ?? 0;
-                $madness = $logStats['madness'][$oracleId] ?? 0;
-                $evoked = $logStats['evoked'][$oracleId] ?? 0;
-                $pregameRevealed = isset($logStats['pregame_revealed'][$oracleId]);
-                $pregamePlayed = isset($logStats['pregame_played'][$oracleId]);
-
-                $hasSignal = $seen > 0
-                    || $cast > 0
-                    || $played > 0
-                    || $activated > 0
-                    || $kicked > 0
-                    || $flashback > 0
-                    || $madness > 0
-                    || $evoked > 0
-                    || $pregameRevealed
-                    || $pregamePlayed;
-
-                if (! $hasSignal) {
-                    continue;
-                }
-
-                $rows[] = $this->buildRow(
-                    oracleId: $oracleId,
-                    gameId: $game->id,
-                    deckVersionId: $deckVersionId,
-                    quantity: 0,
-                    kept: 0,
-                    seen: $seen,
-                    logStats: $logStats,
-                    won: (bool) $game->won,
-                    isPostboard: $isPostboard,
-                    sidedOut: false,
-                    sidedIn: false,
-                    opponent: true,
-                    now: $now,
-                );
-            }
+            $rows[] = $this->buildRow(
+                oracleId: $oracleId,
+                gameId: $game->id,
+                deckVersionId: $deckVersionId,
+                quantity: 0,
+                kept: 0,
+                seen: $seen,
+                logStats: $logStats,
+                won: (bool) $game->won,
+                isPostboard: $isPostboard,
+                sidedOut: false,
+                sidedIn: false,
+                opponent: true,
+                now: $now,
+            );
         }
 
         if (! empty($rows)) {
@@ -374,14 +364,14 @@ class ComputeCardGameStats implements ShouldQueue
     }
 
     /**
-     * Live games: pivot deck_json (captured at match start) is the truth.
-     * Imported games: pivot is sparse (only cards "seen" in the log), so the
-     * deck-version snapshot is the truth — pivot would deflate denominators
-     * to "games where this card appeared" rather than "all games played".
+     * Live games: game_decks.deck_json (captured at match start) is the truth.
+     * Imported games: game_decks is sparse (only cards "seen" in the log), so the
+     * deck-version snapshot is the truth — it would deflate denominators
+     * to "games where the card appeared" rather than "all games played".
      *
      * @return list<array<string, mixed>>
      */
-    private function resolveDeckJson($player, int $deckVersionId, bool $imported): array
+    private function resolveDeckJsonFromGame(Game $game, int $deckVersionId, bool $imported): array
     {
         $versionDeck = $this->resolveVersionDeck($deckVersionId);
 
@@ -389,9 +379,9 @@ class ComputeCardGameStats implements ShouldQueue
             return $versionDeck;
         }
 
-        $pivotDeck = $player->pivot->deck_json;
-        if (! empty($pivotDeck)) {
-            return $pivotDeck;
+        $gameDeckJson = $game->localDeck()?->deck_json;
+        if (! empty($gameDeckJson)) {
+            return $gameDeckJson;
         }
 
         return $versionDeck;

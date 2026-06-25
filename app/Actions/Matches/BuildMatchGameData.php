@@ -12,15 +12,12 @@ class BuildMatchGameData
      */
     public static function run(Game $game, int $number, Collection $cardsByMtgoId, Collection $cardsByOracleId, array $registeredCards): array
     {
-        $localPlayer = $game->players->first(fn ($p) => $p->pivot->is_local);
-        $opponentPlayer = $game->players->first(fn ($p) => ! $p->pivot->is_local);
-
-        $localInstanceId = (int) ($localPlayer?->pivot->instance_id ?? 1);
-        $opponentInstanceId = (int) ($opponentPlayer?->pivot->instance_id ?? 0);
+        $localInstanceId = (int) ($game->local_instance ?? 1);
+        $opponentInstanceId = (int) ($game->opp_instance ?? 0);
 
         $handData = self::parseHandData($game, $localInstanceId, $opponentInstanceId, $cardsByMtgoId);
 
-        $opponentCardsSeen = collect($opponentPlayer?->pivot->deck_json ?? [])
+        $opponentCardsSeen = collect($game->opponentDeck()?->deck_json ?? [])
             ->groupBy('mtgo_id')
             ->map(function ($items, $mtgoId) use ($cardsByMtgoId) {
                 $card = $cardsByMtgoId->get($mtgoId);
@@ -38,7 +35,7 @@ class BuildMatchGameData
             ->toArray();
 
         $sideboardChanges = self::computeSideboardChanges(
-            $localPlayer?->pivot->deck_json ?? [],
+            $game->localDeck()?->deck_json ?? [],
             $registeredCards,
             $cardsByMtgoId,
             $cardsByOracleId,
@@ -58,7 +55,7 @@ class BuildMatchGameData
             'id' => $game->id,
             'number' => $number,
             'won' => (bool) $game->won,
-            'onThePlay' => (bool) ($localPlayer?->pivot->on_play ?? false),
+            'onThePlay' => (bool) ($game->local_on_play ?? false),
             'duration' => $duration,
             'turns' => self::estimateTurns($game, $cardsByMtgoId),
             'localMulligans' => $handData['localMulligans'],

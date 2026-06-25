@@ -26,16 +26,19 @@ it('returns null when no matches exist', function () {
 it('groups matches within 2 hours as one session', function () {
     [$account, $version] = setupSessionAccount();
     $m1 = MtgoMatch::factory()->won()->create([
+        'account_id' => $account->id,
         'deck_version_id' => $version->id,
         'started_at' => now()->subHours(3),
         'ended_at' => now()->subHours(3)->addMinutes(30),
     ]);
     $m2 = MtgoMatch::factory()->won()->create([
+        'account_id' => $account->id,
         'deck_version_id' => $version->id,
         'started_at' => now()->subHours(2)->subMinutes(20),
         'ended_at' => now()->subHours(2)->addMinutes(10),
     ]);
     $m3 = MtgoMatch::factory()->lost()->create([
+        'account_id' => $account->id,
         'deck_version_id' => $version->id,
         'started_at' => now()->subHours(1)->subMinutes(40),
         'ended_at' => now()->subHour()->subMinutes(10),
@@ -57,11 +60,13 @@ it('groups matches within 2 hours as one session', function () {
 it('splits sessions with >2 hour gaps', function () {
     [$account, $version] = setupSessionAccount();
     MtgoMatch::factory()->won()->create([
+        'account_id' => $account->id,
         'deck_version_id' => $version->id,
         'started_at' => now()->subHours(6),
         'ended_at' => now()->subHours(6)->addMinutes(30),
     ]);
     MtgoMatch::factory()->lost()->create([
+        'account_id' => $account->id,
         'deck_version_id' => $version->id,
         'started_at' => now()->subHour(),
         'ended_at' => now()->subMinutes(30),
@@ -74,12 +79,14 @@ it('splits sessions with >2 hour gaps', function () {
 it('ignores complete matches with null outcome', function () {
     [$account, $version] = setupSessionAccount();
     MtgoMatch::factory()->create([
+        'account_id' => $account->id,
         'deck_version_id' => $version->id,
         'outcome' => null,
         'started_at' => now()->subHour(),
         'ended_at' => now()->subMinutes(30),
     ]);
     MtgoMatch::factory()->won()->create([
+        'account_id' => $account->id,
         'deck_version_id' => $version->id,
         'started_at' => now()->subMinutes(20),
         'ended_at' => now()->subMinutes(5),
@@ -92,11 +99,13 @@ it('ignores complete matches with null outcome', function () {
 it('handles null ended_at with fallback', function () {
     [$account, $version] = setupSessionAccount();
     MtgoMatch::factory()->won()->create([
+        'account_id' => $account->id,
         'deck_version_id' => $version->id,
         'started_at' => now()->subHours(2),
         'ended_at' => null,
     ]);
     MtgoMatch::factory()->won()->create([
+        'account_id' => $account->id,
         'deck_version_id' => $version->id,
         'started_at' => now()->subHour(),
         'ended_at' => now()->subMinutes(30),

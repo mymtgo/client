@@ -6,7 +6,6 @@ use App\Models\Deck;
 use App\Models\DeckVersion;
 use App\Models\Game;
 use App\Models\MtgoMatch;
-use App\Models\Player;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -16,27 +15,20 @@ function setupPlayDrawAccount(): array
     $account = Account::create(['username' => 'testplayer', 'active' => true, 'tracked' => true]);
     $deck = Deck::factory()->create(['account_id' => $account->id]);
     $version = DeckVersion::factory()->create(['deck_id' => $deck->id]);
-    $player = Player::firstOrCreate(['username' => 'testplayer']);
 
-    return [$account, $version, $player];
+    return [$account, $version];
 }
 
-function createGameWithPlayer(MtgoMatch $match, Player $player, bool $won, bool $onPlay): Game
+function createGameWithLocalOnPlay(MtgoMatch $match, bool $won, bool $localOnPlay): Game
 {
-    $game = Game::create([
+    return Game::create([
         'match_id' => $match->id,
         'mtgo_id' => fake()->unique()->randomNumber(8),
         'started_at' => $match->started_at,
         'ended_at' => $match->started_at->addMinutes(10),
         'won' => $won,
+        'local_on_play' => $localOnPlay,
     ]);
-    $game->players()->attach($player, [
-        'on_play' => $onPlay,
-        'is_local' => true,
-        'instance_id' => 1,
-    ]);
-
-    return $game;
 }
 
 it('returns zero winrates when no game data', function () {
@@ -45,31 +37,22 @@ it('returns zero winrates when no game data', function () {
 });
 
 it('calculates OTP and OTD winrates correctly', function () {
-    [$account, $version, $player] = setupPlayDrawAccount();
-    $match1 = MtgoMatch::factory()->won()->create(['deck_version_id' => $version->id, 'started_at' => now()->subHour()]);
-    $match2 = MtgoMatch::factory()->lost()->create(['deck_version_id' => $version->id, 'started_at' => now()->subHour()]);
-    createGameWithPlayer($match1, $player, true, true);
-    createGameWithPlayer($match2, $player, false, true);
-    createGameWithPlayer($match1, $player, true, false);
-    createGameWithPlayer($match2, $player, true, false);
+    [$account, $version] = setupPlayDrawAccount();
+    $match1 = MtgoMatch::factory()->won()->create(['account_id' => $account->id, 'deck_version_id' => $version->id, 'started_at' => now()->subHour()]);
+    $match2 = MtgoMatch::factory()->lost()->create(['account_id' => $account->id, 'deck_version_id' => $version->id, 'started_at' => now()->subHour()]);
+    createGameWithLocalOnPlay($match1, true, true);   // OTP win
+    createGameWithLocalOnPlay($match2, false, true);  // OTP loss
+    createGameWithLocalOnPlay($match1, true, false);  // OTD win
+    createGameWithLocalOnPlay($match2, true, false);  // OTD win
     $result = GetPlayDrawSplit::run($account->id, now()->subWeek(), now());
     expect($result['otpWinrate'])->toBe(50);
     expect($result['otdWinrate'])->toBe(100);
 });
 
-it('ignores opponent player records', function () {
-    [$account, $version, $player] = setupPlayDrawAccount();
-    $opponent = Player::firstOrCreate(['username' => 'opponent']);
-    $match = MtgoMatch::factory()->won()->create(['deck_version_id' => $version->id, 'started_at' => now()->subHour()]);
-    $game = Game::create([
-        'match_id' => $match->id,
-        'mtgo_id' => fake()->unique()->randomNumber(8),
-        'started_at' => $match->started_at,
-        'ended_at' => $match->started_at->addMinutes(10),
-        'won' => true,
-    ]);
-    $game->players()->attach($player, ['on_play' => true, 'is_local' => true, 'instance_id' => 1]);
-    $game->players()->attach($opponent, ['on_play' => false, 'is_local' => false, 'instance_id' => 2]);
+it('only reads local_on_play column (no game_player join)', function () {
+    [$account, $version] = setupPlayDrawAccount();
+    $match = MtgoMatch::factory()->won()->create(['account_id' => $account->id, 'deck_version_id' => $version->id, 'started_at' => now()->subHour()]);
+    createGameWithLocalOnPlay($match, true, true);
     $result = GetPlayDrawSplit::run($account->id, now()->subWeek(), now());
     expect($result['otpWinrate'])->toBe(100);
     expect($result['otdWinrate'])->toBe(0);

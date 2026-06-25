@@ -2,41 +2,36 @@
 
 use App\Actions\Import\ReprocessImportedCardData;
 use App\Jobs\DetermineMatchArchetypesJob;
+use App\Models\Account;
 use App\Models\Game;
+use App\Models\GameDeck;
 use App\Models\GameLog;
 use App\Models\MtgoMatch;
-use App\Models\Player;
+use App\Models\Opponent;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
 
 uses(RefreshDatabase::class);
 
-it('re-extracts cards from game logs and dispatches archetype detection', function () {
+it('re-extracts cards from game logs and updates game_decks', function () {
     Queue::fake();
+
+    $account = Account::factory()->create(['username' => 'LocalPlayer', 'active' => true]);
+    Account::flushCurrent();
+    $opponent = Opponent::factory()->create(['username' => 'Opponent']);
 
     $match = MtgoMatch::factory()->create([
         'imported' => true,
         'token' => 'test-token-reprocess',
+        'account_id' => $account->id,
+        'opponent_id' => $opponent->id,
     ]);
-
-    $localPlayer = Player::create(['username' => 'LocalPlayer']);
-    $opponent = Player::create(['username' => 'Opponent']);
 
     $game = Game::factory()->create(['match_id' => $match->id]);
-    $game->players()->attach($localPlayer->id, [
-        'is_local' => true,
-        'on_play' => true,
-        'starting_hand_size' => 7,
-        'instance_id' => 0,
-        'deck_json' => [],
-    ]);
-    $game->players()->attach($opponent->id, [
-        'is_local' => false,
-        'on_play' => false,
-        'starting_hand_size' => 7,
-        'instance_id' => 0,
-        'deck_json' => [],
-    ]);
+
+    // New schema: game_decks rows (no game_player)
+    GameDeck::create(['game_id' => $game->id, 'is_opponent' => false, 'deck_json' => []]);
+    GameDeck::create(['game_id' => $game->id, 'is_opponent' => true, 'deck_json' => []]);
 
     GameLog::create([
         'match_token' => $match->token,
@@ -56,12 +51,17 @@ it('re-extracts cards from game logs and dispatches archetype detection', functi
 
     expect($result['reprocessed'])->toBe(1);
 
-    $localPivot = $game->fresh()->players()->wherePivot('is_local', true)->first();
-    $localIds = collect($localPivot->pivot->deck_json)->pluck('mtgo_id')->toArray();
+    // New schema: deck data is in game_decks rows
+    $localDeck = GameDeck::where('game_id', $game->id)->where('is_opponent', false)->first();
+    $oppDeck = GameDeck::where('game_id', $game->id)->where('is_opponent', true)->first();
+
+    expect($localDeck)->not->toBeNull();
+    expect($oppDeck)->not->toBeNull();
+
+    $localIds = collect($localDeck->deck_json)->pluck('mtgo_id')->toArray();
     expect($localIds)->toContain(82692); // Urza's Mine: 165384 >> 1 = 82692
 
-    $oppPivot = $game->fresh()->players()->wherePivot('is_local', false)->first();
-    $oppIds = collect($oppPivot->pivot->deck_json)->pluck('mtgo_id')->toArray();
+    $oppIds = collect($oppDeck->deck_json)->pluck('mtgo_id')->toArray();
     expect($oppIds)->toContain(89141); // Lightning Bolt: 178282 >> 1 = 89141
 
     Queue::assertPushed(DetermineMatchArchetypesJob::class, function ($job) use ($match) {

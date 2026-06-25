@@ -4,9 +4,9 @@ use App\Actions\DetermineMatchArchetypes;
 use App\Jobs\DownloadArchetypeDecklists;
 use App\Models\Archetype;
 use App\Models\Game;
+use App\Models\GameDeck;
 use App\Models\MatchArchetype;
 use App\Models\MtgoMatch;
-use App\Models\Player;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Http;
@@ -30,13 +30,10 @@ it('auto-assigns Homebrew to opponent when local and API detection both fail', f
         'state' => 'complete',
     ]);
 
-    $opponent = Player::create(['username' => 'opponent']);
-    $game = Game::factory()->create(['match_id' => $match->id]);
-    $game->players()->attach($opponent->id, [
-        'instance_id' => 2,
-        'is_local' => false,
-        'on_play' => false,
-        'starting_hand_size' => 7,
+    $game = Game::factory()->create(['match_id' => $match->id, 'opp_instance' => 2]);
+    GameDeck::create([
+        'game_id' => $game->id,
+        'is_opponent' => true,
         'deck_json' => [
             ['mtgo_id' => '999999', 'quantity' => 4],
         ],
@@ -47,7 +44,7 @@ it('auto-assigns Homebrew to opponent when local and API detection both fail', f
     $homebrewId = Archetype::where('uuid', Archetype::HOMEBREW_UUID)->value('id');
 
     expect(MatchArchetype::where('mtgo_match_id', $match->id)
-        ->where('player_id', $opponent->id)
+        ->where('is_opponent', true)
         ->where('archetype_id', $homebrewId)
         ->where('confidence', 0)
         ->exists())->toBeTrue();
@@ -64,13 +61,10 @@ it('does not auto-assign Homebrew to the local player when their deck does not m
         'state' => 'complete',
     ]);
 
-    $localPlayer = Player::create(['username' => 'me']);
-    $game = Game::factory()->create(['match_id' => $match->id]);
-    $game->players()->attach($localPlayer->id, [
-        'instance_id' => 1,
-        'is_local' => true,
-        'on_play' => true,
-        'starting_hand_size' => 7,
+    $game = Game::factory()->create(['match_id' => $match->id, 'local_instance' => 1]);
+    GameDeck::create([
+        'game_id' => $game->id,
+        'is_opponent' => false,
         'deck_json' => [
             ['mtgo_id' => '999999', 'quantity' => 4],
         ],
@@ -81,7 +75,7 @@ it('does not auto-assign Homebrew to the local player when their deck does not m
     $homebrewId = Archetype::where('uuid', Archetype::HOMEBREW_UUID)->value('id');
 
     expect(MatchArchetype::where('mtgo_match_id', $match->id)
-        ->where('player_id', $localPlayer->id)
+        ->where('is_opponent', false)
         ->where('archetype_id', $homebrewId)
         ->exists())->toBeFalse();
 });
@@ -98,13 +92,10 @@ it('does not dispatch DownloadArchetypeDecklists for fallback archetypes', funct
         'state' => 'complete',
     ]);
 
-    $opponent = Player::create(['username' => 'opp_'.uniqid()]);
-    $game = Game::factory()->create(['match_id' => $match->id]);
-    $game->players()->attach($opponent->id, [
-        'instance_id' => 2,
-        'is_local' => false,
-        'on_play' => false,
-        'starting_hand_size' => 7,
+    $game = Game::factory()->create(['match_id' => $match->id, 'opp_instance' => 2]);
+    GameDeck::create([
+        'game_id' => $game->id,
+        'is_opponent' => true,
         'deck_json' => [
             ['mtgo_id' => '999999', 'quantity' => 4],
         ],
@@ -131,22 +122,19 @@ it('is idempotent — re-running detection produces only one fallback row per op
         'state' => 'complete',
     ]);
 
-    $opponent = Player::create(['username' => 'opp_idempotent']);
-    $game = Game::factory()->create(['match_id' => $match->id]);
-    $game->players()->attach($opponent->id, [
-        'instance_id' => 2,
-        'is_local' => false,
-        'on_play' => false,
-        'starting_hand_size' => 7,
+    $game = Game::factory()->create(['match_id' => $match->id, 'opp_instance' => 2]);
+    GameDeck::create([
+        'game_id' => $game->id,
+        'is_opponent' => true,
         'deck_json' => [
             ['mtgo_id' => '999999', 'quantity' => 4],
         ],
     ]);
 
     DetermineMatchArchetypes::run($match);
-    DetermineMatchArchetypes::run($match->fresh(['games.players', 'games.opponents']));
+    DetermineMatchArchetypes::run($match->fresh(['games.decks']));
 
     expect(MatchArchetype::where('mtgo_match_id', $match->id)
-        ->where('player_id', $opponent->id)
+        ->where('is_opponent', true)
         ->count())->toBe(1);
 });

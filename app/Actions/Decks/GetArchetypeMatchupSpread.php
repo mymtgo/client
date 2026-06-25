@@ -33,14 +33,7 @@ class GetArchetypeMatchupSpread
             ->join('archetypes as a', 'a.id', '=', 'ma.archetype_id')
             ->whereIn('m.deck_version_id', $deckVersionIds)
             ->where('m.state', 'complete')
-            ->whereExists(function ($q) {
-                $q->selectRaw('1')
-                    ->from('game_player as gp')
-                    ->join('games as g', 'g.id', '=', 'gp.game_id')
-                    ->whereColumn('g.match_id', 'm.id')
-                    ->whereColumn('gp.player_id', 'ma.player_id')
-                    ->where('gp.is_local', 0);
-            })
+            ->where('ma.is_opponent', true)
             ->selectRaw('DISTINCT a.id as archetype_id, a.name as archetype_name, a.color_identity, m.id as match_id, m.outcome');
 
         if ($from && $to) {
@@ -48,18 +41,14 @@ class GetArchetypeMatchupSpread
         }
 
         $gameStatsQuery = DB::table('games as g')
-            ->leftJoin('game_player as gp', function ($join) {
-                $join->on('gp.game_id', '=', 'g.id')
-                    ->where('gp.is_local', true);
-            })
             ->groupBy('g.match_id')
             ->selectRaw('
                 g.match_id,
                 SUM(CASE WHEN g.won = 1 THEN 1 ELSE 0 END) as games_won,
                 SUM(CASE WHEN g.won = 0 THEN 1 ELSE 0 END) as games_lost,
                 SUM(CASE WHEN g.won IS NOT NULL THEN 1 ELSE 0 END) as total_games,
-                SUM(CASE WHEN gp.on_play = 1 AND g.won = 1 THEN 1 ELSE 0 END) as otp_won,
-                SUM(CASE WHEN gp.on_play = 1 AND g.won IS NOT NULL THEN 1 ELSE 0 END) as otp_total,
+                SUM(CASE WHEN g.local_on_play = 1 AND g.won = 1 THEN 1 ELSE 0 END) as otp_won,
+                SUM(CASE WHEN g.local_on_play = 1 AND g.won IS NOT NULL THEN 1 ELSE 0 END) as otp_total,
                 SUM(CASE WHEN g.turn_count IS NOT NULL THEN g.turn_count ELSE 0 END) as total_turns,
                 SUM(CASE WHEN g.turn_count IS NOT NULL THEN 1 ELSE 0 END) as games_with_turns
             ');

@@ -15,9 +15,10 @@ function streakAccount(): Account
     return Account::create(['username' => 'testplayer', 'active' => true, 'tracked' => true]);
 }
 
-function streakMatch(DeckVersion $version, MatchOutcome $outcome, string $startedAt): MtgoMatch
+function streakMatch(DeckVersion $version, MatchOutcome $outcome, string $startedAt, ?int $accountId = null): MtgoMatch
 {
     return MtgoMatch::factory()->create([
+        'account_id' => $accountId,
         'deck_version_id' => $version->id,
         'outcome' => $outcome,
         'started_at' => $startedAt,
@@ -40,10 +41,10 @@ it('returns current win streak', function () {
     $deck = Deck::factory()->create(['account_id' => $account->id]);
     $version = DeckVersion::factory()->create(['deck_id' => $deck->id]);
 
-    streakMatch($version, MatchOutcome::Loss, now()->subHours(5)->toDateTimeString());
-    streakMatch($version, MatchOutcome::Win, now()->subHours(4)->toDateTimeString());
-    streakMatch($version, MatchOutcome::Win, now()->subHours(3)->toDateTimeString());
-    streakMatch($version, MatchOutcome::Win, now()->subHours(2)->toDateTimeString());
+    streakMatch($version, MatchOutcome::Loss, now()->subHours(5)->toDateTimeString(), $account->id);
+    streakMatch($version, MatchOutcome::Win, now()->subHours(4)->toDateTimeString(), $account->id);
+    streakMatch($version, MatchOutcome::Win, now()->subHours(3)->toDateTimeString(), $account->id);
+    streakMatch($version, MatchOutcome::Win, now()->subHours(2)->toDateTimeString(), $account->id);
 
     $result = GetStreak::run($account->id, now()->subWeek(), now());
 
@@ -56,9 +57,9 @@ it('returns current loss streak', function () {
     $deck = Deck::factory()->create(['account_id' => $account->id]);
     $version = DeckVersion::factory()->create(['deck_id' => $deck->id]);
 
-    streakMatch($version, MatchOutcome::Win, now()->subHours(3)->toDateTimeString());
-    streakMatch($version, MatchOutcome::Loss, now()->subHours(2)->toDateTimeString());
-    streakMatch($version, MatchOutcome::Loss, now()->subHours(1)->toDateTimeString());
+    streakMatch($version, MatchOutcome::Win, now()->subHours(3)->toDateTimeString(), $account->id);
+    streakMatch($version, MatchOutcome::Loss, now()->subHours(2)->toDateTimeString(), $account->id);
+    streakMatch($version, MatchOutcome::Loss, now()->subHours(1)->toDateTimeString(), $account->id);
 
     $result = GetStreak::run($account->id, now()->subWeek(), now());
 
@@ -71,10 +72,10 @@ it('draws break the streak', function () {
     $deck = Deck::factory()->create(['account_id' => $account->id]);
     $version = DeckVersion::factory()->create(['deck_id' => $deck->id]);
 
-    streakMatch($version, MatchOutcome::Win, now()->subHours(4)->toDateTimeString());
-    streakMatch($version, MatchOutcome::Win, now()->subHours(3)->toDateTimeString());
-    streakMatch($version, MatchOutcome::Draw, now()->subHours(2)->toDateTimeString());
-    streakMatch($version, MatchOutcome::Win, now()->subHours(1)->toDateTimeString());
+    streakMatch($version, MatchOutcome::Win, now()->subHours(4)->toDateTimeString(), $account->id);
+    streakMatch($version, MatchOutcome::Win, now()->subHours(3)->toDateTimeString(), $account->id);
+    streakMatch($version, MatchOutcome::Draw, now()->subHours(2)->toDateTimeString(), $account->id);
+    streakMatch($version, MatchOutcome::Win, now()->subHours(1)->toDateTimeString(), $account->id);
 
     $result = GetStreak::run($account->id, now()->subWeek(), now());
 
@@ -87,9 +88,9 @@ it('unknown outcomes break the streak', function () {
     $deck = Deck::factory()->create(['account_id' => $account->id]);
     $version = DeckVersion::factory()->create(['deck_id' => $deck->id]);
 
-    streakMatch($version, MatchOutcome::Win, now()->subHours(3)->toDateTimeString());
-    streakMatch($version, MatchOutcome::Win, now()->subHours(2)->toDateTimeString());
-    streakMatch($version, MatchOutcome::Unknown, now()->subHours(1)->toDateTimeString());
+    streakMatch($version, MatchOutcome::Win, now()->subHours(3)->toDateTimeString(), $account->id);
+    streakMatch($version, MatchOutcome::Win, now()->subHours(2)->toDateTimeString(), $account->id);
+    streakMatch($version, MatchOutcome::Unknown, now()->subHours(1)->toDateTimeString(), $account->id);
 
     $result = GetStreak::run($account->id, now()->subWeek(), now());
 
@@ -103,12 +104,12 @@ it('computes all-time best streaks across full history', function () {
     $version = DeckVersion::factory()->create(['deck_id' => $deck->id]);
 
     for ($i = 10; $i > 5; $i--) {
-        streakMatch($version, MatchOutcome::Win, now()->subDays($i)->toDateTimeString());
+        streakMatch($version, MatchOutcome::Win, now()->subDays($i)->toDateTimeString(), $account->id);
     }
-    streakMatch($version, MatchOutcome::Loss, now()->subDays(5)->toDateTimeString());
+    streakMatch($version, MatchOutcome::Loss, now()->subDays(5)->toDateTimeString(), $account->id);
 
-    streakMatch($version, MatchOutcome::Win, now()->subHours(2)->toDateTimeString());
-    streakMatch($version, MatchOutcome::Win, now()->subHours(1)->toDateTimeString());
+    streakMatch($version, MatchOutcome::Win, now()->subHours(2)->toDateTimeString(), $account->id);
+    streakMatch($version, MatchOutcome::Win, now()->subHours(1)->toDateTimeString(), $account->id);
 
     $result = GetStreak::run($account->id, now()->subDays(3), now());
 

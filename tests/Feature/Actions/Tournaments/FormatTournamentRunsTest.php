@@ -8,7 +8,7 @@ use App\Models\Deck;
 use App\Models\DeckVersion;
 use App\Models\Game;
 use App\Models\MtgoMatch;
-use App\Models\Player;
+use App\Models\Opponent;
 use App\Models\Tournament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -161,34 +161,18 @@ it('aggregates per-game wins/losses and on-play/draw record', function () {
         'ended_at' => now(),
     ]);
 
-    $local = Player::factory()->create();
-    $opp = Player::factory()->create();
-
     $games = [
-        ['won' => 1, 'on_play' => 1],
-        ['won' => 0, 'on_play' => 0],
-        ['won' => 1, 'on_play' => 1],
+        ['won' => 1, 'local_on_play' => 1],
+        ['won' => 0, 'local_on_play' => 0],
+        ['won' => 1, 'local_on_play' => 1],
     ];
 
     foreach ($games as $i => $g) {
-        $game = Game::factory()->create([
+        Game::factory()->create([
             'match_id' => $match->id,
             'won' => $g['won'],
+            'local_on_play' => $g['local_on_play'],
             'started_at' => now()->addSeconds($i),
-        ]);
-        DB::table('game_player')->insert([
-            'game_id' => $game->id,
-            'player_id' => $local->id,
-            'is_local' => true,
-            'on_play' => $g['on_play'],
-            'instance_id' => 1,
-        ]);
-        DB::table('game_player')->insert([
-            'game_id' => $game->id,
-            'player_id' => $opp->id,
-            'is_local' => false,
-            'on_play' => 1 - $g['on_play'],
-            'instance_id' => 0,
         ]);
     }
 
@@ -209,6 +193,7 @@ it('computes top opponent archetype and top matchups list', function () {
 
     $matches = collect();
     foreach (range(0, 3) as $i) {
+        $opponent = Opponent::factory()->create();
         $matches->push(MtgoMatch::factory()->create([
             'tournament_id' => $tournament->id,
             'deck_version_id' => $version->id,
@@ -216,14 +201,13 @@ it('computes top opponent archetype and top matchups list', function () {
             'outcome' => MatchOutcome::Win,
             'started_at' => now()->subMinutes(60 - $i * 10),
             'ended_at' => now()->subMinutes(50 - $i * 10),
+            'opponent_id' => $opponent->id,
         ]));
     }
 
     $yawg = Archetype::factory()->create(['name' => 'Yawgmoth']);
     $burn = Archetype::factory()->create(['name' => 'Burn']);
     $hammer = Archetype::factory()->create(['name' => 'Hammer Time']);
-
-    $players = Player::factory()->count(4)->create();
 
     $assignments = [
         [$matches[0], $yawg, MatchOutcome::Win],
@@ -238,22 +222,9 @@ it('computes top opponent archetype and top matchups list', function () {
         DB::table('match_archetypes')->insert([
             'mtgo_match_id' => $match->id,
             'archetype_id' => $arch->id,
-            'player_id' => $players[$i]->id,
+            'is_opponent' => true,
             'created_at' => now(),
             'updated_at' => now(),
-        ]);
-
-        $game = Game::factory()->create([
-            'match_id' => $match->id,
-            'won' => $outcome === MatchOutcome::Win ? 1 : 0,
-            'started_at' => now(),
-        ]);
-
-        DB::table('game_player')->insert([
-            'game_id' => $game->id,
-            'player_id' => $players[$i]->id,
-            'is_local' => false,
-            'instance_id' => 0,
         ]);
     }
 

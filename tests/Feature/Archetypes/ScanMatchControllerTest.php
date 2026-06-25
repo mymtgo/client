@@ -1,8 +1,8 @@
 <?php
 
 use App\Models\Game;
+use App\Models\GameDeck;
 use App\Models\MtgoMatch;
-use App\Models\Player;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 
@@ -43,26 +43,21 @@ it('returns opponent cards aggregated across games with quantity capped at 4', f
     ]);
 
     $match = MtgoMatch::factory()->create();
-    $opponent = Player::create(['username' => 'opponent']);
 
-    $game1 = Game::factory()->create(['match_id' => $match->id]);
-    $game1->players()->attach($opponent->id, [
-        'instance_id' => 1,
-        'is_local' => false,
-        'on_play' => false,
-        'starting_hand_size' => 7,
+    $game1 = Game::factory()->create(['match_id' => $match->id, 'opp_instance' => 1]);
+    GameDeck::create([
+        'game_id' => $game1->id,
+        'is_opponent' => true,
         'deck_json' => [
             ['mtgo_id' => 12345, 'quantity' => 3],
             ['mtgo_id' => 67890, 'quantity' => 10],
         ],
     ]);
 
-    $game2 = Game::factory()->create(['match_id' => $match->id]);
-    $game2->players()->attach($opponent->id, [
-        'instance_id' => 2,
-        'is_local' => false,
-        'on_play' => true,
-        'starting_hand_size' => 7,
+    $game2 = Game::factory()->create(['match_id' => $match->id, 'opp_instance' => 2]);
+    GameDeck::create([
+        'game_id' => $game2->id,
+        'is_opponent' => true,
         'deck_json' => [
             ['mtgo_id' => 12345, 'quantity' => 2],
         ],
@@ -105,24 +100,18 @@ it('ignores local player cards when scanning a match', function () {
     ]);
 
     $match = MtgoMatch::factory()->create();
-    $localPlayer = Player::create(['username' => 'me']);
-    $opponent = Player::create(['username' => 'opponent']);
 
-    $game = Game::factory()->create(['match_id' => $match->id]);
-    $game->players()->attach($localPlayer->id, [
-        'instance_id' => 1,
-        'is_local' => true,
-        'on_play' => true,
-        'starting_hand_size' => 7,
+    $game = Game::factory()->create(['match_id' => $match->id, 'local_instance' => 1, 'opp_instance' => 2]);
+    GameDeck::create([
+        'game_id' => $game->id,
+        'is_opponent' => false,
         'deck_json' => [
             ['mtgo_id' => 99999, 'quantity' => 4],
         ],
     ]);
-    $game->players()->attach($opponent->id, [
-        'instance_id' => 2,
-        'is_local' => false,
-        'on_play' => false,
-        'starting_hand_size' => 7,
+    GameDeck::create([
+        'game_id' => $game->id,
+        'is_opponent' => true,
         'deck_json' => [
             ['mtgo_id' => 12345, 'quantity' => 2],
         ],

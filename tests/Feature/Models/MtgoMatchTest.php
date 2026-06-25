@@ -1,8 +1,12 @@
 <?php
 
 use App\Enums\MatchOutcome;
+use App\Models\Account;
+use App\Models\Archetype;
 use App\Models\Game;
+use App\Models\MatchArchetype;
 use App\Models\MtgoMatch;
+use App\Models\Opponent;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -94,4 +98,46 @@ it('returns game record string', function () {
     Game::create(['match_id' => $match->id, 'mtgo_id' => 'g3', 'won' => false, 'started_at' => now()]);
 
     expect($match->gameRecord())->toBe('2-1');
+});
+
+it('opponentArchetypes returns only is_opponent=true rows', function () {
+    $match = MtgoMatch::factory()->create();
+    $archetype = Archetype::factory()->create();
+
+    MatchArchetype::create(['mtgo_match_id' => $match->id, 'archetype_id' => $archetype->id, 'is_opponent' => false]);
+    MatchArchetype::create(['mtgo_match_id' => $match->id, 'archetype_id' => $archetype->id, 'is_opponent' => true]);
+    MatchArchetype::create(['mtgo_match_id' => $match->id, 'archetype_id' => $archetype->id, 'is_opponent' => true]);
+
+    $opponentArchetypes = $match->opponentArchetypes;
+
+    expect($opponentArchetypes)->toHaveCount(2)
+        ->and($opponentArchetypes->every(fn ($a) => $a->is_opponent === true))->toBeTrue();
+});
+
+it('scopeWithOpponentName resolves opponent_name from opponent_id', function () {
+    $opponent = Opponent::factory()->create(['username' => 'TestOpponent']);
+    MtgoMatch::factory()->create(['opponent_id' => $opponent->id]);
+    MtgoMatch::factory()->create(['opponent_id' => null]);
+
+    $matches = MtgoMatch::withOpponentName()->get();
+
+    $withOpponent = $matches->firstWhere('opponent_id', $opponent->id);
+    $withoutOpponent = $matches->firstWhere('opponent_id', null);
+
+    expect($withOpponent->opponent_name)->toBe('TestOpponent')
+        ->and($withoutOpponent->opponent_name)->toBeNull();
+});
+
+it('scopeForAccount filters by account_id', function () {
+    $account1 = Account::factory()->create();
+    $account2 = Account::factory()->create();
+
+    $match1 = MtgoMatch::factory()->create(['account_id' => $account1->id]);
+    MtgoMatch::factory()->create(['account_id' => $account2->id]);
+    MtgoMatch::factory()->create(['account_id' => null]);
+
+    $results = MtgoMatch::forAccount($account1->id)->get();
+
+    expect($results)->toHaveCount(1)
+        ->and($results->first()->id)->toBe($match1->id);
 });

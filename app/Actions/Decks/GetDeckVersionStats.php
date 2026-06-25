@@ -59,13 +59,13 @@ class GetDeckVersionStats
         // Uses DB::table to avoid Game model's boolean cast on 'won'
         // which would cast the SUM() aggregate to true/false.
         $otpStats = DB::table('games')
-            ->join('game_player as gp', fn ($j) => $j->on('gp.game_id', '=', 'games.id')->where('gp.is_local', 1))
             ->join('matches as m', 'm.id', '=', 'games.match_id')
             ->whereIn('m.deck_version_id', $versionIds)
             ->where('m.state', 'complete')
             ->whereBetween('m.started_at', [$from, $to])
-            ->selectRaw('m.deck_version_id, gp.on_play, SUM(CASE WHEN games.won = 1 THEN 1 ELSE 0 END) as won, SUM(CASE WHEN games.won = 0 THEN 1 ELSE 0 END) as lost')
-            ->groupBy('m.deck_version_id', 'gp.on_play')
+            ->whereNotNull('games.local_on_play')
+            ->selectRaw('m.deck_version_id, games.local_on_play as on_play, SUM(CASE WHEN games.won = 1 THEN 1 ELSE 0 END) as won, SUM(CASE WHEN games.won = 0 THEN 1 ELSE 0 END) as lost')
+            ->groupBy('m.deck_version_id', 'games.local_on_play')
             ->get()
             ->groupBy('deck_version_id');
 

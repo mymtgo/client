@@ -5,8 +5,8 @@ use App\Models\Archetype;
 use App\Models\ArchetypeDeck;
 use App\Models\Card;
 use App\Models\Game;
+use App\Models\GameDeck;
 use App\Models\MtgoMatch;
-use App\Models\Player;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -47,24 +47,22 @@ it('writes parent archetype_id when detection returns a merged source', function
     $sourceDeck->cards()->attach($card->id, ['quantity' => 4, 'sideboard' => false]);
 
     $match = MtgoMatch::factory()->create(['format' => 'modern']);
-    $game = Game::factory()->create(['match_id' => $match->id]);
+    $game = Game::factory()->create([
+        'match_id' => $match->id,
+        'opp_instance' => 1,
+        'local_instance' => 2,
+        'local_on_play' => true,
+    ]);
 
-    $opponent = Player::factory()->create();
-    $local = Player::factory()->create();
-
-    $game->players()->attach($opponent->id, [
-        'instance_id' => 1,
-        'is_local' => false,
-        'on_play' => false,
-        'starting_hand_size' => 7,
+    GameDeck::create([
+        'game_id' => $game->id,
+        'is_opponent' => true,
         'deck_json' => [['mtgo_id' => 99101, 'quantity' => 4]],
     ]);
 
-    $game->players()->attach($local->id, [
-        'instance_id' => 2,
-        'is_local' => true,
-        'on_play' => true,
-        'starting_hand_size' => 7,
+    GameDeck::create([
+        'game_id' => $game->id,
+        'is_opponent' => false,
         'deck_json' => [],
     ]);
 
@@ -72,7 +70,7 @@ it('writes parent archetype_id when detection returns a merged source', function
 
     $row = DB::table('match_archetypes')
         ->where('mtgo_match_id', $match->id)
-        ->where('player_id', $opponent->id)
+        ->where('is_opponent', true)
         ->first();
 
     expect($row)->not->toBeNull();
@@ -101,7 +99,7 @@ it('does not rewrite pre-existing match_archetypes rows pointing at a merged sou
     $existingRowId = DB::table('match_archetypes')->insertGetId([
         'mtgo_match_id' => $historicalMatch->id,
         'archetype_id' => $source->id,
-        'player_id' => Player::factory()->create()->id,
+        'is_opponent' => true,
         'confidence' => 0.9,
         'created_at' => now(),
         'updated_at' => now(),
@@ -110,24 +108,22 @@ it('does not rewrite pre-existing match_archetypes rows pointing at a merged sou
     // A fresh, separate match processed after the merge — opponent has an empty
     // deck so local detection falls back to homebrew/rogue (null archetype).
     $newMatch = MtgoMatch::factory()->create(['format' => 'modern']);
-    $game = Game::factory()->create(['match_id' => $newMatch->id]);
+    $game = Game::factory()->create([
+        'match_id' => $newMatch->id,
+        'opp_instance' => 1,
+        'local_instance' => 2,
+        'local_on_play' => true,
+    ]);
 
-    $opponent = Player::factory()->create();
-    $local = Player::factory()->create();
-
-    $game->players()->attach($opponent->id, [
-        'instance_id' => 1,
-        'is_local' => false,
-        'on_play' => false,
-        'starting_hand_size' => 7,
+    GameDeck::create([
+        'game_id' => $game->id,
+        'is_opponent' => true,
         'deck_json' => [],
     ]);
 
-    $game->players()->attach($local->id, [
-        'instance_id' => 2,
-        'is_local' => true,
-        'on_play' => true,
-        'starting_hand_size' => 7,
+    GameDeck::create([
+        'game_id' => $game->id,
+        'is_opponent' => false,
         'deck_json' => [],
     ]);
 

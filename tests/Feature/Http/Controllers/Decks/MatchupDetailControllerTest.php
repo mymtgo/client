@@ -6,7 +6,6 @@ use App\Models\DeckVersion;
 use App\Models\Game;
 use App\Models\MatchArchetype;
 use App\Models\MtgoMatch;
-use App\Models\Player;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -16,28 +15,20 @@ it('returns matchup detail as json', function () {
     $version = DeckVersion::factory()->create(['deck_id' => $deck->id]);
     $archetype = Archetype::factory()->create();
 
-    $opponent = Player::firstOrCreate(['username' => 'TestOpponent']);
-
     $match = MtgoMatch::factory()->won()->create([
         'deck_version_id' => $version->id,
         'started_at' => now(),
     ]);
 
-    $game = Game::factory()->create([
+    Game::factory()->create([
         'match_id' => $match->id,
         'won' => true,
-    ]);
-
-    $game->players()->attach($opponent->id, [
-        'instance_id' => 1,
-        'is_local' => false,
-        'on_play' => false,
-        'mulligan_count' => 0,
+        'opp_instance' => 1,
     ]);
 
     MatchArchetype::create([
         'mtgo_match_id' => $match->id,
-        'player_id' => $opponent->id,
+        'is_opponent' => true,
         'archetype_id' => $archetype->id,
         'confidence' => 1.0,
     ]);

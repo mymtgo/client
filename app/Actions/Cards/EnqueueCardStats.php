@@ -23,7 +23,7 @@ class EnqueueCardStats
                 ->whereHas('archetypes'))
             ->whereHas('cardGameStats', fn ($q) => $q->where('opponent', false))
             ->with([
-                'players',
+                'decks',
                 'match',
                 'match.games',
                 'match.archetypes.archetype',

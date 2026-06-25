@@ -9,7 +9,6 @@ use App\Models\DeckVersion;
 use App\Models\Game;
 use App\Models\MatchArchetype;
 use App\Models\MtgoMatch;
-use App\Models\Player;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
 
@@ -25,7 +24,6 @@ it('dispatches submit jobs asynchronously instead of blocking', function () {
 
     // Create matches that satisfy the submittable scope:
     // state=complete, submitted_at=null, deck_version_id not null, and has archetypes
-    $opponent = Player::create(['username' => 'Opponent']);
     $archetype = Archetype::factory()->create();
 
     $matches = MtgoMatch::factory()->count(3)->create([
@@ -34,16 +32,11 @@ it('dispatches submit jobs asynchronously instead of blocking', function () {
     ]);
 
     foreach ($matches as $match) {
-        $game = Game::factory()->create(['match_id' => $match->id]);
-        $game->players()->attach($opponent->id, [
-            'instance_id' => 1,
-            'is_local' => false,
-            'on_play' => false,
-        ]);
+        Game::factory()->create(['match_id' => $match->id, 'opp_instance' => 1]);
 
         MatchArchetype::create([
             'mtgo_match_id' => $match->id,
-            'player_id' => $opponent->id,
+            'is_opponent' => true,
             'archetype_id' => $archetype->id,
             'confidence' => 0.8,
         ]);

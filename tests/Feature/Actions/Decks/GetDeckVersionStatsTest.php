@@ -6,7 +6,6 @@ use App\Models\Deck;
 use App\Models\DeckVersion;
 use App\Models\Game;
 use App\Models\MtgoMatch;
-use App\Models\Player;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -15,20 +14,21 @@ it('includes gameless imported matches in match and game counts', function () {
     $account = Account::create(['username' => 'testplayer', 'active' => true, 'tracked' => true]);
     $deck = Deck::factory()->create(['account_id' => $account->id]);
     $version = DeckVersion::factory()->create(['deck_id' => $deck->id]);
-    $player = Player::firstOrCreate(['username' => 'testplayer']);
 
     // Tracked match with a real game row.
     $tracked = MtgoMatch::factory()->won()->create([
         'deck_version_id' => $version->id,
         'started_at' => now()->subHour(),
     ]);
-    $game = Game::create([
+    Game::create([
         'match_id' => $tracked->id,
         'mtgo_id' => fake()->unique()->randomNumber(8),
         'started_at' => $tracked->started_at,
         'won' => true,
+        'local_on_play' => true,
+        'local_instance' => 0,
+        'opp_instance' => 1,
     ]);
-    $game->players()->attach($player, ['on_play' => true, 'is_local' => true, 'instance_id' => 1]);
 
     // Gameless imports — match-level tallies only.
     MtgoMatch::factory()->won()->create([

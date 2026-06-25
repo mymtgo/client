@@ -6,9 +6,9 @@ use App\Models\Card;
 use App\Models\Deck;
 use App\Models\DeckVersion;
 use App\Models\Game;
+use App\Models\GameDeck;
 use App\Models\GameTimeline;
 use App\Models\MtgoMatch;
-use App\Models\Player;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -84,9 +84,7 @@ it('subtracts cards the local player has moved out of library', function () {
         'started_at' => now(), 'deck_version_id' => $deckVersion->id,
     ]);
 
-    $game = Game::create(['match_id' => $match->id, 'mtgo_id' => 'g-d3', 'started_at' => now()]);
-    $local = Player::create(['username' => 'me']);
-    $game->players()->attach($local->id, ['is_local' => 1, 'instance_id' => 1]);
+    $game = Game::create(['match_id' => $match->id, 'mtgo_id' => 'g-d3', 'started_at' => now(), 'local_instance' => 1]);
 
     // Latest snapshot: 2 Bolts in hand, 1 Mountain on battlefield (all owner=1, not Library).
     GameTimeline::create([
@@ -135,9 +133,7 @@ it('uses the latest timeline snapshot when multiple rows exist', function () {
         'started_at' => now(), 'deck_version_id' => $deckVersion->id,
     ]);
 
-    $game = Game::create(['match_id' => $match->id, 'mtgo_id' => 'g-d7', 'started_at' => now()]);
-    $local = Player::create(['username' => 'me']);
-    $game->players()->attach($local->id, ['is_local' => 1, 'instance_id' => 1]);
+    $game = Game::create(['match_id' => $match->id, 'mtgo_id' => 'g-d7', 'started_at' => now(), 'local_instance' => 1]);
 
     // Earlier snapshot: nothing out of library yet (inserted last to prove
     // selection is by timestamp, not insertion order).
@@ -224,11 +220,10 @@ it('prefers per-game deck_json over the match deck version', function () {
 
     // Game 2 deck_json: sided in 3 RIP for 3 Bolts. So maindeck = 20 Mountain + 1 Bolt + 3 RIP,
     // sideboard zone = 3 Bolts.
-    $game = Game::create(['match_id' => $match->id, 'mtgo_id' => 'g-d8', 'started_at' => now()]);
-    $local = Player::create(['username' => 'me']);
-    $game->players()->attach($local->id, [
-        'is_local' => 1,
-        'instance_id' => 1,
+    $game = Game::create(['match_id' => $match->id, 'mtgo_id' => 'g-d8', 'started_at' => now(), 'local_instance' => 1]);
+    GameDeck::create([
+        'game_id' => $game->id,
+        'is_opponent' => false,
         'deck_json' => [
             ['mtgo_id' => '101', 'quantity' => 20, 'sideboard' => false],
             ['mtgo_id' => '102', 'quantity' => 1, 'sideboard' => false],
@@ -268,9 +263,7 @@ it('does not subtract stack entries (activated abilities) from remaining', funct
         'started_at' => now(), 'deck_version_id' => $deckVersion->id,
     ]);
 
-    $game = Game::create(['match_id' => $match->id, 'mtgo_id' => 'g-d10', 'started_at' => now()]);
-    $local = Player::create(['username' => 'me']);
-    $game->players()->attach($local->id, ['is_local' => 1, 'instance_id' => 1]);
+    $game = Game::create(['match_id' => $match->id, 'mtgo_id' => 'g-d10', 'started_at' => now(), 'local_instance' => 1]);
 
     GameTimeline::create([
         'game_id' => $game->id,
@@ -311,11 +304,10 @@ it('does not subtract sideboard-zone copies from remaining', function () {
         'started_at' => now(), 'deck_version_id' => $deckVersion->id,
     ]);
 
-    $game = Game::create(['match_id' => $match->id, 'mtgo_id' => 'g-d9', 'started_at' => now()]);
-    $local = Player::create(['username' => 'me']);
-    $game->players()->attach($local->id, [
-        'is_local' => 1,
-        'instance_id' => 1,
+    $game = Game::create(['match_id' => $match->id, 'mtgo_id' => 'g-d9', 'started_at' => now(), 'local_instance' => 1]);
+    GameDeck::create([
+        'game_id' => $game->id,
+        'is_opponent' => false,
         'deck_json' => [
             ['mtgo_id' => '101', 'quantity' => 20, 'sideboard' => false],
             ['mtgo_id' => '401', 'quantity' => 2, 'sideboard' => false],

@@ -9,7 +9,7 @@ uses(RefreshDatabase::class);
 
 it('builds payload with API-required fields', function () {
     $scaffold = CardStatsTelemetryFactory::make();
-    $game = $scaffold['games'][0]->load(['match.games', 'match.archetypes.archetype', 'match.opponentArchetypes.archetype', 'players', 'cardGameStats']);
+    $game = $scaffold['games'][0]->load(['match.games', 'match.archetypes.archetype', 'match.opponentArchetypes.archetype', 'decks', 'cardGameStats']);
 
     $payload = BuildCardStatsGamePayload::run($game);
 
@@ -34,7 +34,7 @@ it('filters opponent card rows from payload', function () {
         ],
     ]]);
 
-    $game = $scaffold['games'][0]->load(['match.games', 'match.archetypes.archetype', 'match.opponentArchetypes.archetype', 'players', 'cardGameStats']);
+    $game = $scaffold['games'][0]->load(['match.games', 'match.archetypes.archetype', 'match.opponentArchetypes.archetype', 'decks', 'cardGameStats']);
 
     $payload = BuildCardStatsGamePayload::run($game);
 
@@ -48,8 +48,8 @@ it('derives is_postboard from game order within match', function () {
         ['won' => false, 'started_at' => now()->addMinutes(10), 'cards' => [[]]],
     ]);
 
-    $game1 = $scaffold['games'][0]->load(['match.games', 'match.archetypes.archetype', 'match.opponentArchetypes.archetype', 'players', 'cardGameStats']);
-    $game2 = $scaffold['games'][1]->load(['match.games', 'match.archetypes.archetype', 'match.opponentArchetypes.archetype', 'players', 'cardGameStats']);
+    $game1 = $scaffold['games'][0]->load(['match.games', 'match.archetypes.archetype', 'match.opponentArchetypes.archetype', 'decks', 'cardGameStats']);
+    $game2 = $scaffold['games'][1]->load(['match.games', 'match.archetypes.archetype', 'match.opponentArchetypes.archetype', 'decks', 'cardGameStats']);
 
     expect(BuildCardStatsGamePayload::run($game1)['is_postboard'])->toBeFalse();
     expect(BuildCardStatsGamePayload::run($game2)['is_postboard'])->toBeTrue();
@@ -57,7 +57,7 @@ it('derives is_postboard from game order within match', function () {
 
 it('returns null when player archetype is missing', function () {
     $scaffold = CardStatsTelemetryFactory::make(withLocalArchetype: false);
-    $game = $scaffold['games'][0]->load(['match.games', 'match.archetypes.archetype', 'match.opponentArchetypes.archetype', 'players', 'cardGameStats']);
+    $game = $scaffold['games'][0]->load(['match.games', 'match.archetypes.archetype', 'match.opponentArchetypes.archetype', 'decks', 'cardGameStats']);
 
     expect(BuildCardStatsGamePayload::run($game))->toBeNull();
 });
@@ -65,8 +65,8 @@ it('returns null when player archetype is missing', function () {
 it('returns null when no local player attached', function () {
     $scaffold = CardStatsTelemetryFactory::make();
     $game = $scaffold['games'][0];
-    $game->players()->detach($scaffold['local']->id);
-    $game = $game->fresh()->load(['match.games', 'match.archetypes.archetype', 'match.opponentArchetypes.archetype', 'players', 'cardGameStats']);
+    $game->update(['local_instance' => null]);
+    $game = $game->fresh()->load(['match.games', 'match.archetypes.archetype', 'match.opponentArchetypes.archetype', 'decks', 'cardGameStats']);
 
     expect(BuildCardStatsGamePayload::run($game))->toBeNull();
 });
@@ -75,14 +75,14 @@ it('returns null when all card rows are opponent-side', function () {
     $scaffold = CardStatsTelemetryFactory::make(games: [[
         'cards' => [['opponent' => true]],
     ]]);
-    $game = $scaffold['games'][0]->load(['match.games', 'match.archetypes.archetype', 'match.opponentArchetypes.archetype', 'players', 'cardGameStats']);
+    $game = $scaffold['games'][0]->load(['match.games', 'match.archetypes.archetype', 'match.opponentArchetypes.archetype', 'decks', 'cardGameStats']);
 
     expect(BuildCardStatsGamePayload::run($game))->toBeNull();
 });
 
 it('returns null opponent_archetype_uuid when opponent archetype missing', function () {
     $scaffold = CardStatsTelemetryFactory::make(withOpponentArchetype: false);
-    $game = $scaffold['games'][0]->load(['match.games', 'match.archetypes.archetype', 'match.opponentArchetypes.archetype', 'players', 'cardGameStats']);
+    $game = $scaffold['games'][0]->load(['match.games', 'match.archetypes.archetype', 'match.opponentArchetypes.archetype', 'decks', 'cardGameStats']);
 
     $payload = BuildCardStatsGamePayload::run($game);
 
@@ -108,7 +108,7 @@ it('serializes card field types correctly', function () {
         ]],
     ]]);
 
-    $game = $scaffold['games'][0]->load(['match.games', 'match.archetypes.archetype', 'match.opponentArchetypes.archetype', 'players', 'cardGameStats']);
+    $game = $scaffold['games'][0]->load(['match.games', 'match.archetypes.archetype', 'match.opponentArchetypes.archetype', 'decks', 'cardGameStats']);
     $payload = BuildCardStatsGamePayload::run($game);
     $card = $payload['cards'][0];
 

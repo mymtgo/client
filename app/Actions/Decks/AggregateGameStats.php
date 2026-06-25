@@ -32,12 +32,6 @@ class AggregateGameStats
 
         $query = DB::table('games as g')
             ->join('matches as m', 'm.id', '=', 'g.match_id')
-            ->leftJoin('game_player as gp_local', function ($j) {
-                $j->on('gp_local.game_id', '=', 'g.id')->where('gp_local.is_local', true);
-            })
-            ->leftJoin('game_player as gp_opp', function ($j) {
-                $j->on('gp_opp.game_id', '=', 'g.id')->where('gp_opp.is_local', false);
-            })
             ->whereIn('m.deck_version_id', $deckVersionIds)
             ->where('m.state', 'complete')
             ->whereNotNull('g.won')
@@ -50,14 +44,7 @@ class AggregateGameStats
                     ->join('archetypes as a', 'a.id', '=', 'ma.archetype_id')
                     ->whereColumn('ma.mtgo_match_id', 'm.id')
                     ->where('a.uuid', $opponentArchetypeUuid)
-                    ->whereExists(function ($gp) {
-                        $gp->selectRaw('1')
-                            ->from('game_player as gp2')
-                            ->join('games as g2', 'g2.id', '=', 'gp2.game_id')
-                            ->whereColumn('g2.match_id', 'm.id')
-                            ->whereColumn('gp2.player_id', 'ma.player_id')
-                            ->where('gp2.is_local', false);
-                    });
+                    ->where('ma.is_opponent', true);
             });
         }
 
@@ -71,9 +58,9 @@ class AggregateGameStats
                 'g.won',
                 'g.turn_count',
                 'g.started_at',
-                'gp_local.on_play as on_play',
-                'gp_local.mulligan_count as local_mulligans',
-                'gp_opp.mulligan_count as opponent_mulligans',
+                'g.local_on_play as on_play',
+                'g.local_mulligans',
+                'g.opp_mulligans as opponent_mulligans',
             ]);
 
         $numbered = $games

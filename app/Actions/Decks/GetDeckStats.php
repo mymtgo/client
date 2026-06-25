@@ -65,15 +65,12 @@ class GetDeckStats
         $otpStats = $matchesQuery->clone()
             ->toBase()
             ->join('games', 'games.match_id', '=', 'matches.id')
-            ->join('game_player', function ($join) {
-                $join->on('game_player.game_id', '=', 'games.id')
-                    ->where('game_player.is_local', true);
-            })
+            ->whereNotNull('games.local_on_play')
             ->selectRaw('
-                SUM(CASE WHEN game_player.on_play = 1 AND games.won = 1 THEN 1 ELSE 0 END) as otp_won,
-                SUM(CASE WHEN game_player.on_play = 1 AND games.won = 0 THEN 1 ELSE 0 END) as otp_lost,
-                SUM(CASE WHEN game_player.on_play = 0 AND games.won = 1 THEN 1 ELSE 0 END) as otd_won,
-                SUM(CASE WHEN game_player.on_play = 0 AND games.won = 0 THEN 1 ELSE 0 END) as otd_lost
+                SUM(CASE WHEN games.local_on_play = 1 AND games.won = 1 THEN 1 ELSE 0 END) as otp_won,
+                SUM(CASE WHEN games.local_on_play = 1 AND games.won = 0 THEN 1 ELSE 0 END) as otp_lost,
+                SUM(CASE WHEN games.local_on_play = 0 AND games.won = 1 THEN 1 ELSE 0 END) as otd_won,
+                SUM(CASE WHEN games.local_on_play = 0 AND games.won = 0 THEN 1 ELSE 0 END) as otd_lost
             ')
             ->first();
 

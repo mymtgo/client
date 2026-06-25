@@ -100,14 +100,7 @@ class GetLeagueKpis
         $rows = DB::table('match_archetypes as ma')
             ->join('matches as m', 'm.id', '=', 'ma.mtgo_match_id')
             ->join('archetypes as a', 'a.id', '=', 'ma.archetype_id')
-            ->whereExists(function ($q) {
-                $q->select(DB::raw(1))
-                    ->from('game_player as gp')
-                    ->join('games as g', 'g.id', '=', 'gp.game_id')
-                    ->whereRaw('g.match_id = ma.mtgo_match_id')
-                    ->whereRaw('gp.player_id = ma.player_id')
-                    ->where('gp.is_local', false);
-            })
+            ->where('ma.is_opponent', true)
             ->whereIn('ma.mtgo_match_id', $matchIds)
             ->select('a.name', 'm.outcome')
             ->get();

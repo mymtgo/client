@@ -1,12 +1,13 @@
 <?php
 
 use App\Actions\Matches\SubmitMatchToApi;
+use App\Models\Account;
 use App\Models\Archetype;
 use App\Models\DeckVersion;
 use App\Models\Game;
+use App\Models\GameDeck;
 use App\Models\League;
 use App\Models\MtgoMatch;
-use App\Models\Player;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 
@@ -19,41 +20,41 @@ beforeEach(function () {
 });
 
 /**
- * Build a submittable match with one game, a local + opponent player, and
- * resolved player/opponent archetypes. Opponent's seen cards come from the
- * game_player.deck_json pivot.
+ * Build a submittable match with one game and resolved player/opponent archetypes.
+ * Opponent's seen cards come from game_decks.
  *
  * @param  array<int, array<int, array{mtgo_id: int, quantity: int}>>  $opponentDeckJsonPerGame
  */
 function makeSubmittableMatch(array $opponentDeckJsonPerGame, ?League $league = null): MtgoMatch
 {
     $deckVersion = DeckVersion::factory()->create();
+    $account = Account::factory()->create(['username' => 'localplayer_'.uniqid(), 'active' => true]);
 
     $match = MtgoMatch::factory()->won()->create([
         'deck_version_id' => $deckVersion->id,
         'league_id' => $league?->id,
         'tournament_event_id' => null,
+        'account_id' => $account->id,
     ]);
 
-    $local = Player::factory()->create();
-    $opponent = Player::factory()->create();
-
     foreach ($opponentDeckJsonPerGame as $deckJson) {
-        $game = Game::factory()->create(['match_id' => $match->id, 'won' => true]);
+        $game = Game::factory()->create([
+            'match_id' => $match->id,
+            'won' => true,
+            'local_instance' => 2,
+            'opp_instance' => 1,
+            'local_on_play' => true,
+        ]);
 
-        $game->players()->attach($local->id, [
-            'instance_id' => 2,
-            'is_local' => true,
-            'on_play' => true,
-            'starting_hand_size' => 7,
+        GameDeck::create([
+            'game_id' => $game->id,
+            'is_opponent' => false,
             'deck_json' => [],
         ]);
 
-        $game->players()->attach($opponent->id, [
-            'instance_id' => 1,
-            'is_local' => false,
-            'on_play' => false,
-            'starting_hand_size' => 7,
+        GameDeck::create([
+            'game_id' => $game->id,
+            'is_opponent' => true,
             'deck_json' => $deckJson,
         ]);
     }
@@ -62,13 +63,13 @@ function makeSubmittableMatch(array $opponentDeckJsonPerGame, ?League $league = 
     $opponentArchetype = Archetype::factory()->create();
 
     $match->archetypes()->create([
-        'player_id' => $local->id,
+        'is_opponent' => false,
         'archetype_id' => $playerArchetype->id,
         'confidence' => 0.9,
     ]);
 
     $match->archetypes()->create([
-        'player_id' => $opponent->id,
+        'is_opponent' => true,
         'archetype_id' => $opponentArchetype->id,
         'confidence' => 0.9,
     ]);

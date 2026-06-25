@@ -14,7 +14,7 @@ class ShowController extends Controller
 {
     public function __invoke(string $id)
     {
-        $game = Game::findOrFail($id);
+        $game = Game::with('match.account')->findOrFail($id);
         $timeline = GameTimeline::where('game_id', $id)->get();
 
         // Batch load all cards referenced in the timeline
@@ -24,13 +24,13 @@ class ShowController extends Controller
 
         $cardsByMtgoId = Card::whereIn('mtgo_id', $allCatalogIds)->get()->keyBy('mtgo_id');
 
-        $localPlayer = $game->localPlayers->first();
+        $localUsername = $game->match?->account?->username;
 
-        $events = $timeline->map(function ($event) use ($cardsByMtgoId, $localPlayer) {
+        $events = $timeline->map(function ($event) use ($cardsByMtgoId, $localUsername) {
             $content = $event->content;
 
             foreach ($content['Players'] as $i => $player) {
-                $content['Players'][$i]['IsLocal'] = $localPlayer?->username === $player['Name'];
+                $content['Players'][$i]['IsLocal'] = $localUsername !== null && $localUsername === $player['Name'];
             }
 
             foreach ($content['Cards'] as $i => $card) {

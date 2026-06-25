@@ -7,13 +7,12 @@ use App\Models\DeckVersion;
 use App\Models\Game;
 use App\Models\MatchArchetype;
 use App\Models\MtgoMatch;
-use App\Models\Player;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 
 /**
- * Create a match with games and game_player pivots for testing.
+ * Create a match with games for testing.
  *
  * @param  array<int, array{won: bool, on_play: bool, turn_count: int|null}>  $games
  */
@@ -23,9 +22,6 @@ function createMatchWithGamesForSpread(
     string $outcome,
     array $games,
 ): MtgoMatch {
-    $localPlayer = Player::firstOrCreate(['username' => 'local_player']);
-    $opponentPlayer = Player::firstOrCreate(['username' => 'opponent_player']);
-
     $match = MtgoMatch::factory()->create([
         'deck_version_id' => $deckVersion->id,
         'outcome' => $outcome,
@@ -34,26 +30,18 @@ function createMatchWithGamesForSpread(
     MatchArchetype::create([
         'mtgo_match_id' => $match->id,
         'archetype_id' => $archetype->id,
-        'player_id' => $opponentPlayer->id,
+        'is_opponent' => true,
+        'confidence' => 0.8,
     ]);
 
     foreach ($games as $gameData) {
-        $game = Game::factory()->create([
+        Game::factory()->create([
             'match_id' => $match->id,
             'won' => $gameData['won'],
             'turn_count' => $gameData['turn_count'] ?? null,
-        ]);
-
-        $game->players()->attach($localPlayer->id, [
-            'is_local' => true,
-            'on_play' => $gameData['on_play'],
-            'instance_id' => fake()->randomNumber(6),
-        ]);
-
-        $game->players()->attach($opponentPlayer->id, [
-            'is_local' => false,
-            'on_play' => ! $gameData['on_play'],
-            'instance_id' => fake()->randomNumber(6),
+            'local_on_play' => $gameData['on_play'],
+            'local_instance' => 0,
+            'opp_instance' => 1,
         ]);
     }
 

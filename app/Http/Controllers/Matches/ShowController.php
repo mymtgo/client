@@ -20,10 +20,10 @@ class ShowController extends Controller
     public function __invoke(string $id)
     {
         $match = MtgoMatch::with([
-            'games.players',
+            'games.decks',
             'games.timeline',
             'opponentArchetypes.archetype',
-            'opponentArchetypes.player',
+            'opponent',
             'deck.cover',
             'deck.archetype',
             'league',
@@ -40,9 +40,11 @@ class ShowController extends Controller
         $registeredCards = $deckVersion->cards ?? [];
 
         // Batch all mtgo_ids: deck_json entries + timeline CatalogIDs
-        $deckMtgoIds = $match->games->flatMap(fn ($game) => $game->players->flatMap(
-            fn ($player) => collect($player->pivot->deck_json)->pluck('mtgo_id')
-        ));
+        $deckMtgoIds = $match->games->flatMap(
+            fn ($game) => $game->decks->flatMap(
+                fn ($deck) => collect($deck->deck_json)->pluck('mtgo_id')
+            )
+        );
 
         $timelineCatalogIds = $match->games->flatMap(
             fn ($game) => $game->timeline->flatMap(

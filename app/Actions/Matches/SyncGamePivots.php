@@ -6,17 +6,16 @@ use App\Models\Game;
 use Carbon\Carbon;
 
 /**
- * Apply per-game data extracted from a game log to a Game model and its
- * game_player pivot rows.
+ * Apply per-game data extracted from a game log to a Game model.
  *
- * Single source of truth for projecting `winner`, `on_play`, `ended_at`
- * from log entries onto the database. No-ops field-by-field when the
- * source data is missing — never clobbers existing values with defaults.
+ * Single source of truth for projecting `winner`, `local_on_play`, and `ended_at`
+ * from log entries onto the database. No-ops field-by-field when the source data
+ * is missing — never clobbers existing values with defaults.
  */
 class SyncGamePivots
 {
     /**
-     * Apply one game's parsed data to the Game model + pivots.
+     * Apply one game's parsed data to the Game model.
      *
      * @param  array{winner?: ?string, loser?: ?string, on_play?: ?string, ended_at?: ?string, started_at?: ?string}|null  $gameData
      */
@@ -26,14 +25,16 @@ class SyncGamePivots
             return;
         }
 
-        $game->loadMissing('players');
-
-        if (! $game->players->contains(fn ($p) => $p->username === $localUsername)) {
+        // The local player must actually be a participant of this game before we
+        // project winner/on_play onto it. local_instance is set by CreateGames only
+        // when the local player appears in the game state — mirrors the old
+        // game_player presence check, and guards against a flaky resolved username.
+        if ($game->local_instance === null) {
             return;
         }
 
         self::syncGameFields($game, $gameData, $localUsername);
-        self::syncOnPlayPivot($game, $gameData['on_play'] ?? null, $localUsername);
+        self::syncOnPlay($game, $gameData['on_play'] ?? null, $localUsername);
     }
 
     /**
@@ -64,34 +65,21 @@ class SyncGamePivots
     }
 
     /**
-     * Update on_play for both players' pivot rows from the parsed name.
+     * Set games.local_on_play from the parsed "chooses to play" name.
      *
      * Skipped entirely when the log lacks a "chooses to play" line, leaving
-     * any pre-existing pivot value intact.
+     * the existing value intact.
      */
-    private static function syncOnPlayPivot(Game $game, ?string $onPlayName, string $localUsername): void
+    private static function syncOnPlay(Game $game, ?string $onPlayName, string $localUsername): void
     {
         if ($onPlayName === null) {
             return;
         }
 
-        $local = $game->players->first(fn ($p) => $p->username === $localUsername);
-        $opponent = $game->players->first(fn ($p) => $p->username !== $localUsername);
+        $localOnPlay = $onPlayName === $localUsername;
 
-        if (! $local || ! $opponent) {
-            return;
+        if ($game->local_on_play === null || (bool) $game->local_on_play !== $localOnPlay) {
+            $game->update(['local_on_play' => $localOnPlay]);
         }
-
-        self::writeOnPlay($game, $local->id, $onPlayName === $local->username, (bool) $local->pivot->on_play);
-        self::writeOnPlay($game, $opponent->id, $onPlayName === $opponent->username, (bool) $opponent->pivot->on_play);
-    }
-
-    private static function writeOnPlay(Game $game, int $playerId, bool $value, bool $current): void
-    {
-        if ($current === $value) {
-            return;
-        }
-
-        $game->players()->updateExistingPivot($playerId, ['on_play' => $value]);
     }
 }

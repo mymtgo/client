@@ -4,7 +4,6 @@ use App\Actions\Matches\ExtractGameHandData;
 use App\Models\Game;
 use App\Models\GameTimeline;
 use App\Models\MtgoMatch;
-use App\Models\Player;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -27,23 +26,9 @@ function createGameWithTimeline(array $overrides = [], array $pivotOverrides = [
         'won' => $overrides['won'] ?? true,
         'started_at' => now()->subMinutes(20),
         'ended_at' => now()->subMinutes(10),
-    ]);
-
-    $localPlayer = Player::create(['username' => 'local_player']);
-    $opponentPlayer = Player::create(['username' => 'opponent_player']);
-
-    $game->players()->attach($localPlayer->id, [
-        'instance_id' => $pivotOverrides['local_instance_id'] ?? 1,
-        'is_local' => true,
-        'on_play' => $pivotOverrides['on_play'] ?? true,
-        'starting_hand_size' => 7,
-    ]);
-
-    $game->players()->attach($opponentPlayer->id, [
-        'instance_id' => $pivotOverrides['opponent_instance_id'] ?? 2,
-        'is_local' => false,
-        'on_play' => ! ($pivotOverrides['on_play'] ?? true),
-        'starting_hand_size' => 7,
+        'local_instance' => $pivotOverrides['local_instance_id'] ?? 1,
+        'opp_instance' => $pivotOverrides['opponent_instance_id'] ?? 2,
+        'local_on_play' => $pivotOverrides['on_play'] ?? true,
     ]);
 
     foreach ($timelineSnapshots as $i => $content) {
@@ -54,7 +39,7 @@ function createGameWithTimeline(array $overrides = [], array $pivotOverrides = [
         ]);
     }
 
-    return $game->fresh()->load(['players', 'timeline']);
+    return $game->fresh()->load(['timeline']);
 }
 
 it('returns the expected shape with correct keys', function () {

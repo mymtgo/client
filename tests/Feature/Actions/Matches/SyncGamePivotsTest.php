@@ -3,29 +3,9 @@
 use App\Actions\Matches\SyncGamePivots;
 use App\Models\Game;
 use App\Models\MtgoMatch;
-use App\Models\Player;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
-
-function attachSyncPivotPlayers(Game $game, string $localUsername, string $opponentUsername, bool $localOnPlay = false, bool $opponentOnPlay = false): array
-{
-    $local = Player::firstOrCreate(['username' => $localUsername]);
-    $opponent = Player::firstOrCreate(['username' => $opponentUsername]);
-
-    $game->players()->attach($local->id, [
-        'is_local' => true,
-        'on_play' => $localOnPlay,
-        'instance_id' => 1,
-    ]);
-    $game->players()->attach($opponent->id, [
-        'is_local' => false,
-        'on_play' => $opponentOnPlay,
-        'instance_id' => 2,
-    ]);
-
-    return [$local, $opponent];
-}
 
 function freshSyncPivotGame(): Game
 {
@@ -35,26 +15,34 @@ function freshSyncPivotGame(): Game
         'match_id' => $match->id,
         'won' => null,
         'ended_at' => null,
+        'local_on_play' => null,
+        'local_instance' => 1, // local player is a participant; required by the guard
     ]);
 }
 
+// ---------------------------------------------------------------------------
+// No-ops
+// ---------------------------------------------------------------------------
+
 it('no-ops when game data is null', function () {
     $game = freshSyncPivotGame();
-    [$local, $opponent] = attachSyncPivotPlayers($game, 'me', 'opp', localOnPlay: true);
+    $game->update(['local_on_play' => true, 'won' => null]);
 
-    SyncGamePivots::forGame($game->fresh(['players']), null, 'me');
+    SyncGamePivots::forGame($game->fresh(), null, 'me');
 
-    $pivots = $game->fresh()->players->keyBy('username');
-    expect((bool) $pivots['me']->pivot->on_play)->toBeTrue();
-    expect((bool) $pivots['opp']->pivot->on_play)->toBeFalse();
-    expect($game->fresh()->won)->toBeNull();
+    $fresh = $game->fresh();
+    expect($fresh->local_on_play)->toBeTrue();
+    expect($fresh->won)->toBeNull();
 });
+
+// ---------------------------------------------------------------------------
+// won
+// ---------------------------------------------------------------------------
 
 it('writes won true when local player is winner', function () {
     $game = freshSyncPivotGame();
-    attachSyncPivotPlayers($game, 'me', 'opp');
 
-    SyncGamePivots::forGame($game->fresh(['players']), [
+    SyncGamePivots::forGame($game->fresh(), [
         'winner' => 'me',
         'loser' => 'opp',
         'on_play' => null,
@@ -65,9 +53,8 @@ it('writes won true when local player is winner', function () {
 
 it('writes won false when opponent is winner', function () {
     $game = freshSyncPivotGame();
-    attachSyncPivotPlayers($game, 'me', 'opp');
 
-    SyncGamePivots::forGame($game->fresh(['players']), [
+    SyncGamePivots::forGame($game->fresh(), [
         'winner' => 'opp',
         'loser' => 'me',
         'on_play' => null,
@@ -78,10 +65,9 @@ it('writes won false when opponent is winner', function () {
 
 it('skips won update when winner missing', function () {
     $game = freshSyncPivotGame();
-    attachSyncPivotPlayers($game, 'me', 'opp');
     $game->update(['won' => true]);
 
-    SyncGamePivots::forGame($game->fresh(['players']), [
+    SyncGamePivots::forGame($game->fresh(), [
         'winner' => null,
         'on_play' => null,
     ], 'me');
@@ -89,11 +75,14 @@ it('skips won update when winner missing', function () {
     expect($game->fresh()->won)->toBeTrue();
 });
 
+// ---------------------------------------------------------------------------
+// ended_at
+// ---------------------------------------------------------------------------
+
 it('writes ended_at when source has it and game is null', function () {
     $game = freshSyncPivotGame();
-    attachSyncPivotPlayers($game, 'me', 'opp');
 
-    SyncGamePivots::forGame($game->fresh(['players']), [
+    SyncGamePivots::forGame($game->fresh(), [
         'winner' => 'me',
         'on_play' => null,
         'ended_at' => '2026-04-29T10:00:00+00:00',
@@ -104,11 +93,10 @@ it('writes ended_at when source has it and game is null', function () {
 
 it('does not overwrite existing ended_at', function () {
     $game = freshSyncPivotGame();
-    attachSyncPivotPlayers($game, 'me', 'opp');
     $original = now()->subDay();
     $game->update(['ended_at' => $original]);
 
-    SyncGamePivots::forGame($game->fresh(['players']), [
+    SyncGamePivots::forGame($game->fresh(), [
         'winner' => 'me',
         'on_play' => null,
         'ended_at' => '2026-04-29T10:00:00+00:00',
@@ -117,72 +105,95 @@ it('does not overwrite existing ended_at', function () {
     expect($game->fresh()->ended_at->timestamp)->toBe($original->timestamp);
 });
 
-it('flips on_play when local player is on play', function () {
-    $game = freshSyncPivotGame();
-    attachSyncPivotPlayers($game, 'me', 'opp', localOnPlay: false, opponentOnPlay: false);
+// ---------------------------------------------------------------------------
+// local_on_play (new scalar column)
+// ---------------------------------------------------------------------------
 
-    SyncGamePivots::forGame($game->fresh(['players']), [
+it('sets local_on_play true when local player chooses to play', function () {
+    $game = freshSyncPivotGame();
+
+    SyncGamePivots::forGame($game->fresh(), [
         'winner' => null,
         'on_play' => 'me',
     ], 'me');
 
-    $pivots = $game->fresh()->players->keyBy('username');
-    expect((bool) $pivots['me']->pivot->on_play)->toBeTrue();
-    expect((bool) $pivots['opp']->pivot->on_play)->toBeFalse();
+    expect($game->fresh()->local_on_play)->toBeTrue();
 });
 
-it('flips on_play when opponent is on play', function () {
+it('sets local_on_play false when opponent chooses to play', function () {
     $game = freshSyncPivotGame();
-    attachSyncPivotPlayers($game, 'me', 'opp', localOnPlay: true, opponentOnPlay: false);
+    $game->update(['local_on_play' => true]);
 
-    SyncGamePivots::forGame($game->fresh(['players']), [
+    SyncGamePivots::forGame($game->fresh(), [
         'winner' => null,
         'on_play' => 'opp',
     ], 'me');
 
-    $pivots = $game->fresh()->players->keyBy('username');
-    expect((bool) $pivots['me']->pivot->on_play)->toBeFalse();
-    expect((bool) $pivots['opp']->pivot->on_play)->toBeTrue();
+    expect($game->fresh()->local_on_play)->toBeFalse();
 });
 
-it('leaves on_play untouched when source name missing', function () {
+it('leaves local_on_play untouched when on_play source name is null', function () {
     $game = freshSyncPivotGame();
-    attachSyncPivotPlayers($game, 'me', 'opp', localOnPlay: true, opponentOnPlay: false);
+    $game->update(['local_on_play' => true]);
 
-    SyncGamePivots::forGame($game->fresh(['players']), [
+    SyncGamePivots::forGame($game->fresh(), [
         'winner' => 'me',
         'on_play' => null,
     ], 'me');
 
-    $pivots = $game->fresh()->players->keyBy('username');
-    expect((bool) $pivots['me']->pivot->on_play)->toBeTrue();
-    expect((bool) $pivots['opp']->pivot->on_play)->toBeFalse();
+    expect($game->fresh()->local_on_play)->toBeTrue();
 });
+
+it('leaves local_on_play untouched when on_play key is missing from gameData', function () {
+    $game = freshSyncPivotGame();
+    $game->update(['local_on_play' => true]);
+
+    SyncGamePivots::forGame($game->fresh(), [
+        'winner' => 'me',
+        // 'on_play' key intentionally absent
+    ], 'me');
+
+    expect($game->fresh()->local_on_play)->toBeTrue();
+});
+
+// ---------------------------------------------------------------------------
+// Idempotency
+// ---------------------------------------------------------------------------
 
 it('is idempotent across repeated calls', function () {
     $game = freshSyncPivotGame();
-    attachSyncPivotPlayers($game, 'me', 'opp');
 
     $data = ['winner' => 'me', 'on_play' => 'opp'];
 
-    SyncGamePivots::forGame($game->fresh(['players']), $data, 'me');
-    SyncGamePivots::forGame($game->fresh(['players']), $data, 'me');
-    SyncGamePivots::forGame($game->fresh(['players']), $data, 'me');
+    SyncGamePivots::forGame($game->fresh(), $data, 'me');
+    SyncGamePivots::forGame($game->fresh(), $data, 'me');
+    SyncGamePivots::forGame($game->fresh(), $data, 'me');
 
-    $pivots = $game->fresh()->players->keyBy('username');
-    expect((bool) $pivots['me']->pivot->on_play)->toBeFalse();
-    expect((bool) $pivots['opp']->pivot->on_play)->toBeTrue();
-    expect($game->fresh()->won)->toBeTrue();
+    $fresh = $game->fresh();
+    expect($fresh->local_on_play)->toBeFalse();
+    expect($fresh->won)->toBeTrue();
 });
 
-it('returns silently when local username does not match any pivot row', function () {
-    $game = freshSyncPivotGame();
-    attachSyncPivotPlayers($game, 'someoneA', 'someoneB');
+// ---------------------------------------------------------------------------
+// Guard: local_instance null prevents writes (local player not a participant)
+// ---------------------------------------------------------------------------
 
-    SyncGamePivots::forGame($game->fresh(['players']), [
-        'winner' => 'someoneA',
-        'on_play' => 'someoneA',
+it('does not write won or local_on_play when local_instance is null', function () {
+    $match = MtgoMatch::factory()->create();
+    $game = Game::factory()->create([
+        'match_id' => $match->id,
+        'won' => null,
+        'ended_at' => null,
+        'local_on_play' => null,
+        'local_instance' => null, // local player is NOT a participant
+    ]);
+
+    SyncGamePivots::forGame($game->fresh(), [
+        'winner' => 'unrelated',
+        'on_play' => 'unrelated',
     ], 'unrelated');
 
-    expect($game->fresh()->won)->toBeNull();
+    $fresh = $game->fresh();
+    expect($fresh->won)->toBeNull();
+    expect($fresh->local_on_play)->toBeNull();
 });

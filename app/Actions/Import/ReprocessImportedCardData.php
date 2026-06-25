@@ -3,16 +3,16 @@
 namespace App\Actions\Import;
 
 use App\Jobs\DetermineMatchArchetypesJob;
+use App\Models\GameDeck;
 use App\Models\GameLog;
 use App\Models\MtgoMatch;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class ReprocessImportedCardData
 {
     /**
      * Re-extract card data from stored game logs for all imported matches,
-     * update game_player.deck_json, and re-dispatch archetype detection.
+     * update game_decks.deck_json, and re-dispatch archetype detection.
      *
      * @return array{reprocessed: int, skipped: int}
      */
@@ -21,7 +21,7 @@ class ReprocessImportedCardData
         $matches = MtgoMatch::query()
             ->where('imported', true)
             ->whereHas('games')
-            ->with(['games.players'])
+            ->with(['games.decks'])
             ->get();
 
         $reprocessed = 0;
@@ -59,21 +59,15 @@ class ReprocessImportedCardData
             return;
         }
 
-        $firstGame = $match->games->first();
+        // Resolve local and opponent names from the match's participant columns.
+        // Fall back to inspecting the first game's decks if account/opponent aren't set.
+        $localName = $match->account?->username;
+        $opponentName = $match->opponent?->username;
 
-        if (! $firstGame) {
+        // If match-level identity is missing, skip — we can't identify who is local.
+        if (! $localName || ! $opponentName) {
             return;
         }
-
-        $localPlayer = $firstGame->players->first(fn ($p) => $p->pivot->is_local);
-        $opponentPlayer = $firstGame->players->first(fn ($p) => ! $p->pivot->is_local);
-
-        if (! $localPlayer || ! $opponentPlayer) {
-            return;
-        }
-
-        $localName = $localPlayer->username;
-        $opponentName = $opponentPlayer->username;
 
         // Hydrate all extracted cards so oracle_ids are available
         $allCards = collect($cardData['cards_by_player'][$localName] ?? [])
@@ -103,37 +97,49 @@ class ReprocessImportedCardData
             $localDeckJson = $buildDeckJson($gameCards[$localName] ?? []);
             $opponentDeckJson = $buildDeckJson($gameCards[$opponentName] ?? []);
 
-            DB::table('game_player')
-                ->where('game_id', $game->id)
-                ->where('player_id', $localPlayer->id)
-                ->update(['deck_json' => json_encode($localDeckJson)]);
+            GameDeck::updateOrCreate(
+                ['game_id' => $game->id, 'is_opponent' => false],
+                ['deck_json' => $localDeckJson],
+            );
 
-            DB::table('game_player')
-                ->where('game_id', $game->id)
-                ->where('player_id', $opponentPlayer->id)
-                ->update(['deck_json' => json_encode($opponentDeckJson)]);
+            GameDeck::updateOrCreate(
+                ['game_id' => $game->id, 'is_opponent' => true],
+                ['deck_json' => $opponentDeckJson],
+            );
 
             $meta = $gameMeta[$index] ?? [];
+            $gameUpdates = [];
+
             if (! empty($meta['turn_count'])) {
-                $game->update(['turn_count' => $meta['turn_count']]);
+                $gameUpdates['turn_count'] = $meta['turn_count'];
             }
 
             if (! empty($meta['dice_rolls'])) {
-                DB::table('game_player')
-                    ->where('game_id', $game->id)
-                    ->where('player_id', $localPlayer->id)
-                    ->update([
-                        'dice_roll' => $meta['dice_rolls'][$localName] ?? null,
-                        'mulligan_count' => $meta['mulligans'][$localName] ?? 0,
-                    ]);
+                $localDice = $meta['dice_rolls'][$localName] ?? null;
+                $oppDice = $meta['dice_rolls'][$opponentName] ?? null;
 
-                DB::table('game_player')
-                    ->where('game_id', $game->id)
-                    ->where('player_id', $opponentPlayer->id)
-                    ->update([
-                        'dice_roll' => $meta['dice_rolls'][$opponentName] ?? null,
-                        'mulligan_count' => $meta['mulligans'][$opponentName] ?? 0,
-                    ]);
+                if ($localDice !== null) {
+                    $gameUpdates['local_dice'] = $localDice;
+                }
+                if ($oppDice !== null) {
+                    $gameUpdates['opp_dice'] = $oppDice;
+                }
+            }
+
+            if (! empty($meta['mulligans'])) {
+                $localMulligans = $meta['mulligans'][$localName] ?? null;
+                $oppMulligans = $meta['mulligans'][$opponentName] ?? null;
+
+                if ($localMulligans !== null) {
+                    $gameUpdates['local_mulligans'] = $localMulligans;
+                }
+                if ($oppMulligans !== null) {
+                    $gameUpdates['opp_mulligans'] = $oppMulligans;
+                }
+            }
+
+            if (! empty($gameUpdates)) {
+                $game->update($gameUpdates);
             }
         }
 

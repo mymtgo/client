@@ -6,10 +6,9 @@ use App\Enums\MatchState;
 use App\Models\Archetype;
 use App\Models\Deck;
 use App\Models\DeckVersion;
-use App\Models\Game;
 use App\Models\League;
 use App\Models\MtgoMatch;
-use App\Models\Player;
+use App\Models\Opponent;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 
@@ -149,15 +148,9 @@ it('filters by opponent username search', function () {
     $league1 = feedLeague($this->dv, LeagueState::Complete, 5, 0);
     feedLeague($this->dv, LeagueState::Complete, 4, 1);
 
-    $opp = Player::factory()->create(['username' => 'targetuser']);
+    $opponent = Opponent::factory()->create(['username' => 'targetuser']);
     $match = $league1->matches->first();
-    $game = Game::factory()->create(['match_id' => $match->id, 'won' => 1, 'started_at' => now()]);
-    DB::table('game_player')->insert([
-        'game_id' => $game->id,
-        'player_id' => $opp->id,
-        'is_local' => false,
-        'instance_id' => 0,
-    ]);
+    $match->update(['opponent_id' => $opponent->id]);
 
     $this->get('/leagues?q=target')
         ->assertSuccessful()
@@ -169,23 +162,14 @@ it('filters by archetype search', function () {
     feedLeague($this->dv, LeagueState::Complete, 4, 1);
 
     $arch = Archetype::factory()->create(['name' => 'Yawgmoth']);
-    $player = Player::factory()->create();
     $match = $league1->matches->first();
 
     DB::table('match_archetypes')->insert([
         'mtgo_match_id' => $match->id,
         'archetype_id' => $arch->id,
-        'player_id' => $player->id,
+        'is_opponent' => true,
         'created_at' => now(),
         'updated_at' => now(),
-    ]);
-
-    $game = Game::factory()->create(['match_id' => $match->id, 'won' => 1, 'started_at' => now()]);
-    DB::table('game_player')->insert([
-        'game_id' => $game->id,
-        'player_id' => $player->id,
-        'is_local' => false,
-        'instance_id' => 0,
     ]);
 
     $this->get('/leagues?q=Yawgmoth')

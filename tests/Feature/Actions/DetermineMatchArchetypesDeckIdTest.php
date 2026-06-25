@@ -5,8 +5,8 @@ use App\Models\Archetype;
 use App\Models\ArchetypeDeck;
 use App\Models\Card;
 use App\Models\Game;
+use App\Models\GameDeck;
 use App\Models\MtgoMatch;
-use App\Models\Player;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -31,24 +31,22 @@ it('persists archetype_deck_id on match_archetypes when local estimation finds a
     $deck->cards()->attach($card->id, ['quantity' => 4, 'sideboard' => false]);
 
     $match = MtgoMatch::factory()->create(['format' => 'modern']);
-    $game = Game::factory()->create(['match_id' => $match->id]);
+    $game = Game::factory()->create([
+        'match_id' => $match->id,
+        'opp_instance' => 1,
+        'local_instance' => 2,
+        'local_on_play' => true,
+    ]);
 
-    $opponent = Player::factory()->create();
-    $local = Player::factory()->create();
-
-    $game->players()->attach($opponent->id, [
-        'instance_id' => 1,
-        'is_local' => false,
-        'on_play' => false,
-        'starting_hand_size' => 7,
+    GameDeck::create([
+        'game_id' => $game->id,
+        'is_opponent' => true,
         'deck_json' => [['mtgo_id' => 99001, 'quantity' => 4]],
     ]);
 
-    $game->players()->attach($local->id, [
-        'instance_id' => 2,
-        'is_local' => true,
-        'on_play' => true,
-        'starting_hand_size' => 7,
+    GameDeck::create([
+        'game_id' => $game->id,
+        'is_opponent' => false,
         'deck_json' => [],
     ]);
 
@@ -56,7 +54,7 @@ it('persists archetype_deck_id on match_archetypes when local estimation finds a
 
     $row = DB::table('match_archetypes')
         ->where('mtgo_match_id', $match->id)
-        ->where('player_id', $opponent->id)
+        ->where('is_opponent', true)
         ->first();
 
     expect($row)->not->toBeNull();

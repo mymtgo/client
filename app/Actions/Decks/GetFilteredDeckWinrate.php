@@ -38,26 +38,16 @@ class GetFilteredDeckWinrate
         }
 
         if ($onPlay !== null) {
-            $query->whereExists(function ($sub) use ($onPlay): void {
-                $sub->select(DB::raw(1))
-                    ->from('game_player as local_gp')
-                    ->whereRaw('local_gp.game_id = g.id')
-                    ->where('local_gp.is_local', true)
-                    ->where('local_gp.on_play', $onPlay);
-            });
+            $query->where('g.local_on_play', $onPlay);
         }
 
         if ($opponentArchetypeId) {
             $query->whereExists(function ($sub) use ($opponentArchetypeId): void {
                 $sub->select(DB::raw(1))
                     ->from('match_archetypes as ma')
-                    ->join('game_player as opp_gp', function ($join): void {
-                        $join->on('opp_gp.game_id', '=', 'g.id')
-                            ->on('opp_gp.player_id', '=', 'ma.player_id');
-                    })
                     ->whereRaw('ma.mtgo_match_id = g.match_id')
                     ->where('ma.archetype_id', $opponentArchetypeId)
-                    ->where('opp_gp.is_local', false);
+                    ->where('ma.is_opponent', true);
             });
         }
 

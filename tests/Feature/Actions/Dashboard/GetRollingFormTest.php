@@ -31,8 +31,8 @@ it('returns empty when no matches exist', function () {
 
 it('returns results for fewer than 20 matches', function () {
     [$account, $version] = setupFormAccount();
-    MtgoMatch::factory()->won()->create(['deck_version_id' => $version->id, 'started_at' => now()->subHours(2)]);
-    MtgoMatch::factory()->lost()->create(['deck_version_id' => $version->id, 'started_at' => now()->subHour()]);
+    MtgoMatch::factory()->won()->create(['account_id' => $account->id, 'deck_version_id' => $version->id, 'started_at' => now()->subHours(2)]);
+    MtgoMatch::factory()->lost()->create(['account_id' => $account->id, 'deck_version_id' => $version->id, 'started_at' => now()->subHour()]);
     $result = GetRollingForm::run($account->id);
     expect($result['results'])->toHaveCount(2);
     expect($result['results'])->toBe(['W', 'L']);
@@ -43,6 +43,7 @@ it('returns last 20 matches in chronological order', function () {
     [$account, $version] = setupFormAccount();
     for ($i = 25; $i > 0; $i--) {
         MtgoMatch::factory()->create([
+            'account_id' => $account->id,
             'deck_version_id' => $version->id,
             'outcome' => $i % 2 === 0 ? MatchOutcome::Win : MatchOutcome::Loss,
             'started_at' => now()->subHours($i),
@@ -55,12 +56,13 @@ it('returns last 20 matches in chronological order', function () {
 it('ignores complete matches with null outcome', function () {
     [$account, $version] = setupFormAccount();
     MtgoMatch::factory()->create([
+        'account_id' => $account->id,
         'deck_version_id' => $version->id,
         'outcome' => null,
         'started_at' => now()->subHours(3),
     ]);
-    MtgoMatch::factory()->won()->create(['deck_version_id' => $version->id, 'started_at' => now()->subHours(2)]);
-    MtgoMatch::factory()->lost()->create(['deck_version_id' => $version->id, 'started_at' => now()->subHour()]);
+    MtgoMatch::factory()->won()->create(['account_id' => $account->id, 'deck_version_id' => $version->id, 'started_at' => now()->subHours(2)]);
+    MtgoMatch::factory()->lost()->create(['account_id' => $account->id, 'deck_version_id' => $version->id, 'started_at' => now()->subHour()]);
     $result = GetRollingForm::run($account->id);
     expect($result['results'])->toBe(['W', 'L']);
     expect($result['winrate'])->toBe(50);
@@ -68,13 +70,14 @@ it('ignores complete matches with null outcome', function () {
 
 it('excludes draws from winrate denominator', function () {
     [$account, $version] = setupFormAccount();
-    MtgoMatch::factory()->won()->create(['deck_version_id' => $version->id, 'started_at' => now()->subHours(3)]);
+    MtgoMatch::factory()->won()->create(['account_id' => $account->id, 'deck_version_id' => $version->id, 'started_at' => now()->subHours(3)]);
     MtgoMatch::factory()->create([
+        'account_id' => $account->id,
         'deck_version_id' => $version->id,
         'outcome' => MatchOutcome::Draw,
         'started_at' => now()->subHours(2),
     ]);
-    MtgoMatch::factory()->won()->create(['deck_version_id' => $version->id, 'started_at' => now()->subHour()]);
+    MtgoMatch::factory()->won()->create(['account_id' => $account->id, 'deck_version_id' => $version->id, 'started_at' => now()->subHour()]);
     $result = GetRollingForm::run($account->id);
     expect($result['results'])->toBe(['W', 'D', 'W']);
     expect($result['winrate'])->toBe(100);

@@ -56,18 +56,6 @@ class MtgoMatch extends Model
         return $this->hasMany(Game::class, 'match_id', 'id');
     }
 
-    /**
-     * Check that at least one game has both a local player and an opponent.
-     * Matches without this are phantom matches from other players' games.
-     */
-    public function hasValidPlayers(): bool
-    {
-        return $this->games()
-            ->whereHas('localPlayers')
-            ->whereHas('opponents')
-            ->exists();
-    }
-
     public function deck(): HasOneThrough
     {
         return $this->hasOneThrough(
@@ -89,15 +77,7 @@ class MtgoMatch extends Model
     /** @return HasMany<MatchArchetype, $this> */
     public function opponentArchetypes(): HasMany
     {
-        return $this->hasMany(MatchArchetype::class)
-            ->whereIn('player_id', function ($q) {
-                $q->select('gp.player_id')
-                    ->from('game_player as gp')
-                    ->join('games as g', 'g.id', '=', 'gp.game_id')
-                    ->whereColumn('g.match_id', 'match_archetypes.mtgo_match_id')
-                    ->where('gp.is_local', false)
-                    ->distinct();
-            });
+        return $this->hasMany(MatchArchetype::class)->where('is_opponent', true);
     }
 
     public function scopeSubmittable(Builder $query): Builder
@@ -189,7 +169,7 @@ class MtgoMatch extends Model
 
     public function scopeForAccount(Builder $query, int $accountId): Builder
     {
-        return $query->whereHas('deckVersion', fn ($q) => $q->whereHas('deck', fn ($q2) => $q2->where('account_id', $accountId)));
+        return $query->where('account_id', $accountId);
     }
 
     public function scopeWon(Builder $query): Builder
@@ -213,12 +193,9 @@ class MtgoMatch extends Model
     public function scopeWithOpponentName(Builder $query): Builder
     {
         return $query->addSelect([
-            'opponent_name' => Player::query()
-                ->join('game_player', 'players.id', '=', 'game_player.player_id')
-                ->join('games', 'games.id', '=', 'game_player.game_id')
-                ->whereColumn('games.match_id', 'matches.id')
-                ->where('game_player.is_local', false)
-                ->select('players.username')
+            'opponent_name' => Opponent::query()
+                ->whereColumn('opponents.id', 'matches.opponent_id')
+                ->select('username')
                 ->limit(1),
         ]);
     }

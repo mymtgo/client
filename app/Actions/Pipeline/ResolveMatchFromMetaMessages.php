@@ -30,7 +30,7 @@ class ResolveMatchFromMetaMessages
             return;
         }
 
-        if (! $match->hasValidPlayers()) {
+        if ($match->account_id === null || $match->opponent_id === null) {
             return;
         }
 
@@ -113,7 +113,7 @@ class ResolveMatchFromMetaMessages
      */
     private static function syncGames(MtgoMatch $match, array $games, string $username): void
     {
-        $persistedGames = $match->games()->with('players')->orderBy('started_at')->get();
+        $persistedGames = $match->games()->orderBy('started_at')->get();
 
         foreach ($persistedGames as $index => $game) {
             SyncGamePivots::forGame($game, $games[$index] ?? null, $username);

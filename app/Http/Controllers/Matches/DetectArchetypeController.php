@@ -10,7 +10,7 @@ class DetectArchetypeController extends Controller
 {
     public function __invoke(string $id)
     {
-        $match = MtgoMatch::with('games.players')->findOrFail($id);
+        $match = MtgoMatch::with('games.decks')->findOrFail($id);
 
         DetermineMatchArchetypes::run($match);
 

@@ -6,7 +6,6 @@ use App\Actions\Archetypes\ResolveMergedArchetype;
 use App\Jobs\DownloadArchetypeDecklists;
 use App\Models\Archetype;
 use App\Models\MtgoMatch;
-use App\Models\Player;
 
 class DetermineMatchArchetypes
 {
@@ -20,22 +19,29 @@ class DetermineMatchArchetypes
             return;
         }
 
-        $player = $firstGame->localPlayers->first();
+        // ── Local archetype ───────────────────────────────────────────────────
+        // Prefer the archetype_id linked via the match's deck version (confidence 1.0).
+        // Fall back to detecting from the local game_decks row of the first game.
+        $deckArchetypeId = $match->deckVersion?->deck?->archetype_id;
 
-        if ($player) {
-            $deckArchetypeId = $match->deckVersion?->deck?->archetype_id;
+        if ($deckArchetypeId) {
+            $resolved = ResolveMergedArchetype::run($deckArchetypeId, null);
+            $matchArchetypes[] = [
+                'archetype_id' => $resolved['archetype_id'],
+                'archetype_deck_id' => $resolved['archetype_deck_id'],
+                'confidence' => 1.0,
+                'is_opponent' => false,
+            ];
+        } else {
+            $localDeckJson = $firstGame->decks()->where('is_opponent', false)->value('deck_json');
 
-            if ($deckArchetypeId) {
-                $resolved = ResolveMergedArchetype::run($deckArchetypeId, null);
-                $matchArchetypes[] = [
-                    'archetype_id' => $resolved['archetype_id'],
-                    'archetype_deck_id' => $resolved['archetype_deck_id'],
-                    'confidence' => 1.0,
-                    'player_id' => $player->id,
-                ];
-            } else {
-                $playerDeck = $player->pivot->deck_json;
-                $archetype = DetermineDeckArchetype::run(collect($playerDeck), $match->format, $match->id, $player->id);
+            if ($localDeckJson !== null) {
+                $archetype = DetermineDeckArchetype::run(
+                    collect($localDeckJson),
+                    $match->format,
+                    $match->id,
+                    $match->account_id,
+                );
 
                 if ($archetype) {
                     $resolved = ResolveMergedArchetype::run(
@@ -46,33 +52,29 @@ class DetermineMatchArchetypes
                         'archetype_id' => $resolved['archetype_id'],
                         'archetype_deck_id' => $resolved['archetype_deck_id'],
                         'confidence' => $archetype['confidence'],
-                        'player_id' => $player->id,
+                        'is_opponent' => false,
                     ];
                 }
             }
         }
 
-        $opponentDecks = [];
+        // ── Opponent archetype ────────────────────────────────────────────────
+        // Aggregate all opponent deck_json rows across every game into a single
+        // card list (1v1 invariant: there is exactly one opponent per match).
+        $opponentCards = [];
 
         foreach ($match->games as $game) {
-            $opponents = $game->opponents->filter(
-                fn (Player $player) => ! $player->pivot->is_local
-            );
+            $opponentDeckJson = $game->decks()->where('is_opponent', true)->value('deck_json');
 
-            foreach ($opponents as $opponent) {
-                $opponentDecks[$opponent->id] = $opponentDecks[$opponent->id] ?? [];
-
-                $cards = collect($opponent->pivot->deck_json)->values();
-
-                $opponentDecks[$opponent->id] = [
-                    ...$opponentDecks[$opponent->id],
-                    ...$cards->toArray(),
+            if ($opponentDeckJson) {
+                $opponentCards = [
+                    ...$opponentCards,
+                    ...collect($opponentDeckJson)->values()->toArray(),
                 ];
             }
         }
-        $homebrewId = null;
 
-        foreach ($opponentDecks as $opponentId => $opponentCards) {
+        if (! empty($opponentCards)) {
             $cards = collect($opponentCards)->groupBy('mtgo_id')->map(function ($cards) {
                 return [
                     'mtgo_id' => $cards[0]['mtgo_id'],
@@ -80,30 +82,35 @@ class DetermineMatchArchetypes
                 ];
             });
 
-            $archetype = DetermineDeckArchetype::run($cards, $match->format, $match->id, $opponentId);
+            $archetype = DetermineDeckArchetype::run(
+                $cards,
+                $match->format,
+                $match->id,
+                $match->opponent_id,
+            );
 
             if (! $archetype) {
-                $homebrewId ??= Archetype::query()
+                $homebrewId = Archetype::query()
                     ->where('uuid', Archetype::HOMEBREW_UUID)
                     ->value('id');
 
-                if ($homebrewId === null) {
-                    continue;
+                if ($homebrewId !== null) {
+                    $archetype = ['archetype_id' => $homebrewId, 'archetype_deck_id' => null, 'confidence' => 0];
                 }
-
-                $archetype = ['archetype_id' => $homebrewId, 'archetype_deck_id' => null, 'confidence' => 0];
             }
 
-            $resolved = ResolveMergedArchetype::run(
-                $archetype['archetype_id'],
-                $archetype['archetype_deck_id'] ?? null,
-            );
-            $matchArchetypes[] = [
-                'archetype_id' => $resolved['archetype_id'],
-                'archetype_deck_id' => $resolved['archetype_deck_id'],
-                'confidence' => $archetype['confidence'],
-                'player_id' => $opponentId,
-            ];
+            if ($archetype) {
+                $resolved = ResolveMergedArchetype::run(
+                    $archetype['archetype_id'],
+                    $archetype['archetype_deck_id'] ?? null,
+                );
+                $matchArchetypes[] = [
+                    'archetype_id' => $resolved['archetype_id'],
+                    'archetype_deck_id' => $resolved['archetype_deck_id'],
+                    'confidence' => $archetype['confidence'],
+                    'is_opponent' => true,
+                ];
+            }
         }
 
         $match->archetypes()->delete();

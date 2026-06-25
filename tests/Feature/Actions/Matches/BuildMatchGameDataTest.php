@@ -3,9 +3,9 @@
 use App\Actions\Matches\BuildMatchGameData;
 use App\Models\Card;
 use App\Models\Game;
+use App\Models\GameDeck;
 use App\Models\GameTimeline;
 use App\Models\MtgoMatch;
-use App\Models\Player;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -27,29 +27,21 @@ it('handles missing cards in the card collection without crashing', function () 
         'won' => true,
         'started_at' => now()->subMinutes(20),
         'ended_at' => now()->subMinutes(10),
+        'local_instance' => 1,
+        'opp_instance' => 2,
+        'local_on_play' => true,
     ]);
 
-    $localPlayer = Player::create(['username' => 'local_player']);
-    $opponentPlayer = Player::create(['username' => 'opponent_player']);
-
-    $game->players()->attach($localPlayer->id, [
-        'instance_id' => 1,
-        'is_local' => true,
-        'on_play' => true,
-        'starting_hand_size' => 7,
-        'deck_json' => [
-            ['mtgo_id' => 9999, 'quantity' => 1, 'sideboard' => false],
-        ],
+    GameDeck::create([
+        'game_id' => $game->id,
+        'is_opponent' => false,
+        'deck_json' => [['mtgo_id' => 9999, 'quantity' => 1, 'sideboard' => false]],
     ]);
 
-    $game->players()->attach($opponentPlayer->id, [
-        'instance_id' => 2,
-        'is_local' => false,
-        'on_play' => false,
-        'starting_hand_size' => 7,
-        'deck_json' => [
-            ['mtgo_id' => 8888, 'quantity' => 1],
-        ],
+    GameDeck::create([
+        'game_id' => $game->id,
+        'is_opponent' => true,
+        'deck_json' => [['mtgo_id' => 8888, 'quantity' => 1]],
     ]);
 
     GameTimeline::create([
@@ -80,7 +72,7 @@ it('handles missing cards in the card collection without crashing', function () 
         ],
     ]);
 
-    $game = $game->fresh()->load(['players', 'timeline']);
+    $game = $game->fresh()->load(['decks', 'timeline']);
 
     // Empty card collections — simulates missing/unknown cards
     $cardsByMtgoId = collect();
@@ -112,23 +104,9 @@ it('resolves card names when cards exist in collection', function () {
         'won' => true,
         'started_at' => now()->subMinutes(20),
         'ended_at' => now()->subMinutes(10),
-    ]);
-
-    $localPlayer = Player::create(['username' => 'local_player']);
-    $opponentPlayer = Player::create(['username' => 'opponent_player']);
-
-    $game->players()->attach($localPlayer->id, [
-        'instance_id' => 1,
-        'is_local' => true,
-        'on_play' => true,
-        'starting_hand_size' => 7,
-    ]);
-
-    $game->players()->attach($opponentPlayer->id, [
-        'instance_id' => 2,
-        'is_local' => false,
-        'on_play' => false,
-        'starting_hand_size' => 7,
+        'local_instance' => 1,
+        'opp_instance' => 2,
+        'local_on_play' => true,
     ]);
 
     GameTimeline::create([
@@ -159,7 +137,7 @@ it('resolves card names when cards exist in collection', function () {
         ],
     ]);
 
-    $game = $game->fresh()->load(['players', 'timeline']);
+    $game = $game->fresh()->load(['decks', 'timeline']);
 
     $card = Card::factory()->create(['mtgo_id' => 5001, 'name' => 'Lightning Bolt', 'type' => 'Instant']);
     $cardsByMtgoId = collect([$card->mtgo_id => $card]);
@@ -171,7 +149,7 @@ it('resolves card names when cards exist in collection', function () {
 });
 
 /**
- * Build minimal Game with one local player whose deck_json mirrors $deckJson.
+ * Build minimal Game with a local deck_json (and optional opponent deck_json).
  */
 function makeGameWithLocalDeck(array $deckJson, ?array $opponentDeckJson = null): Game
 {
@@ -191,28 +169,26 @@ function makeGameWithLocalDeck(array $deckJson, ?array $opponentDeckJson = null)
         'won' => true,
         'started_at' => now()->subMinutes(20),
         'ended_at' => now()->subMinutes(10),
+        'local_instance' => 1,
+        'opp_instance' => 2,
+        'local_on_play' => true,
     ]);
 
-    $localPlayer = Player::create(['username' => 'local-'.uniqid()]);
-    $opponentPlayer = Player::create(['username' => 'opp-'.uniqid()]);
-
-    $game->players()->attach($localPlayer->id, [
-        'instance_id' => 1,
-        'is_local' => true,
-        'on_play' => true,
-        'starting_hand_size' => 7,
+    GameDeck::create([
+        'game_id' => $game->id,
+        'is_opponent' => false,
         'deck_json' => $deckJson,
     ]);
 
-    $game->players()->attach($opponentPlayer->id, [
-        'instance_id' => 2,
-        'is_local' => false,
-        'on_play' => false,
-        'starting_hand_size' => 7,
-        'deck_json' => $opponentDeckJson ?? [],
-    ]);
+    if ($opponentDeckJson !== null) {
+        GameDeck::create([
+            'game_id' => $game->id,
+            'is_opponent' => true,
+            'deck_json' => $opponentDeckJson,
+        ]);
+    }
 
-    return $game->fresh()->load(['players', 'timeline']);
+    return $game->fresh()->load(['decks', 'timeline']);
 }
 
 it('reports no sideboard changes when game deck matches registered deck (canonical accessor output)', function () {

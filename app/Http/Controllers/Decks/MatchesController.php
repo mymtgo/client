@@ -70,14 +70,7 @@ class MatchesController extends Controller
         if ($sortColumn === 'archetype') {
             $query->leftJoin('match_archetypes as ma_sort', function ($join) {
                 $join->on('ma_sort.mtgo_match_id', '=', 'matches.id')
-                    ->whereIn('ma_sort.player_id', function ($sub) {
-                        $sub->select('gp.player_id')
-                            ->from('game_player as gp')
-                            ->join('games as g', 'g.id', '=', 'gp.game_id')
-                            ->whereColumn('g.match_id', 'matches.id')
-                            ->where('gp.is_local', false)
-                            ->distinct();
-                    });
+                    ->where('ma_sort.is_opponent', true);
             })
                 ->leftJoin('archetypes as a_sort', 'a_sort.id', '=', 'ma_sort.archetype_id')
                 ->orderBy('a_sort.name', $sortDir);
@@ -98,7 +91,7 @@ class MatchesController extends Controller
         }
 
         $matches = MatchData::collect(
-            $query->with(['games.players', 'opponentArchetypes.archetype', 'opponentArchetypes.player', 'league'])
+            $query->with(['games', 'opponentArchetypes.archetype', 'opponent', 'league'])
                 ->withCount([
                     'games as games_won_count' => fn ($q) => $q->where('won', true),
                     'games as games_lost_count' => fn ($q) => $q->where('won', false),
@@ -141,14 +134,7 @@ class MatchesController extends Controller
                 ->forFormat($archetypeFormat)
                 ->withCount(['matchArchetypes' => fn ($q) => $q
                     ->whereIn('mtgo_match_id', $allMatchIds)
-                    ->whereIn('player_id', function ($sub) {
-                        $sub->select('gp.player_id')
-                            ->from('game_player as gp')
-                            ->join('games as g', 'g.id', '=', 'gp.game_id')
-                            ->whereColumn('g.match_id', 'match_archetypes.mtgo_match_id')
-                            ->where('gp.is_local', false)
-                            ->distinct();
-                    }),
+                    ->where('is_opponent', true),
                 ])
                 ->orderByDesc('match_archetypes_count')
                 ->orderBy('name')

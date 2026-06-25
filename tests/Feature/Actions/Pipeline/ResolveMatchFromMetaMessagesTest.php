@@ -5,11 +5,12 @@ use App\Enums\MatchOutcome;
 use App\Enums\MatchState;
 use App\Facades\AppSettings;
 use App\Facades\Mtgo;
+use App\Models\Account;
 use App\Models\Game;
 use App\Models\LogEvent;
 use App\Models\LogInstance;
 use App\Models\MtgoMatch;
-use App\Models\Player;
+use App\Models\Opponent;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 
@@ -35,18 +36,22 @@ function resolveMetaTest_makeMatch(string $token, MatchState $state = MatchState
 
 function resolveMetaTest_setupMatchWithPlayers(string $token, string $localUsername = 'TestPlayer', string $oppUsername = 'Opp', MatchState $state = MatchState::InProgress): MtgoMatch
 {
+    $account = Account::factory()->create();
+    $opponentRecord = Opponent::factory()->create();
+
     $match = MtgoMatch::factory()->create([
         'token' => $token,
         'state' => $state,
         'mtgo_id' => 123,
+        'account_id' => $account->id,
+        'opponent_id' => $opponentRecord->id,
     ]);
 
-    $localPlayer = Player::factory()->create(['username' => $localUsername]);
-    $opponent = Player::factory()->create(['username' => $oppUsername]);
-
-    $game = Game::factory()->create(['match_id' => $match->id]);
-    $game->players()->attach($localPlayer->id, ['is_local' => 1, 'instance_id' => 1]);
-    $game->players()->attach($opponent->id, ['is_local' => 0, 'instance_id' => 2]);
+    Game::factory()->create([
+        'match_id' => $match->id,
+        'local_instance' => 1,
+        'opp_instance' => 2,
+    ]);
 
     return $match;
 }

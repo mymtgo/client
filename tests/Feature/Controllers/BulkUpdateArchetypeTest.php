@@ -4,31 +4,24 @@ use App\Models\Archetype;
 use App\Models\Game;
 use App\Models\MatchArchetype;
 use App\Models\MtgoMatch;
-use App\Models\Player;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 
-function createMatchWithOpponent(Player $opponent): MtgoMatch
+function createMatchWithOpponent(): MtgoMatch
 {
     $match = MtgoMatch::factory()->create();
-    $game = Game::factory()->create(['match_id' => $match->id]);
-    $game->players()->attach($opponent->id, [
-        'instance_id' => 1,
-        'is_local' => false,
-        'on_play' => false,
-    ]);
+    Game::factory()->create(['match_id' => $match->id, 'opp_instance' => 1]);
 
     return $match;
 }
 
 it('sets archetype for multiple matches', function () {
-    $opponent = Player::create(['username' => 'TestOpponent']);
     $archetype = Archetype::factory()->create();
     $matches = collect([
-        createMatchWithOpponent($opponent),
-        createMatchWithOpponent($opponent),
-        createMatchWithOpponent($opponent),
+        createMatchWithOpponent(),
+        createMatchWithOpponent(),
+        createMatchWithOpponent(),
     ]);
 
     $this->patch('/matches/bulk-archetype', [
@@ -39,7 +32,7 @@ it('sets archetype for multiple matches', function () {
     foreach ($matches as $match) {
         $this->assertDatabaseHas('match_archetypes', [
             'mtgo_match_id' => $match->id,
-            'player_id' => $opponent->id,
+            'is_opponent' => true,
             'archetype_id' => $archetype->id,
             'confidence' => 1.0,
         ]);
@@ -47,14 +40,13 @@ it('sets archetype for multiple matches', function () {
 });
 
 it('updates existing archetypes when bulk setting', function () {
-    $opponent = Player::create(['username' => 'TestOpponent']);
     $oldArchetype = Archetype::factory()->create();
     $newArchetype = Archetype::factory()->create();
-    $match = createMatchWithOpponent($opponent);
+    $match = createMatchWithOpponent();
 
     MatchArchetype::create([
         'mtgo_match_id' => $match->id,
-        'player_id' => $opponent->id,
+        'is_opponent' => true,
         'archetype_id' => $oldArchetype->id,
         'confidence' => 0.5,
     ]);

@@ -3,9 +3,8 @@
 use App\Enums\MatchState;
 use App\Facades\AppSettings;
 use App\Models\Archetype;
-use App\Models\Game;
 use App\Models\MtgoMatch;
-use App\Models\Player;
+use App\Models\Opponent;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
@@ -24,18 +23,9 @@ beforeEach(function () {
     AppSettings::setApiKeyExpiresAt(now()->addHour()->toIso8601String());
 });
 
-function attachScoutOpponent(MtgoMatch $match, Player $opponent): void
+function attachScoutOpponent(MtgoMatch $match, Opponent $opponent): void
 {
-    $game = Game::create([
-        'match_id' => $match->id,
-        'mtgo_id' => 'g-'.$match->id,
-        'started_at' => now(),
-    ]);
-
-    $game->players()->attach($opponent->id, [
-        'is_local' => 0,
-        'instance_id' => 'i-'.$opponent->id,
-    ]);
+    $match->update(['opponent_id' => $opponent->id]);
 }
 
 it('renders league archetype when API returns a 5-0 hit', function () {
@@ -46,7 +36,7 @@ it('renders league archetype when API returns a 5-0 hit', function () {
         'color_identity' => 'R',
     ]);
 
-    $opponent = Player::create(['username' => 'leagueWinner']);
+    $opponent = Opponent::factory()->create(['username' => 'leagueWinner']);
 
     $match = MtgoMatch::create([
         'mtgo_id' => '300001',
@@ -86,7 +76,7 @@ it('renders league archetype when API returns a 5-0 hit', function () {
 });
 
 it('falls back to local data when API returns 404', function () {
-    $opponent = Player::create(['username' => 'noLeagueGuy']);
+    $opponent = Opponent::factory()->create(['username' => 'noLeagueGuy']);
 
     $match = MtgoMatch::create([
         'mtgo_id' => '300002',
@@ -121,7 +111,7 @@ it('caches API result so subsequent polls do not re-fetch', function () {
         'color_identity' => 'BGR',
     ]);
 
-    $opponent = Player::create(['username' => 'cachedFoe']);
+    $opponent = Opponent::factory()->create(['username' => 'cachedFoe']);
 
     $match = MtgoMatch::create([
         'mtgo_id' => '300003',

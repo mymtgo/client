@@ -50,7 +50,7 @@ class MatchData extends Data
             notes: $match->notes,
             deck: Lazy::whenLoaded('deck', $match, fn () => DeckData::from($match->deck)),
             opponentArchetypes: Lazy::whenLoaded('opponentArchetypes', $match, fn () => MatchArchetypeData::collect($match->opponentArchetypes)),
-            opponentName: Lazy::whenLoaded('games', $match, fn () => $match->games->first()?->players->first(fn ($p) => ! $p->pivot->is_local)?->username),
+            opponentName: Lazy::whenLoaded('opponent', $match, fn () => $match->opponent?->username),
             leagueName: Lazy::whenLoaded('league', $match, fn () => $match->league?->name),
             games: Lazy::whenLoaded('games', $match, fn () => GameData::collect($match->games)),
             gameResults: Lazy::whenLoaded('games', $match, fn () => $match->games
@@ -59,7 +59,7 @@ class MatchData extends Data
                 ->values()
                 ->map(fn ($g) => new GameResultSummaryData(
                     result: $g->won ? 'W' : 'L',
-                    onPlay: $g->players->first(fn ($p) => $p->pivot->is_local)?->pivot->on_play,
+                    onPlay: $g->local_on_play,
                 ))->all()),
         );
     }

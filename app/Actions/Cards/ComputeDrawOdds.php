@@ -19,7 +19,7 @@ class ComputeDrawOdds
         // appear in games 2/3 and sided-out cards drop out. Fall back to the
         // match-level deck version when no game has been recorded yet.
         $game = $match->games()->latest('started_at')->first();
-        $deckSource = $game?->localPlayers->first()?->pivot->deck_json
+        $deckSource = $game?->localDeck()?->deck_json
             ?: $match->deckVersion?->cards
             ?? [];
 
@@ -40,7 +40,7 @@ class ComputeDrawOdds
     private static function build(MtgoMatch $match, Collection $maindeck, ?Game $game): DrawOddsData
     {
         $snapshot = $game?->timeline()->latest('timestamp')->first();
-        $localInstanceId = (int) ($game?->localPlayers->first()?->pivot->instance_id ?? 1);
+        $localInstanceId = (int) ($game?->local_instance ?? 1);
 
         /** @var array<string, mixed> $snapshotContent */
         $snapshotContent = $snapshot->content ?? [];

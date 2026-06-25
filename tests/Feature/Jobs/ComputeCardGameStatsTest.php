@@ -1,14 +1,17 @@
 <?php
 
 use App\Jobs\ComputeCardGameStats;
+use App\Models\Account;
 use App\Models\Card;
 use App\Models\DeckVersion;
 use App\Models\Game;
+use App\Models\GameDeck;
 use App\Models\GameLog;
 use App\Models\GameTimeline;
 use App\Models\LogEvent;
 use App\Models\LogInstance;
 use App\Models\MtgoMatch;
+use App\Models\Opponent;
 use App\Models\Player;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -46,30 +49,38 @@ function ccgs_seedLogEntries(string $matchToken, array $entries): void
 function createMatchWithGames(array $overrides = []): array
 {
     $deckVersion = DeckVersion::factory()->create();
+
+    $account = Account::firstOrCreate(['username' => 'testplayer'], ['active' => false, 'tracked' => true]);
+    $opponentModel = Opponent::firstOrCreate(['username' => 'opponent']);
+
     $match = MtgoMatch::factory()->create(array_merge([
         'deck_version_id' => $deckVersion->id,
         'state' => 'complete',
+        'account_id' => $account->id,
+        'opponent_id' => $opponentModel->id,
     ], $overrides));
 
-    $localPlayer = Player::create(['username' => 'testplayer']);
-    $opponent = Player::create(['username' => 'opponent']);
+    // Keep Player instances for backward compat with any callsite that uses them for usernames.
+    $localPlayer = Player::firstOrCreate(['username' => 'testplayer']);
+    $opponent = Player::firstOrCreate(['username' => 'opponent']);
 
     return [$match, $deckVersion, $localPlayer, $opponent];
 }
 
 function attachPlayers(Game $game, Player $local, Player $opponent, int $localInstanceId = 0, int $opponentInstanceId = 1, array $deckJson = []): void
 {
-    $game->players()->attach($local->id, [
-        'instance_id' => $localInstanceId,
-        'is_local' => true,
-        'on_play' => true,
-        'deck_json' => $deckJson,
+    $game->update([
+        'local_instance' => $localInstanceId,
+        'opp_instance' => $opponentInstanceId,
+        'local_on_play' => true,
     ]);
-    $game->players()->attach($opponent->id, [
-        'instance_id' => $opponentInstanceId,
-        'is_local' => false,
-        'on_play' => false,
-    ]);
+
+    if (! empty($deckJson)) {
+        GameDeck::updateOrCreate(
+            ['game_id' => $game->id, 'is_opponent' => false],
+            ['deck_json' => $deckJson],
+        );
+    }
 }
 
 function createTimeline(Game $game, array $cards): void

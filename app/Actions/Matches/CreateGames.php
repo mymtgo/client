@@ -6,11 +6,13 @@ use App\Actions\Cards\CreateMissingCards;
 use App\Actions\Logs\ConvertMtgoTimestamp;
 use App\Actions\Util\ExtractJson;
 use App\Facades\Mtgo;
+use App\Models\Account;
 use App\Models\Game;
+use App\Models\GameDeck;
 use App\Models\GameTimeline;
 use App\Models\LogEvent;
 use App\Models\MtgoMatch;
-use App\Models\Player;
+use App\Models\Opponent;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
@@ -67,13 +69,13 @@ class CreateGames
             return;
         }
 
-        self::upsertPlayerPivots($gameModel, $players, $parsedState, $lastStateEvent, $playerDeck, $username);
+        self::upsertParticipants($match, $gameModel, $players, $parsedState, $lastStateEvent, $playerDeck, $username);
 
         if ($username) {
             SyncGamePivots::forGame($gameModel, $gameData, $username);
         }
 
-        Log::channel('pipeline')->info("Match {$match->mtgo_id}: game {$gameId} — ".($gameModel->wasRecentlyCreated ? 'created' : 'updated').", {$gameModel->players()->count()} players synced");
+        Log::channel('pipeline')->info("Match {$match->mtgo_id}: game {$gameId} — ".($gameModel->wasRecentlyCreated ? 'created' : 'updated').", {$gameModel->decks()->count()} participants synced");
 
         self::replaceTimeline($gameModel, $gameStateEvents);
     }
@@ -103,13 +105,17 @@ class CreateGames
     }
 
     /**
-     * Attach missing pivot rows and refresh deck_json / instance_id / is_local
-     * on existing rows. Never touches `on_play` — that is owned by SyncGamePivots.
+     * Write new-schema participant data for each player in the parsed game state.
+     *
+     * Sets match.account_id and match.opponent_id (once — never overwrites an existing value),
+     * writes games.local_instance/opp_instance, and upserts game_decks rows.
+     * Does not touch game_player. Never touches on_play — that is owned by SyncGamePivots.
      *
      * @param  array<int, array<string, mixed>>  $players
      * @param  array<int, array<string, mixed>>  $playerDeck
      */
-    private static function upsertPlayerPivots(
+    private static function upsertParticipants(
+        MtgoMatch $match,
         Game $game,
         array $players,
         array $parsedState,
@@ -117,29 +123,51 @@ class CreateGames
         array $playerDeck,
         ?string $username,
     ): void {
-        $existingPlayerIds = $game->players()->pluck('player_id')->all();
+        $matchUpdates = [];
+        $gameUpdates = [];
 
         foreach ($players as $player) {
-            $playerModel = Player::where('username', $player['Name'])->firstOrCreate([
-                'username' => $player['Name'],
-            ]);
+            $name = $player['Name'];
+            $isYou = $username !== null && $name === $username;
 
-            $isYou = $username !== null && $playerModel->username === $username;
-            $deck = $isYou
-                ? self::buildLocalDeck($parsedState, $player, $playerDeck)
-                : self::buildOpponentDeck($lastStateEvent, $player);
+            if ($isYou) {
+                // Resolve account: prefer lookup by username, fall back to currentId.
+                if ($match->account_id === null) {
+                    $accountId = Account::where('username', $username)->first()?->id
+                        ?? Account::currentId();
+                    if ($accountId !== null) {
+                        $matchUpdates['account_id'] = $accountId;
+                    }
+                }
 
-            $payload = [
-                'instance_id' => $player['Id'],
-                'is_local' => $isYou,
-                'deck_json' => $deck,
-            ];
+                $gameUpdates['local_instance'] = $player['Id'];
 
-            if (in_array($playerModel->id, $existingPlayerIds, true)) {
-                $game->players()->updateExistingPivot($playerModel->id, $payload);
+                GameDeck::updateOrCreate(
+                    ['game_id' => $game->id, 'is_opponent' => false],
+                    ['deck_json' => self::buildLocalDeck($parsedState, $player, $playerDeck)],
+                );
             } else {
-                $game->players()->attach($playerModel->id, $payload + ['on_play' => false]);
+                // Resolve opponent: firstOrCreate by username, then set match.opponent_id once.
+                if ($match->opponent_id === null) {
+                    $opponent = Opponent::firstOrCreate(['username' => $name]);
+                    $matchUpdates['opponent_id'] = $opponent->id;
+                }
+
+                $gameUpdates['opp_instance'] = $player['Id'];
+
+                GameDeck::updateOrCreate(
+                    ['game_id' => $game->id, 'is_opponent' => true],
+                    ['deck_json' => self::buildOpponentDeck($lastStateEvent, $player)],
+                );
             }
+        }
+
+        if (! empty($matchUpdates)) {
+            $match->fill($matchUpdates)->save();
+        }
+
+        if (! empty($gameUpdates)) {
+            $game->fill($gameUpdates)->save();
         }
     }
 

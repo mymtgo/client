@@ -98,14 +98,7 @@ class GetArchetypeMatchupDetail
         }
 
         return $query
-            ->whereExists(function ($q) {
-                $q->selectRaw('1')
-                    ->from('game_player as gp')
-                    ->join('games as g', 'g.id', '=', 'gp.game_id')
-                    ->whereColumn('g.match_id', 'm.id')
-                    ->whereColumn('gp.player_id', 'ma.player_id')
-                    ->where('gp.is_local', 0);
-            })
+            ->where('ma.is_opponent', 1)
             ->distinct()
             ->pluck('m.id');
     }
@@ -133,13 +126,11 @@ class GetArchetypeMatchupDetail
     private static function computePlayDrawStats(array $matchIds): array
     {
         $rows = DB::table('games as g')
-            ->join('game_player as gp', 'gp.game_id', '=', 'g.id')
             ->whereIn('g.match_id', $matchIds)
-            ->where('gp.is_local', true)
             ->whereNotNull('g.won')
-            ->groupBy('gp.on_play')
+            ->groupBy('g.local_on_play')
             ->selectRaw('
-                gp.on_play,
+                g.local_on_play as on_play,
                 SUM(CASE WHEN g.won = 1 THEN 1 ELSE 0 END) as wins,
                 SUM(CASE WHEN g.won = 0 THEN 1 ELSE 0 END) as losses
             ')
@@ -163,14 +154,12 @@ class GetArchetypeMatchupDetail
     private static function computeGameStats(array $matchIds): object
     {
         return DB::table('games as g')
-            ->join('game_player as gp', 'gp.game_id', '=', 'g.id')
             ->whereIn('g.match_id', $matchIds)
-            ->where('gp.is_local', true)
             ->selectRaw('
                 AVG(g.turn_count) as avg_turns,
-                AVG(gp.mulligan_count) as avg_mulligans,
-                SUM(CASE WHEN gp.on_play = 1 THEN 1 ELSE 0 END) as on_play_count,
-                SUM(CASE WHEN gp.on_play = 0 THEN 1 ELSE 0 END) as on_draw_count
+                AVG(g.local_mulligans) as avg_mulligans,
+                SUM(CASE WHEN g.local_on_play = 1 THEN 1 ELSE 0 END) as on_play_count,
+                SUM(CASE WHEN g.local_on_play = 0 THEN 1 ELSE 0 END) as on_draw_count
             ')
             ->first();
     }
@@ -184,7 +173,7 @@ class GetArchetypeMatchupDetail
             ->whereIn('id', $matchIds)
             ->with([
                 'games' => fn ($q) => $q->orderBy('started_at'),
-                'games.players',
+                'opponent',
             ])
             ->orderByDesc('started_at')
             ->get()
@@ -194,7 +183,7 @@ class GetArchetypeMatchupDetail
                 'dateFormatted' => $match->started_at->toLocal()->format('M j'),
                 'isLeague' => $match->league_id !== null,
                 'leagueName' => null,
-                'opponentName' => $match->games->first()?->players->first(fn ($p) => ! $p->pivot->is_local)?->username,
+                'opponentName' => $match->opponent?->username,
                 'score' => $match->gamesWon().'-'.$match->gamesLost(),
                 'outcome' => $match->outcome?->value,
                 'gameResults' => $match->games->map(fn ($g) => $g->won)->all(),

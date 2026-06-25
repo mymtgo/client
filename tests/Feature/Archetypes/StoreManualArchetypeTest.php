@@ -4,10 +4,8 @@ use App\Actions\Archetypes\StoreManualArchetype;
 use App\Facades\AppSettings;
 use App\Models\Archetype;
 use App\Models\Card;
-use App\Models\Game;
 use App\Models\MatchArchetype;
 use App\Models\MtgoMatch;
-use App\Models\Player;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -73,15 +71,6 @@ it('upserts MatchArchetype for opponent when created from a match', function () 
     AppSettings::setDeviceId('abcdef1234567890');
 
     $match = MtgoMatch::factory()->create();
-    $opponent = Player::create(['username' => 'opponent']);
-    $game = Game::factory()->create(['match_id' => $match->id]);
-    $game->players()->attach($opponent->id, [
-        'instance_id' => 2,
-        'is_local' => false,
-        'on_play' => false,
-        'starting_hand_size' => 7,
-        'deck_json' => [],
-    ]);
 
     $archetype = StoreManualArchetype::run(
         name: 'From Match',
@@ -93,7 +82,7 @@ it('upserts MatchArchetype for opponent when created from a match', function () 
     );
 
     $matchArchetype = MatchArchetype::where('mtgo_match_id', $match->id)
-        ->where('player_id', $opponent->id)
+        ->where('is_opponent', true)
         ->first();
 
     expect($matchArchetype)->not->toBeNull();
@@ -105,20 +94,11 @@ it('overwrites an existing MatchArchetype for opponent on the source match', fun
 
     $existingArchetype = Archetype::factory()->create();
     $match = MtgoMatch::factory()->create();
-    $opponent = Player::create(['username' => 'opponent']);
-    $game = Game::factory()->create(['match_id' => $match->id]);
-    $game->players()->attach($opponent->id, [
-        'instance_id' => 2,
-        'is_local' => false,
-        'on_play' => false,
-        'starting_hand_size' => 7,
-        'deck_json' => [],
-    ]);
 
     MatchArchetype::create([
         'archetype_id' => $existingArchetype->id,
         'mtgo_match_id' => $match->id,
-        'player_id' => $opponent->id,
+        'is_opponent' => true,
         'confidence' => 0.5,
     ]);
 
@@ -132,11 +112,11 @@ it('overwrites an existing MatchArchetype for opponent on the source match', fun
     );
 
     expect(MatchArchetype::where('mtgo_match_id', $match->id)
-        ->where('player_id', $opponent->id)
+        ->where('is_opponent', true)
         ->count())->toBe(1);
 
     $matchArchetype = MatchArchetype::where('mtgo_match_id', $match->id)
-        ->where('player_id', $opponent->id)
+        ->where('is_opponent', true)
         ->first();
 
     expect($matchArchetype->archetype_id)->toBe($newArchetype->id);

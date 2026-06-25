@@ -8,21 +8,15 @@ use App\Models\DeckVersion;
 use App\Models\Game;
 use App\Models\MatchArchetype;
 use App\Models\MtgoMatch;
-use App\Models\Player;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
 
 uses(RefreshDatabase::class);
 
-function trigArchSetupMatchWithOpponent(int $deckVersionId, Player $opponent): MtgoMatch
+function trigArchSetupMatchWithOpponent(int $deckVersionId): MtgoMatch
 {
     $match = MtgoMatch::factory()->create(['deck_version_id' => $deckVersionId]);
-    $game = Game::factory()->create(['match_id' => $match->id]);
-    $game->players()->attach($opponent->id, [
-        'instance_id' => 1,
-        'is_local' => false,
-        'on_play' => false,
-    ]);
+    Game::factory()->create(['match_id' => $match->id, 'opp_instance' => 1]);
 
     return $match;
 }
@@ -32,14 +26,13 @@ it('queues detection only for matches with no opponent archetype when filter is 
 
     $deck = Deck::factory()->create();
     $version = DeckVersion::factory()->for($deck)->create();
-    $opponent = Player::create(['username' => 'TrigOpp1']);
 
-    $unknown = trigArchSetupMatchWithOpponent($version->id, $opponent);
-    $known = trigArchSetupMatchWithOpponent($version->id, $opponent);
+    $unknown = trigArchSetupMatchWithOpponent($version->id);
+    $known = trigArchSetupMatchWithOpponent($version->id);
 
     MatchArchetype::create([
         'mtgo_match_id' => $known->id,
-        'player_id' => $opponent->id,
+        'is_opponent' => true,
         'archetype_id' => Archetype::factory()->create()->id,
         'confidence' => 0.9,
     ]);
@@ -62,23 +55,22 @@ it('queues detection only for matches whose opponent has the given archetype id'
 
     $deck = Deck::factory()->create();
     $version = DeckVersion::factory()->for($deck)->create();
-    $opponent = Player::create(['username' => 'TrigOpp2']);
     $targetArch = Archetype::factory()->create();
     $otherArch = Archetype::factory()->create();
 
-    $matchA = trigArchSetupMatchWithOpponent($version->id, $opponent);
-    $matchB = trigArchSetupMatchWithOpponent($version->id, $opponent);
+    $matchA = trigArchSetupMatchWithOpponent($version->id);
+    $matchB = trigArchSetupMatchWithOpponent($version->id);
 
     MatchArchetype::create([
         'mtgo_match_id' => $matchA->id,
-        'player_id' => $opponent->id,
+        'is_opponent' => true,
         'archetype_id' => $targetArch->id,
         'confidence' => 0.9,
     ]);
 
     MatchArchetype::create([
         'mtgo_match_id' => $matchB->id,
-        'player_id' => $opponent->id,
+        'is_opponent' => true,
         'archetype_id' => $otherArch->id,
         'confidence' => 0.9,
     ]);
@@ -133,10 +125,9 @@ it('flashes the queued count back to the page', function () {
 
     $deck = Deck::factory()->create();
     $version = DeckVersion::factory()->for($deck)->create();
-    $opponent = Player::create(['username' => 'TrigOppFlash']);
 
-    trigArchSetupMatchWithOpponent($version->id, $opponent);
-    trigArchSetupMatchWithOpponent($version->id, $opponent);
+    trigArchSetupMatchWithOpponent($version->id);
+    trigArchSetupMatchWithOpponent($version->id);
 
     $response = $this->from(route('decks.matches', ['deck' => $deck->id]))
         ->post(

@@ -26,7 +26,7 @@ class BackfillGameOnPlay extends AppUpdate
 
         MtgoMatch::query()
             ->whereHas('games')
-            ->with(['games.players'])
+            ->with(['games'])
             ->lazy()
             ->each(function (MtgoMatch $match) use (&$updated) {
                 if ($this->backfillMatch($match)) {

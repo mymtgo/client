@@ -31,7 +31,7 @@ class DetermineMatchArchetypesJob implements ShouldBeUnique, ShouldQueue
 
     public function handle(): void
     {
-        $match = MtgoMatch::with('games.players')->find($this->matchId);
+        $match = MtgoMatch::with('games')->find($this->matchId);
 
         if (! $match) {
             $this->clearQueuedFlag();

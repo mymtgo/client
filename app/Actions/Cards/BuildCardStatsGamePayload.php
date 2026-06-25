@@ -21,14 +21,12 @@ class BuildCardStatsGamePayload
             return null;
         }
 
-        $localPlayer = $game->players->first(fn ($p) => (bool) $p->pivot->is_local);
-
-        if (! $localPlayer) {
+        if ($game->local_instance === null && $game->localDeck() === null) {
             return self::skip($game, 'no local player');
         }
 
         $playerArchetypeUuid = $match->archetypes
-            ->firstWhere('player_id', $localPlayer->id)
+            ->first(fn ($a) => ! $a->is_opponent)
             ?->archetype?->uuid;
 
         if (! $playerArchetypeUuid) {
@@ -87,7 +85,7 @@ class BuildCardStatsGamePayload
             'opponent_archetype_uuid' => $opponentArchetypeUuid,
             'format' => $format,
             'won' => (bool) $game->won,
-            'on_play' => (bool) $localPlayer->pivot->on_play,
+            'on_play' => (bool) $game->local_on_play,
             'is_postboard' => $isPostboard,
             'played_on' => $playedOn,
             'cards' => $cards,

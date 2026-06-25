@@ -9,11 +9,13 @@ use App\Enums\MatchState;
 use App\Facades\Mtgo;
 use App\Jobs\ComputeCardGameStats;
 use App\Jobs\DetermineMatchArchetypesJob;
+use App\Models\Account;
 use App\Models\Card;
 use App\Models\Game;
+use App\Models\GameDeck;
 use App\Models\ImportScan;
 use App\Models\MtgoMatch;
-use App\Models\Player;
+use App\Models\Opponent;
 use Carbon\Carbon;
 use Illuminate\Support\Str;
 
@@ -216,29 +218,53 @@ class ImportMatches
     }
 
     /**
-     * Create Game records and attach players for a given match. Card-game stats
-     * are computed by ComputeCardGameStats once all games are persisted.
+     * Create Game records and write new-schema participant data for a given match.
+     * Sets match.account_id / opponent_id (once), writes games scalar columns,
+     * and upserts game_decks rows. Does not touch game_player.
+     * Card-game stats are computed by ComputeCardGameStats once all games are persisted.
      */
     private static function createGames(MtgoMatch $match, array $data): void
     {
-        $localPlayer = Player::firstOrCreate(['username' => $data['local_player']]);
-        $opponent = Player::firstOrCreate(['username' => $data['opponent']]);
+        $localPlayerName = $data['local_player'];
+        $opponentName = $data['opponent'] ?? null;
+
+        // Resolve match-level participants once — guard against missing data.
+        $matchUpdates = [];
+
+        if ($match->account_id === null && $localPlayerName) {
+            $accountId = Account::where('username', $localPlayerName)->first()?->id
+                ?? Account::currentId();
+            if ($accountId !== null) {
+                $matchUpdates['account_id'] = $accountId;
+            }
+        }
+
+        if ($match->opponent_id === null && $opponentName) {
+            $opponent = Opponent::firstOrCreate(['username' => $opponentName]);
+            $matchUpdates['opponent_id'] = $opponent->id;
+        }
+
+        if (! empty($matchUpdates)) {
+            $match->fill($matchUpdates)->save();
+        }
+
+        // Build deck_json from per-game cards extracted from game log.
+        // Null means the unified job falls back to the deck-version cards.
+        $buildDeckJson = fn ($cards) => ! empty($cards)
+            ? collect($cards)->map(fn ($card) => [
+                'mtgo_id' => $card['mtgo_id'],
+                'quantity' => 1,
+                'sideboard' => false,
+            ])->values()->toArray()
+            : null;
 
         foreach ($data['games'] as $index => $gameData) {
             $gameId = $data['game_ids'][$index] ?? null;
 
-            // Build pivot deck_json from per-game cards extracted from game log.
-            // Empty array means the unified job falls back to the deck-version cards.
-            $buildDeckJson = fn ($cards) => ! empty($cards)
-                ? collect($cards)->map(fn ($card) => [
-                    'mtgo_id' => $card['mtgo_id'],
-                    'quantity' => 1,
-                    'sideboard' => false,
-                ])->values()->toArray()
-                : null;
-
             $localDeckJson = $buildDeckJson($gameData['local_cards'] ?? []);
             $opponentDeckJson = $buildDeckJson($gameData['opponent_cards'] ?? []);
+
+            $onPlay = $gameData['on_play'] ?? null;
 
             $game = Game::create([
                 'match_id' => $match->id,
@@ -247,27 +273,22 @@ class ImportMatches
                 'started_at' => isset($gameData['started_at']) ? Carbon::parse($gameData['started_at']) : null,
                 'ended_at' => isset($gameData['ended_at']) ? Carbon::parse($gameData['ended_at']) : null,
                 'turn_count' => $gameData['turn_count'] ?? null,
+                'local_on_play' => $onPlay !== null ? (bool) $onPlay : null,
+                'local_mulligans' => $gameData['local_mulligan_count'] ?? null,
+                'opp_mulligans' => $gameData['opponent_mulligan_count'] ?? null,
+                'local_dice' => $gameData['local_dice_roll'] ?? null,
+                'opp_dice' => $gameData['opponent_dice_roll'] ?? null,
             ]);
 
-            $game->players()->attach($localPlayer->id, [
-                'is_local' => true,
-                'on_play' => $gameData['on_play'] ?? false,
-                'starting_hand_size' => $gameData['starting_hand_size'] ?? 7,
-                'instance_id' => 0,
-                'deck_json' => $localDeckJson,
-                'dice_roll' => $gameData['local_dice_roll'] ?? null,
-                'mulligan_count' => $gameData['local_mulligan_count'] ?? 0,
-            ]);
+            GameDeck::updateOrCreate(
+                ['game_id' => $game->id, 'is_opponent' => false],
+                ['deck_json' => $localDeckJson],
+            );
 
-            $game->players()->attach($opponent->id, [
-                'is_local' => false,
-                'on_play' => ! ($gameData['on_play'] ?? false),
-                'starting_hand_size' => $gameData['opponent_hand_size'] ?? 7,
-                'instance_id' => 1,
-                'deck_json' => $opponentDeckJson,
-                'dice_roll' => $gameData['opponent_dice_roll'] ?? null,
-                'mulligan_count' => $gameData['opponent_mulligan_count'] ?? 0,
-            ]);
+            GameDeck::updateOrCreate(
+                ['game_id' => $game->id, 'is_opponent' => true],
+                ['deck_json' => $opponentDeckJson],
+            );
         }
     }
 

@@ -15,30 +15,21 @@ class UpdateArchetypeController extends Controller
             'archetype_id' => 'nullable|exists:archetypes,id',
         ]);
 
-        $match = MtgoMatch::with('opponentArchetypes')->findOrFail($id);
+        $match = MtgoMatch::findOrFail($id);
 
-        $opponentPlayerIds = $match->opponentArchetypes->pluck('player_id');
+        // Check the match has an opponent (via games or existing archetype row)
+        $hasOpponent = $match->games()->whereNotNull('opp_instance')->exists()
+            || $match->opponentArchetypes()->exists();
 
-        if ($opponentPlayerIds->isEmpty()) {
-            $opponentPlayerIds = \DB::table('game_player as gp')
-                ->join('games as g', 'g.id', '=', 'gp.game_id')
-                ->where('g.match_id', $match->id)
-                ->where('gp.is_local', false)
-                ->distinct()
-                ->pluck('gp.player_id');
-        }
-
-        if ($opponentPlayerIds->isEmpty()) {
+        if (! $hasOpponent) {
             return back();
         }
-
-        $opponentPlayerId = $opponentPlayerIds->first();
 
         if ($request->input('archetype_id')) {
             MatchArchetype::updateOrCreate(
                 [
                     'mtgo_match_id' => $match->id,
-                    'player_id' => $opponentPlayerId,
+                    'is_opponent' => true,
                 ],
                 [
                     'archetype_id' => $request->input('archetype_id'),
@@ -47,7 +38,7 @@ class UpdateArchetypeController extends Controller
             );
         } else {
             MatchArchetype::where('mtgo_match_id', $match->id)
-                ->where('player_id', $opponentPlayerId)
+                ->where('is_opponent', true)
                 ->delete();
         }
 

@@ -15,11 +15,8 @@ class ExtractGameHandData
      */
     public static function run(Game $game): array
     {
-        $localPlayer = $game->players->first(fn ($p) => $p->pivot->is_local);
-        $opponentPlayer = $game->players->first(fn ($p) => ! $p->pivot->is_local);
-
-        $localInstanceId = (int) ($localPlayer?->pivot->instance_id ?? 1);
-        $opponentInstanceId = (int) ($opponentPlayer?->pivot->instance_id ?? 0);
+        $localInstanceId = (int) ($game->local_instance ?? 1);
+        $opponentInstanceId = (int) ($game->opp_instance ?? 0);
 
         $parsed = ParseOpeningHand::run($game, $localInstanceId, $opponentInstanceId);
 
@@ -30,7 +27,7 @@ class ExtractGameHandData
             'starting_hand_size' => count($keptHand),
             'kept_hand' => $keptHand,
             'opponent_mulligan_count' => $parsed['opponent_mulligans'],
-            'on_play' => (bool) ($localPlayer?->pivot->on_play ?? false),
+            'on_play' => (bool) ($game->local_on_play ?? false),
             'won' => (bool) $game->won,
         ];
     }

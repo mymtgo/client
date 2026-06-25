@@ -3,10 +3,8 @@
 use App\Models\Archetype;
 use App\Models\ArchetypeDeck;
 use App\Models\Card;
-use App\Models\Game;
 use App\Models\MatchArchetype;
 use App\Models\MtgoMatch;
-use App\Models\Player;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -84,9 +82,6 @@ it('includes per-variant facing winrate on each deck and orders by matches playe
     $variantWithMatches = ArchetypeDeck::factory()->for($archetype)->create(['seen_count' => 1]);
     $variantEmpty = ArchetypeDeck::factory()->for($archetype)->create(['seen_count' => 10]);
 
-    $local = Player::create(['username' => 'localuser']);
-    $opponent = Player::create(['username' => 'opponent']);
-
     foreach ([true, false] as $localWon) {
         $match = MtgoMatch::create([
             'token' => fake()->uuid(),
@@ -99,20 +94,11 @@ it('includes per-variant facing winrate on each deck and orders by matches playe
             'ended_at' => now(),
         ]);
 
-        $game = Game::create([
-            'match_id' => $match->id,
-            'mtgo_id' => fake()->unique()->numerify('######'),
-            'started_at' => now(),
-            'ended_at' => now(),
-        ]);
-        $game->players()->attach($local->id, ['is_local' => true, 'instance_id' => 1, 'on_play' => true]);
-        $game->players()->attach($opponent->id, ['is_local' => false, 'instance_id' => 2, 'on_play' => false]);
-
         MatchArchetype::create([
             'archetype_id' => $archetype->id,
             'archetype_deck_id' => $variantWithMatches->id,
             'mtgo_match_id' => $match->id,
-            'player_id' => $opponent->id,
+            'is_opponent' => true,
             'confidence' => 0.9,
         ]);
     }

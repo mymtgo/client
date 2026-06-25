@@ -67,13 +67,9 @@ class FormatLeagueRuns
         }
 
         return DB::table('games as g')
-            ->leftJoin('game_player as gp', function ($join) {
-                $join->on('gp.game_id', '=', 'g.id')
-                    ->where('gp.is_local', true);
-            })
             ->whereIn('g.match_id', $matchIds)
             ->whereNotNull('g.won')
-            ->select('g.match_id', 'g.won', 'g.started_at', 'gp.on_play')
+            ->select('g.match_id', 'g.won', 'g.started_at', 'g.local_on_play as on_play')
             ->orderBy('g.started_at')
             ->get()
             ->groupBy('match_id');
@@ -86,31 +82,22 @@ class FormatLeagueRuns
         }
 
         $opponentByMatch = DB::table('match_archetypes as ma')
-            ->join('players as p', 'p.id', '=', 'ma.player_id')
+            ->join('matches as m', 'm.id', '=', 'ma.mtgo_match_id')
+            ->join('opponents as o', 'o.id', '=', 'm.opponent_id')
             ->leftJoin('archetypes as a', 'a.id', '=', 'ma.archetype_id')
             ->whereIn('ma.mtgo_match_id', $matchIds)
-            ->whereExists(function ($q) {
-                $q->select(DB::raw(1))
-                    ->from('game_player as gp')
-                    ->join('games as g', 'g.id', '=', 'gp.game_id')
-                    ->whereRaw('g.match_id = ma.mtgo_match_id')
-                    ->whereRaw('gp.player_id = ma.player_id')
-                    ->where('gp.is_local', false);
-            })
-            ->select('ma.mtgo_match_id', 'p.username', 'ma.archetype_id', 'a.name as archetype_name')
+            ->where('ma.is_opponent', true)
+            ->select('ma.mtgo_match_id', 'o.username', 'ma.archetype_id', 'a.name as archetype_name')
             ->get()
             ->keyBy('mtgo_match_id');
 
-        // Fallback: opponent name from game_player for matches missing archetypes
+        // Fallback: opponent name from matches.opponent_id for matches with no archetype row
         $missingIds = $matchIds->diff($opponentByMatch->keys());
         if ($missingIds->isNotEmpty()) {
-            DB::table('game_player as gp')
-                ->join('games as g', 'g.id', '=', 'gp.game_id')
-                ->join('players as p', 'p.id', '=', 'gp.player_id')
-                ->whereIn('g.match_id', $missingIds)
-                ->where('gp.is_local', false)
-                ->select('g.match_id as mtgo_match_id', 'p.username')
-                ->groupBy('g.match_id', 'p.username')
+            DB::table('matches as m')
+                ->join('opponents as o', 'o.id', '=', 'm.opponent_id')
+                ->whereIn('m.id', $missingIds)
+                ->select('m.id as mtgo_match_id', 'o.username')
                 ->get()
                 ->each(function ($row) use ($opponentByMatch) {
                     if (! $opponentByMatch->has($row->mtgo_match_id)) {

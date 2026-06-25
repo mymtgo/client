@@ -40,14 +40,7 @@ class AvailableMatchesController extends Controller
         $opponentArchetypes = DB::table('match_archetypes as ma')
             ->join('archetypes as a', 'a.id', '=', 'ma.archetype_id')
             ->whereIn('ma.mtgo_match_id', $matches->pluck('id'))
-            ->whereExists(function ($q) {
-                $q->select(DB::raw(1))
-                    ->from('game_player as gp')
-                    ->join('games as g', 'g.id', '=', 'gp.game_id')
-                    ->whereRaw('g.match_id = ma.mtgo_match_id')
-                    ->whereRaw('gp.player_id = ma.player_id')
-                    ->where('gp.is_local', false);
-            })
+            ->where('ma.is_opponent', true)
             ->select('ma.mtgo_match_id', 'a.name')
             ->get()
             ->keyBy('mtgo_match_id');

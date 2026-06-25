@@ -8,7 +8,6 @@ use App\Models\DeckVersion;
 use App\Models\Game;
 use App\Models\MatchArchetype;
 use App\Models\MtgoMatch;
-use App\Models\Player;
 use Carbon\CarbonInterface;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Collection;
@@ -33,9 +32,6 @@ function createMatchForGameStats(
     ?CarbonInterface $startedAt = null,
     ?int $leagueId = null,
 ): MtgoMatch {
-    $localPlayer = Player::firstOrCreate(['username' => 'local_player']);
-    $opponentPlayer = Player::firstOrCreate(['username' => 'opponent_player_'.fake()->uuid()]);
-
     $match = MtgoMatch::factory()->create([
         'deck_version_id' => $deckVersion->id,
         'outcome' => $outcome,
@@ -47,30 +43,22 @@ function createMatchForGameStats(
         MatchArchetype::create([
             'mtgo_match_id' => $match->id,
             'archetype_id' => $opponentArchetype->id,
-            'player_id' => $opponentPlayer->id,
+            'is_opponent' => true,
+            'confidence' => 0.8,
         ]);
     }
 
     foreach ($games as $i => $gameData) {
-        $game = Game::factory()->create([
+        Game::factory()->create([
             'match_id' => $match->id,
             'won' => $gameData['won'],
             'turn_count' => $gameData['turn_count'] ?? null,
             'started_at' => $gameData['started_at'] ?? ($startedAt ?? now())->copy()->addMinutes($i),
-        ]);
-
-        $game->players()->attach($localPlayer->id, [
-            'is_local' => true,
-            'on_play' => $gameData['on_play'],
-            'mulligan_count' => $gameData['local_mulligans'] ?? 0,
-            'instance_id' => fake()->randomNumber(6),
-        ]);
-
-        $game->players()->attach($opponentPlayer->id, [
-            'is_local' => false,
-            'on_play' => ! $gameData['on_play'],
-            'mulligan_count' => $gameData['opponent_mulligans'] ?? 0,
-            'instance_id' => fake()->randomNumber(6),
+            'local_on_play' => $gameData['on_play'],
+            'local_mulligans' => $gameData['local_mulligans'] ?? 0,
+            'opp_mulligans' => $gameData['opponent_mulligans'] ?? 0,
+            'local_instance' => 0,
+            'opp_instance' => 1,
         ]);
     }
 

@@ -19,14 +19,7 @@ class GetArchetypeVariantFacingWinrates
             ->where('ma.archetype_id', $archetype->id)
             ->whereNotNull('ma.archetype_deck_id')
             ->where('m.state', MatchState::Complete->value)
-            ->whereExists(function ($q) {
-                $q->selectRaw('1')
-                    ->from('game_player as gp')
-                    ->join('games as g', 'g.id', '=', 'gp.game_id')
-                    ->whereColumn('g.match_id', 'm.id')
-                    ->whereColumn('gp.player_id', 'ma.player_id')
-                    ->where('gp.is_local', false);
-            })
+            ->where('ma.is_opponent', true)
             ->groupBy('ma.archetype_deck_id')
             ->selectRaw("
                 ma.archetype_deck_id as deck_id,

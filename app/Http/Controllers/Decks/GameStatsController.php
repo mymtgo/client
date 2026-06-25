@@ -58,14 +58,7 @@ class GameStatsController extends Controller
             ->join('matches as m', 'm.id', '=', 'ma.mtgo_match_id')
             ->whereIn('m.deck_version_id', $deckVersionIds)
             ->where('m.state', 'complete')
-            ->whereExists(function ($q) {
-                $q->selectRaw('1')
-                    ->from('game_player as gp')
-                    ->join('games as g', 'g.id', '=', 'gp.game_id')
-                    ->whereColumn('g.match_id', 'm.id')
-                    ->whereColumn('gp.player_id', 'ma.player_id')
-                    ->where('gp.is_local', false);
-            })
+            ->where('ma.is_opponent', 1)
             ->distinct()
             ->orderBy('a.name')
             ->get(['a.uuid', 'a.name', 'a.color_identity'])

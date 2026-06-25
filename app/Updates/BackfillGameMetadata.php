@@ -5,7 +5,6 @@ namespace App\Updates;
 use App\Actions\Import\ExtractCardsFromGameLog;
 use App\Models\GameLog;
 use App\Models\MtgoMatch;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class BackfillGameMetadata extends AppUpdate
@@ -14,7 +13,7 @@ class BackfillGameMetadata extends AppUpdate
     {
         $matches = MtgoMatch::query()
             ->whereHas('games')
-            ->with(['games.players'])
+            ->with(['games', 'account', 'opponent'])
             ->get();
 
         $updated = 0;
@@ -32,6 +31,9 @@ class BackfillGameMetadata extends AppUpdate
                 $cardData = ExtractCardsFromGameLog::run($gameLog->decoded_entries);
                 $gameMeta = $cardData['game_meta'] ?? [];
 
+                $localName = $match->account?->username;
+                $opponentName = $match->opponent?->username;
+
                 foreach ($match->games->sortBy('started_at')->values() as $index => $game) {
                     $meta = $gameMeta[$index] ?? [];
 
@@ -39,32 +41,34 @@ class BackfillGameMetadata extends AppUpdate
                         $game->update(['turn_count' => $meta['turn_count']]);
                     }
 
-                    $localPlayer = $game->players->first(fn ($p) => $p->pivot->is_local);
-                    $opponentPlayer = $game->players->first(fn ($p) => ! $p->pivot->is_local);
-
-                    if (! $localPlayer || ! $opponentPlayer) {
+                    if (! $localName) {
                         continue;
                     }
 
-                    $localName = $localPlayer->username;
-                    $opponentName = $opponentPlayer->username;
+                    if (empty($meta['dice_rolls']) && empty($meta['mulligans'])) {
+                        continue;
+                    }
 
-                    if (! empty($meta['dice_rolls']) || ! empty($meta['mulligans'])) {
-                        DB::table('game_player')
-                            ->where('game_id', $game->id)
-                            ->where('player_id', $localPlayer->id)
-                            ->update([
-                                'dice_roll' => $meta['dice_rolls'][$localName] ?? null,
-                                'mulligan_count' => $meta['mulligans'][$localName] ?? 0,
-                            ]);
+                    $updates = [];
 
-                        DB::table('game_player')
-                            ->where('game_id', $game->id)
-                            ->where('player_id', $opponentPlayer->id)
-                            ->update([
-                                'dice_roll' => $meta['dice_rolls'][$opponentName] ?? null,
-                                'mulligan_count' => $meta['mulligans'][$opponentName] ?? 0,
-                            ]);
+                    if (isset($meta['mulligans'][$localName])) {
+                        $updates['local_mulligans'] = $meta['mulligans'][$localName];
+                    }
+
+                    if ($opponentName && isset($meta['mulligans'][$opponentName])) {
+                        $updates['opp_mulligans'] = $meta['mulligans'][$opponentName];
+                    }
+
+                    if (! empty($meta['dice_rolls'][$localName])) {
+                        $updates['local_dice'] = $meta['dice_rolls'][$localName];
+                    }
+
+                    if ($opponentName && ! empty($meta['dice_rolls'][$opponentName])) {
+                        $updates['opp_dice'] = $meta['dice_rolls'][$opponentName];
+                    }
+
+                    if (! empty($updates)) {
+                        $game->update($updates);
                     }
                 }
 

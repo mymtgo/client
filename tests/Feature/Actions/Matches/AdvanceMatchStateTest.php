@@ -4,10 +4,11 @@ use App\Actions\Matches\AdvanceMatchState;
 use App\Enums\LogEventType;
 use App\Enums\MatchState;
 use App\Events\GameCardsSnapshotChanged;
+use App\Models\Account;
 use App\Models\LogEvent;
 use App\Models\LogInstance;
 use App\Models\MtgoMatch;
-use App\Models\Player;
+use App\Models\Opponent;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
 
@@ -290,7 +291,9 @@ it('does not create a match when game state has no parseable players', function 
     expect(MtgoMatch::where('mtgo_id', $matchId)->exists())->toBeFalse();
 });
 
-it('reports invalid players when match has no games with both local and opponent', function () {
+it('treats a match without an opponent as invalid', function () {
+    $account = Account::factory()->create();
+
     $match = MtgoMatch::create([
         'mtgo_id' => '20001',
         'token' => 'token-no-valid-players',
@@ -298,22 +301,17 @@ it('reports invalid players when match has no games with both local and opponent
         'match_type' => 'Constructed',
         'state' => MatchState::InProgress,
         'started_at' => now(),
+        'account_id' => $account->id,
+        'opponent_id' => null,
     ]);
 
-    // Game with only one player (solitaire)
-    $game = $match->games()->create(['mtgo_id' => 30001, 'started_at' => now()]);
-    $player = Player::create(['username' => 'SoloPlayer']);
-    $game->players()->attach($player, [
-        'instance_id' => 1,
-        'is_local' => true,
-        'on_play' => true,
-        'deck_json' => [],
-    ]);
-
-    expect($match->hasValidPlayers())->toBeFalse();
+    expect($match->account_id !== null && $match->opponent_id !== null)->toBeFalse();
 });
 
-it('reports valid players when game has local player and opponent', function () {
+it('treats a match with both account and opponent as valid', function () {
+    $account = Account::factory()->create();
+    $opponent = Opponent::factory()->create();
+
     $match = MtgoMatch::create([
         'mtgo_id' => '20002',
         'token' => 'token-valid-players',
@@ -321,15 +319,11 @@ it('reports valid players when game has local player and opponent', function () 
         'match_type' => 'Constructed',
         'state' => MatchState::InProgress,
         'started_at' => now(),
+        'account_id' => $account->id,
+        'opponent_id' => $opponent->id,
     ]);
 
-    $game = $match->games()->create(['mtgo_id' => 30002, 'started_at' => now()]);
-    $local = Player::create(['username' => 'LocalPlayer']);
-    $opponent = Player::create(['username' => 'Opponent']);
-    $game->players()->attach($local, ['instance_id' => 1, 'is_local' => true, 'on_play' => true, 'deck_json' => []]);
-    $game->players()->attach($opponent, ['instance_id' => 2, 'is_local' => false, 'on_play' => false, 'deck_json' => []]);
-
-    expect($match->hasValidPlayers())->toBeTrue();
+    expect($match->account_id !== null && $match->opponent_id !== null)->toBeTrue();
 });
 
 it('creates a match when game state confirms local player with opponent', function () {

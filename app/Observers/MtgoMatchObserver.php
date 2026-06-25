@@ -91,16 +91,16 @@ class MtgoMatchObserver
                 ->delete();
         }
 
-        // game_timelines
+        // game_decks
         if ($gameIds->isNotEmpty()) {
-            DB::table('game_timelines')
+            DB::table('game_decks')
                 ->whereIn('game_id', $gameIds)
                 ->delete();
         }
 
-        // game_player
+        // game_timelines
         if ($gameIds->isNotEmpty()) {
-            DB::table('game_player')
+            DB::table('game_timelines')
                 ->whereIn('game_id', $gameIds)
                 ->delete();
         }

@@ -8,14 +8,14 @@ use App\Models\DeckVersion;
 use App\Models\Game;
 use App\Models\MatchArchetype;
 use App\Models\MtgoMatch;
-use App\Models\Player;
+use App\Models\Opponent;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 
 /**
- * Create a match with games, game_player pivots, and optional card stats for detail testing.
+ * Create a match with games, new-schema scalar columns, and optional card stats for detail testing.
  *
  * @param  array<int, array{won: bool, on_play: bool, turn_count: int|null, mulligan_count: int|null}>  $games
  * @param  array<int, array{oracle_id: string, kept: int, seen: int}>  $cardSeenResults
@@ -28,19 +28,19 @@ function createDetailMatch(
     array $cardSeenResults = [],
     ?string $startedAt = null,
 ): MtgoMatch {
-    $localPlayer = Player::firstOrCreate(['username' => 'local_player']);
-    $opponentPlayer = Player::firstOrCreate(['username' => 'opponent_player']);
+    $opponentModel = Opponent::firstOrCreate(['username' => 'opponent_player']);
 
     $match = MtgoMatch::factory()->create([
         'deck_version_id' => $deckVersion->id,
         'outcome' => $outcome,
         'started_at' => $startedAt ? Carbon::parse($startedAt) : now(),
+        'opponent_id' => $opponentModel->id,
     ]);
 
     MatchArchetype::create([
         'mtgo_match_id' => $match->id,
         'archetype_id' => $archetype->id,
-        'player_id' => $opponentPlayer->id,
+        'is_opponent' => true,
     ]);
 
     foreach ($games as $gameData) {
@@ -49,20 +49,11 @@ function createDetailMatch(
             'won' => $gameData['won'],
             'turn_count' => $gameData['turn_count'] ?? null,
             'started_at' => $startedAt ? Carbon::parse($startedAt)->addMinutes(rand(0, 10)) : now(),
-        ]);
-
-        $game->players()->attach($localPlayer->id, [
-            'is_local' => true,
-            'on_play' => $gameData['on_play'],
-            'instance_id' => fake()->randomNumber(6),
-            'mulligan_count' => $gameData['mulligan_count'] ?? 0,
-        ]);
-
-        $game->players()->attach($opponentPlayer->id, [
-            'is_local' => false,
-            'on_play' => ! $gameData['on_play'],
-            'instance_id' => fake()->randomNumber(6),
-            'mulligan_count' => 0,
+            'local_on_play' => $gameData['on_play'],
+            'local_mulligans' => $gameData['mulligan_count'] ?? 0,
+            'opp_mulligans' => 0,
+            'local_instance' => fake()->randomNumber(6),
+            'opp_instance' => fake()->randomNumber(6),
         ]);
 
         foreach ($cardSeenResults as $cardData) {

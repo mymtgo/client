@@ -7,7 +7,7 @@ use App\Models\DeckVersion;
 use App\Models\Game;
 use App\Models\MatchArchetype;
 use App\Models\MtgoMatch;
-use App\Models\Player;
+use App\Models\Opponent;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -19,41 +19,33 @@ function createCompletedMatch(
     bool $won,
     ?int $leagueId = null,
 ): MtgoMatch {
-    $local = Player::firstOrCreate(['username' => 'local_player']);
-    $opp = Player::firstOrCreate(['username' => 'opp_'.fake()->uuid()]);
+    $opp = Opponent::create(['username' => 'opp_'.fake()->uuid()]);
 
     $match = MtgoMatch::factory()->create([
         'deck_version_id' => $deckVersion->id,
         'outcome' => $outcome,
         'started_at' => now(),
         'league_id' => $leagueId,
+        'opponent_id' => $opp->id,
     ]);
 
     if ($opponentArchetype) {
         MatchArchetype::create([
             'mtgo_match_id' => $match->id,
             'archetype_id' => $opponentArchetype->id,
-            'player_id' => $opp->id,
+            'is_opponent' => true,
         ]);
     }
 
-    $game = Game::factory()->create([
+    Game::factory()->create([
         'match_id' => $match->id,
         'won' => $won,
         'turn_count' => 8,
-    ]);
-
-    $game->players()->attach($local->id, [
-        'is_local' => true,
-        'on_play' => true,
-        'mulligan_count' => 0,
-        'instance_id' => fake()->randomNumber(6),
-    ]);
-    $game->players()->attach($opp->id, [
-        'is_local' => false,
-        'on_play' => false,
-        'mulligan_count' => 1,
-        'instance_id' => fake()->randomNumber(6),
+        'local_on_play' => true,
+        'local_mulligans' => 0,
+        'opp_mulligans' => 1,
+        'local_instance' => fake()->randomNumber(6),
+        'opp_instance' => fake()->randomNumber(6),
     ]);
 
     return $match;

@@ -7,25 +7,19 @@ use App\Models\MtgoMatch;
 class ScanMatchOpponentCards
 {
     /**
-     * Aggregate opponent cards from a match's game_player.deck_json,
+     * Aggregate opponent cards from a match's game_decks (is_opponent=true),
      * sum quantities across games (capped at 4), resolve via API.
      *
      * @return array{cards: array, color_identity: string|null}|null
      */
     public static function run(MtgoMatch $match): ?array
     {
-        $match->loadMissing('games.players');
+        $match->loadMissing('games.decks');
 
         $opponentCards = collect();
 
         foreach ($match->games as $game) {
-            foreach ($game->players as $player) {
-                if ($player->pivot->is_local) {
-                    continue;
-                }
-
-                $opponentCards = $opponentCards->merge($player->pivot->deck_json ?? []);
-            }
+            $opponentCards = $opponentCards->merge($game->opponentDeck()?->deck_json ?? []);
         }
 
         $aggregated = $opponentCards

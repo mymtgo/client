@@ -2,8 +2,9 @@
 
 use App\Enums\MatchState;
 use App\Models\Game;
+use App\Models\GameDeck;
 use App\Models\MtgoMatch;
-use App\Models\Player;
+use App\Models\Opponent;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Inertia\Testing\AssertableInertia;
@@ -16,17 +17,11 @@ beforeEach(function () {
     $reflection->setValue(Http::getFacadeRoot(), collect());
 });
 
-function attachOpponent(MtgoMatch $match, string $username, ?int $instanceId = null): Player
+function attachOpponent(MtgoMatch $match, string $username, ?int $instanceId = null): Opponent
 {
-    $opponent = Player::create(['username' => $username]);
-    $game = Game::factory()->create(['match_id' => $match->id]);
-    $game->players()->attach($opponent->id, [
-        'instance_id' => $instanceId ?? 2,
-        'is_local' => false,
-        'on_play' => false,
-        'starting_hand_size' => 7,
-        'deck_json' => [],
-    ]);
+    $opponent = Opponent::factory()->create(['username' => $username]);
+    $match->update(['opponent_id' => $opponent->id]);
+    Game::factory()->create(['match_id' => $match->id, 'opp_instance' => $instanceId ?? 2]);
 
     return $opponent;
 }
@@ -97,13 +92,10 @@ it('returns prefill data when source_match_id is provided', function () {
     ]);
 
     $match = MtgoMatch::factory()->create(['format' => 'CMODERN']);
-    $opponent = Player::create(['username' => 'opponent']);
-    $game = Game::factory()->create(['match_id' => $match->id]);
-    $game->players()->attach($opponent->id, [
-        'instance_id' => 2,
-        'is_local' => false,
-        'on_play' => false,
-        'starting_hand_size' => 7,
+    $game = Game::factory()->create(['match_id' => $match->id, 'opp_instance' => 2]);
+    GameDeck::create([
+        'game_id' => $game->id,
+        'is_opponent' => true,
         'deck_json' => [
             ['mtgo_id' => 12345, 'quantity' => 2],
         ],

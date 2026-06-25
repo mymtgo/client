@@ -19,22 +19,15 @@ class GetDashboardMatchupSpread
         }
 
         return DB::table('matches as m')
-            ->join('deck_versions as dv', 'dv.id', '=', 'm.deck_version_id')
-            ->join('decks as d', 'd.id', '=', 'dv.deck_id')
-            ->join('match_archetypes as ma', 'ma.mtgo_match_id', '=', 'm.id')
+            ->join('match_archetypes as ma', function ($join) {
+                $join->on('ma.mtgo_match_id', '=', 'm.id')
+                    ->where('ma.is_opponent', true);
+            })
             ->join('archetypes as a', 'a.id', '=', 'ma.archetype_id')
-            ->where('d.account_id', $accountId)
+            ->where('m.account_id', $accountId)
             ->where('m.state', 'complete')
             ->when($format, fn ($q, $f) => $q->where('m.format', $f))
             ->whereBetween('m.started_at', [$from, $to])
-            ->whereExists(function ($q) {
-                $q->selectRaw('1')
-                    ->from('game_player as gp')
-                    ->join('games as g', 'g.id', '=', 'gp.game_id')
-                    ->whereColumn('g.match_id', 'm.id')
-                    ->whereColumn('gp.player_id', 'ma.player_id')
-                    ->where('gp.is_local', 0);
-            })
             ->groupBy('a.id', 'a.name')
             ->selectRaw("
                 a.name as name,
