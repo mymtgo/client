@@ -90,6 +90,9 @@ use App\Http\Controllers\Settings\UploadOverlayBackgroundController;
 use App\Http\Controllers\Support\DownloadReportBundleController;
 use App\Http\Controllers\Support\MarkDonationPromptSeenController;
 use App\Http\Controllers\Updates\InstallController;
+use App\Http\Controllers\Upgrade\ShowController as UpgradeShowController;
+use App\Http\Controllers\Upgrade\StartController as UpgradeStartController;
+use App\Http\Controllers\Upgrade\StatusController as UpgradeStatusController;
 use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Route;
 
@@ -254,6 +257,14 @@ Route::group([], function (Router $router) {
         $group->delete('scan/{scan}', CancelScanController::class)->name('import.scan.cancel')
             ->missing(fn () => response()->noContent());
         $group->delete('/', ImportDestroyController::class)->name('import.destroy');
+    });
+
+    $router->group([
+        'prefix' => 'upgrade',
+    ], function (Router $group) {
+        $group->get('/', UpgradeShowController::class)->name('upgrade.show');
+        $group->post('start', UpgradeStartController::class)->name('upgrade.start');
+        $group->get('status/{schemaUpgrade}', UpgradeStatusController::class)->name('upgrade.status');
     });
 
     $router->get('updates/install', InstallController::class)->name('updates.install');

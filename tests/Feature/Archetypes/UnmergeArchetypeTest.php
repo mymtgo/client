@@ -4,7 +4,6 @@ use App\Actions\Archetypes\UnmergeArchetype;
 use App\Models\Archetype;
 use App\Models\ArchetypeDeck;
 use App\Models\MtgoMatch;
-use App\Models\Player;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 
@@ -32,13 +31,11 @@ it('leaves source variants and history untouched', function (): void {
     $variant = ArchetypeDeck::factory()->for($source)->create();
 
     $match = MtgoMatch::factory()->create();
-    $player = Player::factory()->create();
 
     $rowId = DB::table('match_archetypes')->insertGetId([
         'mtgo_match_id' => $match->id,
         'archetype_id' => $source->id,
         'archetype_deck_id' => $variant->id,
-        'player_id' => $player->id,
         'confidence' => 1.0,
         'created_at' => now(),
         'updated_at' => now(),

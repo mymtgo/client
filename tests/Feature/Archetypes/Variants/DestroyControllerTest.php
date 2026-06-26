@@ -3,7 +3,6 @@
 use App\Models\Archetype;
 use App\Models\MatchArchetype;
 use App\Models\MtgoMatch;
-use App\Models\Player;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 
@@ -38,7 +37,6 @@ it('removes a variant when more than one exists', function () {
 it('nulls match_archetypes.archetype_deck_id and preserves archetype_id', function () {
     $archetype = makeArchetypeWithVariants(2);
     $deck = $archetype->decks->first();
-    $player = Player::create(['username' => 'p']);
     $match = MtgoMatch::create([
         'token' => fake()->uuid(),
         'mtgo_id' => fake()->unique()->numerify('######'),
@@ -53,7 +51,6 @@ it('nulls match_archetypes.archetype_deck_id and preserves archetype_id', functi
         'archetype_id' => $archetype->id,
         'archetype_deck_id' => $deck->id,
         'mtgo_match_id' => $match->id,
-        'player_id' => $player->id,
         'confidence' => 0.9,
     ]);
 

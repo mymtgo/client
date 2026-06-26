@@ -113,8 +113,6 @@ class ParseImportableMatches
                         'game_index' => $g['game_index'],
                         'won' => $g['winner'] === $localPlayer,
                         'on_play' => $g['on_play'] === $localPlayer,
-                        'starting_hand_size' => $g['starting_hands'][$localPlayer] ?? 7,
-                        'opponent_hand_size' => $g['starting_hands'][$opponent] ?? 7,
                         'started_at' => $g['started_at'],
                         'ended_at' => $g['ended_at'],
                         'local_cards' => $gameCards[$localPlayer] ?? [],

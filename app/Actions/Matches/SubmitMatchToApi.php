@@ -116,7 +116,7 @@ class SubmitMatchToApi
      * Aggregate known opponent cards seen across the match's games.
      *
      * Sums quantities per mtgo_id (capped at 4) from each opponent
-     * game_player's deck_json. Seen cards carry no reliable sideboard
+     * game's game_decks row (via game->opponentDeck()). Seen cards carry no reliable sideboard
      * signal, so all entries are reported in the main zone.
      *
      * @return array<int, array{mtgo_id: int, quantity: int, zone: string}>

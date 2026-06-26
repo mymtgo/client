@@ -22,11 +22,6 @@ class ArchetypeMatchAttempt extends Model
         return $this->belongsTo(MtgoMatch::class, 'match_id');
     }
 
-    public function player(): BelongsTo
-    {
-        return $this->belongsTo(Player::class);
-    }
-
     public function archetype(): BelongsTo
     {
         return $this->belongsTo(Archetype::class);

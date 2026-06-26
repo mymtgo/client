@@ -22,6 +22,7 @@ use App\Models\Account;
 use App\Models\Archetype;
 use App\Models\Deck;
 use App\Models\MtgoMatch;
+use App\Models\SchemaUpgrade;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Str;
 
@@ -197,7 +198,7 @@ class MtgoManager
     public function canRun(): bool
     {
         try {
-            return AppSettings::isWatcherActive() && $this->pathsAreValid();
+            return AppSettings::isWatcherActive() && $this->pathsAreValid() && ! SchemaUpgrade::needsUpgrade();
         } catch (\Throwable) {
             return false;
         }

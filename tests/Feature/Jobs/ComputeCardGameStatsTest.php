@@ -12,7 +12,6 @@ use App\Models\LogEvent;
 use App\Models\LogInstance;
 use App\Models\MtgoMatch;
 use App\Models\Opponent;
-use App\Models\Player;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -60,14 +59,10 @@ function createMatchWithGames(array $overrides = []): array
         'opponent_id' => $opponentModel->id,
     ], $overrides));
 
-    // Keep Player instances for backward compat with any callsite that uses them for usernames.
-    $localPlayer = Player::firstOrCreate(['username' => 'testplayer']);
-    $opponent = Player::firstOrCreate(['username' => 'opponent']);
-
-    return [$match, $deckVersion, $localPlayer, $opponent];
+    return [$match, $deckVersion];
 }
 
-function attachPlayers(Game $game, Player $local, Player $opponent, int $localInstanceId = 0, int $opponentInstanceId = 1, array $deckJson = []): void
+function attachPlayers(Game $game, int $localInstanceId = 0, int $opponentInstanceId = 1, array $deckJson = []): void
 {
     $game->update([
         'local_instance' => $localInstanceId,
@@ -99,7 +94,7 @@ function createTimeline(Game $game, array $cards): void
 }
 
 it('detects sided out cards by comparing maindeck quantities between games', function () {
-    [$match, $deckVersion, $local, $opponent] = createMatchWithGames();
+    [$match, $deckVersion] = createMatchWithGames();
 
     // Card A: 4 in maindeck game 1, 2 in maindeck game 2 (sided 2 out)
     // Card B: 0 in maindeck game 1 (sideboard), 2 in maindeck game 2 (sided in)
@@ -111,7 +106,7 @@ it('detects sided out cards by comparing maindeck quantities between games', fun
         'won' => true,
         'started_at' => now(),
     ]);
-    attachPlayers($game1, $local, $opponent, deckJson: [
+    attachPlayers($game1, deckJson: [
         ['mtgo_id' => 1001, 'quantity' => 4, 'sideboard' => false],
         ['mtgo_id' => 1002, 'quantity' => 2, 'sideboard' => true],
     ]);
@@ -125,7 +120,7 @@ it('detects sided out cards by comparing maindeck quantities between games', fun
         'won' => false,
         'started_at' => now()->addMinutes(10),
     ]);
-    attachPlayers($game2, $local, $opponent, deckJson: [
+    attachPlayers($game2, deckJson: [
         ['mtgo_id' => 1001, 'quantity' => 2, 'sideboard' => false],
         ['mtgo_id' => 1001, 'quantity' => 2, 'sideboard' => true],
         ['mtgo_id' => 1002, 'quantity' => 2, 'sideboard' => false],
@@ -178,8 +173,6 @@ it('skips sided_in/sided_out detection for imported matches because deck_json is
         'state' => 'complete',
         'imported' => true,
     ]);
-    $local = Player::create(['username' => 'testplayer']);
-    $opponent = Player::create(['username' => 'opponent']);
 
     Card::factory()->create(['oracle_id' => 'oracle-main', 'mtgo_id' => 3001, 'name' => 'Main Card']);
 
@@ -188,7 +181,7 @@ it('skips sided_in/sided_out detection for imported matches because deck_json is
         'won' => true,
         'started_at' => now(),
     ]);
-    attachPlayers($game1, $local, $opponent, deckJson: [
+    attachPlayers($game1, deckJson: [
         ['mtgo_id' => 3001, 'quantity' => 1, 'sideboard' => false],
     ]);
 
@@ -197,7 +190,7 @@ it('skips sided_in/sided_out detection for imported matches because deck_json is
         'won' => true,
         'started_at' => now()->addMinutes(10),
     ]);
-    attachPlayers($game2, $local, $opponent, deckJson: [
+    attachPlayers($game2, deckJson: [
         ['mtgo_id' => 3001, 'quantity' => 4, 'sideboard' => false],
     ]);
 
@@ -222,8 +215,6 @@ it('emits zero-quantity rows for sideboard cards that stayed in sideboard', func
         'deck_version_id' => $deckVersion->id,
         'state' => 'complete',
     ]);
-    $local = Player::create(['username' => 'testplayer']);
-    $opponent = Player::create(['username' => 'opponent']);
 
     Card::factory()->create(['oracle_id' => 'oracle-main', 'mtgo_id' => 2001, 'name' => 'Main Card']);
     Card::factory()->create(['oracle_id' => 'oracle-sb', 'mtgo_id' => 2002, 'name' => 'SB Card']);
@@ -233,7 +224,7 @@ it('emits zero-quantity rows for sideboard cards that stayed in sideboard', func
         'won' => true,
         'started_at' => now(),
     ]);
-    attachPlayers($game1, $local, $opponent, deckJson: [
+    attachPlayers($game1, deckJson: [
         ['mtgo_id' => 2001, 'quantity' => 4, 'sideboard' => false],
         ['mtgo_id' => 2002, 'quantity' => 2, 'sideboard' => true],
     ]);
@@ -243,7 +234,7 @@ it('emits zero-quantity rows for sideboard cards that stayed in sideboard', func
         'won' => false,
         'started_at' => now()->addMinutes(10),
     ]);
-    attachPlayers($game2, $local, $opponent, deckJson: [
+    attachPlayers($game2, deckJson: [
         ['mtgo_id' => 2001, 'quantity' => 4, 'sideboard' => false],
         ['mtgo_id' => 2002, 'quantity' => 2, 'sideboard' => true],
     ]);
@@ -253,7 +244,7 @@ it('emits zero-quantity rows for sideboard cards that stayed in sideboard', func
         'won' => true,
         'started_at' => now()->addMinutes(20),
     ]);
-    attachPlayers($game3, $local, $opponent, deckJson: [
+    attachPlayers($game3, deckJson: [
         ['mtgo_id' => 2001, 'quantity' => 2, 'sideboard' => false],
         ['mtgo_id' => 2002, 'quantity' => 2, 'sideboard' => false],
     ]);
@@ -287,7 +278,7 @@ it('emits zero-quantity rows for sideboard cards that stayed in sideboard', func
 });
 
 it('counts multiple casts of the same card instance via zone transitions', function () {
-    [$match, $deckVersion, $local, $opponent] = createMatchWithGames();
+    [$match, $deckVersion] = createMatchWithGames();
 
     $card = Card::factory()->create(['oracle_id' => 'oracle-a', 'mtgo_id' => 1001, 'name' => 'Card A']);
 
@@ -295,7 +286,7 @@ it('counts multiple casts of the same card instance via zone transitions', funct
         'won' => true,
         'started_at' => now(),
     ]);
-    attachPlayers($game, $local, $opponent, deckJson: [
+    attachPlayers($game, deckJson: [
         ['mtgo_id' => 1001, 'quantity' => 1, 'sideboard' => false],
     ]);
 
@@ -411,7 +402,7 @@ it('counts multiple casts of the same card instance via zone transitions', funct
 });
 
 it('does not mark cards as sided out when deck is unchanged between games', function () {
-    [$match, $deckVersion, $local, $opponent] = createMatchWithGames();
+    [$match, $deckVersion] = createMatchWithGames();
 
     $card = Card::factory()->create(['oracle_id' => 'oracle-c', 'mtgo_id' => 2001, 'name' => 'Card C']);
 
@@ -424,14 +415,14 @@ it('does not mark cards as sided out when deck is unchanged between games', func
         'won' => true,
         'started_at' => now(),
     ]);
-    attachPlayers($game1, $local, $opponent, deckJson: $deckJson);
+    attachPlayers($game1, deckJson: $deckJson);
     createTimeline($game1, []);
 
     $game2 = Game::factory()->for($match, 'match')->create([
         'won' => false,
         'started_at' => now()->addMinutes(10),
     ]);
-    attachPlayers($game2, $local, $opponent, deckJson: $deckJson);
+    attachPlayers($game2, deckJson: $deckJson);
     createTimeline($game2, []);
 
     (new ComputeCardGameStats($match->id))->handle();
@@ -448,7 +439,7 @@ it('does not mark cards as sided out when deck is unchanged between games', func
 });
 
 it('creates a sided_out row for cards completely moved to sideboard in postboard games', function () {
-    [$match, $deckVersion, $local, $opponent] = createMatchWithGames();
+    [$match, $deckVersion] = createMatchWithGames();
 
     // Card D: 3 in maindeck game 1, entirely sideboard in game 2
     $card = Card::factory()->create(['oracle_id' => 'oracle-d', 'mtgo_id' => 3001, 'name' => 'Card D']);
@@ -457,7 +448,7 @@ it('creates a sided_out row for cards completely moved to sideboard in postboard
         'won' => true,
         'started_at' => now(),
     ]);
-    attachPlayers($game1, $local, $opponent, deckJson: [
+    attachPlayers($game1, deckJson: [
         ['mtgo_id' => 3001, 'quantity' => 3, 'sideboard' => false],
     ]);
     createTimeline($game1, []);
@@ -466,7 +457,7 @@ it('creates a sided_out row for cards completely moved to sideboard in postboard
         'won' => false,
         'started_at' => now()->addMinutes(10),
     ]);
-    attachPlayers($game2, $local, $opponent, deckJson: [
+    attachPlayers($game2, deckJson: [
         ['mtgo_id' => 3001, 'quantity' => 3, 'sideboard' => true],
     ]);
     createTimeline($game2, []);
@@ -501,7 +492,7 @@ it('sources entries from the decoded game log table when run with fromGameLog (r
     // log_events are pruned, so regeneration must source entries from the
     // durable GameLog.decoded_entries instead. With fromGameLog=true and NO
     // log_events present, cast must still resolve.
-    [$match, $deckVersion, $local, $opponent] = createMatchWithGames();
+    [$match, $deckVersion] = createMatchWithGames();
 
     $card = Card::factory()->create(['oracle_id' => 'oracle-a', 'mtgo_id' => 1001, 'name' => 'Card A']);
 
@@ -509,7 +500,7 @@ it('sources entries from the decoded game log table when run with fromGameLog (r
         'won' => true,
         'started_at' => now(),
     ]);
-    attachPlayers($game, $local, $opponent, deckJson: [
+    attachPlayers($game, deckJson: [
         ['mtgo_id' => 1001, 'quantity' => 4, 'sideboard' => false],
     ]);
     createTimeline($game, [
@@ -542,7 +533,7 @@ it('sources entries from the decoded game log table when run with fromGameLog (r
 });
 
 it('reads cast data from game log instead of timeline zone transitions', function () {
-    [$match, $deckVersion, $local, $opponent] = createMatchWithGames();
+    [$match, $deckVersion] = createMatchWithGames();
 
     $card = Card::factory()->create(['oracle_id' => 'oracle-a', 'mtgo_id' => 1001, 'name' => 'Card A']);
 
@@ -550,7 +541,7 @@ it('reads cast data from game log instead of timeline zone transitions', functio
         'won' => true,
         'started_at' => now(),
     ]);
-    attachPlayers($game, $local, $opponent, deckJson: [
+    attachPlayers($game, deckJson: [
         ['mtgo_id' => 1001, 'quantity' => 4, 'sideboard' => false],
     ]);
 
@@ -578,7 +569,7 @@ it('reads cast data from game log instead of timeline zone transitions', functio
 });
 
 it('flags pregame_revealed and pregame_played from game log in live pipeline', function () {
-    [$match, $deckVersion, $local, $opponent] = createMatchWithGames();
+    [$match, $deckVersion] = createMatchWithGames();
 
     $devourer = Card::factory()->create(['oracle_id' => 'oracle-devourer', 'mtgo_id' => 5001, 'name' => 'Devourer of Destiny']);
     $leyline = Card::factory()->create(['oracle_id' => 'oracle-leyline', 'mtgo_id' => 5002, 'name' => 'Leyline of the Guildpact']);
@@ -588,7 +579,7 @@ it('flags pregame_revealed and pregame_played from game log in live pipeline', f
         'won' => true,
         'started_at' => now(),
     ]);
-    attachPlayers($game, $local, $opponent, deckJson: [
+    attachPlayers($game, deckJson: [
         ['mtgo_id' => 5001, 'quantity' => 4, 'sideboard' => false],
         ['mtgo_id' => 5002, 'quantity' => 4, 'sideboard' => false],
         ['mtgo_id' => 5003, 'quantity' => 20, 'sideboard' => false],
@@ -631,7 +622,7 @@ it('flags pregame_revealed and pregame_played from game log in live pipeline', f
 });
 
 it('writes pregame flags as false when game log has no pregame actions', function () {
-    [$match, $deckVersion, $local, $opponent] = createMatchWithGames();
+    [$match, $deckVersion] = createMatchWithGames();
 
     $card = Card::factory()->create(['oracle_id' => 'oracle-quiet', 'mtgo_id' => 6001, 'name' => 'Card Q']);
 
@@ -639,7 +630,7 @@ it('writes pregame flags as false when game log has no pregame actions', functio
         'won' => true,
         'started_at' => now(),
     ]);
-    attachPlayers($game, $local, $opponent, deckJson: [
+    attachPlayers($game, deckJson: [
         ['mtgo_id' => 6001, 'quantity' => 4, 'sideboard' => false],
     ]);
     createTimeline($game, [
@@ -671,7 +662,7 @@ it('processes imported-style match (no timeline) using game log and deck version
     // Imported matches have game logs but no timeline. Job should still produce
     // local + opp rows using game-log signals only, with seen=1 derived from
     // any signal (since we have no zone-transition data).
-    [$match, $deckVersion, $local, $opponent] = createMatchWithGames();
+    [$match, $deckVersion] = createMatchWithGames();
 
     $myBolt = Card::factory()->create(['oracle_id' => 'oracle-mine', 'mtgo_id' => 4001, 'name' => 'Bolt']);
     $oppCounter = Card::factory()->create(['oracle_id' => 'oracle-opp', 'mtgo_id' => 4002, 'name' => 'Counter']);
@@ -686,7 +677,7 @@ it('processes imported-style match (no timeline) using game log and deck version
         'started_at' => now(),
     ]);
     // attachPlayers passes deckJson empty by default — pivot fallback will kick in
-    attachPlayers($game, $local, $opponent);
+    attachPlayers($game);
 
     ccgs_seedLogEntries($match->token, [
         ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@Ptestplayer joined the game.'],
@@ -737,15 +728,13 @@ it('uses deck-version snapshot quantities for imported matches instead of sparse
         'state' => 'complete',
         'imported' => true,
     ]);
-    $local = Player::create(['username' => 'testplayer']);
-    $opponent = Player::create(['username' => 'opponent']);
 
     $game = Game::factory()->for($match, 'match')->create([
         'won' => true,
         'started_at' => now(),
     ]);
     // Sparse pivot — only Lotus was seen this game.
-    attachPlayers($game, $local, $opponent, deckJson: [
+    attachPlayers($game, deckJson: [
         ['mtgo_id' => 9002, 'quantity' => 1, 'sideboard' => false],
     ]);
 
@@ -780,7 +769,7 @@ it('uses deck-version snapshot quantities for imported matches instead of sparse
 });
 
 it('writes opponent rows with cast and seen data from game log and timeline', function () {
-    [$match, $deckVersion, $local, $opponent] = createMatchWithGames();
+    [$match, $deckVersion] = createMatchWithGames();
 
     $oppCard = Card::factory()->create(['oracle_id' => 'oracle-opp', 'mtgo_id' => 7001, 'name' => 'Bolt']);
     $myLand = Card::factory()->create(['oracle_id' => 'oracle-mine', 'mtgo_id' => 7002, 'name' => 'Forest']);
@@ -789,7 +778,7 @@ it('writes opponent rows with cast and seen data from game log and timeline', fu
         'won' => false,
         'started_at' => now(),
     ]);
-    attachPlayers($game, $local, $opponent, deckJson: [
+    attachPlayers($game, deckJson: [
         ['mtgo_id' => 7002, 'quantity' => 24, 'sideboard' => false],
     ]);
 
@@ -857,7 +846,7 @@ it('writes opponent rows with cast and seen data from game log and timeline', fu
 });
 
 it('does not write opponent rows when no signals are present for that card', function () {
-    [$match, $deckVersion, $local, $opponent] = createMatchWithGames();
+    [$match, $deckVersion] = createMatchWithGames();
 
     $myCard = Card::factory()->create(['oracle_id' => 'oracle-mine', 'mtgo_id' => 8001, 'name' => 'Forest']);
 
@@ -865,7 +854,7 @@ it('does not write opponent rows when no signals are present for that card', fun
         'won' => true,
         'started_at' => now(),
     ]);
-    attachPlayers($game, $local, $opponent, deckJson: [
+    attachPlayers($game, deckJson: [
         ['mtgo_id' => 8001, 'quantity' => 24, 'sideboard' => false],
     ]);
     createTimeline($game, []);
@@ -887,7 +876,7 @@ it('does not write opponent rows when no signals are present for that card', fun
 });
 
 it('allows local and opponent rows for the same oracle in the same game', function () {
-    [$match, $deckVersion, $local, $opponent] = createMatchWithGames();
+    [$match, $deckVersion] = createMatchWithGames();
 
     // Both players on Bolt — local has it in deck, opp casts it
     $bolt = Card::factory()->create(['oracle_id' => 'oracle-bolt', 'mtgo_id' => 9001, 'name' => 'Bolt']);
@@ -896,7 +885,7 @@ it('allows local and opponent rows for the same oracle in the same game', functi
         'won' => true,
         'started_at' => now(),
     ]);
-    attachPlayers($game, $local, $opponent, deckJson: [
+    attachPlayers($game, deckJson: [
         ['mtgo_id' => 9001, 'quantity' => 4, 'sideboard' => false],
     ]);
 
@@ -941,7 +930,7 @@ it('allows local and opponent rows for the same oracle in the same game', functi
 });
 
 it('tracks land plays separately from casts in live pipeline', function () {
-    [$match, $deckVersion, $local, $opponent] = createMatchWithGames();
+    [$match, $deckVersion] = createMatchWithGames();
 
     $land = Card::factory()->create(['oracle_id' => 'oracle-land', 'mtgo_id' => 2001, 'name' => 'Forest']);
 
@@ -949,7 +938,7 @@ it('tracks land plays separately from casts in live pipeline', function () {
         'won' => true,
         'started_at' => now(),
     ]);
-    attachPlayers($game, $local, $opponent, deckJson: [
+    attachPlayers($game, deckJson: [
         ['mtgo_id' => 2001, 'quantity' => 4, 'sideboard' => false],
     ]);
 
@@ -981,7 +970,7 @@ it('counts casts logged under a different printing than the registered deck card
     // variant carries its own CatalogID. The deck and timeline use the base
     // printing, but the cast line uses the warp printing. Both printings share
     // one oracle id, so the cast must still be attributed to the deck card.
-    [$match, $deckVersion, $local, $opponent] = createMatchWithGames();
+    [$match, $deckVersion] = createMatchWithGames();
 
     // Two printings of the same card, same oracle.
     Card::factory()->create(['oracle_id' => 'oracle-qr', 'mtgo_id' => 1001, 'name' => 'Quantum Riddler']);
@@ -993,7 +982,7 @@ it('counts casts logged under a different printing than the registered deck card
     ]);
 
     // Deck registered under the base printing only.
-    attachPlayers($game, $local, $opponent, deckJson: [
+    attachPlayers($game, deckJson: [
         ['mtgo_id' => 1001, 'quantity' => 4, 'sideboard' => false],
     ]);
 

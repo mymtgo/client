@@ -8,7 +8,6 @@ use App\Models\Archetype;
 use App\Models\Card;
 use App\Models\MatchArchetype;
 use App\Models\MtgoMatch;
-use App\Models\Player;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 
@@ -36,7 +35,6 @@ it('defaults manual to false', function () {
 
 it('cascades delete to match_archetypes', function () {
     $archetype = Archetype::factory()->create();
-    $player = Player::create(['username' => 'testuser']);
     $match = MtgoMatch::create([
         'token' => fake()->uuid(),
         'mtgo_id' => fake()->unique()->numerify('######'),
@@ -51,7 +49,6 @@ it('cascades delete to match_archetypes', function () {
     MatchArchetype::create([
         'archetype_id' => $archetype->id,
         'mtgo_match_id' => $match->id,
-        'player_id' => $player->id,
         'confidence' => 0.9,
     ]);
 

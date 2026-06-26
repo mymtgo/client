@@ -50,6 +50,8 @@ use Illuminate\Support\Facades\Facade;
  * @method static void setArchetypesLastRefreshedAt(string $value)
  * @method static bool archetypesRefreshInProgress()
  * @method static void setArchetypesRefreshInProgress(bool $value)
+ * @method static int dataSchemaVersion()
+ * @method static void setDataSchemaVersion(int $version)
  */
 class AppSettings extends Facade
 {

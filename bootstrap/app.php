@@ -2,6 +2,7 @@
 
 use App\Facades\Mtgo;
 use App\Http\Middleware\EnsureDebugMode;
+use App\Http\Middleware\EnsureSchemaUpgraded;
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
 use Illuminate\Console\Scheduling\Schedule;
@@ -25,6 +26,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->web(append: [
             HandleAppearance::class,
             HandleInertiaRequests::class,
+            EnsureSchemaUpgraded::class,
         ]);
         $middleware->alias([
             'debug' => EnsureDebugMode::class,

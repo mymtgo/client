@@ -2,7 +2,6 @@
 
 use App\Models\Archetype;
 use App\Models\MtgoMatch;
-use App\Models\Player;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -22,7 +21,7 @@ return new class extends Migration
             $table->id();
             $table->foreignIdFor(Archetype::class)->constrained();
             $table->foreignIdFor(MtgoMatch::class)->constrained();
-            $table->foreignIdFor(Player::class)->constrained();
+            $table->foreignId('player_id')->constrained('players');
             $table->decimal('confidence')->default(0);
             $table->timestamps();
         });

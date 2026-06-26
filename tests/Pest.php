@@ -2,6 +2,7 @@
 
 use App\Facades\AppSettings;
 use App\Models\Account;
+use App\Models\SchemaUpgrade;
 use Illuminate\Support\Facades\Http;
 use Native\Desktop\Facades\Settings;
 use Native\Desktop\Facades\Window;
@@ -83,6 +84,11 @@ pest()->extend(TestCase::class)
                 unset($this->store[$key]);
             }
         });
+
+        // Ensure existing feature tests bypass the schema upgrade gate by
+        // defaulting to the current target version. Gate tests that need to
+        // exercise the legacy path must explicitly set this back to 0.
+        AppSettings::setDataSchemaVersion(SchemaUpgrade::TARGET_DATA_VERSION);
     })
     ->in('Feature');
 

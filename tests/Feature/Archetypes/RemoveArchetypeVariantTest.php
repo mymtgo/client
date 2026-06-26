@@ -6,7 +6,6 @@ use App\Models\ArchetypeDeck;
 use App\Models\Card;
 use App\Models\MatchArchetype;
 use App\Models\MtgoMatch;
-use App\Models\Player;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 
@@ -49,14 +48,12 @@ it('nulls archetype_deck_id on match_archetypes but preserves archetype_id', fun
         'seen_count' => 1,
         'last_synced_at' => now(),
     ]);
-    $player = Player::create(['username' => 'p']);
     $match = makeMatch();
 
     $matchArchetype = MatchArchetype::create([
         'archetype_id' => $archetype->id,
         'archetype_deck_id' => $deck->id,
         'mtgo_match_id' => $match->id,
-        'player_id' => $player->id,
         'confidence' => 0.9,
     ]);
 

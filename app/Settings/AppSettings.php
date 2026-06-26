@@ -404,6 +404,16 @@ class AppSettings
         $this->set('archetypes_refresh_in_progress', $value);
     }
 
+    public function dataSchemaVersion(): int
+    {
+        return (int) $this->get('data_schema_version', 0);
+    }
+
+    public function setDataSchemaVersion(int $version): void
+    {
+        $this->set('data_schema_version', $version);
+    }
+
     private function path(): string
     {
         return Storage::disk()->path(self::FILENAME);

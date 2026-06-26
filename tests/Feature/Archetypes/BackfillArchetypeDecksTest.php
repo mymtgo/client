@@ -5,7 +5,6 @@ use App\Models\ArchetypeDeck;
 use App\Models\Card;
 use App\Models\MatchArchetype;
 use App\Models\MtgoMatch;
-use App\Models\Player;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -67,11 +66,9 @@ it('repoints existing match_archetypes at the new deck', function () {
     $archetype->cards()->attach($card->id, ['quantity' => 4, 'sideboard' => false]);
 
     $match = MtgoMatch::factory()->create();
-    $player = Player::factory()->create();
     $matchArchetype = MatchArchetype::create([
         'archetype_id' => $archetype->id,
         'mtgo_match_id' => $match->id,
-        'player_id' => $player->id,
         'confidence' => 0.9,
     ]);
 
