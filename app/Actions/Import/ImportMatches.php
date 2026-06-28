@@ -2,11 +2,10 @@
 
 namespace App\Actions\Import;
 
+use App\Actions\Matches\EnsureGameLogForMatch;
 use App\Actions\Matches\ExtractGameResults;
-use App\Actions\Matches\ParseGameLogBinary;
 use App\Enums\MatchOutcome;
 use App\Enums\MatchState;
-use App\Facades\Mtgo;
 use App\Jobs\ComputeCardGameStats;
 use App\Jobs\DetermineMatchArchetypesJob;
 use App\Models\Card;
@@ -100,7 +99,6 @@ class ImportMatches
         $scanMatches = $query->get();
         $imported = 0;
         $skipped = 0;
-        $dataPath = Mtgo::getLogDataPath();
 
         foreach ($scanMatches as $scanMatch) {
             if (MtgoMatch::where('mtgo_id', (string) $scanMatch->history_id)->exists()) {
@@ -124,7 +122,7 @@ class ImportMatches
             $opponentCards = [];
 
             if ($scanMatch->game_log_token && $localPlayer) {
-                $entries = self::parseGameLogEntries($scanMatch->game_log_token, $dataPath);
+                $entries = EnsureGameLogForMatch::run($scanMatch->game_log_token);
 
                 if (! empty($entries)) {
                     $cardData = ExtractCardsFromGameLog::run($entries);
@@ -373,28 +371,5 @@ class ImportMatches
         }
 
         self::hydrateCards(array_values($cards));
-    }
-
-    /**
-     * Parse a game log .dat file inline (no GameLog row written).
-     *
-     * @return array<int, array{timestamp: string, message: string}>
-     */
-    private static function parseGameLogEntries(string $gameLogToken, string $dataPath): array
-    {
-        $filePath = $dataPath.'/Match_GameLog_'.$gameLogToken.'.dat';
-
-        if (! file_exists($filePath)) {
-            return [];
-        }
-
-        $raw = file_get_contents($filePath);
-        $parsed = ParseGameLogBinary::run($raw);
-
-        if (! $parsed || empty($parsed['entries'])) {
-            return [];
-        }
-
-        return $parsed['entries'];
     }
 }

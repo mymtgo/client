@@ -32,10 +32,6 @@ class SyncDecks
 
             $fileModified = now()->parse($attributes['Timestamp'])->startOfSecond();
 
-            if ($deck->deleted_at) {
-                $deck->restore();
-            }
-
             /**
              * Get the latest version of this deck.
              */
@@ -83,11 +79,15 @@ class SyncDecks
             /**
              * Do we already have this variation of the deck?
              */
-            $deck->versions()->where('signature', $signature)->firstOrCreate([
+            $deckVersion = $deck->versions()->where('signature', $signature)->firstOrCreate([
                 'signature' => $signature,
             ], [
                 'modified_at' => $fileModified,
             ]);
+
+            // If we don't have any games for this deck version and it's not the one we just created,
+            // it's possible the user has been actively changing the deck, so just remove the orphaned versions.
+            $deck->versions()->whereDoesntHave('matches')->where('id', '!=', $deckVersion->id)->delete();
 
             try {
                 ComputeDeckIdentity::run($deck);

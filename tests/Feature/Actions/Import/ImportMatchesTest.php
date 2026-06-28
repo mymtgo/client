@@ -4,10 +4,12 @@ use App\Actions\Import\ImportMatches;
 use App\Enums\MatchOutcome;
 use App\Enums\MatchState;
 use App\Events\GameCardsSnapshotChanged;
+use App\Facades\Mtgo;
 use App\Models\Card;
 use App\Models\CardGameStat;
 use App\Models\Deck;
 use App\Models\DeckVersion;
+use App\Models\ImportScan;
 use App\Models\MtgoMatch;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
@@ -267,6 +269,65 @@ it('does not dispatch GameCardsSnapshotChanged when importing matches', function
     ImportMatches::run($importData);
 
     Event::assertNotDispatched(GameCardsSnapshotChanged::class);
+});
+
+it('builds games from the on-disk .dat when importing a scan whose game log is not in the database', function () {
+    // Regression: MTGO writes per-match .dat files into nested ClickOnce
+    // directories, not flat in the log data path. The old runFromScan rebuilt a
+    // flat path that never resolved, so every imported match was left with no
+    // games, players, opponent, archetype, or duration. EnsureGameLogForMatch
+    // locates the file recursively, which is what the import must rely on.
+    $dir = sys_get_temp_dir().'/import-scan-'.uniqid();
+    $nested = $dir.'/AppFiles/91F5DC46A0AFBF283E8FD4E9E184F175';
+    mkdir($nested, 0777, true);
+
+    $token = 'tron-scan-tok-1';
+    copy(
+        base_path('tests/fixtures/gamelogs/clean_2_0_win.dat'),
+        $nested."/Match_GameLog_{$token}.dat"
+    );
+
+    Mtgo::shouldReceive('getLogDataPath')->andReturn($dir);
+
+    $version = DeckVersion::factory()->create(['deck_id' => Deck::factory()->create()->id]);
+
+    $scan = ImportScan::create(['status' => 'complete', 'deck_version_id' => $version->id]);
+    $scan->matches()->create([
+        'history_id' => 314159265,
+        'started_at' => '2026-05-01T12:00:00Z',
+        'opponent' => 'seafox311',
+        'local_player' => 'anticloser',
+        'format' => 'CMODERN',
+        'format_display' => 'Modern',
+        'games_won' => 2,
+        'games_lost' => 0,
+        'outcome' => 'win',
+        'round' => 0,
+        'game_log_token' => $token,
+        'game_ids' => [915866742, 915867768],
+    ]);
+
+    $result = ImportMatches::runFromScan($scan);
+
+    expect($result['imported'])->toBe(1);
+
+    $match = MtgoMatch::where('mtgo_id', '314159265')->first();
+    expect($match)->not->toBeNull();
+    expect($match->deck_version_id)->toBe($version->id);
+    expect($match->games)->toHaveCount(2);
+    expect($match->ended_at)->not->toBeNull();
+
+    $game = $match->games->sortBy('started_at')->first();
+    $local = $game->players->first(fn ($p) => $p->pivot->is_local);
+    $opponent = $game->players->first(fn ($p) => ! $p->pivot->is_local);
+
+    expect($local->username)->toBe('anticloser');
+    expect($opponent->username)->toBe('seafox311');
+
+    array_map('unlink', glob($nested.'/*'));
+    rmdir($nested);
+    rmdir($dir.'/AppFiles');
+    rmdir($dir);
 });
 
 it('hydrateCards creates stubs and resolves oracle_ids by name', function () {
