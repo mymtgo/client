@@ -656,6 +656,79 @@ it('writes pregame flags as false when game log has no pregame actions', functio
     expect((bool) $stat->pregame_played)->toBeFalse();
 });
 
+it('relinks an orphaned game log and derives imported card stats on recompute', function () {
+    // Production reproduction: imported matches get a random token unrelated to
+    // their .dat game log, which stays orphaned (keyed by the original log token)
+    // with NO log_events and NO timeline. The job must self-heal the link by
+    // opponent + start time, then source signals from the decoded log — so a
+    // plain recompute (no fromGameLog) recovers real stats.
+    $deckVersion = DeckVersion::factory()->create([
+        'signature' => base64_encode('4001:4:false'),
+    ]);
+    $match = MtgoMatch::factory()->create([
+        'deck_version_id' => $deckVersion->id,
+        'state' => 'complete',
+        'imported' => true,
+        'started_at' => '2026-01-01 09:00:00',
+    ]);
+    $local = Player::create(['username' => 'testplayer']);
+    $opponent = Player::create(['username' => 'opponent']);
+
+    Card::factory()->create(['oracle_id' => 'oracle-mine', 'mtgo_id' => 4001, 'name' => 'Bolt']);
+    Card::factory()->create(['oracle_id' => 'oracle-opp', 'mtgo_id' => 4002, 'name' => 'Counter']);
+
+    $game = Game::factory()->for($match, 'match')->create([
+        'won' => false,
+        'started_at' => '2026-01-01 09:00:00',
+    ]);
+    attachPlayers($game, $local, $opponent);
+
+    // Orphan decoded .dat log: keyed by the original log token, matchable by
+    // opponent + start time. NO log_events seeded.
+    GameLog::create([
+        'match_token' => 'original-dat-token',
+        'file_path' => '/some/path.dat',
+        'first_timestamp' => '2026-01-01 09:00:08',
+        'players' => ['testplayer', 'opponent'],
+        'decoded_entries' => [
+            ['timestamp' => '2026-01-01T09:00:00+00:00', 'message' => '@P@Ptestplayer joined the game.'],
+            ['timestamp' => '2026-01-01T09:00:00+00:00', 'message' => '@P@Popponent joined the game.'],
+            ['timestamp' => '2026-01-01T09:00:10+00:00', 'message' => '@Ptestplayer casts @[Bolt@:8002,500:@].'],
+            ['timestamp' => '2026-01-01T09:00:30+00:00', 'message' => '@Popponent casts @[Counter@:8004,600:@].'],
+            ['timestamp' => '2026-01-01T09:02:00+00:00', 'message' => '@Popponent wins the game.'],
+        ],
+    ]);
+
+    expect(LogEvent::where('match_token', $match->token)->count())->toBe(0);
+
+    // No fromGameLog — mirrors the manual recompute / at-import dispatch path.
+    (new ComputeCardGameStats($match->id))->handle();
+
+    // The orphan log is now keyed to the match.
+    expect(GameLog::where('match_token', $match->token)->exists())->toBeTrue();
+
+    $localRow = DB::table('card_game_stats')
+        ->where('oracle_id', 'oracle-mine')
+        ->where('game_id', $game->id)
+        ->where('opponent', false)
+        ->first();
+
+    expect($localRow)->not->toBeNull();
+    expect($localRow->quantity)->toBe(4);
+    expect($localRow->cast)->toBe(1);
+    expect($localRow->seen)->toBe(1);
+
+    $oppRow = DB::table('card_game_stats')
+        ->where('oracle_id', 'oracle-opp')
+        ->where('game_id', $game->id)
+        ->where('opponent', true)
+        ->first();
+
+    expect($oppRow)->not->toBeNull();
+    expect($oppRow->cast)->toBe(1);
+    expect($oppRow->seen)->toBe(1);
+});
+
 it('processes imported-style match (no timeline) using game log and deck version cards', function () {
     // Imported matches have game logs but no timeline. Job should still produce
     // local + opp rows using game-log signals only, with seen=1 derived from

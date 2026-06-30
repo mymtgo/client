@@ -6,6 +6,7 @@ use App\Actions\Cards\AggregateGameLogCardStats;
 use App\Actions\Cards\CountSeenCardsByOracle;
 use App\Actions\Cards\UpdateGameMetaFromLog;
 use App\Actions\Import\ExtractCardsFromGameLog;
+use App\Actions\Import\LinkImportedMatchGameLog;
 use App\Actions\Matches\EnsureGameLogForMatch;
 use App\Actions\Matches\ExtractGameHandData;
 use App\Actions\Matches\ExtractMetaMessageEntries;
@@ -47,10 +48,21 @@ class ComputeCardGameStats implements ShouldQueue
         // leaves stale rows for cards no longer in the deck or no longer signaled by opp.
         CardGameStat::whereIn('game_id', $games->pluck('id'))->delete();
 
+        $imported = (bool) $match->imported;
+
+        // Imported matches are created with a random token unrelated to their
+        // .dat game log, so the decoded log stays orphaned. Re-key it to the
+        // match here (idempotent) so any recompute can resolve the log below.
+        if ($imported) {
+            LinkImportedMatchGameLog::run($match);
+        }
+
         // Regeneration sources from the durable decoded .dat (GameLog), since a
         // completed match's log_events get pruned. The live at-Complete path
         // reads log_events directly, which are still present at that moment.
-        $entries = $this->fromGameLog
+        // Imported matches never have log_events — their only game-log source is
+        // the decoded .dat — so they always read from the GameLog table.
+        $entries = ($this->fromGameLog || $imported)
             ? EnsureGameLogForMatch::run($match->token)
             : ExtractMetaMessageEntries::run($match->token);
 
@@ -59,7 +71,6 @@ class ComputeCardGameStats implements ShouldQueue
             : null;
 
         $sideboardOracleIds = $this->resolveSideboardOracleIds($match->deck_version_id);
-        $imported = (bool) $match->imported;
 
         // Imported matches build deck_json from cards "seen" in the game log only,
         // so per-game quantities under-report the real maindeck. Comparing those
