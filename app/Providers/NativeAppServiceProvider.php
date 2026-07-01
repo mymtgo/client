@@ -6,7 +6,6 @@ use App\Actions\Decks\OpenDeckPopoutWindow;
 use App\Actions\Leagues\OpenOpponentScoutWindow;
 use App\Actions\Leagues\OpenOverlayWindow;
 use App\Actions\Tray\CreateTrayMenuBar;
-use App\Actions\Updates\RunAppUpdates;
 use App\Facades\AppSettings;
 use App\Facades\Mtgo;
 use Native\Desktop\Contracts\ProvidesPhpIni;
@@ -25,8 +24,6 @@ class NativeAppServiceProvider implements ProvidesPhpIni
     {
         $detected = System::timezone();
         AppSettings::setSystemTimezone($detected ?? AppSettings::systemTimezone());
-
-        RunAppUpdates::run();
 
         if (PHP_OS_FAMILY !== 'Linux') {
             NativeApp::openAtLogin(AppSettings::autostartEnabled());
@@ -47,7 +44,6 @@ class NativeAppServiceProvider implements ProvidesPhpIni
             ->title('mymtgo');
 
         Mtgo::runInitialSetup();
-        Mtgo::retryUnsubmittedMatches();
 
         if (AppSettings::showLeagueWindow()) {
             OpenOverlayWindow::run();

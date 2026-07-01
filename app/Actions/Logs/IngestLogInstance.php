@@ -2,7 +2,6 @@
 
 namespace App\Actions\Logs;
 
-use App\Models\Account;
 use App\Models\LogCursor;
 use App\Models\LogEvent;
 use App\Models\LogInstance;
@@ -300,8 +299,9 @@ class IngestLogInstance
         }
 
         if (preg_match('/Username:\s*(\S+)/', $row['raw_text'], $m)) {
+            // Stamp the username onto ingested events. v1 binds the cloud
+            // account separately (client-auth); ingestion only records it.
             $currentUsername = $m[1];
-            Account::registerAndActivate($currentUsername);
 
             return true;
         }

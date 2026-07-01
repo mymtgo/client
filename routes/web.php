@@ -1,86 +1,16 @@
 <?php
 
-use App\Http\Controllers\Archetypes\CreateController;
-use App\Http\Controllers\Archetypes\DownloadController;
-use App\Http\Controllers\Archetypes\DownloadDecklistController;
-use App\Http\Controllers\Archetypes\EditController;
-use App\Http\Controllers\Archetypes\ExportDekController;
-use App\Http\Controllers\Archetypes\MergeCandidatesController;
-use App\Http\Controllers\Archetypes\MergeController;
-use App\Http\Controllers\Archetypes\ScanMatchController;
-use App\Http\Controllers\Archetypes\UnmergeController;
-use App\Http\Controllers\Archetypes\UploadDekController;
-use App\Http\Controllers\Archetypes\Variants\ReassignController;
-use App\Http\Controllers\Cards\ArchetypesController;
-use App\Http\Controllers\Cards\ImageBase64Controller;
-use App\Http\Controllers\Debug\Cards\PopulateController;
-use App\Http\Controllers\Debug\Decks\SyncController;
-use App\Http\Controllers\Debug\LogEvents\IngestController;
-use App\Http\Controllers\Debug\Matches\DestroyController;
-use App\Http\Controllers\Debug\Matches\ProcessController;
-use App\Http\Controllers\Debug\Matches\RestoreController;
-use App\Http\Controllers\Debug\Matches\UpdateController;
-use App\Http\Controllers\Decks\CardStatsController;
-use App\Http\Controllers\Decks\CoverArtOptionsController;
-use App\Http\Controllers\Decks\DashboardController;
-use App\Http\Controllers\Decks\DecklistController;
-use App\Http\Controllers\Decks\GameStatsController;
-use App\Http\Controllers\Decks\LeaguesController;
-use App\Http\Controllers\Decks\MatchesController;
-use App\Http\Controllers\Decks\MatchupDetailController;
-use App\Http\Controllers\Decks\MatchupsController;
 use App\Http\Controllers\Decks\PopoutController;
-use App\Http\Controllers\Decks\RegenerateCardStatsController;
-use App\Http\Controllers\Decks\ScreenshotDataController;
-use App\Http\Controllers\Decks\SettingsController;
-use App\Http\Controllers\Decks\ToggleGroupingController;
-use App\Http\Controllers\Decks\ToggleHideArchivedController;
-use App\Http\Controllers\Decks\TournamentsController;
-use App\Http\Controllers\Decks\TriggerArchetypeDetectionController;
-use App\Http\Controllers\Decks\UpdateColorIdentityController;
-use App\Http\Controllers\Decks\UpdateCoverArtController;
-use App\Http\Controllers\Decks\UpdateDeckArchetypeController;
-use App\Http\Controllers\Decks\UpdateNameController;
-use App\Http\Controllers\Games\OpenReplayController;
-use App\Http\Controllers\Import\CancelScanController;
-use App\Http\Controllers\Import\DestroyController as ImportDestroyController;
-use App\Http\Controllers\Import\ImportAllController;
-use App\Http\Controllers\Import\IndexController as ImportIndexController;
-use App\Http\Controllers\Import\ScanController;
-use App\Http\Controllers\Import\ScanMatchCardsController;
-use App\Http\Controllers\Import\ScanMatchesController;
-use App\Http\Controllers\Import\ScanStatusController;
-use App\Http\Controllers\Import\StoreController;
-use App\Http\Controllers\IndexController;
-use App\Http\Controllers\Leagues\AvailableMatchesController;
-use App\Http\Controllers\Leagues\DropController;
-use App\Http\Controllers\Leagues\LinkMatchController;
 use App\Http\Controllers\Leagues\OpponentScoutWindowController;
 use App\Http\Controllers\Leagues\OverlayController;
-use App\Http\Controllers\Leagues\UnlinkMatchController;
-use App\Http\Controllers\Matches\BulkUpdateArchetypeController;
-use App\Http\Controllers\Matches\DeleteController;
-use App\Http\Controllers\Matches\DetectArchetypeController;
-use App\Http\Controllers\Matches\ShowController;
-use App\Http\Controllers\Matches\UpdateArchetypeController;
-use App\Http\Controllers\Matches\UpdateNotesController;
-use App\Http\Controllers\Reports\CardStatsController as ReportsCardStatsController;
-use App\Http\Controllers\Reports\IndexController as ReportsIndexController;
-use App\Http\Controllers\Reports\MatchesController as ReportsMatchesController;
 use App\Http\Controllers\Settings\BrowseFolderController;
 use App\Http\Controllers\Settings\CheckApiStatusController;
 use App\Http\Controllers\Settings\DeleteOverlayBackgroundController;
 use App\Http\Controllers\Settings\ReauthenticateController;
 use App\Http\Controllers\Settings\RunIngestController;
-use App\Http\Controllers\Settings\RunPopulateCardsController;
-use App\Http\Controllers\Settings\RunSubmitMatchesController;
-use App\Http\Controllers\Settings\RunSyncController;
-use App\Http\Controllers\Settings\SwitchAccountController;
-use App\Http\Controllers\Settings\UpdateAccountTrackingController;
 use App\Http\Controllers\Settings\UpdateAutostartController;
 use App\Http\Controllers\Settings\UpdateDataPathController;
 use App\Http\Controllers\Settings\UpdateDebugModeController;
-use App\Http\Controllers\Settings\UpdateLocalImagesController;
 use App\Http\Controllers\Settings\UpdateLogPathController;
 use App\Http\Controllers\Settings\UpdateOverlaySettingsController;
 use App\Http\Controllers\Settings\UpdateShareStatsController;
@@ -92,225 +22,39 @@ use App\Http\Controllers\Support\MarkDonationPromptSeenController;
 use App\Http\Controllers\Updates\InstallController;
 use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Route;
+use Inertia\Inertia;
 
 Route::group([], function (Router $router) {
-    $router->get('/', IndexController::class)->name('home');
+    // Placeholder home. The v1 dashboard is built in client-ui (Task 5);
+    // until then the settings page is the only main-window surface.
+    $router->get('/', fn () => Inertia::render('settings/Index'))->name('home');
 
-    $router->group([
-        'prefix' => 'cards',
-    ], function (Router $group) {
-        $group->get('/', App\Http\Controllers\Cards\IndexController::class)->name('cards.index');
-        $group->post('populate', App\Http\Controllers\Cards\PopulateController::class)->name('cards.populate');
-    });
+    // Overlay windows — re-sourced off the ingest agent in client-ui Task 9.
+    $router->get('decks/popout', PopoutController::class)->name('decks.popout');
+    $router->get('leagues/overlay', OverlayController::class)->name('leagues.overlay');
+    $router->get('leagues/opponent-scout', OpponentScoutWindowController::class)->name('leagues.opponent-scout');
 
-    $router->group([
-        'prefix' => 'matches',
-    ], function (Router $group) {
-        $group->get('{id}', ShowController::class)->name('matches.show');
-        $group->patch('{id}/archetype', UpdateArchetypeController::class)->name('matches.update-archetype');
-        $group->patch('bulk-archetype', BulkUpdateArchetypeController::class)->name('matches.bulk-update-archetype');
-        $group->post('{id}/detect-archetype', DetectArchetypeController::class)->name('matches.detect-archetype');
-        $group->patch('{id}/notes', UpdateNotesController::class)->name('matches.update-notes');
-        $group->delete('{id}', DeleteController::class)->name('matches.delete');
-    });
-
-    $router->group([
-        'prefix' => 'games',
-    ], function (Router $group) {
-        $group->get('{id}', App\Http\Controllers\Games\ShowController::class)->name('games.show');
-        $group->post('{id}/replay', OpenReplayController::class)->name('games.open-replay');
-    });
-
-    $router->group([
-        'prefix' => 'leagues',
-    ], function (Router $group) {
-        $group->post('/', App\Http\Controllers\Leagues\StoreController::class)->name('leagues.store');
-        $group->get('/', App\Http\Controllers\Leagues\IndexController::class)->name('leagues.index');
-        $group->get('overlay', OverlayController::class)->name('leagues.overlay');
-        $group->get('opponent-scout', OpponentScoutWindowController::class)->name('leagues.opponent-scout');
-        $group->patch('{league}/notes', App\Http\Controllers\Leagues\UpdateNotesController::class)->name('leagues.update-notes');
-        $group->patch('{league}/drop', DropController::class)->name('leagues.drop');
-        $group->post('{league}/matches', LinkMatchController::class)->name('leagues.matches.link');
-        $group->delete('{league}/matches/{mtgoMatch}', UnlinkMatchController::class)->name('leagues.matches.unlink');
-        $group->get('{league}/available-matches', AvailableMatchesController::class)
-            ->name('leagues.available-matches');
-    });
-
-    $router->group([
-        'prefix' => 'opponents',
-    ], function (Router $group) {
-        $group->get('/', App\Http\Controllers\Opponents\IndexController::class)->name('opponents.index');
-    });
-
-    $router->group(['prefix' => 'reports'], function (Router $group) {
-        $group->get('/', ReportsIndexController::class)->name('reports.index');
-        $group->get('matches', ReportsMatchesController::class)->name('reports.matches');
-        $group->get('card-stats', ReportsCardStatsController::class)->name('reports.card-stats');
-    });
-
-    $router->group([
-        'prefix' => 'cards',
-    ], function (Router $group) {
-        $group->get('{oracleId}/image-base64', ImageBase64Controller::class)->name('cards.image-base64');
-        $group->get('{group}/archetypes', ArchetypesController::class)
-            ->name('cards.archetypes');
-    });
-
-    $router->group([
-        'prefix' => 'decks',
-    ], function (Router $group) {
-        $group->get('/', App\Http\Controllers\Decks\IndexController::class)->name('decks.index');
-        $group->get('popout', PopoutController::class)->name('decks.popout');
-        $group->get('{deck:id}', DashboardController::class)->name('decks.show')->withTrashed();
-        $group->get('{deck:id}/card-stats', CardStatsController::class)->name('decks.card-stats')->withTrashed();
-        $group->post('{deck:id}/card-stats/regenerate', RegenerateCardStatsController::class)->name('decks.card-stats.regenerate')->withTrashed();
-        $group->get('{deck:id}/game-stats', GameStatsController::class)->name('decks.game-stats')->withTrashed();
-        $group->get('{deck:id}/matches', MatchesController::class)->name('decks.matches')->withTrashed();
-        $group->get('{deck:id}/leagues', LeaguesController::class)->name('decks.leagues')->withTrashed();
-        $group->get('{deck:id}/tournaments', TournamentsController::class)->name('decks.tournaments')->withTrashed();
-        $group->get('{deck:id}/matchups', MatchupsController::class)->name('decks.matchups')->withTrashed();
-        $group->get('{deck:id}/matchups/{archetype}', MatchupDetailController::class)->name('decks.matchup-detail')->withTrashed();
-        $group->post('{deck:id}/archetypes/detect', TriggerArchetypeDetectionController::class)->name('decks.archetypes.detect')->withTrashed();
-        $group->get('{deck:id}/decklist', DecklistController::class)->name('decks.decklist')->withTrashed();
-        $group->get('{deck:id}/screenshot-data', ScreenshotDataController::class)->name('decks.screenshot-data')->withTrashed();
-        $group->get('{deck:id}/settings', SettingsController::class)->name('decks.settings')->withTrashed();
-        $group->get('{deck:id}/cover-art-options', CoverArtOptionsController::class)->name('decks.cover-art-options')->withTrashed();
-        $group->patch('{deck:id}/cover-art', UpdateCoverArtController::class)->name('decks.update-cover-art')->withTrashed();
-        $group->patch('{deck:id}/archetype', UpdateDeckArchetypeController::class)->name('decks.update-archetype')->withTrashed();
-        $group->patch('{deck:id}/name', UpdateNameController::class)->name('decks.update-name')->withTrashed();
-        $group->patch('{deck:id}/color-identity', UpdateColorIdentityController::class)->name('decks.update-color-identity')->withTrashed();
-        $group->post('{deck:id}/export-dek', App\Http\Controllers\Decks\ExportDekController::class)
-            ->name('decks.export-dek')
-            ->withTrashed();
-        $group->post('grouping', ToggleGroupingController::class)->name('decks.toggle-grouping');
-        $group->post('hide-archived', ToggleHideArchivedController::class)->name('decks.toggle-hide-archived');
-    });
-
-    $router->group([
-        'prefix' => 'archetypes',
-    ], function (Router $group) {
-        $group->get('/', App\Http\Controllers\Archetypes\IndexController::class)->name('archetypes.index');
-        $group->get('create', CreateController::class)->name('archetypes.create');
-        $group->post('/', App\Http\Controllers\Archetypes\StoreController::class)->name('archetypes.store');
-        $group->post('upload-dek', UploadDekController::class)->name('archetypes.upload-dek');
-        $group->post('scan-match/{match}', ScanMatchController::class)->name('archetypes.scan-match');
-        $group->post('download', DownloadController::class)->name('archetypes.download-all');
-        $group->get('{archetype}', App\Http\Controllers\Archetypes\ShowController::class)->name('archetypes.show');
-        $group->get('{archetype}/merge-candidates', MergeCandidatesController::class)
-            ->name('archetypes.merge-candidates');
-        $group->post('{archetype}/merge', MergeController::class)
-            ->name('archetypes.merge');
-        $group->post('{archetype}/unmerge', UnmergeController::class)
-            ->name('archetypes.unmerge');
-        $group->get('{archetype}/edit', EditController::class)->name('archetypes.edit');
-        $group->put('{archetype}', App\Http\Controllers\Archetypes\UpdateController::class)->name('archetypes.update');
-        $group->delete('{archetype}', App\Http\Controllers\Archetypes\DestroyController::class)->name('archetypes.destroy');
-        $group->delete('{archetype}/variants/{deck}', App\Http\Controllers\Archetypes\Variants\DestroyController::class)
-            ->scopeBindings()
-            ->name('archetypes.variants.destroy');
-        $group->post('{archetype}/variants/{deck}/reassign', ReassignController::class)
-            ->whereNumber('deck')
-            ->name('archetypes.variants.reassign');
-        $group->post('{archetype}/download', DownloadDecklistController::class)->name('archetypes.download');
-        $group->post('{archetype}/export', ExportDekController::class)->name('archetypes.export');
-    });
-
-    $router->group([
-        'prefix' => 'settings',
-    ], function (Router $group) {
-        $group->get('/', App\Http\Controllers\Settings\IndexController::class)->name('settings.index');
+    $router->group(['prefix' => 'settings'], function (Router $group) {
         $group->get('browse-folder', BrowseFolderController::class)->name('settings.browse-folder');
         $group->patch('log-path', UpdateLogPathController::class)->name('settings.log-path');
         $group->patch('data-path', UpdateDataPathController::class)->name('settings.data-path');
         $group->patch('watcher', UpdateWatcherController::class)->name('settings.watcher');
         $group->post('ingest', RunIngestController::class)->name('settings.ingest');
-        $group->post('sync', RunSyncController::class)->name('settings.sync');
-        $group->post('populate-cards', RunPopulateCardsController::class)->name('settings.populate-cards');
         $group->patch('share-stats', UpdateShareStatsController::class)->name('settings.share-stats');
-        $group->post('submit-matches', RunSubmitMatchesController::class)->name('settings.submit-matches');
-        $group->patch('switch-account', SwitchAccountController::class)->name('settings.switch-account');
-        $group->patch('account-tracking', UpdateAccountTrackingController::class)->name('settings.account-tracking');
         $group->patch('card-stats-trust', UpdateTrustSettingController::class)->name('settings.card-stats-trust');
         $group->post('overlay', UpdateOverlaySettingsController::class)->name('settings.overlay');
         $group->post('overlay/background', UploadOverlayBackgroundController::class)->name('settings.overlay.background.upload');
         $group->delete('overlay/background', DeleteOverlayBackgroundController::class)->name('settings.overlay.background.delete');
         $group->patch('debug-mode', UpdateDebugModeController::class)->name('settings.debug-mode');
-        $group->patch('local-images', UpdateLocalImagesController::class)->name('settings.local-images');
         $group->patch('autostart', UpdateAutostartController::class)->name('settings.autostart');
         $group->get('api-status', CheckApiStatusController::class)->name('settings.api-status');
         $group->post('reauthenticate', ReauthenticateController::class)->name('settings.reauthenticate');
     });
 
-    $router->group([
-        'prefix' => 'import',
-    ], function (Router $group) {
-        $group->get('/', ImportIndexController::class)->name('import.index');
-        $group->post('scan', ScanController::class)->name('import.scan');
-        $group->get('scan/{scan}', ScanStatusController::class)->name('import.scan.status');
-        $group->get('scan/{scan}/matches', ScanMatchesController::class)->name('import.scan.matches');
-        $group->get('scan/match/{match}/cards', ScanMatchCardsController::class)->name('import.scan.match.cards');
-        $group->post('scan/{scan}/import', StoreController::class)->name('import.store');
-        $group->post('scan/{scan}/import-all', ImportAllController::class)->name('import.import-all');
-        $group->delete('scan/{scan}', CancelScanController::class)->name('import.scan.cancel')
-            ->missing(fn () => response()->noContent());
-        $group->delete('/', ImportDestroyController::class)->name('import.destroy');
-    });
-
     $router->get('updates/install', InstallController::class)->name('updates.install');
 
-    $router->group([
-        'prefix' => 'support',
-    ], function (Router $group) {
+    $router->group(['prefix' => 'support'], function (Router $group) {
         $group->get('report', DownloadReportBundleController::class)->name('support.report.download');
         $group->post('donation/seen', MarkDonationPromptSeenController::class)->name('support.donation.seen');
-    });
-
-    $router->group([
-        'prefix' => 'debug',
-        'middleware' => 'debug',
-    ], function (Router $group) {
-        // Matches
-        $group->get('matches', App\Http\Controllers\Debug\Matches\IndexController::class)->name('debug.matches.index');
-        $group->patch('matches/{match}', UpdateController::class)->name('debug.matches.update');
-        $group->delete('matches/{match}', DestroyController::class)->name('debug.matches.destroy');
-        $group->patch('matches/{match}/restore', RestoreController::class)->name('debug.matches.restore');
-        $group->post('matches/process', ProcessController::class)->name('debug.matches.process');
-
-        // Games
-        $group->get('games', App\Http\Controllers\Debug\Games\IndexController::class)->name('debug.games.index');
-        $group->patch('games/{game}', App\Http\Controllers\Debug\Games\UpdateController::class)->name('debug.games.update');
-
-        // Log Events
-        $group->get('log-events', App\Http\Controllers\Debug\LogEvents\IndexController::class)->name('debug.log-events.index');
-        $group->patch('log-events/{logEvent}', App\Http\Controllers\Debug\LogEvents\UpdateController::class)->name('debug.log-events.update');
-        $group->post('log-events/ingest', IngestController::class)->name('debug.log-events.ingest');
-
-        // Decks
-        $group->get('decks', App\Http\Controllers\Debug\Decks\IndexController::class)->name('debug.decks.index');
-        $group->patch('decks/{deck}', App\Http\Controllers\Debug\Decks\UpdateController::class)->name('debug.decks.update');
-        $group->delete('decks/{deck}', App\Http\Controllers\Debug\Decks\DestroyController::class)->name('debug.decks.destroy');
-        $group->patch('decks/{deck}/restore', App\Http\Controllers\Debug\Decks\RestoreController::class)->name('debug.decks.restore');
-        $group->post('decks/sync', SyncController::class)->name('debug.decks.sync');
-
-        // Deck Versions
-        $group->get('deck-versions', App\Http\Controllers\Debug\DeckVersions\IndexController::class)->name('debug.deck-versions.index');
-        $group->patch('deck-versions/{deckVersion}', App\Http\Controllers\Debug\DeckVersions\UpdateController::class)->name('debug.deck-versions.update');
-
-        // Cards
-        $group->get('cards', App\Http\Controllers\Debug\Cards\IndexController::class)->name('debug.cards.index');
-        $group->post('cards/populate', PopulateController::class)->name('debug.cards.populate');
-
-        // Leagues
-        $group->get('leagues', App\Http\Controllers\Debug\Leagues\IndexController::class)->name('debug.leagues.index');
-        $group->patch('leagues/{league}', App\Http\Controllers\Debug\Leagues\UpdateController::class)->name('debug.leagues.update');
-        $group->delete('leagues/{league}', App\Http\Controllers\Debug\Leagues\DestroyController::class)->name('debug.leagues.destroy');
-        $group->patch('leagues/{league}/restore', App\Http\Controllers\Debug\Leagues\RestoreController::class)->name('debug.leagues.restore');
-
-        // Log Cursors
-        $group->get('log-cursors', App\Http\Controllers\Debug\LogCursors\IndexController::class)->name('debug.log-cursors.index');
-        $group->delete('log-cursors/{logCursor}', App\Http\Controllers\Debug\LogCursors\DestroyController::class)->name('debug.log-cursors.destroy');
-
-        // Pipeline Log
-        $group->get('pipeline-log', App\Http\Controllers\Debug\PipelineLog\IndexController::class)->name('debug.pipeline-log.index');
     });
 });
