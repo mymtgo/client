@@ -2,9 +2,6 @@
 
 namespace App\Providers;
 
-use App\Actions\Decks\OpenDeckPopoutWindow;
-use App\Actions\Leagues\OpenOpponentScoutWindow;
-use App\Actions\Leagues\OpenOverlayWindow;
 use App\Actions\Tray\CreateTrayMenuBar;
 use App\Facades\AppSettings;
 use App\Facades\Mtgo;
@@ -45,17 +42,8 @@ class NativeAppServiceProvider implements ProvidesPhpIni
 
         Mtgo::runInitialSetup();
 
-        if (AppSettings::showLeagueWindow()) {
-            OpenOverlayWindow::run();
-        }
-
-        if (AppSettings::showOpponentWindow()) {
-            OpenOpponentScoutWindow::run();
-        }
-
-        if (AppSettings::showDeckWindow()) {
-            OpenDeckPopoutWindow::run();
-        }
+        // Overlay windows (deck odds, league, opponent scout) return with the
+        // v1 UI rebuild — the 0.x implementations live on the 0.x branch.
     }
 
     /**
