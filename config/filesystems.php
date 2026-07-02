@@ -38,6 +38,16 @@ return [
             'report' => false,
         ],
 
+        // Keep-forever raw log archive (per-match gzipped segments). Local
+        // only — raw logs never leave the device. See docs/v1/client-agent.
+        'archive' => [
+            'driver' => 'local',
+            'root' => storage_path('app/archive'),
+            'serve' => false,
+            'throw' => false,
+            'report' => false,
+        ],
+
         'cards' => [
             'driver' => 'local',
             'root' => storage_path('app/cards'),
