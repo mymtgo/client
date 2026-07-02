@@ -2,7 +2,11 @@
 
 namespace App\Providers;
 
+use App\Actions\Auth\CloseAuthWindowOpenMain;
+use App\Actions\Auth\OpenAuthWindow;
+use App\Actions\Auth\ResolveSession;
 use App\Actions\Tray\CreateTrayMenuBar;
+use App\Enums\SessionState;
 use App\Facades\AppSettings;
 use App\Facades\Mtgo;
 use Native\Desktop\Contracts\ProvidesPhpIni;
@@ -32,13 +36,14 @@ class NativeAppServiceProvider implements ProvidesPhpIni
             Menu::create();
         }
 
-        Window::open()->width(1600)
-            ->height(900)
-            ->minHeight(800)
-            ->minWidth(1200)
-            ->movable()
-            ->hideOnClose()
-            ->title('mymtgo');
+        // The main window is never shown to an unauthenticated user: no
+        // session → only the sign-in window opens; the main window appears
+        // after the mymtgo:// callback lands (CloseAuthWindowOpenMain).
+        if (app(ResolveSession::class)->run() === SessionState::Authenticated) {
+            app(CloseAuthWindowOpenMain::class)->run();
+        } else {
+            app(OpenAuthWindow::class)->run();
+        }
 
         Mtgo::runInitialSetup();
 

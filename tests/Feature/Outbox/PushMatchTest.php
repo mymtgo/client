@@ -1,7 +1,8 @@
 <?php
 
 use App\Actions\Outbox\PushMatch;
-use App\Models\AppAccount;
+use App\Data\OAuthTokens;
+use App\Facades\AppSettings;
 use App\Models\Outbox;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Factory;
@@ -26,13 +27,11 @@ function pendingOutboxRow(int $fileVersion = 1): Outbox
 
 function bindPushAccount(): void
 {
-    AppAccount::create([
-        'user_id' => 1,
-        'mtgo_player_id' => 147160,
-        'mtgo_username' => 'anticloser',
-        'access_token' => 'tok-secret-123',
-        'active' => true,
-    ]);
+    AppSettings::setOauthTokens(new OAuthTokens(
+        accessToken: 'tok-secret-123',
+        refreshToken: 'ref-1',
+        expiresAt: now()->addHour()->toIso8601String(),
+    ));
 }
 
 it('marks synced on a 200 from the sink', function () {

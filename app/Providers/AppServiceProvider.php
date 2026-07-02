@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Actions\Auth\RefreshAccessToken;
 use App\Actions\RegisterDevice;
 use App\Facades\AppSettings;
+use App\Listeners\Auth\HandleAuthCallback;
 use App\Listeners\Tray\HandleTrayClick;
 use App\Managers\MtgoManager;
 use App\Settings\AppSettings as ConcreteAppSettings;
@@ -16,6 +17,7 @@ use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\ServiceProvider;
+use Native\Desktop\Events\App\OpenedFromURL;
 use Native\Desktop\Events\MenuBar\MenuBarClicked;
 
 class AppServiceProvider extends ServiceProvider
@@ -42,6 +44,11 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(
             MenuBarClicked::class,
             HandleTrayClick::class,
+        );
+
+        Event::listen(
+            OpenedFromURL::class,
+            HandleAuthCallback::class,
         );
 
         if (! Storage::disk()->exists('settings.json')) {

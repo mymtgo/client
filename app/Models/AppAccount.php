@@ -13,9 +13,6 @@ class AppAccount extends Model
     {
         return [
             'mtgo_player_id' => 'integer',
-            'access_token' => 'encrypted',
-            'refresh_token' => 'encrypted',
-            'token_expires_at' => 'datetime',
             'active' => 'boolean',
         ];
     }

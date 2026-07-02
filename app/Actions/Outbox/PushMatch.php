@@ -2,16 +2,17 @@
 
 namespace App\Actions\Outbox;
 
-use App\Models\AppAccount;
+use App\Facades\AppSettings;
 use App\Models\Outbox;
 use Illuminate\Support\Facades\Http;
 use Throwable;
 
 /**
- * Push one outbox row to the cloud sink (POST /api/matches, Bearer auth).
- * No token → hold silently (no attempt burned — the account may simply not
- * be signed in yet). The synced flag is version-guarded so an ack for v1
- * never stomps a v2 that raced in mid-push.
+ * Push one outbox row to the cloud sink (POST /api/matches) through the
+ * Bearer macro (silent 401 refresh-and-retry). No stored session → hold
+ * silently (no attempt burned — the user may simply not be signed in yet).
+ * The synced flag is version-guarded so an ack for v1 never stomps a v2
+ * that raced in mid-push.
  */
 final class PushMatch
 {
@@ -19,18 +20,14 @@ final class PushMatch
 
     public function run(Outbox $row): void
     {
-        $token = AppAccount::query()->active()->value('access_token');
-
-        if (blank($token)) {
+        if (AppSettings::oauthTokens() === null) {
             return;
         }
 
         $sentVersion = $row->file_version;
 
         try {
-            $response = Http::baseUrl(config('mymtgo_api.url'))
-                ->withToken($token)
-                ->acceptJson()
+            $response = Http::mymtgoAuthed()
                 ->timeout(15)
                 ->connectTimeout(5)
                 ->post('/api/matches', $row->payload);

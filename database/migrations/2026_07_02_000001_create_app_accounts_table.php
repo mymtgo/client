@@ -7,8 +7,9 @@ use Illuminate\Support\Facades\Schema;
 /**
  * The local binding between this install and a cloud account: who the user
  * is (cloud user_id), which MTGO identity they are locked to (strict 1:1,
- * non-editable), and the OAuth tokens the push/read paths authenticate
- * with. Written by the client-auth PKCE flow; read by ResolveLocalIdentity.
+ * non-editable), and the server-authoritative plan. Written after the
+ * client-auth PKCE flow resolves; read by ResolveLocalIdentity. OAuth
+ * tokens live in encrypted AppSettings (client-auth), not here.
  */
 return new class extends Migration
 {
@@ -20,9 +21,6 @@ return new class extends Migration
             $table->unsignedBigInteger('mtgo_player_id')->nullable();
             $table->string('mtgo_username');
             $table->string('plan', 16)->default('free');
-            $table->text('access_token')->nullable();
-            $table->text('refresh_token')->nullable();
-            $table->timestamp('token_expires_at')->nullable();
             $table->boolean('active')->default(true);
             $table->timestamps();
         });
