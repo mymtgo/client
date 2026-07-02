@@ -2,6 +2,7 @@
 
 namespace App\Managers;
 
+use App\Actions\Compile\PushTriggers;
 use App\Actions\Logs\FindMtgoLogPath;
 use App\Actions\Logs\GetLogFilePaths;
 use App\Actions\Logs\IngestLogInstance;
@@ -166,9 +167,20 @@ class MtgoManager
 
     public function schedule(Schedule $schedule): void
     {
-        // NOTE: the ingest/compile/push pipeline tick is rebuilt in
-        // client-agent Task 2b (RunPipelineTick + Electron fs.watch). It is
-        // intentionally absent here until that seam exists.
+        // NOTE: the event-driven ingest tick lands in client-agent Task 2b
+        // (RunPipelineTick + Electron fs.watch); this poll is the interim
+        // driver and stays on as the backstop afterwards.
+        $schedule->call(fn () => $this->ingestLogs())
+            ->everyFiveSeconds()
+            ->name('ingest_logs')
+            ->withoutOverlapping(30);
+
+        // Activity-based compile → archive → enqueue → push (periodic-flush
+        // trigger; debounce lives inside PushTriggers).
+        $schedule->call(fn () => app(PushTriggers::class)->run())
+            ->everyFifteenSeconds()
+            ->name('push_triggers')
+            ->withoutOverlapping(60);
 
         $schedule->job(new ShipTournamentObservations)
             ->everyThirtySeconds()
