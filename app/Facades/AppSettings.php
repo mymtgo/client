@@ -50,6 +50,13 @@ use Illuminate\Support\Facades\Facade;
  * @method static void setArchetypesLastRefreshedAt(string $value)
  * @method static bool archetypesRefreshInProgress()
  * @method static void setArchetypesRefreshInProgress(bool $value)
+ * @method static \App\Data\OAuthTokens|null oauthTokens()
+ * @method static void setOauthTokens(\App\Data\OAuthTokens $tokens)
+ * @method static void clearOauthTokens()
+ * @method static ?string pkceVerifier()
+ * @method static void setPkceVerifier(?string $verifier)
+ * @method static ?string oauthState()
+ * @method static void setOauthState(?string $state)
  */
 class AppSettings extends Facade
 {

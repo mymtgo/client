@@ -2,6 +2,7 @@
 
 namespace App\Settings;
 
+use App\Data\OAuthTokens;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -368,6 +369,70 @@ class AppSettings
         }
 
         $this->set('api_key', Crypt::encrypt($key));
+    }
+
+    public function oauthTokens(): ?OAuthTokens
+    {
+        $access = $this->decryptedString('oauth_access_token');
+        $refresh = $this->decryptedString('oauth_refresh_token');
+        $expiresAt = $this->get('oauth_access_token_expires_at');
+
+        if (! $access || ! $refresh || ! is_string($expiresAt)) {
+            return null;
+        }
+
+        return new OAuthTokens($access, $refresh, $expiresAt);
+    }
+
+    public function setOauthTokens(OAuthTokens $tokens): void
+    {
+        $this->set('oauth_access_token', Crypt::encrypt($tokens->accessToken));
+        $this->set('oauth_refresh_token', Crypt::encrypt($tokens->refreshToken));
+        $this->set('oauth_access_token_expires_at', $tokens->expiresAt);
+    }
+
+    public function clearOauthTokens(): void
+    {
+        $this->forget('oauth_access_token');
+        $this->forget('oauth_refresh_token');
+        $this->forget('oauth_access_token_expires_at');
+    }
+
+    public function pkceVerifier(): ?string
+    {
+        return $this->decryptedString('pkce_verifier');
+    }
+
+    public function setPkceVerifier(?string $verifier): void
+    {
+        $this->set('pkce_verifier', $verifier === null ? null : Crypt::encrypt($verifier));
+    }
+
+    public function oauthState(): ?string
+    {
+        $value = $this->get('oauth_state');
+
+        return is_string($value) ? $value : null;
+    }
+
+    public function setOauthState(?string $state): void
+    {
+        $this->set('oauth_state', $state);
+    }
+
+    private function decryptedString(string $key): ?string
+    {
+        $encrypted = $this->get($key);
+
+        if (! is_string($encrypted) || $encrypted === '') {
+            return null;
+        }
+
+        try {
+            return Crypt::decrypt($encrypted);
+        } catch (\Throwable) {
+            return null;
+        }
     }
 
     public function apiKeyExpiresAt(): ?string
