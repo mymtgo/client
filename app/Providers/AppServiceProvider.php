@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Actions\Auth\RefreshAccessToken;
 use App\Actions\RegisterDevice;
 use App\Facades\AppSettings;
 use App\Listeners\Tray\HandleTrayClick;
@@ -9,6 +10,7 @@ use App\Managers\MtgoManager;
 use App\Settings\AppSettings as ConcreteAppSettings;
 use App\Settings\MigrateSettingsToJson;
 use Carbon\Carbon;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Http;
@@ -56,6 +58,26 @@ class AppServiceProvider extends ServiceProvider
             'X-Device-Id' => AppSettings::deviceId(),
             'X-Api-Key' => RegisterDevice::retrieveKey(),
         ])->baseUrl(config('mymtgo_api.url')));
+
+        // v1 Bearer client: OAuth access token + silent refresh-and-retry on
+        // a 401 (revoked/expired access token). A failed refresh clears the
+        // session and returns the 401 unchanged — the caller re-auths.
+        Http::macro('mymtgoAuthed', fn () => Http::baseUrl(config('mymtgo_api.url'))
+            ->acceptJson()
+            ->withToken(AppSettings::oauthTokens()?->accessToken ?? '')
+            ->retry(2, 0, function ($exception, $request) {
+                if (! $exception instanceof RequestException || $exception->response->status() !== 401) {
+                    return false;
+                }
+
+                if (! app(RefreshAccessToken::class)->run()) {
+                    return false;
+                }
+
+                $request->withToken(AppSettings::oauthTokens()?->accessToken ?? '');
+
+                return true;
+            }, throw: false));
 
         Carbon::macro('toLocal', function () {
             /** @var Carbon $this */
