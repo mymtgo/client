@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\Auth\OpenWebsiteLoginController;
+use App\Http\Controllers\Auth\ShowLoginController;
 use App\Http\Controllers\Settings\BrowseFolderController;
 use App\Http\Controllers\Settings\CheckApiStatusController;
 use App\Http\Controllers\Settings\ReauthenticateController;
@@ -19,9 +21,14 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 Route::group([], function (Router $router) {
-    // Stub home — the v1 UI is a from-scratch rebuild (client-ui). The old
-    // frontend was deleted wholesale; only backend config endpoints survive.
-    $router->get('/', fn () => Inertia::render('Blank'))->name('home');
+    // Kitchen-sink reference page — every ported design-system element with
+    // sample data. Replaced by the real dashboard when that page returns.
+    $router->get('/', fn () => Inertia::render('Index'))->name('home');
+
+    $router->group(['prefix' => 'auth'], function (Router $group) {
+        $group->get('login', ShowLoginController::class)->name('auth.login');
+        $group->post('website', OpenWebsiteLoginController::class)->name('auth.website');
+    });
 
     $router->group(['prefix' => 'settings'], function (Router $group) {
         $group->get('browse-folder', BrowseFolderController::class)->name('settings.browse-folder');

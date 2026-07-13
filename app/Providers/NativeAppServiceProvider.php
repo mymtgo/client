@@ -13,7 +13,6 @@ use Native\Desktop\Contracts\ProvidesPhpIni;
 use Native\Desktop\Facades\App as NativeApp;
 use Native\Desktop\Facades\Menu;
 use Native\Desktop\Facades\System;
-use Native\Desktop\Facades\Window;
 
 class NativeAppServiceProvider implements ProvidesPhpIni
 {
@@ -36,9 +35,6 @@ class NativeAppServiceProvider implements ProvidesPhpIni
             Menu::create();
         }
 
-        // The main window is never shown to an unauthenticated user: no
-        // session → only the sign-in window opens; the main window appears
-        // after the mymtgo:// callback lands (CloseAuthWindowOpenMain).
         if (app(ResolveSession::class)->run() === SessionState::Authenticated) {
             app(CloseAuthWindowOpenMain::class)->run();
         } else {

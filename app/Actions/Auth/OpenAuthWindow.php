@@ -5,14 +5,12 @@ namespace App\Actions\Auth;
 use Native\Desktop\Facades\Window;
 
 /**
- * The dedicated sign-in window, pointed at the cloud API's /oauth/authorize
- * page (Discord + email/password are server-rendered there). Opening it
- * stashes a fresh PKCE verifier + state via BuildAuthorizeUrl.
+ * The dedicated sign-in window: a local signed-out page whose button sends
+ * the user to the website in their system browser. The PKCE stash happens
+ * when that button is clicked (OpenWebsiteLoginController), not here.
  */
 final class OpenAuthWindow
 {
-    public function __construct(private BuildAuthorizeUrl $buildUrl) {}
-
     public function run(): void
     {
         $alreadyOpen = collect(Window::all())->contains(fn ($w) => $w->getId() === 'auth');
@@ -22,11 +20,9 @@ final class OpenAuthWindow
         }
 
         Window::open('auth')
-            ->url($this->buildUrl->run())
-            ->width(480)
-            ->height(720)
-            ->minWidth(400)
-            ->minHeight(600)
+            ->url(route('auth.login'))
+            ->width(440)
+            ->height(560)
             ->movable()
             ->resizable(false)
             ->maximizable(false)

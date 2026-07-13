@@ -68,7 +68,7 @@ Three tiers of durability:
 **Build order — base first, UI follows (form follows function).** Get the plumbing correct end-to-end before investing in design; the v1 UI may initially just render raw JSON from the API.
 
 - **v1 core:** thin local agent (compile + outbox + push), raw archive (keep-forever), dumb sink, build worker, read API, auth (Discord OAuth + email/password, strict 1:1 binding, custom-protocol redirect), 0.x import, functional web + desktop read views (design can lag). Realtime via Reverb for fresh views.
-- **Likely later:** UI redesign / visual-language pass; live second-screen of an *active* game (realtime game-state relay, not just record notifications); mobile app; public shareable pages polish.
+- **Likely later:** restyle-to-0.x pass + incremental UI polish (redesign dead — decision 2026-07-09, see [`../client-ui/spec.md`](../client-ui/spec.md)); live second-screen of an *active* game (realtime game-state relay, not just record notifications); mobile app; public shareable pages polish.
 
 ## 6. Codebase strategy
 

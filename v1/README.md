@@ -14,7 +14,7 @@ Each section below has a `spec.md` (settled design, extracted from the brainstor
 | [`contract`](./contract/spec.md) | shared | The `{match}.json` contract (client produces, worker consumes) |
 | [`client-agent`](./client-agent/spec.md) | client | Thin local schema, compiler (port ingestion core), outbox, push triggers, raw archive, outcome resolver |
 | [`client-auth`](./client-auth/spec.md) | client | Auth window, OAuth2 PKCE flow, token storage/refresh, username-mismatch guard |
-| [`client-ui`](./client-ui/spec.md) | client | JSON-first pages, overlay-window keep-list, redesign scope (deferred) |
+| [`client-ui`](./client-ui/spec.md) | client | JSON-first pages, 0.x design port (redesign dead — decision 2026-07-09) |
 | [`cloud-pipeline`](./cloud-pipeline/spec.md) | api | Cloud schema, dumb sink, build worker, re-derivation |
 | [`cloud-api`](./cloud-api/spec.md) | api | Read API endpoints + Reverb realtime |
 | [`cloud-auth`](./cloud-auth/spec.md) | api | Passport OAuth2 server, Discord + email/password, identity binding |
@@ -33,7 +33,7 @@ Base first, UI follows (form follows function). Roughly:
 4. **`cloud-api`** + **`catalog`** — serve the built data; populate card/price/archetype reference data.
 5. **`migration`** — import 0.x history through the same pipeline.
 6. **`ops`** — authorization, entitlement, deletion, backup, limits (cross-cutting; enforced as endpoints land).
-7. **`client-ui`** — JSON-first views; visual redesign is a later, separate pass.
+7. **`client-ui`** — JSON-first views; restyling to the kept 0.x design is a later, separate pass (no redesign).
 8. **`tournaments`** — client broadcast producer (piggybacks the `client-agent` log tail); cloud observation sink + projection + read (after `cloud-pipeline`). Mostly a 0.x lift.
 
 ## Cloud deployment & stack

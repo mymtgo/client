@@ -1,1 +1,301 @@
 @import 'tailwindcss';
+
+@import 'tw-animate-css';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+
+@custom-variant dark (&:is(.dark *));
+
+@font-face {
+    font-family: 'Geist';
+    src: url('../fonts/GeistVariable.woff2') format('woff2-variations');
+    font-weight: 100 900;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'JetBrains Mono';
+    src: url('../fonts/JetBrainsMono-Regular.woff2') format('woff2');
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'JetBrains Mono';
+    src: url('../fonts/JetBrainsMono-Medium.woff2') format('woff2');
+    font-weight: 500;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'JetBrains Mono';
+    src: url('../fonts/JetBrainsMono-SemiBold.woff2') format('woff2');
+    font-weight: 600;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'JetBrains Mono';
+    src: url('../fonts/JetBrainsMono-Bold.woff2') format('woff2');
+    font-weight: 700;
+    font-style: normal;
+    font-display: swap;
+}
+
+@theme inline {
+    --font-sans: 'Geist', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+    --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+
+    /* v2 scale: sm 6 = menu items/chips · md 10 = buttons/inputs/overlays · lg 14 = cards · xl 18 = page panels. */
+    --radius-sm: calc(var(--radius) - 4px);
+    --radius-md: var(--radius);
+    --radius-lg: calc(var(--radius) + 4px);
+    --radius-xl: calc(var(--radius) + 8px);
+    --radius-2xl: calc(var(--radius) + 12px);
+    --radius-3xl: calc(var(--radius) + 16px);
+
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+
+    --color-card: var(--card);
+    --color-card-foreground: var(--card-foreground);
+
+    --color-popover: var(--popover);
+    --color-popover-foreground: var(--popover-foreground);
+
+    --color-primary: var(--primary);
+    --color-primary-foreground: var(--primary-foreground);
+
+    --color-secondary: var(--secondary);
+    --color-secondary-foreground: var(--secondary-foreground);
+
+    --color-muted: var(--muted);
+    --color-muted-foreground: var(--muted-foreground);
+
+    --color-accent: var(--accent);
+    --color-accent-foreground: var(--accent-foreground);
+
+    --color-destructive: var(--destructive);
+    --color-destructive-foreground: var(--destructive-foreground);
+
+    --color-success: var(--success);
+    --color-success-foreground: var(--success-foreground);
+
+    /* v2 semantic tokens */
+    --color-primary-hi: var(--primary-hi);
+    --color-primary-soft: var(--primary-soft);
+    --color-win: var(--win);
+    --color-win-soft: var(--win-soft);
+    --color-loss: var(--loss);
+    --color-loss-soft: var(--loss-soft);
+    --color-warn: var(--warn);
+    --color-dim: var(--dim);
+    --color-line-2: var(--line-2);
+    /* FIX 01: AppNav's text-background-accent token — accent tint, kept defined. */
+    --color-background-accent: var(--primary-soft);
+
+    --color-border: var(--border);
+    --color-input: var(--input);
+    --color-ring: var(--ring);
+
+    --color-chart-1: var(--chart-1);
+    --color-chart-2: var(--chart-2);
+    --color-chart-3: var(--chart-3);
+    --color-chart-4: var(--chart-4);
+    --color-chart-5: var(--chart-5);
+
+    /* Untitled UI skeuomorphic button shadows: inset 1px ring + inset bottom shade (+ xs drop). */
+    --shadow-skeuomorphic: 0px 0px 0px 1px rgba(0, 0, 0, 0.18) inset, 0px -2px 0px 0px rgba(0, 0, 0, 0.05) inset;
+    --shadow-xs-skeuomorphic: 0px 0px 0px 1px rgba(0, 0, 0, 0.18) inset, 0px -2px 0px 0px rgba(0, 0, 0, 0.05) inset, 0px 1px 2px rgba(0, 0, 0, 0.05);
+
+    /* v2: the one shadow for everything floated. */
+    --shadow-overlay: 0 8px 28px rgba(0, 0, 0, 0.5);
+
+    --animate-shimmer: shimmer 1.6s linear infinite;
+
+    @keyframes shimmer {
+        from {
+            background-position: 100% 0;
+        }
+        to {
+            background-position: -100% 0;
+        }
+    }
+
+    --color-sidebar: var(--sidebar);
+    --color-sidebar-foreground: var(--sidebar-foreground);
+    --color-sidebar-primary: var(--sidebar-primary);
+    --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+    --color-sidebar-accent: var(--sidebar-accent);
+    --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+    --color-sidebar-border: var(--sidebar-border);
+    --color-sidebar-ring: var(--sidebar-ring);
+}
+
+/*
+  The default border color has changed to `currentColor` in Tailwind CSS v4,
+  so we've added these compatibility styles to make sure everything still
+  looks the same as it did with Tailwind CSS v3.
+
+  If we ever want to remove these styles, we need to add an explicit border
+  color utility to any element that depends on these defaults.
+*/
+@layer base {
+    *,
+    ::after,
+    ::before,
+    ::backdrop,
+    ::file-selector-button {
+        border-color: var(--color-gray-200, currentColor);
+    }
+}
+
+:root {
+    --radius: 0.625rem;
+    --background: oklch(1 0 0);
+    --foreground: oklch(0.145 0 0);
+    --card: oklch(1 0 0);
+    --card-foreground: oklch(0.145 0 0);
+    --popover: oklch(1 0 0);
+    --popover-foreground: oklch(0.145 0 0);
+    --primary: oklch(0.48 0.14 230);
+    --primary-foreground: oklch(0.985 0 0);
+    --secondary: oklch(0.97 0.005 230);
+    --secondary-foreground: oklch(0.205 0 0);
+    --muted: oklch(0.97 0 0);
+    --muted-foreground: oklch(0.556 0 0);
+    --accent: oklch(0.96 0.01 230);
+    --accent-foreground: oklch(0.205 0 0);
+    --destructive: oklch(0.645 0.246 16.439);
+    --destructive-foreground: oklch(0.985 0 0);
+    --success: oklch(0.696 0.17 162.48);
+    --success-foreground: oklch(0.985 0 0);
+    --border: oklch(0.922 0 0);
+    --input: oklch(0.922 0 0);
+    --ring: oklch(0.55 0.12 230);
+    --chart-1: oklch(0.55 0.15 230);
+    --chart-2: oklch(0.6 0.118 184.704);
+    --chart-3: oklch(0.646 0.222 41.116);
+    --chart-4: oklch(0.828 0.189 84.429);
+    --chart-5: oklch(0.769 0.188 70.08);
+    --sidebar: oklch(0.985 0 0);
+    --sidebar-foreground: oklch(0.145 0 0);
+    --sidebar-primary: oklch(0.48 0.14 230);
+    --sidebar-primary-foreground: oklch(0.985 0 0);
+    --sidebar-accent: oklch(0.96 0.01 230);
+    --sidebar-accent-foreground: oklch(0.205 0 0);
+    --sidebar-border: oklch(0.922 0 0);
+    --sidebar-ring: oklch(0.55 0.12 230);
+    --primary-hi: #5c96f7;
+    --primary-soft: rgba(59, 130, 246, 0.15);
+    --win: #10b981;
+    --win-soft: rgba(16, 185, 129, 0.13);
+    --loss: #f43f5e;
+    --loss-soft: rgba(244, 63, 94, 0.13);
+    --warn: #f59e0b;
+    --dim: #8a8e95;
+    --line-2: rgba(0, 0, 0, 0.13);
+}
+
+/* Kitchen Sink v2 palette. Surfaces: background → card (panel) → muted (panel-2) → accent/secondary (panel-3). */
+.dark {
+    --background: #131316;
+    --foreground: #ececee;
+    --card: #1b1c20;
+    --card-foreground: #ececee;
+    --popover: #232428;
+    --popover-foreground: #ececee;
+    --primary: #3b82f6;
+    --primary-foreground: #ffffff;
+    --primary-hi: #5c96f7;
+    --primary-soft: rgba(59, 130, 246, 0.15);
+    --secondary: #2c2d33;
+    --secondary-foreground: #ececee;
+    --muted: #232428;
+    --muted-foreground: #9b9ea5;
+    --dim: #62666d;
+    --accent: #2c2d33;
+    --accent-foreground: #ececee;
+    --destructive: #be123c;
+    --destructive-foreground: #ffffff;
+    --success: #10b981;
+    --success-foreground: #ffffff;
+    --win: #10b981;
+    --win-soft: rgba(16, 185, 129, 0.13);
+    --loss: #f43f5e;
+    --loss-soft: rgba(244, 63, 94, 0.13);
+    --warn: #f59e0b;
+    --border: rgba(255, 255, 255, 0.07);
+    --line-2: rgba(255, 255, 255, 0.13);
+    --input: rgba(255, 255, 255, 0.07);
+    --ring: #3b82f6;
+    --chart-1: #3b82f6;
+    --chart-2: #10b981;
+    --chart-3: oklch(0.769 0.188 70.08);
+    --chart-4: oklch(0.627 0.265 303.9);
+    --chart-5: #f43f5e;
+    --sidebar: #1b1c20;
+    --sidebar-foreground: #ececee;
+    --sidebar-primary: #3b82f6;
+    --sidebar-primary-foreground: #ffffff;
+    --sidebar-accent: #2c2d33;
+    --sidebar-accent-foreground: #ececee;
+    --sidebar-border: rgba(255, 255, 255, 0.07);
+    --sidebar-ring: #3b82f6;
+}
+
+@layer base {
+    * {
+        @apply border-border outline-ring/50;
+    }
+    body {
+        @apply bg-background text-foreground font-sans text-sm antialiased;
+    }
+
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb {
+        background: #4a5568;
+        border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+        background: #5a6a80;
+    }
+}
+
+@layer {
+    .texture-bg {
+        @apply bg-background;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4' viewBox='0 0 4 4'%3E%3Cpath fill='%239C92AC' fill-opacity='0.02' d='M1 3h1v1H1V3zm2-2h1v1H3V1z'%3E%3C/path%3E%3C/svg%3E");
+    }
+
+    .bevel {
+        @apply relative;
+        @apply after:shadow-[0_1px_0_0_rgba(0,0,0,0.1)];
+        @apply after:bg-transparent;
+        @apply after:content-[''];
+        @apply after:block;
+        @apply after:inset-0;
+        @apply after:absolute;
+        @apply after:bottom-0;
+        @apply after:rounded-[inherit];
+        @apply before:shadow-[0_-1px_0_0_rgba(255,255,255,0.1)];
+        @apply before:bg-transparent;
+        @apply before:content-[''];
+        @apply before:block;
+        @apply before:inset-0;
+        @apply before:absolute;
+        @apply before:bottom-0;
+        @apply before:rounded-[inherit];
+        @apply after:translate-y-[-1px];
+        @apply before:translate-y-[1px];
+        /* Pressed = inverted bevel: top line shades, bottom line lights. */
+        @apply active:before:shadow-[0_-1px_0_0_rgba(0,0,0,0.4)];
+        @apply active:after:shadow-[0_1px_0_0_rgba(255,255,255,0.08)];
+    }
+}

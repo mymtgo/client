@@ -1,0 +1,68 @@
+<script setup lang="ts">
+import { ButtonLink } from '@/components/ui/button';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Link, router, usePage } from '@inertiajs/vue3';
+import { ChevronDown, FileUp, Settings } from 'lucide-vue-next';
+
+/** Target pages not rebuilt yet — inert specimen links until routes return. */
+const DashboardController = { url: () => '#' };
+const ImportIndexController = { url: () => '#' };
+const SettingsIndexController = { url: () => '#' };
+const SwitchAccountController = { url: () => '#' };
+
+const page = usePage<{
+    activeAccount: string | null;
+    accounts: Array<{ id: number; username: string; active: boolean }>;
+}>();
+
+function switchAccount(username: string) {
+    router.patch(
+        SwitchAccountController.url(),
+        { username },
+        {
+            preserveScroll: false,
+        },
+    );
+}
+</script>
+
+<template>
+    <header class="flex h-12 shrink-0 items-center justify-between border-b border-black/80 bg-black/10 px-4 text-sidebar-foreground">
+        <Link :href="DashboardController.url()" class="text-base font-semibold tracking-tight"> mymtgo </Link>
+
+        <div class="flex items-center gap-2">
+            <DropdownMenu v-if="page.props.accounts && page.props.accounts.length > 1">
+                <DropdownMenuTrigger
+                    class="inline-flex items-center gap-1 rounded-md px-2 py-1 text-sm text-sidebar-foreground/70 transition-colors hover:text-sidebar-foreground"
+                >
+                    {{ page.props.activeAccount ?? 'No account' }}
+                    <ChevronDown class="size-3" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                    <DropdownMenuItem
+                        v-for="account in page.props.accounts"
+                        :key="account.id"
+                        @click="switchAccount(account.username)"
+                        :class="{ 'font-semibold': account.active }"
+                    >
+                        {{ account.username }}
+                    </DropdownMenuItem>
+                </DropdownMenuContent>
+            </DropdownMenu>
+
+            <span v-else-if="page.props.activeAccount" class="text-sm text-sidebar-foreground/70">
+                {{ page.props.activeAccount }}
+            </span>
+
+            <ButtonLink :href="ImportIndexController.url()" size="sm">
+                <FileUp class="size-4" />
+                Import
+            </ButtonLink>
+
+            <ButtonLink :href="SettingsIndexController.url()" size="sm">
+                <Settings class="size-4" />
+                Settings
+            </ButtonLink>
+        </div>
+    </header>
+</template>

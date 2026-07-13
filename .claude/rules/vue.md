@@ -36,6 +36,17 @@ When creating or modifying any frontend component, you are a senior UX/UI specia
 - Directory names MUST be lowercase (e.g., `components/settings/`, `composables/auth/`).
 - Vue component files MUST use PascalCase (e.g., `UserProfile.vue`, `SettingsPanel.vue`).
 - Never create a PascalCase or camelCase directory. Never create a lowercase `.vue` file.
+- Page-specific components extracted from a page MUST live in a `partials/` folder alongside that page component:
+
+  ```
+  pages/
+    about/
+      partials/
+        TeamMembers.vue
+      Show.vue
+  ```
+
+  Only genuinely shared, page-independent components belong in `resources/js/components/`.
 
 ## Styling and Branding
 
