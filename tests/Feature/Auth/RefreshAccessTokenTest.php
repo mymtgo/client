@@ -41,3 +41,14 @@ it('returns false with no round trip when no refresh token is stored', function 
     expect(app(RefreshAccessToken::class)->run())->toBeFalse();
     Http::assertNothingSent();
 });
+
+it('sends the device id header on the refresh request', function () {
+    AppSettings::setDeviceId('01JZZZZZZZZZZZZZZZZZZZZZZZ');
+    Http::fake(['https://mymtgo.test/oauth/token' => Http::response([
+        'access_token' => 'new-acc', 'refresh_token' => 'ref-2', 'expires_in' => 3600,
+    ], 200)]);
+
+    app(RefreshAccessToken::class)->run();
+
+    Http::assertSent(fn ($request) => $request->hasHeader('X-Device-Id', '01JZZZZZZZZZZZZZZZZZZZZZZZ'));
+});

@@ -2,6 +2,7 @@
 
 namespace App\Actions\Auth;
 
+use App\Actions\Device\ResolveDeviceId;
 use App\Data\OAuthTokens;
 use App\Exceptions\AuthExchangeException;
 use App\Facades\AppSettings;
@@ -23,13 +24,15 @@ final class ExchangeAuthorizationCode
             throw new AuthExchangeException('Missing PKCE verifier for token exchange.');
         }
 
-        $response = Http::asForm()->post(rtrim(config('mymtgo_api.url'), '/').'/oauth/token', [
-            'grant_type' => 'authorization_code',
-            'client_id' => config('mymtgo_api.oauth_client_id'),
-            'redirect_uri' => BuildAuthorizeUrl::REDIRECT_URI,
-            'code' => $code,
-            'code_verifier' => $verifier,
-        ]);
+        $response = Http::asForm()
+            ->withHeader('X-Device-Id', app(ResolveDeviceId::class)->run())
+            ->post(rtrim(config('mymtgo_api.url'), '/').'/oauth/token', [
+                'grant_type' => 'authorization_code',
+                'client_id' => config('mymtgo_api.oauth_client_id'),
+                'redirect_uri' => BuildAuthorizeUrl::REDIRECT_URI,
+                'code' => $code,
+                'code_verifier' => $verifier,
+            ]);
 
         if (! $response->successful()) {
             Log::error('OAuth code exchange failed', ['status' => $response->status()]);

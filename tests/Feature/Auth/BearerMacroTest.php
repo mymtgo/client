@@ -49,3 +49,32 @@ it('returns the 401 unchanged when the refresh itself fails', function () {
     expect($response->status())->toBe(401);
     expect(AppSettings::oauthTokens())->toBeNull(); // failed refresh cleared the session
 });
+
+it('sends the device id header on every request', function () {
+    AppSettings::setDeviceId('01JZZZZZZZZZZZZZZZZZZZZZZZ');
+    Http::fake(['https://mymtgo.test/*' => Http::response(['ok' => true], 200)]);
+
+    Http::mymtgoAuthed()->get('/v1/ping');
+
+    Http::assertSent(fn ($request) => $request->hasHeader('X-Device-Id', '01JZZZZZZZZZZZZZZZZZZZZZZZ'));
+});
+
+it('keeps the device id header on the 401 retry', function () {
+    AppSettings::setDeviceId('01JZZZZZZZZZZZZZZZZZZZZZZZ');
+    Http::fake([
+        'https://mymtgo.test/oauth/token' => Http::response([
+            'access_token' => 'new-acc', 'refresh_token' => 'new-ref', 'expires_in' => 3600,
+        ], 200),
+        'https://mymtgo.test/v1/ping' => Http::sequence()
+            ->push(['error' => 'unauthenticated'], 401)
+            ->push(['ok' => true], 200),
+    ]);
+
+    Http::mymtgoAuthed()->get('/v1/ping');
+
+    $pings = collect(Http::recorded())
+        ->filter(fn ($pair) => str_contains($pair[0]->url(), '/v1/ping'));
+
+    expect($pings)->toHaveCount(2);
+    $pings->each(fn ($pair) => expect($pair[0]->hasHeader('X-Device-Id', '01JZZZZZZZZZZZZZZZZZZZZZZZ'))->toBeTrue());
+});

@@ -2,6 +2,7 @@
 
 namespace App\Actions\Auth;
 
+use App\Actions\Device\ResolveDeviceId;
 use App\Data\OAuthTokens;
 use App\Facades\AppSettings;
 use Illuminate\Support\Facades\Http;
@@ -23,12 +24,14 @@ final class RefreshAccessToken
             return false;
         }
 
-        $response = Http::asForm()->post(rtrim(config('mymtgo_api.url'), '/').'/oauth/token', [
-            'grant_type' => 'refresh_token',
-            'client_id' => config('mymtgo_api.oauth_client_id'),
-            'refresh_token' => $tokens->refreshToken,
-            'scope' => '',
-        ]);
+        $response = Http::asForm()
+            ->withHeader('X-Device-Id', app(ResolveDeviceId::class)->run())
+            ->post(rtrim(config('mymtgo_api.url'), '/').'/oauth/token', [
+                'grant_type' => 'refresh_token',
+                'client_id' => config('mymtgo_api.oauth_client_id'),
+                'refresh_token' => $tokens->refreshToken,
+                'scope' => '',
+            ]);
 
         if (! $response->successful()) {
             Log::warning('OAuth refresh failed — clearing session', ['status' => $response->status()]);

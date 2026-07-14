@@ -3,6 +3,7 @@
 namespace App\Managers;
 
 use App\Actions\Compile\PushTriggers;
+use App\Actions\Device\ResolveDeviceId;
 use App\Actions\Logs\FindMtgoLogPath;
 use App\Actions\Logs\GetLogFilePaths;
 use App\Actions\Logs\IngestLogInstance;
@@ -11,7 +12,6 @@ use App\Actions\Settings\ValidatePath;
 use App\Facades\AppSettings;
 use App\Jobs\ShipTournamentObservations;
 use Illuminate\Console\Scheduling\Schedule;
-use Illuminate\Support\Str;
 
 class MtgoManager
 {
@@ -101,9 +101,7 @@ class MtgoManager
             AppSettings::setLogDataPath($this->defaultDataPath());
         }
 
-        if (AppSettings::deviceId() === null) {
-            AppSettings::setDeviceId((string) Str::uuid());
-        }
+        app(ResolveDeviceId::class)->run();
 
         // Bool settings: seed only when the key has never been written
         // (raw get returns null). Explicit false must be preserved.

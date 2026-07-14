@@ -337,7 +337,7 @@ class AppSettings
     {
         $value = $this->get('device_id');
 
-        return is_string($value) ? $value : null;
+        return is_string($value) && $value !== '' ? $value : null;
     }
 
     public function setDeviceId(string $id): void

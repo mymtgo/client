@@ -2,21 +2,16 @@
 
 namespace App\Actions;
 
+use App\Actions\Device\ResolveDeviceId;
 use App\Facades\AppSettings;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 
 class RegisterDevice
 {
     public static function run(): bool
     {
-        $deviceId = AppSettings::deviceId();
-
-        if (! $deviceId) {
-            $deviceId = (string) Str::uuid();
-            AppSettings::setDeviceId($deviceId);
-        }
+        $deviceId = app(ResolveDeviceId::class)->run();
 
         try {
             $response = Http::post(config('mymtgo_api.url').'/api/devices/register', [

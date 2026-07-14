@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Actions\Auth\RefreshAccessToken;
+use App\Actions\Device\ResolveDeviceId;
 use App\Actions\RegisterDevice;
 use App\Facades\AppSettings;
 use App\Listeners\Auth\HandleAuthCallback;
@@ -71,6 +72,7 @@ class AppServiceProvider extends ServiceProvider
         // session and returns the 401 unchanged — the caller re-auths.
         Http::macro('mymtgoAuthed', fn () => Http::baseUrl(config('mymtgo_api.url'))
             ->acceptJson()
+            ->withHeader('X-Device-Id', app(ResolveDeviceId::class)->run())
             ->withToken(AppSettings::oauthTokens()?->accessToken ?? '')
             ->retry(2, 0, function ($exception, $request) {
                 if (! $exception instanceof RequestException || $exception->response->status() !== 401) {

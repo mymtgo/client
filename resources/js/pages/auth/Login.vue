@@ -4,15 +4,26 @@ import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { router } from '@inertiajs/vue3';
 import { ExternalLink } from 'lucide-vue-next';
-import { ref } from 'vue';
+import { onMounted, ref } from 'vue';
 
 const opening = ref(false);
 
 /** Browser round-trip started — the deep-link callback swaps this window out. */
 const waiting = ref(false);
 
+/** Set by the AuthCallbackFailed native event; cleared on retry. */
+const error = ref<'cancelled' | 'failed' | null>(null);
+
+onMounted(() => {
+    window.Native?.on('App\\Events\\Auth\\AuthCallbackFailed', (payload) => {
+        error.value = (payload as { reason?: string }).reason === 'cancelled' ? 'cancelled' : 'failed';
+        waiting.value = false;
+    });
+});
+
 function openWebsiteLogin() {
     opening.value = true;
+    error.value = null;
 
     router.post(
         OpenWebsiteLoginController.url(),
@@ -51,6 +62,10 @@ function openWebsiteLogin() {
                     <Spinner class="size-[15px]" />
                     Waiting for you to finish in the browser…
                 </div>
+
+                <p v-if="error" role="alert" class="max-w-[36ch] text-[13px] leading-relaxed text-destructive">
+                    {{ error === 'cancelled' ? 'Sign-in was cancelled.' : "Sign-in didn't complete — try again." }}
+                </p>
             </div>
         </main>
 

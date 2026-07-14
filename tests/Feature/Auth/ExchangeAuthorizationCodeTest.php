@@ -48,3 +48,14 @@ it('throws when no verifier is stashed', function () {
 
     app(ExchangeAuthorizationCode::class)->run('the-code');
 })->throws(AuthExchangeException::class);
+
+it('sends the device id header on the token exchange', function () {
+    AppSettings::setDeviceId('01JZZZZZZZZZZZZZZZZZZZZZZZ');
+    Http::fake(['https://mymtgo.test/oauth/token' => Http::response([
+        'access_token' => 'acc-1', 'refresh_token' => 'ref-1', 'expires_in' => 3600,
+    ], 200)]);
+
+    app(ExchangeAuthorizationCode::class)->run('the-code');
+
+    Http::assertSent(fn ($request) => $request->hasHeader('X-Device-Id', '01JZZZZZZZZZZZZZZZZZZZZZZZ'));
+});
