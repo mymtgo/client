@@ -18,6 +18,7 @@ use App\Http\Controllers\Debug\Decks\SyncController;
 use App\Http\Controllers\Debug\LogEvents\IngestController;
 use App\Http\Controllers\Debug\Matches\DestroyController;
 use App\Http\Controllers\Debug\Matches\ProcessController;
+use App\Http\Controllers\Debug\Matches\ReprocessController;
 use App\Http\Controllers\Debug\Matches\RestoreController;
 use App\Http\Controllers\Debug\Matches\UpdateController;
 use App\Http\Controllers\Decks\CardStatsController;
@@ -275,6 +276,7 @@ Route::group([], function (Router $router) {
         $group->delete('matches/{match}', DestroyController::class)->name('debug.matches.destroy');
         $group->patch('matches/{match}/restore', RestoreController::class)->name('debug.matches.restore');
         $group->post('matches/process', ProcessController::class)->name('debug.matches.process');
+        $group->post('matches/{match}/reprocess', ReprocessController::class)->name('debug.matches.reprocess');
 
         // Games
         $group->get('games', App\Http\Controllers\Debug\Games\IndexController::class)->name('debug.games.index');

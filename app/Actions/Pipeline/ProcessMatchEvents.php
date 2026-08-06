@@ -93,6 +93,16 @@ class ProcessMatchEvents
         return $processedTokens;
     }
 
+    /**
+     * Project a single match token outside a pipeline tick. Reads only
+     * log_events rows — no log file access, so it works on machines where
+     * MTGO paths are invalid (RunPipeline::run() would bail there).
+     */
+    public static function runForToken(string $matchToken, int|string $matchId): void
+    {
+        self::processMatch($matchToken, $matchId);
+    }
+
     private static function processMatch(string $matchToken, int|string $matchId): void
     {
         $existingMatch = MtgoMatch::where('token', $matchToken)->first();

@@ -75,6 +75,33 @@ function voidMatch(id: number) {
     saveField(id, 'state', 'voided');
 }
 
+// Reprocess confirmation dialog
+const reprocessDialogOpen = ref(false);
+const matchToReprocess = ref<{ id: number; token: string } | null>(null);
+
+function confirmReprocess(match: Record<string, unknown>) {
+    matchToReprocess.value = { id: match.id as number, token: match.token as string };
+    reprocessDialogOpen.value = true;
+}
+
+function executeReprocess() {
+    if (!matchToReprocess.value) return;
+    const { id } = matchToReprocess.value;
+    router.post(`/debug/matches/${id}/reprocess`, {}, {
+        preserveScroll: true,
+        onSuccess: () => {
+            toast({ type: 'success', title: 'Reprocessed', message: `Match #${id} rebuilt from log events.`, duration: 3000 });
+        },
+        onError: (errors) => {
+            toast({ type: 'error', title: 'Reprocess failed', message: errors.reprocess ?? 'Could not reprocess match.', duration: 4000 });
+        },
+        onFinish: () => {
+            reprocessDialogOpen.value = false;
+            matchToReprocess.value = null;
+        },
+    });
+}
+
 const columns = [
     { key: 'id', label: 'ID', type: 'readonly' as const },
     { key: 'opponent_name', label: 'Opponent', type: 'readonly' as const },
@@ -181,6 +208,10 @@ function refresh() {
                                             <RotateCcw class="h-4 w-4" />
                                             Void
                                         </DropdownMenuItem>
+                                        <DropdownMenuItem @click="confirmReprocess(match)">
+                                            <RefreshCw class="h-4 w-4" />
+                                            Reprocess
+                                        </DropdownMenuItem>
                                         <DropdownMenuItem
                                             class="text-destructive"
                                             @click="confirmDelete(match)"
@@ -212,6 +243,26 @@ function refresh() {
                 </template>
             </div>
         </div>
+
+        <!-- Reprocess confirmation dialog -->
+        <Dialog v-model:open="reprocessDialogOpen">
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Reprocess Match</DialogTitle>
+                    <DialogDescription>
+                        This will delete match
+                        <span class="font-mono font-semibold">#{{ matchToReprocess?.id }}</span>
+                        and its derived data (games, archetypes, timelines, card stats), then rebuild it
+                        from its log events. The rebuilt match gets a new ID and will be resubmitted.
+                        Manual edits to this match will be lost.
+                    </DialogDescription>
+                </DialogHeader>
+                <DialogFooter>
+                    <Button variant="outline" @click="reprocessDialogOpen = false">Cancel</Button>
+                    <Button @click="executeReprocess">Reprocess</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
 
         <!-- Delete confirmation dialog -->
         <Dialog v-model:open="deleteDialogOpen">

@@ -6,9 +6,9 @@ class ExtractGameResults
 {
     /**
      * Regex fragment matching an MTGO username.
-     * MTGO allows: English letters, digits, underscores, hyphens (3-20 chars).
+     * MTGO allows: English letters, digits, underscores, hyphens, periods (3-20 chars).
      */
-    public const PLAYER_PATTERN = '[A-Za-z0-9_-]+';
+    public const PLAYER_PATTERN = '[A-Za-z0-9_.-]+';
 
     /**
      * Word-to-number mapping for starting hand sizes.

@@ -308,3 +308,66 @@ it('extracts game results for players with hyphens', function () {
     expect($result['games'][0]['on_play'])->toBe('Bruh-Ket');
     expect($result['games'][0]['starting_hands'])->toHaveKey('Bruh-Ket');
 });
+
+/*
+|--------------------------------------------------------------------------
+| Dotted Usernames
+|--------------------------------------------------------------------------
+| MTGO usernames may contain periods (e.g. "mr.moo"). A dotted local
+| player whose name fails the pattern has every win silently dropped —
+| matches they won 2-0 resolve as 0-0 unknown, and matches where the
+| opponent took a game resolve as losses.
+*/
+
+it('detects players with dots in usernames', function () {
+    $entries = [
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@Pmr.moo rolled a 5.'],
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@PMooFoe rolled a 3.'],
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@Pmr.moo joined the game.'],
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@PMooFoe joined the game.'],
+    ];
+
+    $players = ExtractGameResults::detectPlayers($entries);
+
+    expect($players)->toContain('mr.moo');
+    expect($players)->toContain('MooFoe');
+});
+
+it('credits wins to a local player with a dotted username', function () {
+    $entries = [
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@Pmr.moo joined the game.'],
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@PMooFoe joined the game.'],
+        ['timestamp' => '2026-01-01T00:00:01+00:00', 'message' => '@Pmr.moo chooses to play first.'],
+        ['timestamp' => '2026-01-01T00:00:02+00:00', 'message' => '@Pmr.moo begins the game with seven cards in hand.'],
+        ['timestamp' => '2026-01-01T00:00:02+00:00', 'message' => '@PMooFoe begins the game with seven cards in hand.'],
+        ['timestamp' => '2026-01-01T00:00:03+00:00', 'message' => '@Pmr.moo wins the game.'],
+        ['timestamp' => '2026-01-01T00:00:04+00:00', 'message' => '@Pmr.moo rolled a 6.'],
+        ['timestamp' => '2026-01-01T00:00:04+00:00', 'message' => '@P@PMooFoe joined the game.'],
+        ['timestamp' => '2026-01-01T00:00:05+00:00', 'message' => '@PMooFoe chooses to play first.'],
+        ['timestamp' => '2026-01-01T00:00:06+00:00', 'message' => '@Pmr.moo wins the game.'],
+        ['timestamp' => '2026-01-01T00:00:07+00:00', 'message' => '@Pmr.moo wins the match 2-0'],
+    ];
+
+    $result = ExtractGameResults::run($entries, 'mr.moo');
+
+    expect($result['games'])->toHaveCount(2);
+    expect($result['games'][0]['winner'])->toBe('mr.moo');
+    expect($result['games'][1]['winner'])->toBe('mr.moo');
+    expect($result['games'][0]['on_play'])->toBe('mr.moo');
+    expect($result['games'][0]['starting_hands'])->toHaveKey('mr.moo');
+    expect($result['match_score'])->toBe([2, 0]);
+    expect($result['match_decided'])->toBeTrue();
+});
+
+it('credits a concede win to a dotted local player', function () {
+    $entries = [
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@Pmr.moo joined the game.'],
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@PMooFoe joined the game.'],
+        ['timestamp' => '2026-01-01T00:00:01+00:00', 'message' => '@PMooFoe has conceded from the game.'],
+    ];
+
+    $result = ExtractGameResults::run($entries, 'mr.moo');
+
+    expect($result['games'][0]['winner'])->toBe('mr.moo');
+    expect($result['games'][0]['end_reason'])->toBe('concede');
+});

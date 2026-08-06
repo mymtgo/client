@@ -77,6 +77,32 @@ it('handles player names with digits and underscores', function () {
     expect(DecodeMetaMessageText::run($bytes))->toBe('@PCyber7777 rolled a 3.');
 });
 
+it('handles player names with dots', function () {
+    // MTGO usernames may contain periods (e.g. "mr.moo"). A dotted
+    // name must decode for every result phrase or the player's wins vanish.
+    $texts = [
+        '@Pmr.moo rolled a 4.',
+        '@P@Pmr.moo joined the game.',
+        '@Pmr.moo chooses to play first.',
+        '@Pmr.moo begins the game with seven cards in hand.',
+        '@Pmr.moo wins the game.',
+        '@Pmr.moo has conceded from the game.',
+        '@Pmr.moo wins the match 2-0',
+    ];
+
+    foreach ($texts as $text) {
+        $textBytes = array_map('ord', str_split($text));
+        $len = strlen($text);
+        $bytes = array_merge(
+            [$len + 24, 0, 0, 0, 3, 17, 186, 129, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [$len, 0, 0, 0],
+            $textBytes
+        );
+
+        expect(DecodeMetaMessageText::run($bytes))->toBe($text);
+    }
+});
+
 it('extracts match score text', function () {
     $text = '@PEridanAmpora wins the match 2-0';
     $textBytes = array_map('ord', str_split($text));
