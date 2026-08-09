@@ -82,7 +82,9 @@
       "Bash(perl -i -pe 's/\\(?<!resolveMetaTest_\\)\\\\bmakeMatch\\\\\\(/resolveMetaTest_makeMatch\\(/g; s/\\(?<!resolveMetaTest_\\)\\\\bseedCompletedSignal\\\\\\(/resolveMetaTest_seedCompletedSignal\\(/g; s/\\(?<!resolveMetaTest_\\)\\\\bseedMetaMessage\\\\\\(/resolveMetaTest_seedMetaMessage\\(/g' tests/Feature/Actions/Pipeline/ResolveMatchFromMetaMessagesTest.php)",
       "Bash(npx prettier *)",
       "Bash(npx eslint *)",
-      "Bash(echo \"ESLINT_EXIT=$?\")"
+      "Bash(echo \"ESLINT_EXIT=$?\")",
+      "Bash(rg -n \"markStaleEventsProcessed\" -B2 -A30 app/Actions/Pipeline/ProcessMatchEvents.php app/Actions/Pipeline/*.php)",
+      "Bash(rg -rn \"state.*Complete|Complete.*state\" app/Actions/Matches/ResolveMatchFromMetaMessages.php)"
     ]
   },
   "enableAllProjectMcpServers": true,
