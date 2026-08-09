@@ -11,6 +11,7 @@ use App\Models\DeckVersion;
 use App\Models\League;
 use App\Models\LogEvent;
 use App\Models\MtgoMatch;
+use App\Models\Tournament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -298,4 +299,91 @@ it('leaves an already-assigned league untouched', function () {
     RelinkOrphanMatches::run();
 
     expect($match->fresh()->league_id)->toBe($league->id);
+});
+
+it('inherits the deck version from sibling rounds of the same tournament', function () {
+    // Round 1 starts before SyncDecks has picked up a freshly finished list, so
+    // it can reach Complete unlinked — and once its log events are pruned it can
+    // never relink from the log again. The other rounds of a locked event list
+    // are authoritative.
+    $tournament = Tournament::factory()->create();
+    $deckVersion = DeckVersion::factory()->create();
+
+    $roundOne = MtgoMatch::factory()->create([
+        'state' => MatchState::Complete,
+        'tournament_id' => $tournament->id,
+        'tournament_round' => 1,
+        'deck_version_id' => null,
+        'started_at' => now()->subDays(30),
+        'ended_at' => now()->subDays(30),
+    ]);
+
+    MtgoMatch::factory()->create([
+        'state' => MatchState::Complete,
+        'tournament_id' => $tournament->id,
+        'tournament_round' => 2,
+        'deck_version_id' => $deckVersion->id,
+        'started_at' => now()->subDays(30),
+        'ended_at' => now()->subDays(30),
+    ]);
+
+    RelinkOrphanMatches::run();
+
+    expect($roundOne->fresh()->deck_version_id)->toBe($deckVersion->id);
+});
+
+it('does not inherit when sibling rounds disagree on the deck version', function () {
+    $tournament = Tournament::factory()->create();
+
+    $roundOne = MtgoMatch::factory()->create([
+        'state' => MatchState::Complete,
+        'tournament_id' => $tournament->id,
+        'tournament_round' => 1,
+        'deck_version_id' => null,
+        'started_at' => now()->subMinutes(30),
+        'ended_at' => now()->subMinutes(20),
+    ]);
+
+    foreach ([DeckVersion::factory()->create(), DeckVersion::factory()->create()] as $index => $version) {
+        MtgoMatch::factory()->create([
+            'state' => MatchState::Complete,
+            'tournament_id' => $tournament->id,
+            'tournament_round' => $index + 2,
+            'deck_version_id' => $version->id,
+            'started_at' => now()->subMinutes(30),
+            'ended_at' => now()->subMinutes(20),
+        ]);
+    }
+
+    RelinkOrphanMatches::run();
+
+    expect($roundOne->fresh()->deck_version_id)->toBeNull();
+});
+
+it('leaves a tournament match that already has a deck version untouched', function () {
+    $tournament = Tournament::factory()->create();
+    $own = DeckVersion::factory()->create();
+    $sibling = DeckVersion::factory()->create();
+
+    $match = MtgoMatch::factory()->create([
+        'state' => MatchState::Complete,
+        'tournament_id' => $tournament->id,
+        'tournament_round' => 1,
+        'deck_version_id' => $own->id,
+        'started_at' => now()->subMinutes(30),
+        'ended_at' => now()->subMinutes(20),
+    ]);
+
+    MtgoMatch::factory()->create([
+        'state' => MatchState::Complete,
+        'tournament_id' => $tournament->id,
+        'tournament_round' => 2,
+        'deck_version_id' => $sibling->id,
+        'started_at' => now()->subMinutes(30),
+        'ended_at' => now()->subMinutes(20),
+    ]);
+
+    RelinkOrphanMatches::run();
+
+    expect($match->fresh()->deck_version_id)->toBe($own->id);
 });

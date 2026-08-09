@@ -7,6 +7,7 @@ use App\Enums\LogEventType;
 use App\Enums\MatchState;
 use App\Models\LogEvent;
 use App\Models\MtgoMatch;
+use Illuminate\Support\Facades\Log;
 
 class RelinkOrphanMatches
 {
@@ -50,6 +51,57 @@ class RelinkOrphanMatches
             ->limit($limit)
             ->get()
             ->each(fn (MtgoMatch $match) => self::retryAssignLeague($match));
+
+        self::inheritTournamentDecks();
+    }
+
+    /**
+     * Adopt the deck version its sibling rounds are using for any tournament
+     * match still missing one.
+     *
+     * The deck-relink pass above can only work while the match's `deck_used`
+     * log events still exist, and PruneProcessedLogEvents deletes those the
+     * moment the match reaches Complete. A round that was still unlinked at
+     * that point — round 1 typically, because it starts before SyncDecks has
+     * picked up a list the user finished minutes earlier — can never recover
+     * from the log again, and drops out of every deck-scoped view (the
+     * tournament runs query inner-joins deck_versions).
+     *
+     * MTGO locks the registered list for the whole event, so the other rounds
+     * are authoritative. Inherit only when every linked sibling agrees, so a
+     * tournament row shared by two runs on different decks is left alone.
+     *
+     * Deliberately not windowed by date: this repairs historic rounds too, a
+     * limited batch per tick until there is nothing left to fix.
+     */
+    private static function inheritTournamentDecks(int $limit = 50): void
+    {
+        MtgoMatch::query()
+            ->whereNull('deck_version_id')
+            ->whereNotNull('tournament_id')
+            ->orderByDesc('started_at')
+            ->limit($limit)
+            ->get()
+            ->each(function (MtgoMatch $match) {
+                $siblingVersionIds = MtgoMatch::query()
+                    ->where('tournament_id', $match->tournament_id)
+                    ->whereNotNull('deck_version_id')
+                    ->distinct()
+                    ->pluck('deck_version_id');
+
+                if ($siblingVersionIds->count() !== 1) {
+                    return;
+                }
+
+                $match->update(['deck_version_id' => $siblingVersionIds->first()]);
+
+                Log::channel('pipeline')->info("Match {$match->mtgo_id}: inherited deck version from tournament siblings", [
+                    'match_id' => $match->id,
+                    'tournament_id' => $match->tournament_id,
+                    'tournament_round' => $match->tournament_round,
+                    'deck_version_id' => $siblingVersionIds->first(),
+                ]);
+            });
     }
 
     /**

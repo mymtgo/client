@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\MatchState;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -85,9 +86,44 @@ class DeckVersion extends Model
         return $this->belongsTo(Deck::class);
     }
 
-    /** @return HasMany<MtgoMatch, $this> */
+    /**
+     * Limit to versions of decks owned by the given account. A null account id
+     * (identity not resolved yet) leaves the query untouched.
+     *
+     * @param  Builder<DeckVersion>  $query
+     * @return Builder<DeckVersion>
+     */
+    public function scopeForAccount(Builder $query, ?int $accountId): Builder
+    {
+        return $query->when(
+            $accountId,
+            fn (Builder $q) => $q->whereHas(
+                'deck',
+                fn ($deck) => $deck->withTrashed()->where('account_id', $accountId)
+            )
+        );
+    }
+
+    /**
+     * Every match linked to this version, in any state. Use this — not
+     * `matches()` — when deciding whether a version is still referenced:
+     * in-flight matches (a challenge round 1 on a freshly built list) are
+     * not complete yet but still point at the version.
+     *
+     * @return HasMany<MtgoMatch, $this>
+     */
+    public function allMatches(): HasMany
+    {
+        return $this->hasMany(MtgoMatch::class, 'deck_version_id');
+    }
+
+    /**
+     * Complete matches only — the set stats and win rates are built from.
+     *
+     * @return HasMany<MtgoMatch, $this>
+     */
     public function matches(): HasMany
     {
-        return $this->hasMany(MtgoMatch::class, 'deck_version_id')->where('state', MatchState::Complete);
+        return $this->allMatches()->where('state', MatchState::Complete);
     }
 }
