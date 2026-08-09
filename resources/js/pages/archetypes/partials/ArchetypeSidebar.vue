@@ -55,8 +55,12 @@ function applyFilters(params: Record<string, string> = {}) {
     router.get(
         window.location.pathname,
         {
-            search: search.value || undefined,
-            format: format.value || undefined,
+            // Both keys go every time, empty included. Actions redirect without
+            // a query string, so the server falls back to the last filters it
+            // saw — omitting an empty one would read as "no opinion" and leave
+            // the cleared filter in place.
+            search: search.value,
+            format: format.value,
             ...params,
         },
         { preserveState: true, preserveScroll: true },
@@ -117,7 +121,7 @@ function goToPage(page: number) {
                 v-for="archetype in archetypes.data"
                 :key="archetype.id"
                 :href="ShowController.url({ archetype: archetype.id })"
-                :data="{ search: search || undefined, format: format || undefined }"
+                :data="{ search, format }"
                 class="flex items-center gap-2 border-b border-black/40 px-3 py-2.5 text-sm transition-colors hover:bg-accent/50"
                 :class="{
                     'border-l-2 border-l-purple-500 bg-accent/30': selectedId === archetype.id,

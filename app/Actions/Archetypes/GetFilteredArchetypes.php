@@ -9,16 +9,20 @@ use Illuminate\Support\Str;
 
 class GetFilteredArchetypes
 {
+    private const SESSION_KEY = 'archetypes.filters';
+
     public static function run(Request $request): array
     {
+        $filters = static::resolveFilters($request);
+
         $query = Archetype::query()->where('is_fallback', false)->orderBy('name')->withExists('decks');
 
-        if ($request->filled('format')) {
-            $query->forFormat($request->input('format'));
+        if ($filters['format'] !== '') {
+            $query->forFormat($filters['format']);
         }
 
-        if ($request->filled('search')) {
-            $query->where('name', 'like', '%'.$request->input('search').'%');
+        if ($filters['search'] !== '') {
+            $query->where('name', 'like', '%'.$filters['search'].'%');
         }
 
         $paginated = $query->paginate(25)->withQueryString();
@@ -33,10 +37,49 @@ class GetFilteredArchetypes
         return [
             'archetypes' => $paginated->through(fn ($archetype) => ArchetypeData::fromModel($archetype)),
             'formats' => $formats,
-            'filters' => [
-                'format' => $request->input('format', ''),
-                'search' => $request->input('search', ''),
-            ],
+            'filters' => $filters,
         ];
+    }
+
+    /**
+     * Resolve the sidebar filters, remembering the last set the user chose.
+     *
+     * Every archetype action redirects to archetypes.show with no query
+     * string, so the request that re-renders the sidebar afterwards carries no
+     * filters at all — the list came back unfiltered while the inputs still
+     * showed the old terms, and the only way out was to retype them. The
+     * request stays authoritative whenever it mentions a filter (including
+     * mentioning it as empty, which is how the user clears one); the remembered
+     * set only fills the silence.
+     *
+     * @return array{format: string, search: string}
+     */
+    private static function resolveFilters(Request $request): array
+    {
+        $remembered = $request->session()->get(static::SESSION_KEY, ['format' => '', 'search' => '']);
+
+        /**
+         * Partial reloads reuse these parameter names for other things — the
+         * match picker on the create screen sends the form's chosen format and
+         * a blank search — so only a full visit may change what we remember.
+         */
+        if ($request->hasHeader('X-Inertia-Partial-Data')) {
+            return $remembered;
+        }
+
+        if ($request->has('search') || $request->has('format')) {
+            // ConvertEmptyStringsToNull turns `?search=` into null, so cast
+            // rather than relying on the input default.
+            $filters = [
+                'format' => (string) $request->input('format'),
+                'search' => (string) $request->input('search'),
+            ];
+
+            $request->session()->put(static::SESSION_KEY, $filters);
+
+            return $filters;
+        }
+
+        return $remembered;
     }
 }
