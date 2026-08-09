@@ -40,9 +40,17 @@ class RunPipeline
 
             // Phase 3: Backfill tournament tokens on matches whose round_info
             // event arrived after the match itself was created.
+            //
+            // Bounded deliberately. Each candidate costs a `raw_text LIKE`
+            // scan over log_events, and a match whose round_info event has
+            // since been pruned can never resolve — unbounded, that dead set
+            // only grows and every tick pays for all of it.
             MtgoMatch::query()
                 ->whereNull('tournament_token')
                 ->whereNotNull('tournament_event_id')
+                ->where('started_at', '>', now()->subDays(7))
+                ->orderByDesc('started_at')
+                ->limit(20)
                 ->get()
                 ->each(fn (MtgoMatch $match) => LinkMatchToTournament::run($match));
 
