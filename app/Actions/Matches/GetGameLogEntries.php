@@ -10,8 +10,11 @@ class GetGameLogEntries
     /**
      * Display-ready game-log entries for a single game.
      *
-     * Sources entries from log_events MetaMessage rows (live matches).
-     * Imported matches have no log_events; returns [].
+     * Sources entries from the decoded .dat game log, which is durable —
+     * log_events are pruned once a match completes, so reading those made a
+     * match's log view go permanently blank a day or so after it was played.
+     * log_events remain the fallback for a match whose .dat has not landed on
+     * disk yet. Returns [] when neither source has anything.
      *
      * @return array<int, array{timestamp: string, message: string}>
      */
@@ -23,7 +26,11 @@ class GetGameLogEntries
             return [];
         }
 
-        $entries = ExtractMetaMessageEntries::run($match->token);
+        $entries = EnsureGameLogForMatch::run($match->token);
+
+        if (empty($entries)) {
+            $entries = ExtractMetaMessageEntries::run($match->token);
+        }
 
         if (empty($entries)) {
             return [];

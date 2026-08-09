@@ -3,6 +3,7 @@
 use App\Actions\Matches\GetGameLogEntries;
 use App\Facades\AppSettings;
 use App\Models\Game;
+use App\Models\GameLog;
 use App\Models\LogEvent;
 use App\Models\LogInstance;
 use App\Models\MtgoMatch;
@@ -57,6 +58,58 @@ it('returns entries within the game time window', function () {
     getGameLogEntriesTest_seedMeta($token, $instance, '@PPlayerA rolled a 2.', 20);  // in window
     getGameLogEntriesTest_seedMeta($token, $instance, '@PPlayerA rolled a 3.', 30);  // in window
     getGameLogEntriesTest_seedMeta($token, $instance, '@PPlayerA rolled a 4.', 60);  // after window
+
+    $entries = GetGameLogEntries::run($game);
+
+    expect($entries)->toHaveCount(2);
+});
+
+it('reads the decoded game log once the log_events have been pruned', function () {
+    $token = 'gge-5555-5555-5555-555555555555';
+    $match = MtgoMatch::factory()->create(['token' => $token]);
+    $game = Game::factory()->create([
+        'match_id' => $match->id,
+        'started_at' => Carbon::parse('2026-05-26 10:00:00'),
+        'ended_at' => Carbon::parse('2026-05-26 10:30:00'),
+    ]);
+
+    GameLog::create([
+        'match_token' => $token,
+        'file_path' => "/logs/{$token}.dat",
+        'decoded_entries' => [
+            ['timestamp' => '2026-05-26T09:59:58+00:00', 'message' => '@P@PPlayerA joined the game.'],
+            ['timestamp' => '2026-05-26T10:12:04+00:00', 'message' => '@PPlayerA casts Karn Liberated.'],
+            ['timestamp' => '2026-05-26T10:29:50+00:00', 'message' => '@PPlayerA wins the game.'],
+            ['timestamp' => '2026-05-26T11:04:00+00:00', 'message' => '@PPlayerA wins the game.'],
+        ],
+    ]);
+
+    $entries = GetGameLogEntries::run($game);
+
+    expect($entries)->toHaveCount(3)
+        ->and($entries[1]['message'])->toBe('PlayerA casts Karn Liberated.');
+});
+
+it('prefers the decoded game log over log_events', function () {
+    $token = 'gge-6666-6666-6666-666666666666';
+    $instance = LogInstance::factory()->create();
+    $match = MtgoMatch::factory()->create(['token' => $token]);
+    $game = Game::factory()->create([
+        'match_id' => $match->id,
+        'started_at' => Carbon::parse('2026-05-26 10:00:00'),
+        'ended_at' => Carbon::parse('2026-05-26 10:30:00'),
+    ]);
+
+    getGameLogEntriesTest_seedMeta($token, $instance, '@PPlayerA rolled a 2.', 10);
+
+    GameLog::create([
+        'match_token' => $token,
+        'file_path' => "/logs/{$token}.dat",
+        'decoded_entries' => [
+            ['timestamp' => '2026-05-26T10:00:10+00:00', 'message' => '@PPlayerA rolled a 2.'],
+            ['timestamp' => '2026-05-26T10:12:04+00:00', 'message' => '@PPlayerA casts Karn Liberated.'],
+        ],
+    ]);
 
     $entries = GetGameLogEntries::run($game);
 
