@@ -155,6 +155,46 @@ it('caches API result so subsequent polls do not re-fetch', function () {
     Http::assertSentCount(1);
 });
 
+it('scouts the newest match when an earlier one is still stuck in progress', function () {
+    // MTGO does not reliably close matches, so the previous round can sit in
+    // in_progress until the reaper gets to it. The scout must still follow the
+    // match that actually started last.
+    $oldOpponent = Player::create(['username' => 'roundOneFoe']);
+    $newOpponent = Player::create(['username' => 'roundTwoFoe']);
+
+    $stale = MtgoMatch::create([
+        'mtgo_id' => '300004',
+        'token' => 'mt-4',
+        'format' => 'CModern',
+        'match_type' => 'League',
+        'state' => MatchState::InProgress,
+        'started_at' => now()->subHour(),
+    ]);
+
+    $current = MtgoMatch::create([
+        'mtgo_id' => '300005',
+        'token' => 'mt-5',
+        'format' => 'CModern',
+        'match_type' => 'League',
+        'state' => MatchState::Started,
+        'started_at' => now(),
+    ]);
+
+    attachScoutOpponent($stale, $oldOpponent);
+    attachScoutOpponent($current, $newOpponent);
+
+    Http::fake([
+        '*/api/players' => Http::response(['message' => 'not found'], 404),
+    ]);
+
+    $response = $this->get(route('leagues.opponent-scout'));
+
+    $response->assertOk();
+    $response->assertInertia(fn ($page) => $page
+        ->where('opponent.username', 'roundTwoFoe')
+    );
+});
+
 it('renders null opponent when no active match exists', function () {
     $response = $this->get(route('leagues.opponent-scout'));
 
