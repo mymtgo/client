@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Actions\Matches\ExtractGameResults;
 use App\Actions\Matches\ParseGameLogBinary;
+use App\Actions\Matches\RepairGameTimestampsFromEntries;
 use App\Models\GameLog;
 use App\Models\MtgoMatch;
 use Carbon\Carbon;
@@ -74,29 +75,6 @@ class ReDecodeSingleGameLogJob implements ShouldQueue
             'ended_at' => $match->ended_at ? Carbon::parse(end($entries)['timestamp']) : null,
         ]);
 
-        $this->fixGameTimestamps($match, $entries);
-    }
-
-    private function fixGameTimestamps(MtgoMatch $match, array $entries): void
-    {
-        $gameGroups = ExtractGameResults::splitIntoGames($entries);
-        $games = $match->games()->orderBy('started_at')->orderBy('id')->get();
-
-        foreach ($games as $index => $game) {
-            if (! isset($gameGroups[$index])) {
-                continue;
-            }
-
-            $gameEntries = $gameGroups[$index];
-
-            if (empty($gameEntries)) {
-                continue;
-            }
-
-            $game->update([
-                'started_at' => Carbon::parse($gameEntries[0]['timestamp']),
-                'ended_at' => Carbon::parse(end($gameEntries)['timestamp']),
-            ]);
-        }
+        RepairGameTimestampsFromEntries::run($match, $entries);
     }
 }
