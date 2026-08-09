@@ -33,11 +33,16 @@ class SyncDecks
             $fileModified = now()->parse($attributes['Timestamp'])->startOfSecond();
 
             /**
-             * Get the latest version of this deck.
+             * Skip files we have already processed at this timestamp.
+             *
+             * Gated on the deck's own file watermark rather than the newest
+             * version's modified_at: reverting a deck to a list we already hold
+             * reuses that version without advancing its modified_at, so the old
+             * check could never be satisfied and the deck was re-parsed,
+             * re-identified, re-archetyped and re-pruned every five minutes for
+             * the rest of the install's life.
              */
-            $deckVersion = $deck->versions()->orderBy('modified_at', 'desc')->first();
-
-            if ($deckVersion?->modified_at?->gte($fileModified)) {
+            if ($deck->deck_file_synced_at?->gte($fileModified)) {
 
                 $deckIds[] = $deck->id;
 
@@ -63,6 +68,7 @@ class SyncDecks
                 'format' => $attributes['FormatCode'],
                 'account_id' => $deck->account_id ?? $accountId,
                 'updated_at' => $attributes['Timestamp'],
+                'deck_file_synced_at' => $fileModified,
             ];
 
             // Preserve user-set custom names. `original_name` is only populated
@@ -85,9 +91,21 @@ class SyncDecks
                 'modified_at' => $fileModified,
             ]);
 
-            // If we don't have any games for this deck version and it's not the one we just created,
+            // If no match at all references this deck version and it's not the one we just created,
             // it's possible the user has been actively changing the deck, so just remove the orphaned versions.
-            $deck->versions()->whereDoesntHave('matches')->where('id', '!=', $deckVersion->id)->delete();
+            // `allMatches` (not `matches`) is deliberate: `matches` only counts complete matches, so an
+            // in-flight match — challenge round 1 on a list built minutes earlier — would not protect its
+            // own version. Deleting it either trips the matches FK and aborts the rest of the sync, or
+            // leaves the match pointing at a version row that no longer exists.
+            try {
+                $deck->versions()->whereDoesntHave('allMatches')->where('id', '!=', $deckVersion->id)->delete();
+            } catch (\Throwable $e) {
+                // Other tables (import_scans) also reference versions. A blocked prune must never stop
+                // the remaining decks from syncing, or the orphan relink pass at the end from running.
+                Log::warning('Failed to prune unused deck versions: '.$e->getMessage(), [
+                    'deck_id' => $deck->id,
+                ]);
+            }
 
             try {
                 ComputeDeckIdentity::run($deck);

@@ -28,6 +28,14 @@ class Deck extends Model
 
     protected $guarded = [];
 
+    /** @return array<string, string> */
+    protected function casts(): array
+    {
+        return [
+            'deck_file_synced_at' => 'datetime',
+        ];
+    }
+
     /** @return HasMany<DeckVersion, $this> */
     public function versions(): HasMany
     {
