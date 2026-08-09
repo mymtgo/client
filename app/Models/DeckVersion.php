@@ -83,7 +83,7 @@ class DeckVersion extends Model
     /** @return BelongsTo<Deck, $this> */
     public function deck(): BelongsTo
     {
-        return $this->belongsTo(Deck::class);
+        return $this->belongsTo(Deck::class)->withTrashed();
     }
 
     /**
