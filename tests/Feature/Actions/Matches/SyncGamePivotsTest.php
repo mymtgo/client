@@ -102,7 +102,7 @@ it('writes ended_at when source has it and game is null', function () {
     expect($game->fresh()->ended_at)->not->toBeNull();
 });
 
-it('does not overwrite existing ended_at', function () {
+it('does not move ended_at backwards', function () {
     $game = freshSyncPivotGame();
     attachSyncPivotPlayers($game, 'me', 'opp');
     $original = now()->subDay();
@@ -115,6 +115,27 @@ it('does not overwrite existing ended_at', function () {
     ], 'me');
 
     expect($game->fresh()->ended_at->timestamp)->toBe($original->timestamp);
+});
+
+it('advances ended_at as the game plays on', function () {
+    $game = freshSyncPivotGame();
+    attachSyncPivotPlayers($game, 'me', 'opp');
+
+    // The pipeline projects a game every tick, so the first pass sees only the
+    // opening lines and the last pass sees the whole game.
+    SyncGamePivots::forGame($game->fresh(['players']), [
+        'winner' => null,
+        'on_play' => null,
+        'ended_at' => '2026-04-29T10:00:02+00:00',
+    ], 'me');
+
+    SyncGamePivots::forGame($game->fresh(['players']), [
+        'winner' => 'me',
+        'on_play' => null,
+        'ended_at' => '2026-04-29T10:14:37+00:00',
+    ], 'me');
+
+    expect($game->fresh()->ended_at->format('Y-m-d H:i:s'))->toBe('2026-04-29 10:14:37');
 });
 
 it('flips on_play when local player is on play', function () {

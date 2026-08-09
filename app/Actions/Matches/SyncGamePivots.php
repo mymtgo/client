@@ -54,8 +54,23 @@ class SyncGamePivots
             }
         }
 
-        if ($game->ended_at === null && ! empty($gameData['ended_at'])) {
-            $updates['ended_at'] = Carbon::parse($gameData['ended_at']);
+        /**
+         * Advance ended_at rather than writing it once.
+         *
+         * A game is projected on every pipeline tick while it is still being
+         * played, so the first pass sees only the opening lines — the rolls and
+         * the joins — and its "last entry" is a second or two after the game
+         * began. Writing that value once froze finished games at a 0s duration
+         * and left the game log view showing nothing past "joined the game",
+         * because it filters entries to the game's own time window. The parsed
+         * value only moves forward as more of the game's entries arrive, and
+         * stops once the next game's entries start landing in a different
+         * group, so taking the later value is safe.
+         */
+        $parsedEnd = ! empty($gameData['ended_at']) ? Carbon::parse($gameData['ended_at']) : null;
+
+        if ($parsedEnd !== null && ($game->ended_at === null || $parsedEnd->greaterThan($game->ended_at))) {
+            $updates['ended_at'] = $parsedEnd;
         }
 
         if (! empty($updates)) {
