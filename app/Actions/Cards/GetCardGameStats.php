@@ -59,18 +59,7 @@ class GetCardGameStats
             $q->when($isPostboard !== null, fn ($qq) => $qq->where('cgs.is_postboard', $isPostboard));
 
             if ($opponentArchetypeId) {
-                $q->join('games as g', 'g.id', '=', 'cgs.game_id')
-                    ->join('match_archetypes as ma', function ($join) use ($opponentArchetypeId) {
-                        $join->on('ma.mtgo_match_id', '=', 'g.match_id')
-                            ->where('ma.archetype_id', $opponentArchetypeId);
-                    })
-                    ->whereExists(function ($sub) {
-                        $sub->select(DB::raw(1))
-                            ->from('game_player as gp')
-                            ->whereRaw('gp.game_id = g.id')
-                            ->whereRaw('gp.player_id = ma.player_id')
-                            ->where('gp.is_local', false);
-                    });
+                ApplyOpponentArchetypeFilter::to($q, $opponentArchetypeId);
             }
 
             if ($onPlay !== null) {
