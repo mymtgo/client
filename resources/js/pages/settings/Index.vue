@@ -14,8 +14,6 @@ import UpdateWatcherController from '@/actions/App/Http/Controllers/Settings/Upd
 import UpdateAutostartController from '@/actions/App/Http/Controllers/Settings/UpdateAutostartController';
 import type { LeagueData } from '@/components/leagues/LeagueTracker.vue';
 import LeagueTracker from '@/components/leagues/LeagueTracker.vue';
-import type { OpponentData } from '@/components/leagues/OpponentScout.vue';
-import OpponentScout from '@/components/leagues/OpponentScout.vue';
 import ApiStatusCard from '@/components/settings/ApiStatusCard.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -38,8 +36,10 @@ const props = defineProps<{
     pendingMatches: Array<{ id: number; format: string; outcome: string | null; started_at: string }>;
     accounts: Array<{ id: number; username: string; tracked: boolean; active: boolean }>;
 leagueWindowEnabled: boolean;
-    opponentWindowEnabled: boolean;
-    deckWindowEnabled: boolean;
+    gameOverlayEnabled: boolean;
+    overlayShowOpponent: boolean;
+    overlayShowDrawOdds: boolean;
+    overlayShowSideboard: boolean;
     overlayBackgroundUrl: string | null;
     debugMode: boolean;
     localImages: boolean;
@@ -122,12 +122,14 @@ function setLeagueWindowEnabled(val: boolean) {
     withProcessing('leagueWindow', 'post', UpdateOverlaySettingsController.url(), { league_window: val });
 }
 
-function setOpponentWindowEnabled(val: boolean) {
-    withProcessing('opponentWindow', 'post', UpdateOverlaySettingsController.url(), { opponent_window: val });
+function setGameOverlayEnabled(val: boolean) {
+    withProcessing('gameOverlay', 'post', UpdateOverlaySettingsController.url(), { game_overlay: val });
 }
 
-function setDeckWindowEnabled(val: boolean) {
-    withProcessing('deckWindow', 'post', UpdateOverlaySettingsController.url(), { deck_window: val });
+function setOverlaySection(key: 'opponent' | 'draw_odds' | 'sideboard', val: boolean) {
+    withProcessing(`overlay-${key}`, 'post', UpdateOverlaySettingsController.url(), {
+        [`overlay_show_${key}`]: val,
+    });
 }
 
 function toggleDebugMode(val: boolean) {
@@ -190,15 +192,6 @@ const sampleLeague: LeagueData = {
         { won: false, ended: true },
         { won: null, ended: false },
     ],
-};
-
-const sampleOpponent: OpponentData = {
-    username: 'Opponent123',
-    previousMatches: 2,
-    wins: 1,
-    losses: 1,
-    lastArchetype: 'Azorius Control',
-    lastArchetypeColors: 'W,U',
 };
 </script>
 
@@ -288,38 +281,53 @@ const sampleOpponent: OpponentData = {
 
                     <div class="flex items-center justify-between">
                         <div>
-                            <Label>Opponent scouting window</Label>
+                            <Label>Game overlay</Label>
                             <p class="text-sm text-muted-foreground">
-                                Show opponent history and last known archetype in a separate window during matches.
+                                Show a floating panel during matches with your opponent's archetype, live draw odds,
+                                and your sideboard guide.
                             </p>
                         </div>
                         <Switch
-                            :modelValue="props.opponentWindowEnabled"
-                            @update:modelValue="setOpponentWindowEnabled"
-                            :disabled="processing === 'opponentWindow'"
+                            :modelValue="props.gameOverlayEnabled"
+                            @update:modelValue="setGameOverlayEnabled"
+                            :disabled="processing === 'gameOverlay'"
                         />
                     </div>
 
-                    <div class="mx-auto w-64 overflow-hidden rounded-md border border-border">
-                        <OpponentScout :opponent="sampleOpponent" />
-                    </div>
-
-                    <Separator />
-
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <Label>Deck odds</Label>
-                            <p class="text-sm text-muted-foreground">
-                                Show live draw odds for your deck in a separate window during matches.
-                            </p>
+                    <div class="flex flex-col gap-3 pl-6">
+                        <div class="flex items-center justify-between">
+                            <Label :class="props.gameOverlayEnabled ? '' : 'text-muted-foreground'">
+                                Show opponent scout
+                            </Label>
+                            <Switch
+                                :modelValue="props.overlayShowOpponent"
+                                @update:modelValue="(val: boolean) => setOverlaySection('opponent', val)"
+                                :disabled="!props.gameOverlayEnabled || processing === 'overlay-opponent'"
+                            />
                         </div>
-                        <Switch
-                            :modelValue="props.deckWindowEnabled"
-                            @update:modelValue="setDeckWindowEnabled"
-                            :disabled="processing === 'deckWindow'"
-                        />
-                    </div>
 
+                        <div class="flex items-center justify-between">
+                            <Label :class="props.gameOverlayEnabled ? '' : 'text-muted-foreground'">
+                                Show draw odds
+                            </Label>
+                            <Switch
+                                :modelValue="props.overlayShowDrawOdds"
+                                @update:modelValue="(val: boolean) => setOverlaySection('draw_odds', val)"
+                                :disabled="!props.gameOverlayEnabled || processing === 'overlay-draw_odds'"
+                            />
+                        </div>
+
+                        <div class="flex items-center justify-between">
+                            <Label :class="props.gameOverlayEnabled ? '' : 'text-muted-foreground'">
+                                Show sideboard guide
+                            </Label>
+                            <Switch
+                                :modelValue="props.overlayShowSideboard"
+                                @update:modelValue="(val: boolean) => setOverlaySection('sideboard', val)"
+                                :disabled="!props.gameOverlayEnabled || processing === 'overlay-sideboard'"
+                            />
+                        </div>
+                    </div>
                 </CardContent>
             </Card>
 
