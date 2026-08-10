@@ -165,6 +165,6 @@ class ResolveOverlayOpponent
             return null;
         }
 
-        return Archetype::query()->where('name', $league['name'])->first();
+        return Archetype::query()->where('uuid', $league['uuid'])->first();
     }
 }

@@ -14,7 +14,7 @@ class FetchOpponentLeagueArchetype
      * Fetch the latest 5-0 league archetype for an opponent from the API.
      * The API only stores 5-0 finishes, so any successful response is a 5-0.
      *
-     * @return array{name: string, colors: string|null}|null
+     * @return array{uuid: string, name: string, colors: string|null}|null
      */
     public static function run(string $username, string $rawFormat): ?array
     {
@@ -51,6 +51,7 @@ class FetchOpponentLeagueArchetype
             ->value('color_identity');
 
         return [
+            'uuid' => $archetype['uuid'],
             'name' => $archetype['name'],
             'colors' => $colors,
         ];

@@ -4,6 +4,8 @@ use App\Actions\Overlay\ResolveOverlayOpponent;
 use App\Enums\MatchOutcome;
 use App\Enums\MatchState;
 use App\Models\Archetype;
+use App\Models\ArchetypeDeck;
+use App\Models\Card;
 use App\Models\Game;
 use App\Models\MatchArchetype;
 use App\Models\MtgoMatch;
@@ -39,6 +41,34 @@ function overlayMatchWithOpponent(string $token, ?Player $opponent = null): arra
     $game->players()->attach($opponent->id, ['is_local' => 0, 'instance_id' => 'i-2']);
 
     return [$match->fresh(), $opponent];
+}
+
+/**
+ * Build a locally-downloaded archetype deck with 15 distinct non-land cards
+ * (mtgo_ids 1001..1015), mirroring EstimateArchetypeLocallyTest's fixtures.
+ * Big enough that observing 9 of them clears the confidence floor, and
+ * observing 2 of them stays under it.
+ *
+ * @return array{0: Archetype, 1: ArchetypeDeck}
+ */
+function overlayLiveArchetypeDeck(string $name, string $format): array
+{
+    $archetype = Archetype::factory()->create(['name' => $name, 'format' => $format]);
+    $deck = ArchetypeDeck::factory()->for($archetype)->create();
+
+    $pivotData = [];
+    for ($i = 1; $i <= 15; $i++) {
+        $card = Card::factory()->create([
+            'mtgo_id' => 1000 + $i,
+            'oracle_id' => "overlay-live-{$i}",
+            'type' => 'Instant',
+        ]);
+        $pivotData[$card->id] = ['quantity' => 4, 'sideboard' => false];
+    }
+
+    $deck->cards()->sync($pivotData);
+
+    return [$archetype, $deck];
 }
 
 it('returns null when no opponent player exists yet', function () {
@@ -144,4 +174,118 @@ it('reports no archetype when nothing resolves', function () {
     expect($result->archetypeId)->toBeNull();
     expect($result->source)->toBe('none');
     expect($result->manual)->toBeFalse();
+});
+
+it('resolves the league archetype by uuid, not by a same-named archetype in another format', function () {
+    // Created first and shares the name the API will return, so a name-only
+    // lookup (the original bug) would resolve to this row instead.
+    Archetype::factory()->create([
+        'uuid' => 'wrong-format-uuid',
+        'name' => 'Mono Red Prowess',
+        'format' => 'pauper',
+        'color_identity' => 'U',
+    ]);
+
+    $correct = Archetype::factory()->create([
+        'uuid' => 'correct-uuid',
+        'name' => 'Mono Red Prowess',
+        'format' => 'modern',
+        'color_identity' => 'R',
+    ]);
+
+    [$match] = overlayMatchWithOpponent('tok-uuid-collision');
+
+    Http::fake([
+        '*/api/players' => Http::response([
+            'data' => ['league_result' => ['archetype' => ['uuid' => 'correct-uuid', 'name' => 'Mono Red Prowess']]],
+        ]),
+    ]);
+
+    $result = ResolveOverlayOpponent::run($match);
+
+    expect($result->source)->toBe('league');
+    expect($result->archetypeId)->toBe($correct->id);
+    expect($result->archetypeColors)->toBe('R');
+});
+
+it('prefers a confident live estimate over a faked league hit', function () {
+    [$liveArchetype] = overlayLiveArchetypeDeck('Live Local Combo', 'modern');
+
+    Archetype::factory()->create([
+        'uuid' => 'league-loser-uuid',
+        'name' => 'League Loser',
+        'format' => 'modern',
+        'color_identity' => 'U',
+    ]);
+
+    $match = MtgoMatch::create([
+        'mtgo_id' => 'm-tok-live', 'token' => 'tok-live', 'format' => 'CModern',
+        'match_type' => 'League', 'state' => MatchState::InProgress, 'started_at' => now(),
+    ]);
+    $opponent = Player::create(['username' => 'live-opp']);
+    $game = Game::create(['match_id' => $match->id, 'mtgo_id' => 'g-tok-live', 'started_at' => now()]);
+
+    // deck_json must be a plain array, never json_encode(...): Game::players()
+    // uses the GamePlayer pivot class, which casts deck_json to 'array', so a
+    // pre-encoded string is encoded twice and reads back as a string.
+    // 9 of the deck's 15 distinct cards revealed — well above the confidence floor.
+    $game->players()->attach($opponent->id, [
+        'is_local' => 0,
+        'instance_id' => 'i-2',
+        'deck_json' => collect(range(1, 9))
+            ->map(fn (int $i) => ['mtgo_id' => 1000 + $i, 'quantity' => 4])
+            ->all(),
+    ]);
+
+    Http::fake([
+        '*/api/players' => Http::response([
+            'data' => ['league_result' => ['archetype' => ['uuid' => 'league-loser-uuid', 'name' => 'League Loser']]],
+        ]),
+    ]);
+
+    $result = ResolveOverlayOpponent::run($match->fresh());
+
+    expect($result->source)->toBe('live');
+    expect($result->archetypeId)->toBe($liveArchetype->id);
+});
+
+it('falls through past a live estimate below the confidence floor', function () {
+    overlayLiveArchetypeDeck('Big Modern Deck', 'modern');
+
+    $winner = Archetype::factory()->create([
+        'uuid' => 'league-winner-uuid',
+        'name' => 'League Winner',
+        'format' => 'modern',
+        'color_identity' => 'G',
+    ]);
+
+    $match = MtgoMatch::create([
+        'mtgo_id' => 'm-tok-thin', 'token' => 'tok-thin', 'format' => 'CModern',
+        'match_type' => 'League', 'state' => MatchState::InProgress, 'started_at' => now(),
+    ]);
+    $opponent = Player::create(['username' => 'thin-opp']);
+    $game = Game::create(['match_id' => $match->id, 'mtgo_id' => 'g-tok-thin', 'started_at' => now()]);
+
+    // Only 2 of the deck's 15 distinct cards revealed — mirrors
+    // EstimateArchetypeLocallyTest's "does not short-circuit on thin
+    // observations" case, which lands confidence below the 0.8 floor.
+    $game->players()->attach($opponent->id, [
+        'is_local' => 0,
+        'instance_id' => 'i-2',
+        'deck_json' => [
+            ['mtgo_id' => 1001, 'quantity' => 4],
+            ['mtgo_id' => 1002, 'quantity' => 4],
+        ],
+    ]);
+
+    Http::fake([
+        '*/api/players' => Http::response([
+            'data' => ['league_result' => ['archetype' => ['uuid' => 'league-winner-uuid', 'name' => 'League Winner']]],
+        ]),
+    ]);
+
+    $result = ResolveOverlayOpponent::run($match->fresh());
+
+    expect($result->source)->toBe('league');
+    expect($result->archetypeId)->toBe($winner->id);
 });
