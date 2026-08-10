@@ -223,24 +223,59 @@ class AppSettings
         $this->set('donation_prompt_seen', $value);
     }
 
-    public function showOpponentWindow(): bool
+    /**
+     * Whether the game overlay window is enabled.
+     *
+     * Falls back to the two windows this one replaced so an upgrade does not
+     * silently drop an overlay the player already had open. Settings live in a
+     * JSON file, so there is no migration to carry this — the fallback is the
+     * migration.
+     */
+    public function showGameOverlay(): bool
     {
-        return (bool) $this->get('opponent_window', false);
+        $explicit = $this->get('game_overlay');
+
+        if ($explicit !== null) {
+            return (bool) $explicit;
+        }
+
+        return (bool) $this->get('deck_window', false)
+            || (bool) $this->get('opponent_window', false);
     }
 
-    public function setShowOpponentWindow(bool $value): void
+    public function setShowGameOverlay(bool $value): void
     {
-        $this->set('opponent_window', $value);
+        $this->set('game_overlay', $value);
     }
 
-    public function showDeckWindow(): bool
+    public function overlayShowOpponent(): bool
     {
-        return (bool) $this->get('deck_window', false);
+        return (bool) $this->get('overlay_show_opponent', true);
     }
 
-    public function setShowDeckWindow(bool $value): void
+    public function setOverlayShowOpponent(bool $value): void
     {
-        $this->set('deck_window', $value);
+        $this->set('overlay_show_opponent', $value);
+    }
+
+    public function overlayShowDrawOdds(): bool
+    {
+        return (bool) $this->get('overlay_show_draw_odds', true);
+    }
+
+    public function setOverlayShowDrawOdds(bool $value): void
+    {
+        $this->set('overlay_show_draw_odds', $value);
+    }
+
+    public function overlayShowSideboard(): bool
+    {
+        return (bool) $this->get('overlay_show_sideboard', true);
+    }
+
+    public function setOverlayShowSideboard(bool $value): void
+    {
+        $this->set('overlay_show_sideboard', $value);
     }
 
     public function downloadImagesLocally(): bool

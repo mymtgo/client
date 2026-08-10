@@ -160,12 +160,6 @@ class MtgoManager
         if (AppSettings::get('league_window') === null) {
             AppSettings::setShowLeagueWindow(false);
         }
-        if (AppSettings::get('opponent_window') === null) {
-            AppSettings::setShowOpponentWindow(false);
-        }
-        if (AppSettings::get('deck_window') === null) {
-            AppSettings::setShowDeckWindow(false);
-        }
         if (AppSettings::get('local_images') === null) {
             AppSettings::setDownloadImagesLocally(false);
         }
