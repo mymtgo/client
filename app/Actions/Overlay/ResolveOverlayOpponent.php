@@ -51,7 +51,10 @@ class ResolveOverlayOpponent
         );
     }
 
-    private static function findOpponent(MtgoMatch $match): ?Player
+    /**
+     * The live match's opponent: the non-local player in its earliest game.
+     */
+    public static function findOpponent(MtgoMatch $match): ?Player
     {
         return $match->games()
             ->with(['opponents'])

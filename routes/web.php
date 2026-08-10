@@ -66,6 +66,7 @@ use App\Http\Controllers\Matches\ShowController;
 use App\Http\Controllers\Matches\UpdateArchetypeController;
 use App\Http\Controllers\Matches\UpdateNotesController;
 use App\Http\Controllers\Overlay\GameOverlayController;
+use App\Http\Controllers\Overlay\UpdateOpponentArchetypeController;
 use App\Http\Controllers\Reports\CardStatsController as ReportsCardStatsController;
 use App\Http\Controllers\Reports\IndexController as ReportsIndexController;
 use App\Http\Controllers\Reports\MatchesController as ReportsMatchesController;
@@ -142,6 +143,8 @@ Route::group([], function (Router $router) {
         'prefix' => 'game-overlay',
     ], function (Router $group) {
         $group->get('/', GameOverlayController::class)->name('overlay.game');
+        $group->post('archetype', UpdateOpponentArchetypeController::class)
+            ->name('overlay.archetype');
     });
 
     $router->group([
