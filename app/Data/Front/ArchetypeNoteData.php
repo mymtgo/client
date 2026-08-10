@@ -21,7 +21,7 @@ class ArchetypeNoteData extends Data
         return new self(
             id: $note->id,
             body: $note->body,
-            deckName: $note->deck?->name ?? 'Unknown deck',
+            deckName: $note->deck->name,
             createdAt: $note->created_at,
         );
     }

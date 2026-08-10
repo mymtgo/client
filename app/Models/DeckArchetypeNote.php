@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 /**
  * @property int $id
  * @property string $body
- * @property-read Deck|null $deck
+ * @property-read Deck $deck
  * @property-read Archetype|null $archetype
  */
 class DeckArchetypeNote extends Model

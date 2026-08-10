@@ -139,6 +139,12 @@ class ResolveOverlayOpponent
             return null;
         }
 
+        // AggregateOpponentCards guarantees mtgo_id is an int, but
+        // EstimateArchetypeLocally's array shape is int|string to also
+        // accommodate SyncDecks::prefillArchetype, which passes oracle_id
+        // strings under the same key. Widen the annotation here rather than
+        // narrowing either action's own (accurate) declared shape.
+        /** @var Collection<int, array{mtgo_id: int|string, quantity: int}> $cards */
         $fingerprint = md5($cards->sortBy('mtgo_id')->map(
             fn (array $card) => $card['mtgo_id'].':'.$card['quantity']
         )->implode('|'));

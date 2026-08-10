@@ -92,7 +92,7 @@ class BuildSideboardGuide
 
     /**
      * @param  array<int, int>  $versionIds
-     * @return Collection<string, object>
+     * @return Collection<int|string, \stdClass>
      */
     private static function aggregate(array $versionIds, int $archetypeId): Collection
     {
