@@ -65,7 +65,9 @@ use App\Http\Controllers\Matches\DetectArchetypeController;
 use App\Http\Controllers\Matches\ShowController;
 use App\Http\Controllers\Matches\UpdateArchetypeController;
 use App\Http\Controllers\Matches\UpdateNotesController;
+use App\Http\Controllers\Overlay\DestroyNoteController;
 use App\Http\Controllers\Overlay\GameOverlayController;
+use App\Http\Controllers\Overlay\StoreNoteController;
 use App\Http\Controllers\Overlay\UpdateOpponentArchetypeController;
 use App\Http\Controllers\Reports\CardStatsController as ReportsCardStatsController;
 use App\Http\Controllers\Reports\IndexController as ReportsIndexController;
@@ -145,6 +147,10 @@ Route::group([], function (Router $router) {
         $group->get('/', GameOverlayController::class)->name('overlay.game');
         $group->post('archetype', UpdateOpponentArchetypeController::class)
             ->name('overlay.archetype');
+        $group->post('notes', StoreNoteController::class)
+            ->name('overlay.notes.store');
+        $group->delete('notes/{note}', DestroyNoteController::class)
+            ->name('overlay.notes.destroy');
     });
 
     $router->group([
