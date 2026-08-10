@@ -39,6 +39,7 @@ class GameOverlayController extends Controller
         return Inertia::render('overlay/GameOverlay', [
             'sections' => $sections,
             'opponent' => $opponent,
+            'format' => $match?->format,
             'archetypes' => Inertia::defer(fn () => ArchetypeData::collect(Archetype::orderBy('name')->get())),
             'drawOdds' => $match && $sections['drawOdds'] ? ComputeDrawOdds::run($match) : null,
             'sideboard' => $sections['sideboard'] ? $this->sideboardGuide($match, $opponent) : null,

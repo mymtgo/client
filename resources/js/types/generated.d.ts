@@ -26,6 +26,12 @@ decks: Array<App.Data.Front.ArchetypeDeckData>;
 isStale: boolean;
 mergedInto: App.Data.Front.ArchetypeData | null;
 };
+export type ArchetypeNoteData = {
+id: number;
+body: string;
+deckName: string;
+createdAt: string;
+};
 export type CardData = {
 mtgoId: number | null;
 name: string | null;
@@ -145,6 +151,17 @@ gameResults: any | { [key: number]: App.Data.Front.GameResultSummaryData };
 export type MatchDeckData = {
 deck: any | App.Data.Front.DeckData;
 };
+export type OverlayOpponentData = {
+username: string;
+previousMatches: number;
+wins: number;
+losses: number;
+archetypeId: number | null;
+archetypeName: string | null;
+archetypeColors: string | null;
+source: string;
+manual: boolean;
+};
 export type PlayerData = {
 id: number;
 username: string;
@@ -152,5 +169,28 @@ isLocal: boolean;
 onPlay: boolean;
 startingHandSize: number;
 deck: Array<any>;
+};
+export type SideboardCardData = {
+oracleId: string;
+name: string;
+colorIdentity: string | null;
+image: string | null;
+quantity: number;
+sidedInGames: number;
+wins: number;
+losses: number;
+winrate: number | null;
+};
+export type SideboardGuideData = {
+sidedIn: Array<any>;
+sidedOut: Array<any>;
+postboardGames: number;
+postboardRecord: string;
+};
+export type SidedOutCardData = {
+oracleId: string;
+name: string;
+image: string | null;
+sidedOutGames: number;
 };
 }
