@@ -30,7 +30,6 @@ use App\Http\Controllers\Decks\LeaguesController;
 use App\Http\Controllers\Decks\MatchesController;
 use App\Http\Controllers\Decks\MatchupDetailController;
 use App\Http\Controllers\Decks\MatchupsController;
-use App\Http\Controllers\Decks\PopoutController;
 use App\Http\Controllers\Decks\RegenerateCardStatsController;
 use App\Http\Controllers\Decks\ScreenshotDataController;
 use App\Http\Controllers\Decks\SettingsController;
@@ -56,7 +55,6 @@ use App\Http\Controllers\IndexController;
 use App\Http\Controllers\Leagues\AvailableMatchesController;
 use App\Http\Controllers\Leagues\DropController;
 use App\Http\Controllers\Leagues\LinkMatchController;
-use App\Http\Controllers\Leagues\OpponentScoutWindowController;
 use App\Http\Controllers\Leagues\OverlayController;
 use App\Http\Controllers\Leagues\UnlinkMatchController;
 use App\Http\Controllers\Matches\BulkUpdateArchetypeController;
@@ -132,7 +130,6 @@ Route::group([], function (Router $router) {
         $group->post('/', App\Http\Controllers\Leagues\StoreController::class)->name('leagues.store');
         $group->get('/', App\Http\Controllers\Leagues\IndexController::class)->name('leagues.index');
         $group->get('overlay', OverlayController::class)->name('leagues.overlay');
-        $group->get('opponent-scout', OpponentScoutWindowController::class)->name('leagues.opponent-scout');
         $group->patch('{league}/notes', App\Http\Controllers\Leagues\UpdateNotesController::class)->name('leagues.update-notes');
         $group->patch('{league}/drop', DropController::class)->name('leagues.drop');
         $group->post('{league}/matches', LinkMatchController::class)->name('leagues.matches.link');
@@ -177,7 +174,6 @@ Route::group([], function (Router $router) {
         'prefix' => 'decks',
     ], function (Router $group) {
         $group->get('/', App\Http\Controllers\Decks\IndexController::class)->name('decks.index');
-        $group->get('popout', PopoutController::class)->name('decks.popout');
         $group->get('{deck:id}', DashboardController::class)->name('decks.show')->withTrashed();
         $group->get('{deck:id}/card-stats', CardStatsController::class)->name('decks.card-stats')->withTrashed();
         $group->post('{deck:id}/card-stats/regenerate', RegenerateCardStatsController::class)->name('decks.card-stats.regenerate')->withTrashed();
