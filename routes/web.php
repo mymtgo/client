@@ -65,6 +65,7 @@ use App\Http\Controllers\Matches\DetectArchetypeController;
 use App\Http\Controllers\Matches\ShowController;
 use App\Http\Controllers\Matches\UpdateArchetypeController;
 use App\Http\Controllers\Matches\UpdateNotesController;
+use App\Http\Controllers\Overlay\GameOverlayController;
 use App\Http\Controllers\Reports\CardStatsController as ReportsCardStatsController;
 use App\Http\Controllers\Reports\IndexController as ReportsIndexController;
 use App\Http\Controllers\Reports\MatchesController as ReportsMatchesController;
@@ -135,6 +136,12 @@ Route::group([], function (Router $router) {
         $group->delete('{league}/matches/{mtgoMatch}', UnlinkMatchController::class)->name('leagues.matches.unlink');
         $group->get('{league}/available-matches', AvailableMatchesController::class)
             ->name('leagues.available-matches');
+    });
+
+    $router->group([
+        'prefix' => 'game-overlay',
+    ], function (Router $group) {
+        $group->get('/', GameOverlayController::class)->name('overlay.game');
     });
 
     $router->group([
