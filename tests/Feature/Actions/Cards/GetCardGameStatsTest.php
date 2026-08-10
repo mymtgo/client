@@ -1,10 +1,12 @@
 <?php
 
 use App\Actions\Cards\GetCardGameStats;
+use App\Models\Archetype;
 use App\Models\Card;
 use App\Models\Deck;
 use App\Models\DeckVersion;
 use App\Models\Game;
+use App\Models\MatchArchetype;
 use App\Models\MtgoMatch;
 use App\Models\Player;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -272,6 +274,64 @@ it('filters by on_play', function () {
     expect($onDrawResults)->toHaveCount(1);
     expect($onDrawResults->first()['totalGames'])->toBe(1);
     expect($onDrawResults->first()['totalKept'])->toBe(1);
+});
+
+it('filters by opponent archetype and on_play together with a single games join', function () {
+    $deck = Deck::factory()->create();
+    $version = DeckVersion::factory()->for($deck)->create();
+
+    $card = Card::factory()->create(['oracle_id' => 'test-oracle-combo', 'name' => 'Fatal Push', 'type' => 'Instant', 'color_identity' => 'B', 'image' => null]);
+
+    $wantedArchetype = Archetype::factory()->create(['name' => 'Esper Blink', 'format' => 'modern']);
+    $otherArchetype = Archetype::factory()->create(['name' => 'Burn', 'format' => 'modern']);
+
+    $localPlayer = Player::create(['username' => 'localuser-combo']);
+
+    // Game 1: vs wanted archetype, on the play — kept by both filters.
+    $matchWanted = MtgoMatch::factory()->create(['deck_version_id' => $version->id]);
+    $opponentWanted = Player::create(['username' => 'opp-wanted']);
+    $gameWantedOnPlay = Game::factory()->for($matchWanted, 'match')->create(['won' => true]);
+    $gameWantedOnPlay->players()->attach($localPlayer->id, ['instance_id' => 1, 'is_local' => true, 'on_play' => true, 'starting_hand_size' => 7]);
+    $gameWantedOnPlay->players()->attach($opponentWanted->id, ['instance_id' => 2, 'is_local' => false, 'on_play' => false, 'starting_hand_size' => 7]);
+    MatchArchetype::create([
+        'mtgo_match_id' => $matchWanted->id,
+        'player_id' => $opponentWanted->id,
+        'archetype_id' => $wantedArchetype->id,
+        'confidence' => 1.0,
+    ]);
+    insertCardGameStat(['deck_version_id' => $version->id, 'game_id' => $gameWantedOnPlay->id, 'oracle_id' => $card->oracle_id, 'kept' => 2, 'won' => true]);
+
+    // Game 2: vs wanted archetype, on the draw — excluded by the on_play filter.
+    $gameWantedOnDraw = Game::factory()->for($matchWanted, 'match')->create(['won' => false]);
+    $gameWantedOnDraw->players()->attach($localPlayer->id, ['instance_id' => 3, 'is_local' => true, 'on_play' => false, 'starting_hand_size' => 7]);
+    $gameWantedOnDraw->players()->attach($opponentWanted->id, ['instance_id' => 4, 'is_local' => false, 'on_play' => true, 'starting_hand_size' => 7]);
+    insertCardGameStat(['deck_version_id' => $version->id, 'game_id' => $gameWantedOnDraw->id, 'oracle_id' => $card->oracle_id, 'kept' => 5, 'won' => false]);
+
+    // Game 3: vs the other archetype, on the play — excluded by the archetype filter.
+    $matchOther = MtgoMatch::factory()->create(['deck_version_id' => $version->id]);
+    $opponentOther = Player::create(['username' => 'opp-other']);
+    $gameOther = Game::factory()->for($matchOther, 'match')->create(['won' => true]);
+    $gameOther->players()->attach($localPlayer->id, ['instance_id' => 5, 'is_local' => true, 'on_play' => true, 'starting_hand_size' => 7]);
+    $gameOther->players()->attach($opponentOther->id, ['instance_id' => 6, 'is_local' => false, 'on_play' => false, 'starting_hand_size' => 7]);
+    MatchArchetype::create([
+        'mtgo_match_id' => $matchOther->id,
+        'player_id' => $opponentOther->id,
+        'archetype_id' => $otherArchetype->id,
+        'confidence' => 1.0,
+    ]);
+    insertCardGameStat(['deck_version_id' => $version->id, 'game_id' => $gameOther->id, 'oracle_id' => $card->oracle_id, 'kept' => 9, 'won' => true]);
+
+    // A cartesian product from a duplicate "games as g" join would inflate totalGames/totalKept
+    // beyond the single matching game, so asserting exact counts proves the join is not doubled.
+    $onPlayVsWanted = GetCardGameStats::run($deck, $version, opponentArchetypeId: $wantedArchetype->id, onPlay: true);
+    expect($onPlayVsWanted)->toHaveCount(1);
+    expect($onPlayVsWanted->first()['totalGames'])->toBe(1);
+    expect($onPlayVsWanted->first()['totalKept'])->toBe(2);
+
+    $onDrawVsWanted = GetCardGameStats::run($deck, $version, opponentArchetypeId: $wantedArchetype->id, onPlay: false);
+    expect($onDrawVsWanted)->toHaveCount(1);
+    expect($onDrawVsWanted->first()['totalGames'])->toBe(1);
+    expect($onDrawVsWanted->first()['totalKept'])->toBe(5);
 });
 
 it('uses total games played as denominator for opponent percentages', function () {
