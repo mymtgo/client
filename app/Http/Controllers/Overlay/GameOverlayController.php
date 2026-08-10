@@ -45,6 +45,13 @@ class GameOverlayController extends Controller
             'sideboard' => $sections['sideboard'] ? $this->sideboardGuide($match, $opponent) : null,
             'notes' => $sections['sideboard'] ? $this->notes($match, $opponent) : ['current' => [], 'other' => []],
             'isSideboarding' => $match ? DetectSideboarding::run($match) : false,
+            // Plain facts about the match itself, independent of any section
+            // toggle — the page must not infer "no match/deck" from a section
+            // being switched off (drawOdds/sideboard can be null either
+            // because the section is disabled or because no archetype has
+            // resolved yet; those are different states for the empty-state UI).
+            'hasMatch' => (bool) $match,
+            'hasDeck' => (bool) $match?->deckVersion,
         ]);
     }
 

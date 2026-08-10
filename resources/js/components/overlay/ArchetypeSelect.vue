@@ -73,8 +73,11 @@ function choose(archetypeId: number): void {
                     <span class="truncate">{{ archetype.name }}</span>
                 </button>
 
-                <!-- Also covers the moment before the deferred `archetypes` prop has arrived. -->
-                <p v-if="!regular.length && !fallbacks.length" class="px-2 py-4 text-center text-xs text-muted-foreground">
+                <!--
+                    Matches ArchetypePicker.vue's exact check and copy. Also covers
+                    the moment before the deferred `archetypes` prop has arrived.
+                -->
+                <p v-if="regular.length === 0" class="px-2 py-4 text-center text-xs text-muted-foreground">
                     No archetypes found.
                 </p>
             </div>

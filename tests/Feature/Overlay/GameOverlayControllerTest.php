@@ -153,6 +153,30 @@ it('makes no HTTP request while building the payload for a manual pick', functio
     $this->get(route('overlay.game'))->assertOk();
 });
 
+it('reports hasMatch and hasDeck from the match itself, independent of section toggles', function () {
+    liveOverlayMatch();
+
+    Http::fake(['*/api/players' => Http::response([], 404)]);
+
+    // Toggle sections independently of each other — opponent and sideboard
+    // stay on, draw odds goes off — so a live match with a deck version but
+    // no resolved archetype must still report hasMatch/hasDeck true even
+    // though `sideboard` itself is null (no archetype, not "no deck").
+    AppSettings::setOverlayShowDrawOdds(false);
+
+    $this->get(route('overlay.game'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('sections.opponent', true)
+            ->where('sections.drawOdds', false)
+            ->where('sections.sideboard', true)
+            ->where('drawOdds', null)
+            ->where('sideboard', null)
+            ->where('hasMatch', true)
+            ->where('hasDeck', true)
+        );
+});
+
 it('omits disabled sections from the payload', function () {
     liveOverlayMatch();
 
