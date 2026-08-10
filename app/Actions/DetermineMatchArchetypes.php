@@ -14,6 +14,11 @@ class DetermineMatchArchetypes
     {
         $matchArchetypes = [];
 
+        $manualPlayerIds = $match->archetypes()
+            ->where('manual', true)
+            ->pluck('player_id')
+            ->all();
+
         $firstGame = $match->games->first();
 
         if (! $firstGame) {
@@ -22,7 +27,7 @@ class DetermineMatchArchetypes
 
         $player = $firstGame->localPlayers->first();
 
-        if ($player) {
+        if ($player && ! in_array($player->id, $manualPlayerIds, true)) {
             $deckArchetypeId = $match->deckVersion?->deck?->archetype_id;
 
             if ($deckArchetypeId) {
@@ -73,6 +78,10 @@ class DetermineMatchArchetypes
         $homebrewId = null;
 
         foreach ($opponentDecks as $opponentId => $opponentCards) {
+            if (in_array($opponentId, $manualPlayerIds, true)) {
+                continue;
+            }
+
             $cards = collect($opponentCards)->groupBy('mtgo_id')->map(function ($cards) {
                 return [
                     'mtgo_id' => $cards[0]['mtgo_id'],
@@ -106,7 +115,7 @@ class DetermineMatchArchetypes
             ];
         }
 
-        $match->archetypes()->delete();
+        $match->archetypes()->where('manual', false)->delete();
 
         $match->archetypes()->createMany($matchArchetypes);
 
