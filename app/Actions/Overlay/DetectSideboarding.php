@@ -21,11 +21,19 @@ class DetectSideboarding
      * Whether the local player is sideboarding right now.
      *
      * MTGO emits a *JoinedSideboardingState transition both when submitting a
-     * deck before game 1 and between games. Requiring a finished game excludes
-     * the pre-game-1 case, where there is nothing to sideboard against yet.
+     * deck before game 1 and between games. What excludes the pre-game-1 case
+     * is not `ended_at` meaning "finished" — SyncGamePivots advances it on
+     * every pipeline tick while a game is still being played, so it is a
+     * "last activity seen" marker, never a completion flag — it's that no
+     * `Game` row is projected at all until game 1 starts producing events.
+     * Before that, `$match->games()` is empty and the guard below returns
+     * false regardless of any log event.
      *
-     * Live-match log events are safe to read: PruneProcessedLogEvents only
-     * deletes events for matches that reached Complete.
+     * Live-match log events are safe to read here: PruneProcessedLogEvents'
+     * normal pruneCompleted() path only deletes a match's events once it
+     * reaches Complete. Its separate pruneStale() path unconditionally drops
+     * anything older than 30 days as a hard cap against a stalled pipeline,
+     * which a live-polled match's events are nowhere near.
      */
     public static function run(MtgoMatch $match): bool
     {
