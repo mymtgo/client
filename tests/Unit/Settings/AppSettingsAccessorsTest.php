@@ -25,8 +25,10 @@ it('casts bool settings correctly with defaults', function () {
     expect(AppSettings::isWatcherActive())->toBeTrue();
     expect(AppSettings::isDebugMode())->toBeFalse();
     expect(AppSettings::showLeagueWindow())->toBeFalse();
-    expect(AppSettings::showOpponentWindow())->toBeFalse();
-    expect(AppSettings::showDeckWindow())->toBeFalse();
+    expect(AppSettings::showGameOverlay())->toBeFalse();
+    expect(AppSettings::overlayShowOpponent())->toBeTrue();
+    expect(AppSettings::overlayShowDrawOdds())->toBeTrue();
+    expect(AppSettings::overlayShowSideboard())->toBeTrue();
     expect(AppSettings::downloadImagesLocally())->toBeFalse();
 });
 

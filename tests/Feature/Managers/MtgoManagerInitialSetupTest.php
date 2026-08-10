@@ -23,8 +23,10 @@ it('seeds all defaults on first run and leaves existing values untouched', funct
     expect(AppSettings::isWatcherActive())->toBeTrue();                // seeded (new)
     expect(AppSettings::isDebugMode())->toBeTrue();                    // untouched
     expect(AppSettings::showLeagueWindow())->toBeFalse();              // seeded (new)
-    expect(AppSettings::showOpponentWindow())->toBeFalse();            // seeded (new)
-    expect(AppSettings::showDeckWindow())->toBeFalse();                // seeded (new)
+    expect(AppSettings::showGameOverlay())->toBeFalse();               // default, no seeding needed
+    expect(AppSettings::overlayShowOpponent())->toBeTrue();            // default, no seeding needed
+    expect(AppSettings::overlayShowDrawOdds())->toBeTrue();            // default, no seeding needed
+    expect(AppSettings::overlayShowSideboard())->toBeTrue();           // default, no seeding needed
     expect(AppSettings::downloadImagesLocally())->toBeFalse();         // seeded (new)
     expect(AppSettings::systemTimezone())->toBeString();               // seeded (new)
     expect(AppSettings::deviceId())->toBeString();                     // seeded (new, uuid)
