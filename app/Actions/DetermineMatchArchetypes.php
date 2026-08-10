@@ -2,11 +2,11 @@
 
 namespace App\Actions;
 
+use App\Actions\Archetypes\AggregateOpponentCards;
 use App\Actions\Archetypes\ResolveMergedArchetype;
 use App\Jobs\DownloadArchetypeDecklists;
 use App\Models\Archetype;
 use App\Models\MtgoMatch;
-use App\Models\Player;
 
 class DetermineMatchArchetypes
 {
@@ -57,24 +57,8 @@ class DetermineMatchArchetypes
             }
         }
 
-        $opponentDecks = [];
+        $opponentDecks = AggregateOpponentCards::run($match);
 
-        foreach ($match->games as $game) {
-            $opponents = $game->opponents->filter(
-                fn (Player $player) => ! $player->pivot->is_local
-            );
-
-            foreach ($opponents as $opponent) {
-                $opponentDecks[$opponent->id] = $opponentDecks[$opponent->id] ?? [];
-
-                $cards = collect($opponent->pivot->deck_json)->values();
-
-                $opponentDecks[$opponent->id] = [
-                    ...$opponentDecks[$opponent->id],
-                    ...$cards->toArray(),
-                ];
-            }
-        }
         $homebrewId = null;
 
         foreach ($opponentDecks as $opponentId => $opponentCards) {
@@ -82,12 +66,7 @@ class DetermineMatchArchetypes
                 continue;
             }
 
-            $cards = collect($opponentCards)->groupBy('mtgo_id')->map(function ($cards) {
-                return [
-                    'mtgo_id' => $cards[0]['mtgo_id'],
-                    'quantity' => min(4, $cards->sum('quantity')),
-                ];
-            });
+            $cards = $opponentCards;
 
             $archetype = DetermineDeckArchetype::run($cards, $match->format, $match->id, $opponentId);
 
