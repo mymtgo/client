@@ -9,6 +9,7 @@ use App\Actions\Overlay\GetArchetypeNotes;
 use App\Actions\Overlay\ResolveOverlayOpponent;
 use App\Data\Front\ArchetypeData;
 use App\Data\Front\OverlayOpponentData;
+use App\Data\Front\SideboardGuideData;
 use App\Enums\MatchState;
 use App\Facades\AppSettings;
 use App\Http\Controllers\Controller;
@@ -38,7 +39,7 @@ class GameOverlayController extends Controller
         return Inertia::render('overlay/GameOverlay', [
             'sections' => $sections,
             'opponent' => $opponent,
-            'archetypes' => ArchetypeData::collect(Archetype::orderBy('name')->get()),
+            'archetypes' => Inertia::defer(fn () => ArchetypeData::collect(Archetype::orderBy('name')->get())),
             'drawOdds' => $match && $sections['drawOdds'] ? ComputeDrawOdds::run($match) : null,
             'sideboard' => $sections['sideboard'] ? $this->sideboardGuide($match, $opponent) : null,
             'notes' => $sections['sideboard'] ? $this->notes($match, $opponent) : ['current' => [], 'other' => []],
@@ -46,7 +47,7 @@ class GameOverlayController extends Controller
         ]);
     }
 
-    private function sideboardGuide(?MtgoMatch $match, ?OverlayOpponentData $opponent): mixed
+    private function sideboardGuide(?MtgoMatch $match, ?OverlayOpponentData $opponent): ?SideboardGuideData
     {
         $archetype = $this->archetype($opponent);
 

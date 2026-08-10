@@ -5,6 +5,7 @@ use App\Facades\AppSettings;
 use App\Models\Archetype;
 use App\Models\Card;
 use App\Models\Deck;
+use App\Models\DeckArchetypeNote;
 use App\Models\DeckVersion;
 use App\Models\Game;
 use App\Models\MatchArchetype;
@@ -87,7 +88,7 @@ it('renders null draw odds and a null opponent when no match is live', function 
 });
 
 it('renders the opponent with a manual archetype and its sideboard guide', function () {
-    [$match, $opponent] = liveOverlayMatch();
+    [$match, $opponent, $deck] = liveOverlayMatch();
 
     $archetype = Archetype::factory()->create(['name' => 'Esper Blink', 'format' => 'modern', 'color_identity' => 'WUB']);
 
@@ -99,6 +100,12 @@ it('renders the opponent with a manual archetype and its sideboard guide', funct
         'manual' => true,
     ]);
 
+    DeckArchetypeNote::create([
+        'deck_id' => $deck->id,
+        'archetype_id' => $archetype->id,
+        'body' => 'Bring in the extra removal, they run few threats worth countering.',
+    ]);
+
     $this->get(route('overlay.game'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
@@ -107,6 +114,23 @@ it('renders the opponent with a manual archetype and its sideboard guide', funct
             ->where('opponent.source', 'manual')
             ->where('opponent.manual', true)
             ->where('sideboard.postboardGames', 0)
+            ->has('notes.current', 1)
+            ->where('notes.current.0.body', 'Bring in the extra removal, they run few threats worth countering.')
+        );
+});
+
+it('renders the opponent with no archetype when nothing resolves', function () {
+    liveOverlayMatch();
+
+    Http::fake(['*/api/players' => Http::response([], 404)]);
+
+    $this->get(route('overlay.game'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('opponent.username', 'overlayOpp')
+            ->where('opponent.archetypeId', null)
+            ->where('opponent.source', 'none')
+            ->where('sideboard', null)
             ->has('notes.current', 0)
         );
 });
