@@ -21,6 +21,7 @@ use App\Http\Controllers\Debug\Matches\ProcessController;
 use App\Http\Controllers\Debug\Matches\ReprocessController;
 use App\Http\Controllers\Debug\Matches\RestoreController;
 use App\Http\Controllers\Debug\Matches\UpdateController;
+use App\Http\Controllers\Debug\Overlay\PhaseController;
 use App\Http\Controllers\Decks\CardStatsController;
 use App\Http\Controllers\Decks\CoverArtOptionsController;
 use App\Http\Controllers\Decks\DashboardController;
@@ -326,5 +327,11 @@ Route::group([], function (Router $router) {
 
         // Pipeline Log
         $group->get('pipeline-log', App\Http\Controllers\Debug\PipelineLog\IndexController::class)->name('debug.pipeline-log.index');
+
+        // Overlay simulator
+        $group->get('overlay', App\Http\Controllers\Debug\Overlay\IndexController::class)->name('debug.overlay.index');
+        $group->post('overlay/fake-match', App\Http\Controllers\Debug\Overlay\StoreController::class)->name('debug.overlay.store');
+        $group->post('overlay/phase', PhaseController::class)->name('debug.overlay.phase');
+        $group->delete('overlay/fake-match', App\Http\Controllers\Debug\Overlay\DestroyController::class)->name('debug.overlay.destroy');
     });
 });

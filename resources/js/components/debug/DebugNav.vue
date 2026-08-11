@@ -13,6 +13,7 @@ const tabs = [
     { label: 'Cards', href: '/debug/cards' },
     { label: 'Log Cursors', href: '/debug/log-cursors' },
     { label: 'Pipeline Log', href: '/debug/pipeline-log' },
+    { label: 'Overlay', href: '/debug/overlay' },
 ];
 
 const isActive = (href: string) => page.url.startsWith(href);
