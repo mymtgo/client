@@ -9,6 +9,7 @@ use App\Data\Front\SideboardCardData;
 use App\Data\Front\SideboardGuideData;
 use App\Data\Front\SidedOutCardData;
 use App\Models\Archetype;
+use App\Models\Card;
 use App\Models\DeckVersion;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -40,20 +41,28 @@ class BuildSideboardGuide
 
         $cards = collect($version->cards);
         $sideboardOracles = GetReportSideboardOracles::run([$version->id]);
+        $metadata = self::cardMetadata($cards);
 
-        $sidedIn = $cards
-            ->filter(fn (array $card) => $card['oracle_id'] !== null && $sideboardOracles->has($card['oracle_id']))
-            ->map(function (array $card) use ($stats) {
+        $sidedIn = self::byOracle(
+            $cards->filter(
+                fn (array $card) => $card['oracle_id'] !== null && $sideboardOracles->has($card['oracle_id'])
+            ),
+            preferSideboard: true,
+        )
+            ->map(function (array $card) use ($stats, $metadata) {
                 $row = $stats->get($card['oracle_id']);
+                // The version's own card row, falling back to the stats join's
+                // copy of the same columns.
+                $meta = $metadata->get($card['oracle_id']) ?? $row;
                 $wins = (int) ($row->sided_in_won ?? 0);
                 $losses = (int) ($row->sided_in_lost ?? 0);
                 $games = (int) ($row->sided_in_games ?? 0);
 
                 return new SideboardCardData(
                     oracleId: $card['oracle_id'],
-                    name: $row->name ?? 'Unknown card',
-                    colorIdentity: $row->color_identity ?? null,
-                    image: self::imageUrl($row),
+                    name: $meta->name ?? 'Unknown card',
+                    colorIdentity: $meta->color_identity ?? null,
+                    image: self::imageUrl($meta),
                     quantity: (int) $card['quantity'],
                     sidedInGames: $games,
                     wins: $wins,
@@ -65,15 +74,20 @@ class BuildSideboardGuide
             ->values()
             ->all();
 
-        $sidedOut = $cards
-            ->filter(fn (array $card) => $card['oracle_id'] !== null && ! $sideboardOracles->has($card['oracle_id']))
-            ->map(function (array $card) use ($stats) {
+        $sidedOut = self::byOracle(
+            $cards->filter(
+                fn (array $card) => $card['oracle_id'] !== null && ! $sideboardOracles->has($card['oracle_id'])
+            ),
+            preferSideboard: false,
+        )
+            ->map(function (array $card) use ($stats, $metadata) {
                 $row = $stats->get($card['oracle_id']);
+                $meta = $metadata->get($card['oracle_id']) ?? $row;
 
                 return new SidedOutCardData(
                     oracleId: $card['oracle_id'],
-                    name: $row->name ?? 'Unknown card',
-                    image: self::imageUrl($row),
+                    name: $meta->name ?? 'Unknown card',
+                    image: self::imageUrl($meta),
                     sidedOutGames: (int) ($row->sided_out_games ?? 0),
                 );
             })
@@ -88,6 +102,79 @@ class BuildSideboardGuide
             postboardGames: $postboard['games'],
             postboardRecord: $postboard['wins'].' - '.($postboard['games'] - $postboard['wins']),
         );
+    }
+
+    /**
+     * Collapse the version's card entries to one per oracle_id.
+     *
+     * GenerateDeckSignature emits one segment per source entry, so a card split
+     * between the maindeck and the sideboard (2 main, 2 board) produces two
+     * segments sharing an mtgo_id — and therefore an oracle_id. Two segments
+     * can also share an oracle_id through two different printings. Either way
+     * the card must be listed once, and for the sided-in list the quantity that
+     * matters is the sideboard copies actually available to bring in, not the
+     * maindeck ones.
+     *
+     * @param  Collection<int, array<string, mixed>>  $cards
+     * @return Collection<int|string, array<string, mixed>>
+     */
+    private static function byOracle(Collection $cards, bool $preferSideboard): Collection
+    {
+        return $cards
+            ->groupBy('oracle_id')
+            ->map(function (Collection $group) use ($preferSideboard) {
+                if (! $preferSideboard) {
+                    return $group->first();
+                }
+
+                return $group->first(
+                    fn (array $card) => GetReportSideboardOracles::isSideboard($card['sideboard'] ?? false)
+                ) ?? $group->first();
+            });
+    }
+
+    /**
+     * Name, colours and image for the version's own cards, keyed by oracle_id.
+     *
+     * Read from the `cards` table rather than the stats join: a card with no
+     * history against this archetype has no card_game_stats row at all, and the
+     * guide still has to name it — that is the common case on a first encounter
+     * with an archetype, and the whole point of listing an untested sideboard.
+     *
+     * Looked up by the version's own mtgo_ids where possible so the image is the
+     * printing the deck actually contains; pre-mtgo_id signatures carry only an
+     * oracle_id, so those fall back to whatever printing is on file.
+     *
+     * @param  Collection<int, array<string, mixed>>  $cards
+     * @return Collection<string, Card>
+     */
+    private static function cardMetadata(Collection $cards): Collection
+    {
+        $oracleIds = $cards->pluck('oracle_id')->filter()->unique()->values();
+
+        if ($oracleIds->isEmpty()) {
+            return collect();
+        }
+
+        $preferred = $cards
+            ->pluck('mtgo_id')
+            ->filter()
+            ->map(fn ($id) => (string) $id)
+            ->all();
+
+        $metadata = collect();
+
+        $rows = Card::query()
+            ->whereIn('oracle_id', $oracleIds)
+            ->get(['mtgo_id', 'oracle_id', 'name', 'color_identity', 'image', 'local_image']);
+
+        foreach ($rows as $row) {
+            if (in_array((string) $row->mtgo_id, $preferred, true) || ! $metadata->has($row->oracle_id)) {
+                $metadata->put($row->oracle_id, $row);
+            }
+        }
+
+        return $metadata;
     }
 
     /**

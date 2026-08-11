@@ -155,6 +155,55 @@ it('excludes games against other archetypes', function () {
     expect(collect($guide->sidedIn)->firstWhere('oracleId', 'o-rip')->sidedInGames)->toBe(0);
 });
 
+it('names every sideboard card with no postboard history at all', function () {
+    $archetype = Archetype::factory()->create(['name' => 'Esper Blink', 'format' => 'modern']);
+    $deck = Deck::factory()->create();
+
+    $version = guideVersion($deck, [['201', '2', '1'], ['203', '2', '1'], ['202', '4', '0']]);
+
+    // First encounter with this archetype: no games, so no card_game_stats rows
+    // at all. The whole sideboard must still be listed by name — that is the
+    // spec's headline empty state.
+    $guide = BuildSideboardGuide::run($version, $archetype);
+
+    expect($guide->postboardGames)->toBe(0);
+    expect($guide->sidedIn)->toHaveCount(2);
+    expect(collect($guide->sidedIn)->pluck('name')->all())->toBe(['Cut Down', 'Rest in Peace']);
+    expect(collect($guide->sidedIn)->pluck('name'))->not->toContain('Unknown card');
+
+    $rip = collect($guide->sidedIn)->firstWhere('oracleId', 'o-rip');
+
+    expect($rip->colorIdentity)->toBe('W');
+    expect($rip->sidedInGames)->toBe(0);
+    expect($rip->winrate)->toBeNull();
+});
+
+it('lists a card split between the maindeck and the sideboard once', function () {
+    $archetype = Archetype::factory()->create(['name' => 'Esper Blink', 'format' => 'modern']);
+    $deck = Deck::factory()->create();
+
+    // Rest in Peace: 3 in the maindeck, 1 in the sideboard. GenerateDeckSignature
+    // emits one segment per source entry, so both share oracle_id o-rip.
+    $version = guideVersion($deck, [['201', '3', '0'], ['201', '1', '1'], ['202', '4', '0']]);
+
+    guideGame($version, $archetype, 'tok-split-in', true, [
+        'o-rip' => ['sided_in' => true],
+    ]);
+
+    $guide = BuildSideboardGuide::run($version, $archetype);
+
+    $rip = collect($guide->sidedIn)->where('oracleId', 'o-rip');
+
+    expect($rip)->toHaveCount(1);
+    // The quantity is the sideboard copies available to bring in, not the
+    // maindeck ones.
+    expect($rip->first()->quantity)->toBe(1);
+    expect($rip->first()->name)->toBe('Rest in Peace');
+
+    // And it stays out of the sided-out list, so it never appears twice.
+    expect(collect($guide->sidedOut)->pluck('oracleId'))->not->toContain('o-rip');
+});
+
 it('keeps sideboard cards out of the sided-out list', function () {
     $archetype = Archetype::factory()->create(['name' => 'Esper Blink', 'format' => 'modern']);
     $deck = Deck::factory()->create();
