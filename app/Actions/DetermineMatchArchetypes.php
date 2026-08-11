@@ -66,9 +66,7 @@ class DetermineMatchArchetypes
                 continue;
             }
 
-            $cards = $opponentCards;
-
-            $archetype = DetermineDeckArchetype::run($cards, $match->format, $match->id, $opponentId);
+            $archetype = DetermineDeckArchetype::run($opponentCards, $match->format, $match->id, $opponentId);
 
             if (! $archetype) {
                 $homebrewId ??= Archetype::query()

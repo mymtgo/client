@@ -146,6 +146,87 @@ it('rebuilds the match from its log events even when MTGO paths are invalid', fu
         ->and($rebuilt->games()->count())->toBe(1);
 });
 
+it('carries a hand-picked opponent archetype across the rebuild', function () {
+    $mock = Mockery::mock(MtgoManager::class)->makePartial();
+    $mock->shouldReceive('pathsAreValid')->andReturn(false);
+    $mock->shouldReceive('ingestLogs')->never();
+    app()->instance('mtgo', $mock);
+    Mtgo::setUsername('LocalPlayer');
+
+    $matchId = '88002';
+    $token = 'token-reprocess-manual';
+
+    $match = MtgoMatch::factory()->create([
+        'mtgo_id' => $matchId,
+        'token' => $token,
+        'state' => MatchState::Started,
+        'outcome' => null,
+        'ended_at' => null,
+    ]);
+
+    $opponent = Player::factory()->create(['username' => 'Opponent']);
+    $archetype = Archetype::factory()->create(['name' => 'Esper Blink', 'format' => 'modern']);
+
+    DB::table('match_archetypes')->insert([
+        'archetype_id' => $archetype->id,
+        'mtgo_match_id' => $match->id,
+        'player_id' => $opponent->id,
+        'confidence' => 1,
+        'manual' => true,
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    $joinRaw = implode("\n", [
+        '12:00:00 [INF] (Match|MatchJoinedEventUnderwayState)',
+        'Receiver:',
+        'PlayFormatCd = Pmodern',
+        'GameStructureCd = Constructed',
+    ]);
+
+    reprocessLogEvent([
+        'match_id' => $matchId,
+        'match_token' => $token,
+        'event_type' => LogEventType::MATCH_STATE_CHANGED->value,
+        'context' => 'MatchJoinedEventUnderwayState',
+        'raw_text' => $joinRaw,
+        'username' => 'LocalPlayer',
+    ]);
+
+    $stateJson = json_encode(['Players' => [
+        ['Id' => 1, 'Name' => 'LocalPlayer'],
+        ['Id' => 2, 'Name' => 'Opponent'],
+    ], 'Cards' => []]);
+
+    reprocessLogEvent([
+        'match_id' => $matchId,
+        'match_token' => $token,
+        'event_type' => LogEventType::GAME_STATE_UPDATE->value,
+        'game_id' => 88102,
+        'username' => 'LocalPlayer',
+        'raw_text' => "12:00:01 [INF] (GameState|Update) Game ID: 88102, Match ID: {$matchId}\n{$stateJson}",
+    ]);
+
+    $this->post("/debug/matches/{$match->id}/reprocess")->assertRedirect();
+
+    $rebuilt = MtgoMatch::where('token', $token)->first();
+
+    // The rebuilt match gets a new autoincrement id, so the row cannot simply
+    // be left in place by the purge — it is re-keyed onto the new match.
+    expect($rebuilt)->not->toBeNull()
+        ->and($rebuilt->id)->not->toBe($match->id);
+
+    $restored = DB::table('match_archetypes')
+        ->where('mtgo_match_id', $rebuilt->id)
+        ->where('player_id', $opponent->id)
+        ->first();
+
+    expect($restored)->not->toBeNull()
+        ->and($restored->archetype_id)->toBe($archetype->id)
+        ->and((bool) $restored->manual)->toBeTrue()
+        ->and(DB::table('match_archetypes')->where('mtgo_match_id', $match->id)->count())->toBe(0);
+});
+
 it('refuses to reprocess a match with no log events', function () {
     $match = MtgoMatch::factory()->create();
     $game = Game::factory()->create(['match_id' => $match->id]);
