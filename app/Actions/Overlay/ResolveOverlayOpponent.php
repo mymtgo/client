@@ -57,7 +57,6 @@ class ResolveOverlayOpponent
     public static function findOpponent(MtgoMatch $match): ?Player
     {
         return $match->games()
-            ->with(['opponents'])
             ->orderBy('started_at')
             ->first()
             ?->opponents()
@@ -162,15 +161,23 @@ class ResolveOverlayOpponent
         return Archetype::query()->find($estimate['archetype_id']);
     }
 
+    /**
+     * The cached payload gained its `uuid` key when the overlay shipped, so the
+     * key carries a version suffix: `cache.default` is the file driver, entries
+     * live for an hour, and they survive the restart that installs an upgrade —
+     * a pre-upgrade entry holding only `name` and `colors` would otherwise make
+     * every poll error for that opponent. The shape is re-checked anyway; a
+     * cache file is no more trustworthy than a log line.
+     */
     private static function leagueArchetype(MtgoMatch $match, Player $opponent): ?Archetype
     {
         $league = Cache::remember(
-            $opponent->username.'_archetype',
+            $opponent->username.'_archetype_v2',
             now()->addHour(),
             fn () => FetchOpponentLeagueArchetype::run($opponent->username, $match->format) ?? false,
         );
 
-        if (! $league) {
+        if (! is_array($league) || ! isset($league['uuid'])) {
             return null;
         }
 
