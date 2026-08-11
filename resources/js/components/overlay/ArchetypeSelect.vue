@@ -2,9 +2,10 @@
 import { Input } from '@/components/ui/input';
 import ManaSymbols from '@/components/ManaSymbols.vue';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useArchetypeSplit } from '@/composables/useArchetypeSplit';
 import { Check, ChevronDown } from 'lucide-vue-next';
-import { ref, toRef } from 'vue';
+import { computed, ref, toRef } from 'vue';
 
 const props = defineProps<{
     archetypes: App.Data.Front.ArchetypeData[];
@@ -20,6 +21,16 @@ const open = ref(false);
 const search = ref('');
 
 const { fallbacks, regular } = useArchetypeSplit(toRef(props, 'archetypes'), toRef(props, 'format'), search);
+
+/**
+ * The whole list is deferred by the controller and defaulted to `[]` on the
+ * page, so an empty prop means the fetch is still in flight — distinct from
+ * "this format has no archetypes", which still yields the fallbacks.
+ */
+const loading = computed(() => props.archetypes.length === 0);
+
+/** Nothing to show, with the list already loaded — including no fallbacks. */
+const empty = computed(() => !loading.value && regular.value.length === 0 && fallbacks.value.length === 0);
 
 function choose(archetypeId: number): void {
     open.value = false;
@@ -73,11 +84,11 @@ function choose(archetypeId: number): void {
                     <span class="truncate">{{ archetype.name }}</span>
                 </button>
 
-                <!--
-                    Matches ArchetypePicker.vue's exact check and copy. Also covers
-                    the moment before the deferred `archetypes` prop has arrived.
-                -->
-                <p v-if="regular.length === 0" class="px-2 py-4 text-center text-xs text-muted-foreground">
+                <div v-if="loading" class="flex flex-col gap-1 p-1" aria-label="Loading archetypes">
+                    <Skeleton v-for="row in 5" :key="row" class="h-5 w-full" />
+                </div>
+
+                <p v-else-if="empty" class="px-2 py-4 text-center text-xs text-muted-foreground">
                     No archetypes found.
                 </p>
             </div>
