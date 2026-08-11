@@ -10,6 +10,7 @@ class SidedOutCardData extends Data
     public function __construct(
         public string $oracleId,
         public string $name,
+        public ?string $type,
         public ?string $image,
         public int $sidedOutGames,
     ) {}

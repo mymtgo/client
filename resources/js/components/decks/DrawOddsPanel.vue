@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import ManaSymbols from '@/components/ManaSymbols.vue';
+import { useCardHoverPreview } from '@/composables/useCardHoverPreview';
+import { groupByType } from '@/composables/useCardTypeGroups';
 import { hypergeometric } from '@/composables/useHypergeometric';
 import { computed, ref, watch } from 'vue';
 
@@ -57,23 +59,7 @@ function drawChance(card: DrawOddsCard): number {
     return hypergeometric(library, card.remaining, sampleSize.value, 1).atLeast;
 }
 
-const hoveredCard = ref<DrawOddsCard | null>(null);
-const previewTop = ref(0);
-
-function onCardEnter(card: DrawOddsCard, event: MouseEvent): void {
-    if (!card.image) {
-        return;
-    }
-    hoveredCard.value = card;
-    const rowTop = (event.currentTarget as HTMLElement).getBoundingClientRect().top;
-    // Card image is ~280px tall at 200px wide (MTG ratio). Clamp so it stays in viewport.
-    const maxTop = window.innerHeight - 280;
-    previewTop.value = Math.max(8, Math.min(rowTop, maxTop));
-}
-
-function onCardLeave(): void {
-    hoveredCard.value = null;
-}
+const { hoveredCard, previewTop, onCardEnter, onCardLeave } = useCardHoverPreview<DrawOddsCard>();
 
 const COLOR_MAP: Record<string, string> = {
     W: '#F8F6D8',
@@ -106,24 +92,7 @@ function borderStyle(identity: string | null): Record<string, string> {
     return { borderLeftColor: val, borderLeftWidth: '4px', borderLeftStyle: 'solid' };
 }
 
-const CANONICAL_TYPES = ['Creature', 'Planeswalker', 'Battle', 'Instant', 'Sorcery', 'Enchantment', 'Artifact', 'Land'] as const;
-const TYPE_ORDER: Record<string, number> = Object.fromEntries(CANONICAL_TYPES.map((t, i) => [t, i]));
-
-function normalizeType(raw: string): string {
-    for (const canonical of CANONICAL_TYPES) {
-        if (raw.includes(canonical)) return canonical;
-    }
-    return raw;
-}
-
-const groupedCards = computed<Record<string, DrawOddsCard[]>>(() => {
-    const merged: Record<string, DrawOddsCard[]> = {};
-    for (const card of props.drawOdds?.cards ?? []) {
-        const key = normalizeType(card.type);
-        (merged[key] ??= []).push(card);
-    }
-    return Object.fromEntries(Object.entries(merged).sort(([a], [b]) => (TYPE_ORDER[a] ?? 99) - (TYPE_ORDER[b] ?? 99)));
-});
+const groupedCards = computed<Record<string, DrawOddsCard[]>>(() => groupByType(props.drawOdds?.cards ?? [], (card) => card.type));
 
 // No active match at all — nothing to show yet.
 const isWaiting = computed(() => !props.drawOdds);

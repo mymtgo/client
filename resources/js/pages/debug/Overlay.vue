@@ -7,11 +7,11 @@ import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { useToast } from '@/composables/useToast';
 import { router } from '@inertiajs/vue3';
 import { ExternalLink } from 'lucide-vue-next';
-import { ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 const { add: toast } = useToast();
 
-type SelectOption = { label: string; value: string };
+type SelectOption = { label: string; value: string; format: string };
 
 const props = defineProps<{
     fakeMatch: {
@@ -31,13 +31,37 @@ const archetypeId = ref('');
 const opponentName = ref('');
 const busy = ref(false);
 
+// The opponent has to be playing the same format as the deck, so the
+// archetype list narrows to the selected deck's format.
+const deckFormat = computed(() => props.deckOptions.find((option) => option.value === deckId.value)?.format ?? null);
+
+const archetypeOptions = computed(() =>
+    deckFormat.value ? props.archetypeOptions.filter((option) => option.format === deckFormat.value) : props.archetypeOptions,
+);
+
+watch(deckFormat, () => {
+    if (archetypeId.value && !archetypeOptions.value.some((option) => option.value === archetypeId.value)) {
+        archetypeId.value = '';
+    }
+});
+
+// router.delete takes (url, options) — there is no data argument. Routing a
+// delete through the post signature silently drops the options, so onFinish
+// never runs and `busy` sticks true, disabling every button.
 function submit(method: 'post' | 'delete', url: string, data: Record<string, unknown> = {}) {
     busy.value = true;
-    router[method](url, data, {
+
+    const options = {
         preserveScroll: true,
         onError: () => toast({ title: 'Simulator action failed', variant: 'destructive' }),
         onFinish: () => (busy.value = false),
-    });
+    };
+
+    if (method === 'delete') {
+        router.delete(url, options);
+    } else {
+        router.post(url, data, options);
+    }
 }
 
 function start() {
@@ -77,11 +101,7 @@ function start() {
                     <Label>Opponent archetype</Label>
                     <NativeSelect v-model="archetypeId">
                         <NativeSelectOption value="" disabled>Pick an archetype…</NativeSelectOption>
-                        <NativeSelectOption
-                            v-for="option in props.archetypeOptions"
-                            :key="option.value"
-                            :value="option.value"
-                        >
+                        <NativeSelectOption v-for="option in archetypeOptions" :key="option.value" :value="option.value">
                             {{ option.label }}
                         </NativeSelectOption>
                     </NativeSelect>

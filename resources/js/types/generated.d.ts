@@ -173,6 +173,7 @@ deck: Array<any>;
 export type SideboardCardData = {
 oracleId: string;
 name: string;
+type: string | null;
 colorIdentity: string | null;
 image: string | null;
 quantity: number;
@@ -190,6 +191,7 @@ postboardRecord: string;
 export type SidedOutCardData = {
 oracleId: string;
 name: string;
+type: string | null;
 image: string | null;
 sidedOutGames: number;
 };

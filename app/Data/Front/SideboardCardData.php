@@ -10,6 +10,7 @@ class SideboardCardData extends Data
     public function __construct(
         public string $oracleId,
         public string $name,
+        public ?string $type,
         public ?string $colorIdentity,
         public ?string $image,
         public int $quantity,

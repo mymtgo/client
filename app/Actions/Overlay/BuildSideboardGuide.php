@@ -61,6 +61,7 @@ class BuildSideboardGuide
                 return new SideboardCardData(
                     oracleId: $card['oracle_id'],
                     name: $meta->name ?? 'Unknown card',
+                    type: $meta->type ?? null,
                     colorIdentity: $meta->color_identity ?? null,
                     image: self::imageUrl($meta),
                     quantity: (int) $card['quantity'],
@@ -87,6 +88,7 @@ class BuildSideboardGuide
                 return new SidedOutCardData(
                     oracleId: $card['oracle_id'],
                     name: $meta->name ?? 'Unknown card',
+                    type: $meta->type ?? null,
                     image: self::imageUrl($meta),
                     sidedOutGames: (int) ($row->sided_out_games ?? 0),
                 );
@@ -166,7 +168,7 @@ class BuildSideboardGuide
 
         $rows = Card::query()
             ->whereIn('oracle_id', $oracleIds)
-            ->get(['mtgo_id', 'oracle_id', 'name', 'color_identity', 'image', 'local_image']);
+            ->get(['mtgo_id', 'oracle_id', 'name', 'type', 'color_identity', 'image', 'local_image']);
 
         foreach ($rows as $row) {
             if (in_array((string) $row->mtgo_id, $preferred, true) || ! $metadata->has($row->oracle_id)) {

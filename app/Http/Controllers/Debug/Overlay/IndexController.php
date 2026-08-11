@@ -32,10 +32,13 @@ class IndexController extends Controller
             'deckOptions' => Deck::query()
                 ->whereHas('versions')
                 ->orderBy('name')
-                ->get(['id', 'name'])
+                ->get(['id', 'name', 'format'])
                 ->map(fn (Deck $deck) => [
                     'label' => $deck->name,
                     'value' => (string) $deck->id,
+                    // Normalised to the archetypes table's convention
+                    // ('CMODERN' → 'modern') so the page can pair them up.
+                    'format' => strtolower(MtgoMatch::displayFormat((string) $deck->format)),
                 ]),
             'archetypeOptions' => Archetype::query()
                 ->where('is_fallback', false)
@@ -45,6 +48,7 @@ class IndexController extends Controller
                 ->map(fn (Archetype $archetype) => [
                     'label' => "{$archetype->name} ({$archetype->format})",
                     'value' => (string) $archetype->id,
+                    'format' => (string) $archetype->format,
                 ]),
         ]);
     }
