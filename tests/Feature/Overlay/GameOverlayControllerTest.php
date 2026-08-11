@@ -2,6 +2,7 @@
 
 use App\Enums\MatchState;
 use App\Facades\AppSettings;
+use App\Http\Middleware\HandleInertiaRequests;
 use App\Models\Archetype;
 use App\Models\Card;
 use App\Models\Deck;
@@ -14,6 +15,7 @@ use App\Models\Player;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Testing\TestResponse;
 
 uses(RefreshDatabase::class);
 
@@ -33,6 +35,30 @@ beforeEach(function () {
 function overlaySignature(array $rows): string
 {
     return base64_encode(collect($rows)->map(fn ($r) => "{$r[0]}:{$r[1]}:{$r[2]}")->implode('|'));
+}
+
+/**
+ * Request the overlay the way Inertia resolves a deferred prop: the initial
+ * response omits `drawOdds` and `archetypes` entirely, and only a partial
+ * reload naming them runs their closures.
+ *
+ * The response is XHR JSON, so `assertInertia` (which reads the `page` view
+ * data of an HTML response) does not apply — assert with `assertJsonPath` on
+ * `props.*` instead.
+ */
+function overlayPartial(array $only): TestResponse
+{
+    // Taken from the middleware rather than Inertia::getVersion(): the facade
+    // only learns the version once a request has passed through the middleware,
+    // and a mismatched X-Inertia-Version is answered with a 409.
+    $version = app(HandleInertiaRequests::class)->version(request());
+
+    return test()->get(route('overlay.game'), [
+        'X-Inertia' => 'true',
+        'X-Inertia-Version' => (string) $version,
+        'X-Inertia-Partial-Data' => implode(',', $only),
+        'X-Inertia-Partial-Component' => 'overlay/GameOverlay',
+    ]);
 }
 
 function liveOverlayMatch(): array
@@ -67,24 +93,60 @@ it('renders draw odds for the active match deck', function () {
 
     Http::fake(['*/api/players' => Http::response([], 404)]);
 
-    $this->get(route('overlay.game'))
+    overlayPartial(['drawOdds'])
         ->assertOk()
-        ->assertInertia(fn ($page) => $page
-            ->component('overlay/GameOverlay')
-            ->where('drawOdds.librarySize', 24)
-            ->has('drawOdds.cards', 2)
-        );
+        ->assertJsonPath('component', 'overlay/GameOverlay')
+        ->assertJsonPath('props.drawOdds.librarySize', 24)
+        ->assertJsonCount(2, 'props.drawOdds.cards');
+});
+
+it('defers draw odds so a poll that excludes it never computes it', function () {
+    liveOverlayMatch();
+
+    Http::fake(['*/api/players' => Http::response([], 404)]);
+
+    $response = $this->get(route('overlay.game'))->assertOk();
+
+    // Absent from the initial response, and listed as deferred so Inertia
+    // fetches it automatically right after first paint.
+    $response->assertInertia(fn ($page) => $page->missing('drawOdds'));
+
+    expect($response->viewData('page')['deferredProps']['default'] ?? [])->toContain('drawOdds');
+
+    // The poll's own `only` list resolves everything it names and nothing else,
+    // so the deferred closure never runs on a tick.
+    overlayPartial(['opponent', 'sideboard', 'notes', 'isSideboarding', 'sections', 'hasMatch', 'hasDeck', 'hasArchetype', 'format'])
+        ->assertOk()
+        ->assertJsonMissingPath('props.drawOdds')
+        ->assertJsonPath('props.hasMatch', true);
 });
 
 it('renders null draw odds and a null opponent when no match is live', function () {
+    overlayPartial(['drawOdds', 'opponent', 'sideboard'])
+        ->assertOk()
+        ->assertJsonPath('component', 'overlay/GameOverlay')
+        ->assertJsonPath('props.drawOdds', null)
+        ->assertJsonPath('props.opponent', null)
+        ->assertJsonPath('props.sideboard', null);
+});
+
+it('sends the humanised format so the archetype dropdown can match on it', function () {
+    liveOverlayMatch();
+
+    Http::fake(['*/api/players' => Http::response([], 404)]);
+
+    // The match stores MTGO's raw `CModern`. The dropdown filters against
+    // `archetypes.format`, which DownloadArchetypes stores lowercased as
+    // 'modern', via the same humanised value MatchData already sends.
     $this->get(route('overlay.game'))
         ->assertOk()
-        ->assertInertia(fn ($page) => $page
-            ->component('overlay/GameOverlay')
-            ->where('drawOdds', null)
-            ->where('opponent', null)
-            ->where('sideboard', null)
-        );
+        ->assertInertia(fn ($page) => $page->where('format', 'Modern'));
+});
+
+it('sends a null format when no match is live', function () {
+    $this->get(route('overlay.game'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->where('format', null));
 });
 
 it('renders the opponent with a manual archetype and its sideboard guide', function () {
@@ -164,17 +226,16 @@ it('reports hasMatch and hasDeck from the match itself, independent of section t
     // though `sideboard` itself is null (no archetype, not "no deck").
     AppSettings::setOverlayShowDrawOdds(false);
 
-    $this->get(route('overlay.game'))
+    overlayPartial(['sections', 'drawOdds', 'sideboard', 'hasMatch', 'hasDeck', 'hasArchetype'])
         ->assertOk()
-        ->assertInertia(fn ($page) => $page
-            ->where('sections.opponent', true)
-            ->where('sections.drawOdds', false)
-            ->where('sections.sideboard', true)
-            ->where('drawOdds', null)
-            ->where('sideboard', null)
-            ->where('hasMatch', true)
-            ->where('hasDeck', true)
-        );
+        ->assertJsonPath('props.sections.opponent', true)
+        ->assertJsonPath('props.sections.drawOdds', false)
+        ->assertJsonPath('props.sections.sideboard', true)
+        ->assertJsonPath('props.drawOdds', null)
+        ->assertJsonPath('props.sideboard', null)
+        ->assertJsonPath('props.hasMatch', true)
+        ->assertJsonPath('props.hasDeck', true)
+        ->assertJsonPath('props.hasArchetype', false);
 });
 
 it('omits disabled sections from the payload', function () {
@@ -185,13 +246,68 @@ it('omits disabled sections from the payload', function () {
     AppSettings::setOverlayShowDrawOdds(false);
     AppSettings::setOverlayShowSideboard(false);
 
+    overlayPartial(['drawOdds', 'sideboard', 'sections'])
+        ->assertOk()
+        ->assertJsonPath('props.drawOdds', null)
+        ->assertJsonPath('props.sideboard', null)
+        ->assertJsonPath('props.sections.drawOdds', false)
+        ->assertJsonPath('props.sections.sideboard', false)
+        ->assertJsonPath('props.sections.opponent', true);
+});
+
+it('keeps the sideboard guide and notes when the opponent header is switched off', function () {
+    [$match, $opponent, $deck] = liveOverlayMatch();
+
+    $archetype = Archetype::factory()->create(['name' => 'Esper Blink', 'format' => 'modern']);
+
+    MatchArchetype::create([
+        'mtgo_match_id' => $match->id,
+        'player_id' => $opponent->id,
+        'archetype_id' => $archetype->id,
+        'confidence' => 1.0,
+        'manual' => true,
+    ]);
+
+    DeckArchetypeNote::create([
+        'deck_id' => $deck->id,
+        'archetype_id' => $archetype->id,
+        'body' => 'Keep the graveyard hate, cut a land.',
+    ]);
+
+    // The header is off but the sideboard section is on. Both the guide and its
+    // notes derive from the opponent's archetype, so the opponent still has to
+    // be resolved — only the `opponent` prop itself is suppressed.
+    AppSettings::setOverlayShowOpponent(false);
+
     $this->get(route('overlay.game'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->where('drawOdds', null)
-            ->where('sideboard', null)
-            ->where('sections.drawOdds', false)
-            ->where('sections.sideboard', false)
-            ->where('sections.opponent', true)
+            ->where('sections.opponent', false)
+            ->where('opponent', null)
+            ->where('hasArchetype', true)
+            ->where('sideboard.postboardGames', 0)
+            ->has('sideboard.sidedIn')
+            ->has('notes.current', 1)
+            ->where('notes.current.0.body', 'Keep the graveyard hate, cut a land.')
+        );
+});
+
+it('still responds when a pre-upgrade league cache entry is missing its uuid', function () {
+    liveOverlayMatch();
+
+    // A cache entry written before the overlay shipped held only name + colors.
+    // The file cache survives the restart that installs the upgrade, so the
+    // versioned key must not read it — and the shape is re-checked regardless.
+    Cache::put('overlayOpp_archetype', ['name' => 'Esper Blink', 'colors' => 'WUB'], now()->addHour());
+    Cache::put('overlayOpp_archetype_v2', ['name' => 'Esper Blink', 'colors' => 'WUB'], now()->addHour());
+
+    Http::fake(['*/api/players' => Http::response([], 404)]);
+
+    $this->get(route('overlay.game'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('opponent.username', 'overlayOpp')
+            ->where('opponent.archetypeId', null)
+            ->where('hasArchetype', false)
         );
 });

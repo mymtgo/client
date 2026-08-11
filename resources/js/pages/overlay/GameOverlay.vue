@@ -20,17 +20,18 @@ type DrawOdds = Omit<App.Data.Front.DrawOddsData, 'cards'> & {
 };
 
 /**
- * `archetypes` is deferred by the controller (`Inertia::defer`) and absent from
- * the first response — same shape as `resources/js/pages/leagues/Index.vue`'s
- * deferred `archetypes` prop. Follow that precedent: optional prop, defaulted
- * to an empty array via `withDefaults` rather than a local computed.
+ * `archetypes` and `drawOdds` are both deferred by the controller
+ * (`Inertia::defer`) and absent from the first response — same shape as
+ * `resources/js/pages/leagues/Index.vue`'s deferred `archetypes` prop. Follow
+ * that precedent: optional props, defaulted via `withDefaults` rather than a
+ * local computed.
  */
 const props = withDefaults(
     defineProps<{
         sections: { opponent: boolean; drawOdds: boolean; sideboard: boolean };
         opponent: App.Data.Front.OverlayOpponentData | null;
         archetypes?: App.Data.Front.ArchetypeData[];
-        drawOdds: DrawOdds | null;
+        drawOdds?: DrawOdds | null;
         sideboard: App.Data.Front.SideboardGuideData | null;
         notes: { current: App.Data.Front.ArchetypeNoteData[]; other: App.Data.Front.ArchetypeNoteData[] };
         isSideboarding: boolean;
@@ -38,9 +39,15 @@ const props = withDefaults(
         hasMatch: boolean;
         /** Whether that match has a linked deck version, independent of any section toggle. */
         hasDeck: boolean;
+        /**
+         * Whether an opponent archetype resolved, independent of any section
+         * toggle — `opponent` is null whenever the opponent header is off, so
+         * the sideboard panel cannot read this off the opponent payload.
+         */
+        hasArchetype: boolean;
         format?: string | null;
     }>(),
-    { archetypes: () => [] },
+    { archetypes: () => [], drawOdds: null },
 );
 
 const activeTab = ref('draw-odds');
@@ -64,12 +71,24 @@ watch(
 
 /**
  * The window is opened once at boot and never re-navigated, so polling runs for
- * its whole lifetime. `archetypes` is excluded: it is large and near-static.
- * Draw odds stays off the poll and reloads on its own event instead, so a tick
- * never rebuilds hypergeometric data mid-turn.
+ * its whole lifetime. `archetypes` and `drawOdds` are both excluded, and both
+ * are deferred server-side so a tick does not compute them only to discard
+ * them: naming a prop in `only` is what decides whether a deferred closure
+ * runs at all. Draw odds reloads on its own event instead, so a tick never
+ * rebuilds hypergeometric data mid-turn.
  */
 usePoll(5000, {
-    only: ['opponent', 'sideboard', 'notes', 'isSideboarding', 'sections', 'hasMatch', 'hasDeck', 'format'],
+    only: [
+        'opponent',
+        'sideboard',
+        'notes',
+        'isSideboarding',
+        'sections',
+        'hasMatch',
+        'hasDeck',
+        'hasArchetype',
+        'format',
+    ],
 });
 
 onMounted(() => {
@@ -82,7 +101,7 @@ function selectArchetype(archetypeId: number): void {
     router.post(
         UpdateOpponentArchetypeController.url(),
         { archetype_id: archetypeId },
-        { preserveScroll: true, only: ['opponent', 'sideboard', 'notes'] },
+        { preserveScroll: true, only: ['opponent', 'sideboard', 'notes', 'hasArchetype'] },
     );
 }
 </script>
@@ -112,7 +131,7 @@ function selectArchetype(archetypeId: number): void {
                     :notes="props.notes"
                     :has-match="props.hasMatch"
                     :has-deck="props.hasDeck"
-                    :has-archetype="props.opponent?.archetypeId != null"
+                    :has-archetype="props.hasArchetype"
                 />
             </template>
         </OverlayTabs>
