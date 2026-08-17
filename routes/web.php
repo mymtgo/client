@@ -1,12 +1,13 @@
 <?php
 
 use App\Http\Controllers\Archetypes\CreateController;
-use App\Http\Controllers\Archetypes\DownloadController;
 use App\Http\Controllers\Archetypes\DownloadDecklistController;
 use App\Http\Controllers\Archetypes\EditController;
 use App\Http\Controllers\Archetypes\ExportDekController;
 use App\Http\Controllers\Archetypes\MergeCandidatesController;
 use App\Http\Controllers\Archetypes\MergeController;
+use App\Http\Controllers\Archetypes\Refresh\ApplyController as ArchetypeRefreshApplyController;
+use App\Http\Controllers\Archetypes\Refresh\ShowController as ArchetypeRefreshShowController;
 use App\Http\Controllers\Archetypes\ScanMatchController;
 use App\Http\Controllers\Archetypes\UnmergeController;
 use App\Http\Controllers\Archetypes\UploadDekController;
@@ -195,7 +196,8 @@ Route::group([], function (Router $router) {
         $group->post('/', App\Http\Controllers\Archetypes\StoreController::class)->name('archetypes.store');
         $group->post('upload-dek', UploadDekController::class)->name('archetypes.upload-dek');
         $group->post('scan-match/{match}', ScanMatchController::class)->name('archetypes.scan-match');
-        $group->post('download', DownloadController::class)->name('archetypes.download-all');
+        $group->get('refresh', ArchetypeRefreshShowController::class)->name('archetypes.refresh');
+        $group->post('refresh', ArchetypeRefreshApplyController::class)->name('archetypes.refresh.apply');
         $group->get('{archetype}', App\Http\Controllers\Archetypes\ShowController::class)->name('archetypes.show');
         $group->get('{archetype}/merge-candidates', MergeCandidatesController::class)
             ->name('archetypes.merge-candidates');

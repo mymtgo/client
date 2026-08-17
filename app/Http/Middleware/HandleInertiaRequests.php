@@ -30,6 +30,7 @@ class HandleInertiaRequests extends Middleware
             ...parent::share($request),
             'flash' => fn () => [
                 'error' => $request->session()->get('error'),
+                'success' => $request->session()->get('success'),
             ],
             'status' => fn () => [
                 'watcherRunning' => AppSettings::isWatcherActive(),

@@ -10,45 +10,7 @@ use Illuminate\Support\Facades\Http;
 
 uses(LazilyRefreshDatabase::class);
 
-beforeEach(function () {
-    $factory = Http::getFacadeRoot();
-    $ref = new ReflectionProperty($factory, 'stubCallbacks');
-    $ref->setValue($factory, collect());
-
-    Http::fake([
-        '*/api/archetypes' => Http::response([], 200),
-    ]);
-});
-
-it('reports stale when no stamp exists', function () {
-    AppSettings::forget('archetypes_last_refreshed_at');
-
-    expect(RefreshArchetypes::isStale())->toBeTrue();
-});
-
-it('reports stale when last refresh is > 24h ago', function () {
-    AppSettings::setArchetypesLastRefreshedAt(now()->subHours(25)->toIso8601String());
-
-    expect(RefreshArchetypes::isStale())->toBeTrue();
-});
-
-it('reports fresh when last refresh is < 24h ago', function () {
-    AppSettings::setArchetypesLastRefreshedAt(now()->subHours(2)->toIso8601String());
-
-    expect(RefreshArchetypes::isStale())->toBeFalse();
-});
-
-it('no-ops when not stale', function () {
-    AppSettings::setArchetypesLastRefreshedAt(now()->subHours(2)->toIso8601String());
-    Bus::fake();
-
-    (new RefreshArchetypes)->handle();
-
-    Bus::assertNothingBatched();
-});
-
-it('dispatches a batch of RefreshArchetypeDecklist jobs when stale', function () {
-    AppSettings::forget('archetypes_last_refreshed_at');
+it('dispatches a batch of RefreshArchetypeDecklist jobs', function () {
     Archetype::factory()->count(3)->create([
         'is_fallback' => false,
         'manual' => false,
@@ -65,7 +27,6 @@ it('dispatches a batch of RefreshArchetypeDecklist jobs when stale', function ()
 });
 
 it('skips manual, fallback, and merged archetypes', function () {
-    AppSettings::forget('archetypes_last_refreshed_at');
     Archetype::factory()->create(['is_fallback' => false, 'manual' => false, 'merged_into_id' => null, 'format' => 'modern']);
     Archetype::factory()->create(['is_fallback' => true]);
     Archetype::factory()->create(['manual' => true]);
@@ -79,7 +40,6 @@ it('skips manual, fallback, and merged archetypes', function () {
 });
 
 it('no-ops when a refresh is already in progress', function () {
-    AppSettings::forget('archetypes_last_refreshed_at');
     AppSettings::setArchetypesRefreshInProgress(true);
     Archetype::factory()->create(['is_fallback' => false, 'manual' => false, 'merged_into_id' => null, 'format' => 'modern']);
     Bus::fake();
@@ -90,7 +50,6 @@ it('no-ops when a refresh is already in progress', function () {
 });
 
 it('sets refresh_in_progress to true before dispatching', function () {
-    AppSettings::forget('archetypes_last_refreshed_at');
     AppSettings::setArchetypesRefreshInProgress(false);
     Archetype::factory()->create(['is_fallback' => false, 'manual' => false, 'merged_into_id' => null, 'format' => 'modern']);
 
@@ -105,15 +64,24 @@ it('queues both parent and child jobs on the archetypes queue', function () {
     expect((new RefreshArchetypeDecklist(1))->queue)->toBe('archetypes');
 });
 
-it('parent re-dispatching does not stack batches while one is in progress', function () {
-    AppSettings::forget('archetypes_last_refreshed_at');
+it('re-dispatching does not stack batches while one is in progress', function () {
     AppSettings::setArchetypesRefreshInProgress(false);
     Archetype::factory()->create(['is_fallback' => false, 'manual' => false, 'merged_into_id' => null, 'format' => 'modern']);
 
     Bus::fake();
 
     (new RefreshArchetypes)->handle();
-    (new RefreshArchetypes)->handle(); // simulated re-dispatch within the daily window
+    (new RefreshArchetypes)->handle();
+    (new RefreshArchetypes)->handle();
+
+    Bus::assertBatchCount(1);
+});
+
+it('does not download the archetype list itself', function () {
+    Http::fake(fn () => throw new RuntimeException('unexpected HTTP call'));
+    Archetype::factory()->create(['is_fallback' => false, 'manual' => false, 'merged_into_id' => null, 'format' => 'modern']);
+
+    Bus::fake();
     (new RefreshArchetypes)->handle();
 
     Bus::assertBatchCount(1);

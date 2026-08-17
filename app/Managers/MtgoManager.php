@@ -12,7 +12,6 @@ use App\Actions\Settings\ValidatePath;
 use App\Facades\AppSettings;
 use App\Jobs\DownloadArchetypes;
 use App\Jobs\PopulateMissingCardData;
-use App\Jobs\RefreshArchetypes;
 use App\Jobs\RunPipelineJob;
 use App\Jobs\ShipCardStats;
 use App\Jobs\ShipTournamentObservations;
@@ -273,19 +272,11 @@ class MtgoManager
             ->everyMinute()
             ->name('enqueue_card_stats');
 
-        $schedule->call(fn () => $this->downloadArchetypes())
-            ->weekly();
-
         $schedule->call(fn () => $this->populateMissingCardData())
             ->hourly();
 
         $schedule->call(fn () => PruneProcessedLogEvents::run())
             ->daily()
             ->name('prune_log_events');
-
-        $schedule->job(new RefreshArchetypes)
-            ->daily()
-            ->name('refresh_archetypes')
-            ->withoutOverlapping(120);
     }
 }

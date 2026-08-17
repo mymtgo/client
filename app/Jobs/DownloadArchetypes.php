@@ -21,7 +21,15 @@ class DownloadArchetypes implements ShouldQueue
     {
         $response = Http::mymtgoApi()->throw()->get('/api/archetypes');
 
-        foreach ($response->json() as $archetype) {
+        self::upsert($response->json());
+    }
+
+    /**
+     * @param  array<int, array{uuid: string, name: string, format: string, colorIdentity?: string|null}>  $rows
+     */
+    public static function upsert(array $rows): void
+    {
+        foreach ($rows as $archetype) {
             $existing = Archetype::where('uuid', $archetype['uuid'])->first();
 
             if ($existing?->manual || $existing?->is_fallback) {
