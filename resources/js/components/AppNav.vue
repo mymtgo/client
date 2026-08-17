@@ -31,7 +31,7 @@ const isActive = (href: string) => {
 </script>
 
 <template>
-    <nav class="flex shrink-0 items-center gap-1 border-b border-black/60 bg-background px-4 py-2 shadow shadow-black/20">
+    <nav class="flex shrink-0 items-center gap-1">
         <Link
             content=""
             v-for="item in nav"
