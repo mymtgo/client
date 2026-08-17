@@ -139,6 +139,46 @@ it('skips archetypes without downloaded decklists', function () {
     expect($result)->toBeNull();
 });
 
+it('never reports confidence above 1.0', function () {
+    createArchetypeWithCards(
+        ['name' => 'Burn', 'format' => 'modern'],
+        [
+            ['oracle_id' => 'bolt', 'mtgo_id' => 100, 'name' => 'Lightning Bolt', 'quantity' => 4],
+            ['oracle_id' => 'spike', 'mtgo_id' => 101, 'name' => 'Lava Spike', 'quantity' => 4],
+        ]
+    );
+
+    // A perfect full-coverage match — the strongest possible signal.
+    $inputCards = collect([
+        ['mtgo_id' => 100, 'quantity' => 4],
+        ['mtgo_id' => 101, 'quantity' => 4],
+    ]);
+
+    $result = EstimateArchetypeLocally::run($inputCards, 'modern');
+
+    expect($result)->not->toBeNull();
+    expect($result['confidence'])->toBeLessThanOrEqual(1.0);
+});
+
+it('normalizes MTGO format codes like CPIONEER to pioneer', function () {
+    createArchetypeWithCards(
+        ['name' => 'Phoenix', 'format' => 'pioneer'],
+        [
+            ['oracle_id' => 'phoenix', 'mtgo_id' => 400, 'name' => 'Arclight Phoenix', 'quantity' => 4],
+            ['oracle_id' => 'pieces', 'mtgo_id' => 401, 'name' => 'Pieces of the Puzzle', 'quantity' => 4],
+        ]
+    );
+
+    $inputCards = collect([
+        ['mtgo_id' => 400, 'quantity' => 4],
+        ['mtgo_id' => 401, 'quantity' => 4],
+    ]);
+
+    $result = EstimateArchetypeLocally::run($inputCards, 'CPIONEER');
+
+    expect($result)->not->toBeNull();
+});
+
 it('normalizes MTGO format codes like CMODERN to modern', function () {
     createArchetypeWithCards(
         ['name' => 'Burn', 'format' => 'modern'],
@@ -238,22 +278,53 @@ it('returns null when no deck has any card overlap', function () {
     expect(EstimateArchetypeLocally::run($input, 'modern'))->toBeNull();
 });
 
-it('ignores lands when matching — they are too broad to discriminate archetypes', function () {
+it('ignores basic lands when matching — they are too broad to discriminate archetypes', function () {
     createArchetypeWithCards(
         ['name' => 'Dimir Murktide', 'format' => 'modern'],
         [
-            ['oracle_id' => 'field', 'mtgo_id' => 93534, 'name' => 'Field of Ruin', 'type' => 'Land', 'quantity' => 4],
+            ['oracle_id' => 'island', 'mtgo_id' => 93534, 'name' => 'Island', 'type' => 'Basic Land — Island', 'quantity' => 4],
             ['oracle_id' => 'murktide', 'mtgo_id' => 500, 'name' => 'Murktide Regent', 'quantity' => 4],
             ['oracle_id' => 'dragon', 'mtgo_id' => 501, 'name' => 'Dragons Rage Channeler', 'quantity' => 4],
         ]
     );
 
-    // Input only shares the land — must not match.
+    // Input only shares the basic land — must not match.
     $inputCards = collect([
         ['mtgo_id' => 93534, 'quantity' => 3],
     ]);
 
     expect(EstimateArchetypeLocally::run($inputCards, 'modern'))->toBeNull();
+});
+
+it('uses nonbasic lands to discriminate land-defined archetypes like Tron', function () {
+    ['archetype' => $tron] = createArchetypeWithCards(
+        ['name' => 'Tron', 'format' => 'modern'],
+        [
+            ['oracle_id' => 'tower', 'mtgo_id' => 300, 'name' => "Urza's Tower", 'type' => "Land — Urza's Tower", 'quantity' => 4],
+            ['oracle_id' => 'mine', 'mtgo_id' => 301, 'name' => "Urza's Mine", 'type' => "Land — Urza's Mine", 'quantity' => 4],
+            ['oracle_id' => 'plant', 'mtgo_id' => 302, 'name' => "Urza's Power Plant", 'type' => "Land — Urza's Power-Plant", 'quantity' => 4],
+            ['oracle_id' => 'karn', 'mtgo_id' => 303, 'name' => 'Karn Liberated', 'type' => 'Legendary Planeswalker — Karn', 'quantity' => 3],
+        ]
+    );
+
+    createArchetypeWithCards(
+        ['name' => 'Burn', 'format' => 'modern'],
+        [
+            ['oracle_id' => 'bolt', 'mtgo_id' => 100, 'name' => 'Lightning Bolt', 'quantity' => 4],
+        ]
+    );
+
+    // Opponent revealed only the Tron lands — that IS the archetype's identity.
+    $inputCards = collect([
+        ['mtgo_id' => 300, 'quantity' => 2],
+        ['mtgo_id' => 301, 'quantity' => 2],
+        ['mtgo_id' => 302, 'quantity' => 1],
+    ]);
+
+    $result = EstimateArchetypeLocally::run($inputCards, 'modern');
+
+    expect($result)->not->toBeNull();
+    expect($result['archetype_id'])->toBe($tron->id);
 });
 
 it('does not count lands toward quantity overlap', function () {

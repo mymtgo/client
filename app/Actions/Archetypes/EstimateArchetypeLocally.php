@@ -14,6 +14,13 @@ class EstimateArchetypeLocally
 
     private const COVERAGE_WEIGHT = 0.10;
 
+    /**
+     * Scores are normalised by the weight sum so confidence lives on a true
+     * 0–1 scale, comparable to the API's confidence contract and to the
+     * caller's local short-circuit threshold.
+     */
+    private const WEIGHT_SUM = self::QUANTITY_WEIGHT + self::DISTINCT_WEIGHT + self::COVERAGE_WEIGHT;
+
     private const AMBIGUITY_THRESHOLD = 0.03;
 
     private const AMBIGUITY_PENALTY = 0.7;
@@ -32,6 +39,8 @@ class EstimateArchetypeLocally
         'clegacy' => 'legacy',
         'cvintage' => 'vintage',
         'cpremodern' => 'premodern',
+        'cpioneer' => 'pioneer',
+        'cstandard' => 'standard',
     ];
 
     /**
@@ -64,14 +73,16 @@ class EstimateArchetypeLocally
             ->get(['mtgo_id', 'oracle_id', 'type'])
             ->keyBy('mtgo_id');
 
-        // Lands appear across nearly every deck, so they cannot discriminate
-        // archetypes. Drop known lands entirely — they neither match nor count
-        // toward the denominator. Unresolved cards remain so partial card
-        // lists still dilute confidence.
+        // Basic lands appear across nearly every deck, so they cannot
+        // discriminate archetypes — drop them entirely; they neither match nor
+        // count toward the denominator. Nonbasic lands stay: for land-defined
+        // decks (Tron, Amulet, Affinity's artifact lands) they are the
+        // strongest identity signal the opponent reveals. Unresolved cards
+        // remain so partial card lists still dilute confidence.
         $nonLandInput = $allInput->reject(function ($card) use ($cardMeta) {
             $meta = $cardMeta->get($card['mtgo_id']);
 
-            return $meta && str_contains((string) $meta->type, 'Land');
+            return $meta && self::isBasicLand((string) $meta->type);
         });
 
         $inputDistinct = $nonLandInput->count();
@@ -113,7 +124,7 @@ class EstimateArchetypeLocally
 
         foreach ($candidateDecks as $deck) {
             $deckCards = $deck->cards
-                ->filter(fn ($c) => $c->oracle_id !== null && ! str_contains((string) $c->type, 'Land'))
+                ->filter(fn ($c) => $c->oracle_id !== null && ! self::isBasicLand((string) $c->type))
                 ->keyBy('oracle_id');
             $deckDistinct = $deckCards->count();
 
@@ -143,9 +154,9 @@ class EstimateArchetypeLocally
             $distinctOverlap = $inputDistinct > 0 ? $matchedDistinct / $inputDistinct : 0;
             $deckCoverage = $deckDistinct > 0 ? $matchedDistinct / $deckDistinct : 0;
 
-            $score = ($quantityOverlap * self::QUANTITY_WEIGHT)
+            $score = (($quantityOverlap * self::QUANTITY_WEIGHT)
                 + ($distinctOverlap * self::DISTINCT_WEIGHT)
-                + ($deckCoverage * self::COVERAGE_WEIGHT);
+                + ($deckCoverage * self::COVERAGE_WEIGHT)) / self::WEIGHT_SUM;
 
             $scores[] = [
                 'archetype_id' => $deck->archetype_id,
@@ -189,6 +200,11 @@ class EstimateArchetypeLocally
             'archetype_deck_id' => $best['archetype_deck_id'],
             'confidence' => round($confidence, 4),
         ];
+    }
+
+    private static function isBasicLand(string $type): bool
+    {
+        return str_contains($type, 'Basic') && str_contains($type, 'Land');
     }
 
     private static function normalizeFormat(string $format): string

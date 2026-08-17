@@ -142,6 +142,40 @@ it('falls back to null archetype_deck_id when API deck_version_uuid is unknown l
     expect($result['archetype_deck_id'])->toBeNull();
 });
 
+it('creates a locally-unknown archetype from the API instead of dropping the result', function () {
+    Http::fake([
+        '*/api/archetypes/estimate' => Http::response([
+            ['uuid' => 'brand-new-uuid', 'confidence' => 0.9],
+        ]),
+        '*/api/archetypes' => Http::response([
+            ['uuid' => 'brand-new-uuid', 'name' => 'Cosmogoyf Fling', 'format' => 'modern', 'colorIdentity' => 'BR'],
+        ]),
+    ]);
+
+    $result = DetermineDeckArchetype::run(collect([['mtgo_id' => 999, 'quantity' => 4]]), 'modern');
+
+    expect($result)->not->toBeNull();
+    expect($result['confidence'])->toBe(0.9);
+
+    $archetype = Archetype::where('uuid', 'brand-new-uuid')->first();
+    expect($archetype)->not->toBeNull();
+    expect($archetype->name)->toBe('Cosmogoyf Fling');
+    expect($result['archetype_id'])->toBe($archetype->id);
+});
+
+it('returns null when the API archetype stays unknown after a sync attempt', function () {
+    Http::fake([
+        '*/api/archetypes/estimate' => Http::response([
+            ['uuid' => 'ghost-uuid', 'confidence' => 0.9],
+        ]),
+        '*/api/archetypes' => Http::response([]),
+    ]);
+
+    $result = DetermineDeckArchetype::run(collect([['mtgo_id' => 999, 'quantity' => 4]]), 'modern');
+
+    expect($result)->toBeNull();
+});
+
 it('falls back to API when no local archetypes exist', function () {
     $archetype = Archetype::factory()->create([
         'uuid' => 'api-uuid',
