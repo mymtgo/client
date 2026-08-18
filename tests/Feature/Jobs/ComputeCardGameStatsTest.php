@@ -1084,3 +1084,49 @@ it('counts casts logged under a different printing than the registered deck card
     expect($stat->seen)->toBe(1);
     expect($stat->cast)->toBe(1);
 });
+
+it('counts opponent casts logged under a multi-face card face CatalogID', function () {
+    // Multi-face cards (adventure, omen, disturb DFCs) log casts under the
+    // face's own CatalogID, while snapshots and the Cards table carry only the
+    // parent printing ("Brazen Borrower // Petty Theft"). The face id has no
+    // Card row, so the cast must resolve to the parent's oracle via the face
+    // name instead of being silently dropped.
+    [$match, $deckVersion, $local, $opponent] = createMatchWithGames();
+
+    Card::factory()->create([
+        'oracle_id' => 'oracle-bb',
+        'mtgo_id' => 2000,
+        'name' => 'Brazen Borrower // Petty Theft',
+    ]);
+
+    $game = Game::factory()->for($match, 'match')->create([
+        'won' => true,
+        'started_at' => now(),
+    ]);
+    attachPlayers($game, $local, $opponent);
+
+    // Timeline (drives SEEN) carries the parent printing owned by the opponent.
+    createTimeline($game, [
+        ['Id' => 10, 'CatalogID' => 2000, 'Zone' => 'Stack', 'Owner' => 1, 'Controller' => 1],
+    ]);
+
+    // Cast is logged under the face's CatalogID (2002 << 1 = 4004), which has
+    // no Card row of its own.
+    ccgs_seedLogEntries($match->token, [
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@Ptestplayer joined the game.'],
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@Popponent joined the game.'],
+        ['timestamp' => '2026-01-01T00:00:01+00:00', 'message' => '@Popponent casts @[Petty Theft@:4004,100:@].'],
+        ['timestamp' => '2026-01-01T00:00:02+00:00', 'message' => '@Ptestplayer wins the game.'],
+    ]);
+
+    (new ComputeCardGameStats($match->id))->handle();
+
+    $stat = DB::table('card_game_stats')
+        ->where('oracle_id', 'oracle-bb')
+        ->where('game_id', $game->id)
+        ->where('opponent', true)
+        ->first();
+
+    expect($stat)->not->toBeNull();
+    expect($stat->cast)->toBe(1);
+});

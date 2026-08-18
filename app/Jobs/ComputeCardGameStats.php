@@ -486,6 +486,7 @@ class ComputeCardGameStats implements ShouldQueue
     private function buildSeenCatalogToOracle(Game $game, int $instanceId, ?array $gameLogStats, int $gameIndex, string $playerName): array
     {
         $catalogIds = [];
+        $logNamesByCatalogId = [];
 
         foreach ($game->timeline as $snapshot) {
             $cards = $snapshot->content['Cards'] ?? [];
@@ -507,6 +508,9 @@ class ComputeCardGameStats implements ShouldQueue
                 $mtgoId = (string) ($card['mtgo_id'] ?? '');
                 if ($mtgoId !== '') {
                     $catalogIds[$mtgoId] = true;
+                    if (! empty($card['name'])) {
+                        $logNamesByCatalogId[$mtgoId] = $card['name'];
+                    }
                 }
             }
 
@@ -522,11 +526,61 @@ class ComputeCardGameStats implements ShouldQueue
             return [];
         }
 
-        return Card::whereIn('mtgo_id', array_keys($catalogIds))
+        $resolved = Card::whereIn('mtgo_id', array_keys($catalogIds))
             ->whereNotNull('oracle_id')
             ->pluck('oracle_id', 'mtgo_id')
             ->mapWithKeys(fn ($oracleId, $mtgoId) => [(string) $mtgoId => $oracleId])
             ->toArray();
+
+        // Multi-face cards (adventure, omen, disturb DFCs) log actions under the
+        // face's own CatalogID, which has no Card row — only the parent printing
+        // ("Front // Face") does. Resolve leftover log ids through the face name
+        // so those actions aren't silently dropped.
+        $unresolvedNames = array_diff_key($logNamesByCatalogId, $resolved);
+        if (! empty($unresolvedNames)) {
+            $resolved += $this->resolveFaceNamesToOracle($unresolvedNames);
+        }
+
+        return $resolved;
+    }
+
+    /**
+     * Resolve CatalogIDs with no Card row to an oracle id by matching the
+     * log-provided card name against a face of a multi-face Card row.
+     *
+     * @param  array<string, string>  $namesByCatalogId  CatalogID (string) => face name
+     * @return array<string, string> CatalogID (string) => oracle_id
+     */
+    private function resolveFaceNamesToOracle(array $namesByCatalogId): array
+    {
+        $uniqueNames = array_unique(array_values($namesByCatalogId));
+
+        $cards = Card::whereNotNull('oracle_id')
+            ->where(function ($query) use ($uniqueNames) {
+                foreach ($uniqueNames as $name) {
+                    $escaped = addcslashes($name, '%_\\');
+                    $query->orWhere('name', $name)
+                        ->orWhere('name', 'like', $escaped.' // %')
+                        ->orWhere('name', 'like', '% // '.$escaped);
+                }
+            })
+            ->get(['name', 'oracle_id']);
+
+        $oracleByFaceName = [];
+        foreach ($cards as $card) {
+            foreach (explode(' // ', $card->name) as $face) {
+                $oracleByFaceName[trim($face)] ??= $card->oracle_id;
+            }
+        }
+
+        $resolved = [];
+        foreach ($namesByCatalogId as $catalogId => $name) {
+            if (isset($oracleByFaceName[$name])) {
+                $resolved[(string) $catalogId] = $oracleByFaceName[$name];
+            }
+        }
+
+        return $resolved;
     }
 
     /**

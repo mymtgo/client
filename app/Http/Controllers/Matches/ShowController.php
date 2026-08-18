@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Matches;
 
 use App\Actions\Decks\GetDeckViewSharedProps;
+use App\Actions\Import\ExtractCardsFromGameLog;
 use App\Actions\Matches\BuildMatchGameData;
+use App\Actions\Matches\EnsureGameLogForMatch;
 use App\Actions\Matches\GetGameLogEntries;
 use App\Data\Front\ArchetypeData;
 use App\Data\Front\MatchData;
@@ -39,7 +41,13 @@ class ShowController extends Controller
         $deckVersion = DeckVersion::find($match->deck_version_id);
         $registeredCards = $deckVersion->cards ?? [];
 
-        // Batch all mtgo_ids: deck_json entries + timeline CatalogIDs
+        // Per-game opponent cards extracted from the game log. Catches cards
+        // the final GameCards snapshot misses (left visible zones, or logged
+        // under a multi-face printing's face CatalogID).
+        $logEntries = EnsureGameLogForMatch::run($match->token);
+        $logCardData = ! empty($logEntries) ? ExtractCardsFromGameLog::run($logEntries) : null;
+
+        // Batch all mtgo_ids: deck_json entries + timeline CatalogIDs + log cards
         $deckMtgoIds = $match->games->flatMap(fn ($game) => $game->players->flatMap(
             fn ($player) => collect($player->pivot->deck_json)->pluck('mtgo_id')
         ));
@@ -50,7 +58,11 @@ class ShowController extends Controller
             )
         );
 
-        $allMtgoIds = $deckMtgoIds->merge($timelineCatalogIds)->unique();
+        $logCardMtgoIds = collect($logCardData['cards_by_game'] ?? [])->flatMap(
+            fn ($byPlayer) => collect($byPlayer)->flatMap(fn ($cards) => collect($cards)->pluck('mtgo_id'))
+        );
+
+        $allMtgoIds = $deckMtgoIds->merge($timelineCatalogIds)->merge($logCardMtgoIds)->unique();
         $cardsByMtgoId = Card::whereIn('mtgo_id', $allMtgoIds)->get()->keyBy('mtgo_id');
 
         $registeredOracleIds = collect($registeredCards)->pluck('oracle_id')->filter()->unique();
@@ -58,9 +70,14 @@ class ShowController extends Controller
 
         $sortedGames = $match->games->sortBy('started_at')->values();
 
-        $games = $sortedGames->map(fn ($game, $index) => BuildMatchGameData::run(
-            $game, $index + 1, $cardsByMtgoId, $cardsByOracleId, $registeredCards
-        ));
+        $games = $sortedGames->map(function ($game, $index) use ($cardsByMtgoId, $cardsByOracleId, $registeredCards, $logCardData) {
+            $opponentName = $game->players->first(fn ($p) => ! $p->pivot->is_local)?->username;
+            $opponentLogCards = $logCardData['cards_by_game'][$index][$opponentName] ?? [];
+
+            return BuildMatchGameData::run(
+                $game, $index + 1, $cardsByMtgoId, $cardsByOracleId, $registeredCards, $opponentLogCards
+            );
+        });
 
         // Game log entries per game (keyed by game ID)
         $gameLogs = $sortedGames->mapWithKeys(fn ($game) => [

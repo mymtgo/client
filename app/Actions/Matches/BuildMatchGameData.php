@@ -9,8 +9,11 @@ class BuildMatchGameData
 {
     /**
      * Build display data for a single game within a match.
+     *
+     * @param  array<int, array<string, mixed>>  $opponentLogCards  cards attributed to the opponent
+     *                                                              by ExtractCardsFromGameLog for this game
      */
-    public static function run(Game $game, int $number, Collection $cardsByMtgoId, Collection $cardsByOracleId, array $registeredCards): array
+    public static function run(Game $game, int $number, Collection $cardsByMtgoId, Collection $cardsByOracleId, array $registeredCards, array $opponentLogCards = []): array
     {
         $localPlayer = $game->players->first(fn ($p) => $p->pivot->is_local);
         $opponentPlayer = $game->players->first(fn ($p) => ! $p->pivot->is_local);
@@ -36,6 +39,8 @@ class BuildMatchGameData
             })
             ->values()
             ->toArray();
+
+        $opponentCardsSeen = self::mergeLogOnlyCards($opponentCardsSeen, $opponentLogCards, $cardsByMtgoId);
 
         $sideboardChanges = self::computeSideboardChanges(
             $localPlayer?->pivot->deck_json ?? [],
@@ -69,6 +74,64 @@ class BuildMatchGameData
             'localCardsPlayed' => $localCardsPlayed,
             'opponentCardsSeen' => $opponentCardsSeen,
         ];
+    }
+
+    /**
+     * Append opponent cards that appear in the game log but not in the final
+     * GameCards snapshot (deck_json). Cards can leave every visible zone before
+     * the last snapshot (shuffled into library, bounced to hand), and multi-face
+     * casts are logged under the face's CatalogID while snapshots carry the
+     * parent printing — both would otherwise vanish from the reveals list.
+     *
+     * @param  array<int, array<string, mixed>>  $cardsSeen
+     * @param  array<int, array<string, mixed>>  $opponentLogCards
+     * @return array<int, array<string, mixed>>
+     */
+    private static function mergeLogOnlyCards(array $cardsSeen, array $opponentLogCards, Collection $cardsByMtgoId): array
+    {
+        if (empty($opponentLogCards)) {
+            return $cardsSeen;
+        }
+
+        $knownNames = [];
+        foreach ($cardsSeen as $entry) {
+            foreach (explode(' // ', mb_strtolower($entry['name'])) as $face) {
+                $knownNames[trim($face)] = true;
+            }
+        }
+
+        foreach ($opponentLogCards as $logCard) {
+            $card = $cardsByMtgoId->get($logCard['mtgo_id']);
+            $name = $card->name ?? $logCard['name'];
+
+            $faces = explode(' // ', mb_strtolower($name));
+            $alreadyShown = false;
+            foreach ($faces as $face) {
+                if (isset($knownNames[trim($face)])) {
+                    $alreadyShown = true;
+
+                    break;
+                }
+            }
+
+            if ($alreadyShown) {
+                continue;
+            }
+
+            foreach ($faces as $face) {
+                $knownNames[trim($face)] = true;
+            }
+
+            $cardsSeen[] = [
+                'name' => $name,
+                'image' => $card->image_url ?? null,
+                'type' => $card->type ?? null,
+                'identity' => $card->color_identity ?? null,
+                'quantity' => 1,
+            ];
+        }
+
+        return $cardsSeen;
     }
 
     /**
