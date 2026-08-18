@@ -23,7 +23,10 @@ class ApplyArchetypeRefresh
      * match_archetypes cascade, while decks.archetype_id and
      * archetypes.merged_into_id null out.
      *
-     * @param  array<int, int>  $mappings
+     * Successors may be given as a local archetype id, or as an API uuid string
+     * for an incoming archetype that only exists locally after the upsert.
+     *
+     * @param  array<int, int|string>  $mappings
      * @return array{added: int, updated: int, removed: int, remapped: int, matches_queued: int}
      */
     public static function run(array $mappings = []): array
@@ -33,7 +36,7 @@ class ApplyArchetypeRefresh
         DownloadArchetypes::upsert($plan['api']);
 
         $removedIds = array_column($plan['removed'], 'id');
-        $validMappings = self::validMappings($mappings, $removedIds);
+        $validMappings = self::validMappings(self::resolveUuidSuccessors($mappings), $removedIds);
 
         foreach ($validMappings as $removedId => $successorId) {
             self::remap($removedId, $successorId);
@@ -70,6 +73,30 @@ class ApplyArchetypeRefresh
             'remapped' => count($validMappings),
             'matches_queued' => count($matchIds),
         ];
+    }
+
+    /**
+     * Successors chosen from the incoming API list arrive as uuid strings —
+     * they have no local id until DownloadArchetypes::upsert creates them.
+     * Resolve those to local ids; unresolvable uuids drop the mapping (the
+     * removed archetype falls back to delete & re-detect).
+     *
+     * @param  array<int|string, int|string|null>  $mappings
+     * @return array<int|string, int|string|null>
+     */
+    private static function resolveUuidSuccessors(array $mappings): array
+    {
+        $resolved = [];
+
+        foreach ($mappings as $removedId => $successor) {
+            if (is_string($successor) && ! is_numeric($successor)) {
+                $successor = Archetype::query()->where('uuid', $successor)->value('id');
+            }
+
+            $resolved[$removedId] = $successor;
+        }
+
+        return $resolved;
     }
 
     /**

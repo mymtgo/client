@@ -133,3 +133,45 @@ it('collects distinct match ids across all removed archetypes', function () {
     expect($plan['match_ids'])->toHaveCount(2)
         ->and($plan['match_ids'])->toContain($matchOne->id, $matchTwo->id);
 });
+
+it('suggests an incoming api archetype by uuid when the server rekeyed a same-name archetype', function () {
+    // Server-side rekey: same name, brand-new uuid. The removed archetype's
+    // best successor is the INCOMING api row, which has no local id yet.
+    $player = Player::create(['username' => 'opp-'.uniqid()]);
+    $dead = Archetype::factory()->create(['name' => 'Mono-Green Tron', 'format' => 'modern', 'color_identity' => 'G']);
+    $match = MtgoMatch::factory()->create();
+    MatchArchetype::create([
+        'mtgo_match_id' => $match->id,
+        'player_id' => $player->id,
+        'archetype_id' => $dead->id,
+        'confidence' => 1.0,
+    ]);
+
+    $newUuid = (string) Str::uuid();
+    fakeArchetypeApi([
+        ['uuid' => $newUuid, 'name' => 'Mono-Green Tron', 'format' => 'modern', 'colorIdentity' => 'G'],
+    ]);
+
+    $plan = ComputeArchetypeRefreshPlan::run();
+
+    expect($plan['removed'][0]['id'])->toBe($dead->id);
+    expect($plan['removed'][0]['suggested_uuid'])->toBe($newUuid);
+    expect($plan['removed'][0]['suggested_id'])->toBeNull();
+});
+
+it('lists incoming api archetypes as added rows', function () {
+    $survivor = Archetype::factory()->create(['name' => 'Burn', 'format' => 'modern']);
+    $newUuid = (string) Str::uuid();
+
+    fakeArchetypeApi([
+        apiRow($survivor),
+        ['uuid' => $newUuid, 'name' => 'Fresh Deck', 'format' => 'Modern', 'colorIdentity' => 'R'],
+    ]);
+
+    $plan = ComputeArchetypeRefreshPlan::run();
+
+    expect($plan['added_rows'])->toHaveCount(1);
+    expect($plan['added_rows'][0]['uuid'])->toBe($newUuid);
+    expect($plan['added_rows'][0]['name'])->toBe('Fresh Deck');
+    expect($plan['added_rows'][0]['format'])->toBe('modern');
+});

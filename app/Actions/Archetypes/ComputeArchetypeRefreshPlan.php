@@ -14,8 +14,9 @@ class ComputeArchetypeRefreshPlan
      * @return array{
      *     api: array<int, array{uuid: string, name: string, format: string, colorIdentity: string|null}>,
      *     added: int,
+     *     added_rows: array<int, array{uuid: string, name: string, format: string, colorIdentity: string|null}>,
      *     updated: int,
-     *     removed: array<int, array{id: int, name: string, format: string|null, match_count: int, suggested_id: int|null}>,
+     *     removed: array<int, array{id: int, name: string, format: string|null, match_count: int, suggested_id: int|null, suggested_uuid: string|null}>,
      *     match_ids: array<int, int>,
      * }
      */
@@ -51,29 +52,56 @@ class ComputeArchetypeRefreshPlan
         $localUuids = $local->pluck('uuid');
         $added = $apiByUuid->keys()->diff($localUuids);
 
+        $addedRows = collect($apiRows)
+            ->filter(fn (array $row) => ! $localUuids->contains($row['uuid']))
+            ->map(fn (array $row) => [
+                'uuid' => $row['uuid'],
+                'name' => $row['name'],
+                'format' => strtolower($row['format']),
+                'colorIdentity' => $row['colorIdentity'] ?? null,
+            ])
+            ->values();
+
         $matchIds = MatchArchetype::query()
             ->whereIn('archetype_id', $removed->pluck('id'))
             ->distinct()
             ->pluck('mtgo_match_id');
 
-        // Surviving archetypes are the rename-successor candidates. Suggestions
-        // only matter for removed archetypes with matches — those are the ones
-        // the user decides on; matchless ones are deleted without a decision.
+        // Rename-successor candidates are the surviving local archetypes PLUS
+        // the incoming API archetypes (a server-side rekey removes and re-adds
+        // an archetype in one refresh — the successor doesn't exist locally
+        // yet). Incoming candidates are unsaved models carrying only a uuid.
+        // Suggestions only matter for removed archetypes with matches — those
+        // are the ones the user decides on; matchless ones are deleted without
+        // a decision.
         $survivors = $local->filter(fn (Archetype $archetype) => $apiByUuid->has($archetype->uuid));
+
+        $candidates = $survivors->concat($addedRows->map(fn (array $row) => (new Archetype)->forceFill([
+            'uuid' => $row['uuid'],
+            'name' => $row['name'],
+            'format' => $row['format'],
+            'color_identity' => $row['colorIdentity'],
+        ])));
 
         return [
             'api' => $apiRows,
             'added' => $added->count(),
+            'added_rows' => $addedRows->all(),
             'updated' => $updated->count(),
-            'removed' => $removed->map(fn (Archetype $archetype) => [
-                'id' => $archetype->id,
-                'name' => $archetype->name,
-                'format' => $archetype->format,
-                'match_count' => $archetype->match_archetypes_count,
-                'suggested_id' => $archetype->match_archetypes_count > 0
-                    ? FindRenameCandidate::run($archetype, $survivors)?->id
-                    : null,
-            ])->all(),
+            'removed' => $removed->map(function (Archetype $archetype) use ($candidates) {
+                $suggested = $archetype->match_archetypes_count > 0
+                    ? FindRenameCandidate::run($archetype, $candidates)
+                    : null;
+
+                return [
+                    'id' => $archetype->id,
+                    'name' => $archetype->name,
+                    'format' => $archetype->format,
+                    'match_count' => $archetype->match_archetypes_count,
+                    'suggested_id' => $suggested?->exists ? $suggested->id : null,
+                    'suggested_uuid' => ($suggested && ! $suggested->exists) ? $suggested->uuid : null,
+                ];
+            })->all(),
             'match_ids' => $matchIds->all(),
         ];
     }

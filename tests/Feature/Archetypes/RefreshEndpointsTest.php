@@ -7,6 +7,7 @@ use App\Models\Player;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Str;
 use Inertia\Testing\AssertableInertia;
 
 uses(LazilyRefreshDatabase::class);
@@ -109,4 +110,32 @@ it('redirects back with an error when the api is unreachable', function () {
         ->post(route('archetypes.refresh.apply'))
         ->assertRedirect(route('archetypes.refresh'))
         ->assertSessionHas('error');
+});
+
+it('offers incoming api archetypes as successor options keyed by uuid', function () {
+    $dead = Archetype::factory()->create(['name' => 'Mono-Green Tron', 'format' => 'modern']);
+
+    $player = Player::create(['username' => 'opp-'.uniqid()]);
+    $match = MtgoMatch::factory()->create();
+    MatchArchetype::create([
+        'mtgo_match_id' => $match->id,
+        'player_id' => $player->id,
+        'archetype_id' => $dead->id,
+        'confidence' => 1.0,
+    ]);
+
+    $newUuid = (string) Str::uuid();
+    fakeEndpointApi([
+        ['uuid' => $newUuid, 'name' => 'Mono-Green Tron', 'format' => 'Modern', 'colorIdentity' => 'G'],
+    ]);
+
+    $this->get(route('archetypes.refresh'))
+        ->assertSuccessful()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('archetypes/Refresh')
+            ->where('removals.0.suggested_uuid', $newUuid)
+            ->where('options', fn ($options) => collect($options)->contains(
+                fn ($option) => $option['id'] === $newUuid && $option['incoming'] === true
+            ))
+        );
 });

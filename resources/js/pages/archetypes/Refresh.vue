@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue';
-import { Link, router } from '@inertiajs/vue3';
+import IndexController from '@/actions/App/Http/Controllers/Archetypes/IndexController';
+import ApplyController from '@/actions/App/Http/Controllers/Archetypes/Refresh/ApplyController';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import SuccessorSelect, { type SuccessorOption } from '@/pages/archetypes/partials/SuccessorSelect.vue';
-import IndexController from '@/actions/App/Http/Controllers/Archetypes/IndexController';
-import ApplyController from '@/actions/App/Http/Controllers/Archetypes/Refresh/ApplyController';
+import { Link, router } from '@inertiajs/vue3';
 import { ArrowLeft, RefreshCw } from 'lucide-vue-next';
+import { computed, reactive, ref } from 'vue';
 
 interface Removal {
     id: number;
@@ -14,6 +14,7 @@ interface Removal {
     format: string | null;
     match_count: number;
     suggested_id: number | null;
+    suggested_uuid: string | null;
 }
 
 const props = defineProps<{
@@ -25,13 +26,12 @@ const props = defineProps<{
     options: SuccessorOption[];
 }>();
 
-const removals = computed<Removal[]>(() =>
-    [...props.removals].sort((a, b) => b.match_count - a.match_count),
-);
+const removals = computed<Removal[]>(() => [...props.removals].sort((a, b) => b.match_count - a.match_count));
 
-// Suggested successors are preselected; the user overrides per row.
-const mappings = reactive<Record<number, number | null>>(
-    Object.fromEntries(props.removals.map((removal) => [removal.id, removal.suggested_id])),
+// Suggested successors are preselected; the user overrides per row. Incoming
+// API archetypes (no local id yet) are referenced by their uuid string.
+const mappings = reactive<Record<number, number | string | null>>(
+    Object.fromEntries(props.removals.map((removal) => [removal.id, removal.suggested_id ?? removal.suggested_uuid])),
 );
 
 const applying = ref(false);
@@ -39,13 +39,9 @@ const applying = ref(false);
 const totalRemoved = computed(() => props.removals.length + props.removed_without_matches);
 const hasChanges = computed(() => props.added > 0 || props.updated > 0 || totalRemoved.value > 0);
 
-const remapCount = computed(
-    () => Object.values(mappings).filter((successorId) => successorId !== null).length,
-);
+const remapCount = computed(() => Object.values(mappings).filter((successorId) => successorId !== null).length);
 const redetectMatchCount = computed(() =>
-    props.removals
-        .filter((removal) => mappings[removal.id] === null)
-        .reduce((sum, removal) => sum + removal.match_count, 0),
+    props.removals.filter((removal) => mappings[removal.id] === null).reduce((sum, removal) => sum + removal.match_count, 0),
 );
 
 function clearAll(): void {
@@ -56,7 +52,7 @@ function clearAll(): void {
 
 function restoreSuggestions(): void {
     for (const removal of props.removals) {
-        mappings[removal.id] = removal.suggested_id;
+        mappings[removal.id] = removal.suggested_id ?? removal.suggested_uuid;
     }
 }
 
@@ -88,27 +84,24 @@ function apply(): void {
             </Link>
             <h1 class="text-lg font-bold text-foreground">Refresh Archetypes</h1>
             <p class="mt-1 text-sm text-muted-foreground">
-                Syncs the archetype list with the server. Archetypes you created yourself
-                are never touched.
+                Syncs the archetype list with the server. Archetypes you created yourself are never touched.
             </p>
         </div>
 
-        <p v-if="!hasChanges" class="rounded-md border border-black/40 p-4 text-sm text-muted-foreground">
-            Everything is already up to date.
-        </p>
+        <p v-if="!hasChanges" class="rounded-md border border-black/40 p-4 text-sm text-muted-foreground">Everything is already up to date.</p>
 
         <template v-else>
             <div class="grid grid-cols-3 gap-3 text-sm">
                 <div class="rounded-md border border-black/40 p-3">
-                    <p class="text-xs uppercase text-muted-foreground">New</p>
+                    <p class="text-xs text-muted-foreground uppercase">New</p>
                     <p class="mt-1 text-lg font-bold">{{ added }}</p>
                 </div>
                 <div class="rounded-md border border-black/40 p-3">
-                    <p class="text-xs uppercase text-muted-foreground">Updated</p>
+                    <p class="text-xs text-muted-foreground uppercase">Updated</p>
                     <p class="mt-1 text-lg font-bold">{{ updated }}</p>
                 </div>
                 <div class="rounded-md border border-black/40 p-3">
-                    <p class="text-xs uppercase text-muted-foreground">Removed</p>
+                    <p class="text-xs text-muted-foreground uppercase">Removed</p>
                     <p class="mt-1 text-lg font-bold">{{ totalRemoved }}</p>
                 </div>
             </div>
@@ -116,16 +109,12 @@ function apply(): void {
             <div v-if="removals.length > 0" class="flex flex-col gap-2">
                 <div class="flex items-center justify-between gap-3">
                     <p class="text-sm text-muted-foreground">
-                        These removed archetypes have matches assigned. Reassign each to
-                        its renamed successor, or delete it and re-detect its matches.
+                        These removed archetypes have matches assigned. Reassign each to its renamed successor, or delete it and re-detect its
+                        matches.
                     </p>
                     <div class="flex shrink-0 gap-2">
-                        <Button variant="outline" size="sm" @click="restoreSuggestions">
-                            Restore suggestions
-                        </Button>
-                        <Button variant="outline" size="sm" @click="clearAll">
-                            Re-detect all
-                        </Button>
+                        <Button variant="outline" size="sm" @click="restoreSuggestions"> Restore suggestions </Button>
+                        <Button variant="outline" size="sm" @click="clearAll"> Re-detect all </Button>
                     </div>
                 </div>
 
@@ -144,18 +133,14 @@ function apply(): void {
                                 <TableCell class="max-w-0 truncate font-medium">
                                     {{ removal.name }}
                                 </TableCell>
-                                <TableCell class="text-xs uppercase text-muted-foreground">
+                                <TableCell class="text-xs text-muted-foreground uppercase">
                                     {{ removal.format }}
                                 </TableCell>
                                 <TableCell class="text-right tabular-nums">
                                     {{ removal.match_count }}
                                 </TableCell>
                                 <TableCell>
-                                    <SuccessorSelect
-                                        v-model="mappings[removal.id]"
-                                        :options="options"
-                                        :format="removal.format"
-                                    />
+                                    <SuccessorSelect v-model="mappings[removal.id]" :options="options" :format="removal.format" />
                                 </TableCell>
                             </TableRow>
                         </TableBody>
@@ -164,9 +149,8 @@ function apply(): void {
             </div>
 
             <p v-if="removed_without_matches > 0" class="text-sm text-muted-foreground">
-                {{ removed_without_matches }} other
-                {{ removed_without_matches === 1 ? 'archetype' : 'archetypes' }} with no
-                matches assigned will be removed.
+                {{ removed_without_matches }} other {{ removed_without_matches === 1 ? 'archetype' : 'archetypes' }} with no matches assigned will be
+                removed.
             </p>
 
             <div class="flex items-center justify-between gap-3 border-t border-black/40 pt-4">
@@ -177,8 +161,7 @@ function apply(): void {
                     </template>
                     <template v-if="redetectMatchCount > 0">
                         {{ redetectMatchCount }}
-                        {{ redetectMatchCount === 1 ? 'match' : 'matches' }} will be
-                        re-detected.
+                        {{ redetectMatchCount === 1 ? 'match' : 'matches' }} will be re-detected.
                     </template>
                 </p>
                 <div class="flex shrink-0 gap-2">

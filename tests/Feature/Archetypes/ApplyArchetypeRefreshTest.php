@@ -217,3 +217,30 @@ it('is idempotent — a second run removes nothing and queues no re-detection', 
         ->and($summary['matches_queued'])->toBe(0);
     Queue::assertNotPushed(DetermineMatchArchetypesJob::class);
 });
+
+it('remaps matches to an incoming api archetype mapped by uuid', function () {
+    Queue::fake();
+
+    $player = Player::create(['username' => 'opp-'.uniqid()]);
+    $dead = Archetype::factory()->create(['name' => 'Mono-Green Tron', 'format' => 'modern']);
+    $match = MtgoMatch::factory()->create();
+    MatchArchetype::create([
+        'mtgo_match_id' => $match->id,
+        'player_id' => $player->id,
+        'archetype_id' => $dead->id,
+        'confidence' => 1.0,
+    ]);
+
+    $newUuid = (string) Str::uuid();
+    fakeRefreshApi([
+        ['uuid' => $newUuid, 'name' => 'Mono-Green Tron', 'format' => 'Modern', 'colorIdentity' => 'G'],
+    ]);
+
+    ApplyArchetypeRefresh::run([$dead->id => $newUuid]);
+
+    $successor = Archetype::where('uuid', $newUuid)->first();
+    expect($successor)->not->toBeNull();
+    expect(MatchArchetype::where('mtgo_match_id', $match->id)->value('archetype_id'))->toBe($successor->id);
+    expect(Archetype::whereKey($dead->id)->exists())->toBeFalse();
+    Queue::assertNotPushed(DetermineMatchArchetypesJob::class);
+});

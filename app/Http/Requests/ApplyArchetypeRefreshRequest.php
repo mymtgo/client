@@ -13,20 +13,22 @@ class ApplyArchetypeRefreshRequest extends FormRequest
     {
         return [
             'mappings' => ['sometimes', 'array'],
-            'mappings.*' => ['nullable', 'integer'],
+            'mappings.*' => ['nullable'],
         ];
     }
 
     /**
-     * Confirmed rename mappings, keyed by removed archetype id.
+     * Confirmed rename mappings, keyed by removed archetype id. Values are a
+     * local archetype id, or an API uuid string for an incoming archetype that
+     * does not exist locally yet.
      *
-     * @return array<int, int>
+     * @return array<int, int|string>
      */
     public function mappings(): array
     {
         return collect($this->validated('mappings', []))
-            ->filter()
-            ->map(fn ($successorId) => (int) $successorId)
+            ->filter(fn ($successor) => $successor !== null && $successor !== '')
+            ->map(fn ($successor) => is_numeric($successor) ? (int) $successor : (string) $successor)
             ->all();
     }
 }

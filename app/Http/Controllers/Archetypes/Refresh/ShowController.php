@@ -37,7 +37,20 @@ class ShowController
                 'id' => $archetype->id,
                 'name' => $archetype->name,
                 'format' => $archetype->format,
+                'incoming' => false,
             ]);
+
+        // Incoming API archetypes are valid successors too (a server-side rekey
+        // removes and re-adds everything at once). They have no local id yet,
+        // so their option id is the API uuid — resolved to a real id on apply.
+        $incoming = collect($plan['added_rows'])->map(fn (array $row) => [
+            'id' => $row['uuid'],
+            'name' => $row['name'],
+            'format' => $row['format'],
+            'incoming' => true,
+        ]);
+
+        $options = $options->concat($incoming)->values();
 
         return Inertia::render('archetypes/Refresh', [
             'added' => $plan['added'],
