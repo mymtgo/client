@@ -1130,3 +1130,71 @@ it('counts opponent casts logged under a multi-face card face CatalogID', functi
     expect($stat)->not->toBeNull();
     expect($stat->cast)->toBe(1);
 });
+
+it('stores warp cast counts on card_game_stats', function () {
+    [$match, $deckVersion, $local, $opponent] = createMatchWithGames();
+
+    Card::factory()->create(['oracle_id' => 'oracle-pe', 'mtgo_id' => 1001, 'name' => 'Pinnacle Emissary']);
+
+    $game = Game::factory()->for($match, 'match')->create([
+        'won' => true,
+        'started_at' => now(),
+    ]);
+    attachPlayers($game, $local, $opponent, deckJson: [
+        ['mtgo_id' => 1001, 'quantity' => 4, 'sideboard' => false],
+    ]);
+    createTimeline($game, [
+        ['Id' => 10, 'CatalogID' => 1001, 'Zone' => 'Hand', 'Owner' => 0, 'Controller' => 0],
+    ]);
+
+    ccgs_seedLogEntries($match->token, [
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@Ptestplayer joined the game.'],
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@Popponent joined the game.'],
+        ['timestamp' => '2026-01-01T00:00:01+00:00', 'message' => '@Ptestplayer casts @[Pinnacle Emissary@:2002,100:@] by paying {#ur-} with warp.'],
+        ['timestamp' => '2026-01-01T00:00:02+00:00', 'message' => '@Ptestplayer wins the game.'],
+    ]);
+
+    (new ComputeCardGameStats($match->id))->handle();
+
+    $stat = DB::table('card_game_stats')
+        ->where('oracle_id', 'oracle-pe')
+        ->where('game_id', $game->id)
+        ->first();
+
+    expect($stat->cast)->toBe(1);
+    expect($stat->warp)->toBe(1);
+});
+
+it('stores free_cast counts on card_game_stats', function () {
+    [$match, $deckVersion, $local, $opponent] = createMatchWithGames();
+
+    Card::factory()->create(['oracle_id' => 'oracle-ouat', 'mtgo_id' => 1001, 'name' => 'Once Upon a Time']);
+
+    $game = Game::factory()->for($match, 'match')->create([
+        'won' => true,
+        'started_at' => now(),
+    ]);
+    attachPlayers($game, $local, $opponent, deckJson: [
+        ['mtgo_id' => 1001, 'quantity' => 4, 'sideboard' => false],
+    ]);
+    createTimeline($game, [
+        ['Id' => 10, 'CatalogID' => 1001, 'Zone' => 'Hand', 'Owner' => 0, 'Controller' => 0],
+    ]);
+
+    ccgs_seedLogEntries($match->token, [
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@Ptestplayer joined the game.'],
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@Popponent joined the game.'],
+        ['timestamp' => '2026-01-01T00:00:01+00:00', 'message' => '@Ptestplayer casts @[Once Upon a Time@:2002,100:@] without paying its mana cost.'],
+        ['timestamp' => '2026-01-01T00:00:02+00:00', 'message' => '@Ptestplayer wins the game.'],
+    ]);
+
+    (new ComputeCardGameStats($match->id))->handle();
+
+    $stat = DB::table('card_game_stats')
+        ->where('oracle_id', 'oracle-ouat')
+        ->where('game_id', $game->id)
+        ->first();
+
+    expect($stat->cast)->toBe(1);
+    expect($stat->free_cast)->toBe(1);
+});

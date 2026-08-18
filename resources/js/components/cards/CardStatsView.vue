@@ -24,12 +24,15 @@ import DeckCardStatsGridCard from '@/pages/decks/partials/DeckCardStatsGridCard.
 import DeckCardStatsRow from '@/pages/decks/partials/DeckCardStatsRow.vue';
 import {
     CARD_STATS_COLUMNS,
+    CARD_STATS_COLUMN_GROUPS,
+    CASTING_METHOD_COLUMNS,
     LOCAL_ONLY_COLUMNS,
     loadCardStatsVisibility,
     saveCardStatsVisibility,
     type CardStatsColumnKey,
     type CardStatsPerspective,
     type CardStatsVisibility,
+    type CastingMethodColumnKey,
 } from '@/pages/decks/partials/cardStatsColumns';
 import type { DeckCardStat } from '@/types/decks';
 import type { ReportArchetypeOption } from '@/types/reports';
@@ -245,6 +248,16 @@ const configurableColumns = computed(() =>
     props.perspective === 'theirs' ? CARD_STATS_COLUMNS.filter((c) => !LOCAL_ONLY_COLUMNS.includes(c.key)) : CARD_STATS_COLUMNS,
 );
 
+// Grouped + alphabetical for the picker only — the table keeps its logical column order.
+const pickerGroups = computed(() =>
+    CARD_STATS_COLUMN_GROUPS.map((group) => ({
+        label: group.label,
+        columns: configurableColumns.value
+            .filter((col) => group.keys.includes(col.key))
+            .sort((a, b) => a.label.localeCompare(b.label)),
+    })).filter((group) => group.columns.length > 0),
+);
+
 const allColumnsVisible = computed(() => configurableColumns.value.every((c) => visibleColumns.value[c.key]));
 
 function toggleAllColumns(): void {
@@ -276,7 +289,8 @@ type SortKey =
     | 'pregameWinPct'
     | 'sbOutPct'
     | 'sbInPct'
-    | 'games';
+    | 'games'
+    | CastingMethodColumnKey;
 const sortBy = ref<SortKey>('name');
 const sortDesc = ref(false);
 
@@ -364,6 +378,11 @@ function sortValue(entry: ShrunkStat<DeckCardStat>, key: SortKey): number | stri
         // cards showing the same % tie and fall through to the sample-size
         // tiebreaker instead of ordering on invisible decimal places.
         return entry.samples[shrinkKey] > 0 ? Math.round(entry.shrunk[shrinkKey] * 100) : -1;
+    }
+
+    const castingColumn = CASTING_METHOD_COLUMNS.find((col) => col.key === key);
+    if (castingColumn) {
+        return stat[castingColumn.statField] as number;
     }
 
     switch (key) {
@@ -543,7 +562,7 @@ defineExpose({ selectedArchetype, selectedPlayDraw, selectedBoard, visibleColumn
                             <span v-else>Columns</span>
                         </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" class="w-52">
+                    <DropdownMenuContent align="end" class="w-[38rem]">
                         <div class="flex items-center justify-between px-2 py-1.5">
                             <span class="text-xs font-semibold">Visible columns</span>
                             <button class="text-xs text-muted-foreground hover:text-foreground" @click="toggleAllColumns">
@@ -556,18 +575,27 @@ defineExpose({ selectedArchetype, selectedPlayDraw, selectedBoard, visibleColumn
                             Card <span class="ml-auto text-[10px]">locked</span>
                         </DropdownMenuLabel>
                         <DropdownMenuSeparator />
-                        <DropdownMenuCheckboxItem
-                            v-for="col in configurableColumns"
-                            :key="col.key"
-                            :modelValue="visibleColumns[col.key]"
-                            @update:modelValue="(val: boolean) => setColumnVisible(col.key, val)"
-                            @select.prevent
-                        >
-                            <template #indicator-icon>
-                                <Check class="size-4 text-success" />
-                            </template>
-                            {{ col.label }}
-                        </DropdownMenuCheckboxItem>
+                        <template v-for="(group, index) in pickerGroups" :key="group.label">
+                            <DropdownMenuSeparator v-if="index > 0" />
+                            <DropdownMenuLabel class="text-[10px] font-semibold tracking-wide text-muted-foreground uppercase">
+                                {{ group.label }}
+                            </DropdownMenuLabel>
+                            <div class="grid grid-cols-4 gap-x-1">
+                                <DropdownMenuCheckboxItem
+                                    v-for="col in group.columns"
+                                    :key="col.key"
+                                    :modelValue="visibleColumns[col.key]"
+                                    class="whitespace-nowrap"
+                                    @update:modelValue="(val: boolean) => setColumnVisible(col.key, val)"
+                                    @select.prevent
+                                >
+                                    <template #indicator-icon>
+                                        <Check class="size-4 text-success" />
+                                    </template>
+                                    {{ col.label }}
+                                </DropdownMenuCheckboxItem>
+                            </div>
+                        </template>
                     </DropdownMenuContent>
                 </DropdownMenu>
 
@@ -636,7 +664,7 @@ defineExpose({ selectedArchetype, selectedPlayDraw, selectedBoard, visibleColumn
     </div>
 
     <Card v-else-if="viewMode === 'table'" class="gap-0 p-0">
-        <CardContent class="px-0 [&_[data-slot=table-container]]:overflow-visible">
+        <CardContent class="px-0 [&_[data-slot=table-container]]:max-h-[70vh] [&_[data-slot=table-container]]:overflow-auto">
             <Table>
                 <TableHeader>
                     <TableRow>
@@ -704,6 +732,17 @@ defineExpose({ selectedArchetype, selectedPlayDraw, selectedBoard, visibleColumn
                                 >Activated <component :is="sortIcon('activated')" class="size-3"
                             /></span>
                         </TableHead>
+                        <template v-for="column in CASTING_METHOD_COLUMNS" :key="column.key">
+                            <TableHead
+                                v-if="effectiveVisibleColumns[column.key]"
+                                class="cursor-pointer text-right select-none"
+                                @click="toggleSort(column.key)"
+                            >
+                                <span class="inline-flex items-center justify-end gap-1"
+                                    >{{ column.label }} <component :is="sortIcon(column.key)" class="size-3"
+                                /></span>
+                            </TableHead>
+                        </template>
                         <TableHead
                             v-if="effectiveVisibleColumns.pregamePct"
                             class="cursor-pointer text-right select-none"

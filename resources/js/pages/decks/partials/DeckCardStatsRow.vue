@@ -3,46 +3,17 @@ import * as fmt from '@/components/cards/cardStatFormat';
 import { TableCell, TableRow } from '@/components/ui/table';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { ShrinkKey } from '@/lib/stats/shrinkage';
-import { DEFAULT_CARD_STATS_VISIBILITY, type CardStatsPerspective, type CardStatsVisibility } from '@/pages/decks/partials/cardStatsColumns';
+import {
+    CASTING_METHOD_COLUMNS,
+    DEFAULT_CARD_STATS_VISIBILITY,
+    type CardStatsPerspective,
+    type CardStatsVisibility,
+} from '@/pages/decks/partials/cardStatsColumns';
+import type { DeckCardStat } from '@/types/decks';
 import { Check, Image } from 'lucide-vue-next';
+import { computed } from 'vue';
 
-type CardStat = {
-    name: string;
-    oracleId: string;
-    colorIdentity: string | null;
-    type: string | null;
-    image: string | null;
-    isSideboard: boolean;
-    totalGames: number;
-    totalPossible: number;
-    totalKept: number;
-    keptGames: number;
-    keptWon: number;
-    keptLost: number;
-    totalSeen: number;
-    seenGames: number;
-    seenWon: number;
-    seenLost: number;
-    totalCast: number;
-    castGames: number;
-    castWon: number;
-    castLost: number;
-    postboardGames: number;
-    sidedOutGames: number;
-    sidedInGames: number;
-    totalPlayed: number;
-    playedGames: number;
-    totalKicked: number;
-    totalActivated: number;
-    totalFlashback: number;
-    totalMadness: number;
-    totalEvoked: number;
-    pregameRevealedGames: number;
-    pregamePlayedGames: number;
-    pregameGames: number;
-    pregameWon: number;
-    pregameLost: number;
-};
+type CardStat = DeckCardStat;
 
 const props = withDefaults(
     defineProps<{
@@ -70,6 +41,37 @@ const emit = defineEmits<{
 }>();
 
 const pct = fmt.pct;
+
+const ALT_COST_LABELS: [keyof CardStat, string][] = [
+    ['totalFlashback', 'flashback'],
+    ['totalMadness', 'madness'],
+    ['totalEvoked', 'evoke'],
+    ['totalWarp', 'warp'],
+    ['totalFreeCast', 'free'],
+    ['totalBargained', 'bargain'],
+    ['totalDashed', 'dash'],
+    ['totalBestowed', 'bestow'],
+    ['totalReplicated', 'replicate'],
+    ['totalSpectacle', 'spectacle'],
+    ['totalRebound', 'rebound'],
+    ['totalEscaped', 'escape'],
+    ['totalNinjutsu', 'ninjutsu'],
+    ['totalSuspended', 'suspend'],
+    ['totalBuyback', 'buyback'],
+    ['totalDisturb', 'disturb'],
+    ['totalForetold', 'foretell'],
+    ['totalRetraced', 'retrace'],
+    ['totalMayhem', 'mayhem'],
+    ['totalMiracle', 'miracle'],
+    ['totalGifted', 'gift'],
+    ['totalCasualty', 'casualty'],
+];
+
+const altCostBreakdown = computed(() =>
+    ALT_COST_LABELS.filter(([key]) => (props.stat[key] as number) > 0)
+        .map(([key, label]) => `${props.stat[key]} ${label}`)
+        .join(', '),
+);
 
 function shrunkWinPct(key: ShrinkKey): number {
     return fmt.shrunkWinPct(props.shrunk, key);
@@ -127,7 +129,7 @@ function winRateClass(pctVal: number): string {
         </TableCell>
         <TableCell v-if="visibleColumns.castPct" class="text-right tabular-nums">
             <template v-if="pct(stat.castGames, stat.totalGames) !== null">
-                <TooltipProvider v-if="stat.totalFlashback > 0 || stat.totalMadness > 0 || stat.totalEvoked > 0">
+                <TooltipProvider v-if="altCostBreakdown">
                     <Tooltip>
                         <TooltipTrigger as-child>
                             <span class="cursor-default border-b border-dotted border-muted-foreground">
@@ -136,11 +138,7 @@ function winRateClass(pctVal: number): string {
                             </span>
                         </TooltipTrigger>
                         <TooltipContent side="top" class="text-xs">
-                            <span v-if="stat.totalFlashback > 0">{{ stat.totalFlashback }} flashback</span>
-                            <span v-if="stat.totalMadness > 0">{{ stat.totalFlashback > 0 ? ', ' : '' }}{{ stat.totalMadness }} madness</span>
-                            <span v-if="stat.totalEvoked > 0"
-                                >{{ stat.totalFlashback > 0 || stat.totalMadness > 0 ? ', ' : '' }}{{ stat.totalEvoked }} evoke</span
-                            >
+                            {{ altCostBreakdown }}
                         </TooltipContent>
                     </Tooltip>
                 </TooltipProvider>
@@ -186,6 +184,14 @@ function winRateClass(pctVal: number): string {
             </template>
             <span v-else class="text-muted-foreground">-</span>
         </TableCell>
+        <template v-for="column in CASTING_METHOD_COLUMNS" :key="column.key">
+            <TableCell v-if="visibleColumns[column.key]" class="text-right tabular-nums">
+                <template v-if="(stat[column.statField] as number) > 0">
+                    {{ stat[column.statField] }}
+                </template>
+                <span v-else class="text-muted-foreground">-</span>
+            </TableCell>
+        </template>
         <TableCell v-if="visibleColumns.pregamePct" class="text-right tabular-nums">
             <template v-if="stat.pregameGames > 0 && pct(stat.pregameGames, stat.totalGames) !== null">
                 <TooltipProvider v-if="stat.pregameRevealedGames > 0 && stat.pregamePlayedGames > 0">

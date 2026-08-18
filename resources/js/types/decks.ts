@@ -1,5 +1,5 @@
-import type { ReportArchetypeOption } from '@/types/reports';
 import type { CardStatsPerspective } from '@/pages/decks/partials/cardStatsColumns';
+import type { ReportArchetypeOption } from '@/types/reports';
 
 export type VersionStats = {
     id: number | null;
@@ -140,6 +140,25 @@ export type DeckCardStat = {
     totalFlashback: number;
     totalMadness: number;
     totalEvoked: number;
+    totalWarp: number;
+    totalFreeCast: number;
+    totalBargained: number;
+    totalDashed: number;
+    totalBestowed: number;
+    totalReplicated: number;
+    totalSpectacle: number;
+    totalRebound: number;
+    totalEscaped: number;
+    totalNinjutsu: number;
+    totalSuspended: number;
+    totalBuyback: number;
+    totalDisturb: number;
+    totalForetold: number;
+    totalRetraced: number;
+    totalMayhem: number;
+    totalMiracle: number;
+    totalGifted: number;
+    totalCasualty: number;
     pregameRevealedGames: number;
     pregamePlayedGames: number;
     pregameGames: number;

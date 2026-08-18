@@ -452,7 +452,7 @@ class ComputeCardGameStats implements ShouldQueue
     {
         $seenByOracle = CountSeenCardsByOracle::run($game, $instanceId, $catalogToOracle, $visibleZones);
 
-        $signalKeys = ['cast', 'played', 'kicked', 'flashback', 'madness', 'evoked', 'activated'];
+        $signalKeys = ExtractCardsFromGameLog::COUNTER_FIELDS;
         foreach ($signalKeys as $key) {
             foreach ($logStats[$key] ?? [] as $oracleId => $count) {
                 if ($count > 0 && ($seenByOracle[$oracleId] ?? 0) === 0) {
@@ -609,13 +609,7 @@ class ComputeCardGameStats implements ShouldQueue
             'quantity' => $quantity,
             'kept' => $kept,
             'seen' => $seen,
-            'cast' => $logStats['cast'][$oracleId] ?? 0,
-            'played' => $logStats['played'][$oracleId] ?? 0,
-            'kicked' => $logStats['kicked'][$oracleId] ?? 0,
-            'flashback' => $logStats['flashback'][$oracleId] ?? 0,
-            'madness' => $logStats['madness'][$oracleId] ?? 0,
-            'evoked' => $logStats['evoked'][$oracleId] ?? 0,
-            'activated' => $logStats['activated'][$oracleId] ?? 0,
+            ...self::counterColumns($logStats, $oracleId),
             'pregame_revealed' => isset($logStats['pregame_revealed'][$oracleId]),
             'pregame_played' => isset($logStats['pregame_played'][$oracleId]),
             'won' => $won,
@@ -629,18 +623,28 @@ class ComputeCardGameStats implements ShouldQueue
     }
 
     /**
-     * @return array{cast: array<string, int>, played: array<string, int>, kicked: array<string, int>, flashback: array<string, int>, madness: array<string, int>, evoked: array<string, int>, activated: array<string, int>, pregame_revealed: array<string, true>, pregame_played: array<string, true>}
+     * DB column => count for every game-log counter field.
+     *
+     * @param  array<string, mixed>  $logStats
+     * @return array<string, int>
+     */
+    private function counterColumns(array $logStats, string $oracleId): array
+    {
+        $columns = [];
+        foreach (ExtractCardsFromGameLog::COUNTER_FIELDS as $field) {
+            $columns[$field] = $logStats[$field][$oracleId] ?? 0;
+        }
+
+        return $columns;
+    }
+
+    /**
+     * @return array<string, array<string, int|true>>
      */
     private function emptyLogStats(): array
     {
         return [
-            'cast' => [],
-            'played' => [],
-            'kicked' => [],
-            'flashback' => [],
-            'madness' => [],
-            'evoked' => [],
-            'activated' => [],
+            ...array_fill_keys(ExtractCardsFromGameLog::COUNTER_FIELDS, []),
             'pregame_revealed' => [],
             'pregame_played' => [],
         ];

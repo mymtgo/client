@@ -412,3 +412,85 @@ it('extracts turn count from turn markers', function () {
     $result = ExtractCardsFromGameLog::run($entries);
     expect($result['game_meta'][0]['turn_count'])->toBe(3);
 });
+
+it('tracks warp casts in both logged phrasings without card-name false positives', function () {
+    $entries = [
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@PAlpha joined the game.'],
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@PBravo joined the game.'],
+        ['timestamp' => '2026-01-01T00:00:01+00:00', 'message' => '@PAlpha casts @[Pinnacle Emissary@:280000,100:@] by paying {#ur-} with warp.'],
+        ['timestamp' => '2026-01-01T00:00:02+00:00', 'message' => '@PAlpha casts @[Perigee Beckoner@:280002,101:@] for its warp cost.'],
+        ['timestamp' => '2026-01-01T00:00:03+00:00', 'message' => '@PAlpha casts @[Snap@:280004,102:@] targeting @[Warped Tusker@:280006,103:@].'],
+    ];
+    $result = ExtractCardsFromGameLog::run($entries);
+    $alphaCards = collect($result['cards_by_player']['Alpha']);
+
+    $emissary = $alphaCards->firstWhere('name', 'Pinnacle Emissary');
+    expect($emissary['cast'])->toBe(1);
+    expect($emissary['warp'])->toBe(1);
+
+    $beckoner = $alphaCards->firstWhere('name', 'Perigee Beckoner');
+    expect($beckoner['cast'])->toBe(1);
+    expect($beckoner['warp'])->toBe(1);
+
+    $snap = $alphaCards->firstWhere('name', 'Snap');
+    expect($snap['cast'])->toBe(1);
+    expect($snap['warp'])->toBe(0);
+});
+
+it('tracks alternative-cost casting methods', function (string $message, string $field) {
+    $entries = [
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@PAlpha joined the game.'],
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@PBravo joined the game.'],
+        ['timestamp' => '2026-01-01T00:00:01+00:00', 'message' => $message],
+    ];
+    $result = ExtractCardsFromGameLog::run($entries);
+    $card = collect($result['cards_by_player']['Alpha'])->firstWhere('name', 'Test Card');
+    expect($card['cast'])->toBe(1);
+    expect($card[$field])->toBe(1);
+})->with([
+    'free cast' => ['@PAlpha casts @[Test Card@:2000,100:@] without paying its mana cost.', 'free_cast'],
+    'bargain' => ['@PAlpha casts @[Test Card@:2000,100:@] with Bargain.', 'bargained'],
+    'dash' => ['@PAlpha casts @[Test Card@:2000,100:@] by paying {1R} with dash.', 'dashed'],
+    'dash cost' => ['@PAlpha casts @[Test Card@:2000,100:@] for its dash cost.', 'dashed'],
+    'bestow' => ['@PAlpha casts @[Test Card@:2000,100:@] with Bestow targeting @[Other@:2002,101:@].', 'bestowed'],
+    'replicate' => ['@PAlpha casts @[Test Card@:2000,100:@] with Replicate {1U} (Replicated 1 time) targeting Bravo.', 'replicated'],
+    'spectacle' => ['@PAlpha casts @[Test Card@:2000,100:@] with Spectacle for its spectacle cost.', 'spectacle'],
+    'rebound' => ['@PAlpha casts @[Test Card@:2000,100:@] without paying its mana cost with Rebound targeting Bravo.', 'rebound'],
+    'escape' => ['@PAlpha casts @[Test Card@:2000,100:@] from the graveyard for its escape cost.', 'escaped'],
+    'sneak' => ['@PAlpha casts @[Test Card@:2000,100:@] by paying {W} and returning an unblocked attacking creature you control to its owner\'s hand with sneak.', 'ninjutsu'],
+    'suspend' => ['@PAlpha casts @[Test Card@:2000,100:@] without paying its mana cost with suspend.', 'suspended'],
+    'buyback' => ['@PAlpha casts @[Test Card@:2000,100:@] with buyback.', 'buyback'],
+    'disturb' => ['@PAlpha casts @[Test Card@:2000,100:@] by paying {1W} with disturb from the graveyard.', 'disturb'],
+    'foretell' => ['@PAlpha casts @[Test Card@:2000,100:@] by paying its foretell cost.', 'foretold'],
+    'retrace' => ['@PAlpha casts @[Test Card@:2000,100:@] with Retrace from the graveyard targeting Bravo.', 'retraced'],
+    'mayhem' => ['@PAlpha casts @[Test Card@:2000,100:@] by paying {B} with Mayhem {B} from the graveyard.', 'mayhem'],
+    'miracle' => ['@PAlpha casts @[Test Card@:2000,100:@] with Miracle {W} targeting @[Other@:2002,101:@].', 'miracle'],
+    'gift' => ['@PAlpha casts @[Test Card@:2000,100:@] with Gift with a gift promised to Bravo.', 'gifted'],
+    'casualty' => ['@PAlpha casts @[Test Card@:2000,100:@] with Casualty X.', 'casualty'],
+]);
+
+it('tracks ninjutsu activations as ninjutsu without counting a cast', function () {
+    $entries = [
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@PAlpha joined the game.'],
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@PBravo joined the game.'],
+        ['timestamp' => '2026-01-01T00:00:01+00:00', 'message' => '@PAlpha activates Ninjutsu ability of @[Ninja of the Deep Hours@:87308,100:@].'],
+    ];
+    $result = ExtractCardsFromGameLog::run($entries);
+    $card = collect($result['cards_by_player']['Alpha'])->firstWhere('name', 'Ninja of the Deep Hours');
+    expect($card)->not->toBeNull();
+    expect($card['ninjutsu'])->toBe(1);
+    expect($card['cast'])->toBe(0);
+});
+
+it('attributes cards to players with spaces in usernames', function () {
+    $entries = [
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@PSteve O joined the game.'],
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@PBravo joined the game.'],
+        ['timestamp' => '2026-01-01T00:00:01+00:00', 'message' => '@PSteve O casts @[Behold the Multiverse@:174834,100:@] by paying its foretell cost.'],
+    ];
+    $result = ExtractCardsFromGameLog::run($entries);
+    $card = collect($result['cards_by_player']['Steve O'] ?? [])->firstWhere('name', 'Behold the Multiverse');
+    expect($card)->not->toBeNull();
+    expect($card['cast'])->toBe(1);
+    expect($card['foretold'])->toBe(1);
+});

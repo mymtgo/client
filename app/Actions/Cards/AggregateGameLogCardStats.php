@@ -2,34 +2,23 @@
 
 namespace App\Actions\Cards;
 
+use App\Actions\Import\ExtractCardsFromGameLog;
+
 class AggregateGameLogCardStats
 {
     /**
      * Aggregate card stats from a parsed game-log payload, scoped to one player and one game index.
      *
+     * Buckets every counter in ExtractCardsFromGameLog::COUNTER_FIELDS by oracle id,
+     * plus pregame reveal/play flags.
+     *
      * @param  array<string, mixed>  $gameLogStats  output of ExtractCardsFromGameLog::run
      * @param  array<string, string>  $catalogToOracle  CatalogID (string) => oracle_id
-     * @return array{
-     *     cast: array<string, int>,
-     *     played: array<string, int>,
-     *     kicked: array<string, int>,
-     *     flashback: array<string, int>,
-     *     madness: array<string, int>,
-     *     evoked: array<string, int>,
-     *     activated: array<string, int>,
-     *     pregame_revealed: array<string, true>,
-     *     pregame_played: array<string, true>
-     * }
+     * @return array<string, array<string, int|true>>
      */
     public static function run(array $gameLogStats, int $gameIndex, string $playerName, array $catalogToOracle): array
     {
-        $cast = [];
-        $played = [];
-        $kicked = [];
-        $flashback = [];
-        $madness = [];
-        $evoked = [];
-        $activated = [];
+        $stats = array_fill_keys(ExtractCardsFromGameLog::COUNTER_FIELDS, []);
         $pregameRevealed = [];
         $pregamePlayed = [];
 
@@ -40,13 +29,9 @@ class AggregateGameLogCardStats
             if (! $oracleId) {
                 continue;
             }
-            $cast[$oracleId] = ($cast[$oracleId] ?? 0) + $card['cast'];
-            $played[$oracleId] = ($played[$oracleId] ?? 0) + $card['played'];
-            $kicked[$oracleId] = ($kicked[$oracleId] ?? 0) + $card['kicked'];
-            $flashback[$oracleId] = ($flashback[$oracleId] ?? 0) + $card['flashback'];
-            $madness[$oracleId] = ($madness[$oracleId] ?? 0) + $card['madness'];
-            $evoked[$oracleId] = ($evoked[$oracleId] ?? 0) + $card['evoked'];
-            $activated[$oracleId] = ($activated[$oracleId] ?? 0) + $card['activated'];
+            foreach (ExtractCardsFromGameLog::COUNTER_FIELDS as $field) {
+                $stats[$field][$oracleId] = ($stats[$field][$oracleId] ?? 0) + ($card[$field] ?? 0);
+            }
         }
 
         $pregameActions = $gameLogStats['pregame_actions'][$gameIndex][$playerName] ?? [];
@@ -65,13 +50,7 @@ class AggregateGameLogCardStats
         }
 
         return [
-            'cast' => $cast,
-            'played' => $played,
-            'kicked' => $kicked,
-            'flashback' => $flashback,
-            'madness' => $madness,
-            'evoked' => $evoked,
-            'activated' => $activated,
+            ...$stats,
             'pregame_revealed' => $pregameRevealed,
             'pregame_played' => $pregamePlayed,
         ];

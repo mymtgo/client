@@ -6,9 +6,12 @@ class ExtractGameResults
 {
     /**
      * Regex fragment matching an MTGO username.
-     * MTGO allows: English letters, digits, underscores, hyphens, periods (3-20 chars).
+     * MTGO allows: English letters, digits, underscores, hyphens, periods,
+     * and spaces (e.g. "Steve O") — 3-20 chars. Every use of this fragment is
+     * followed by a literal phrase (" rolled a", " casts @[", ...), so the
+     * greedy space-inclusive charset still stops at the right boundary.
      */
-    public const PLAYER_PATTERN = '[A-Za-z0-9_.-]+';
+    public const PLAYER_PATTERN = '[A-Za-z0-9 _.-]+';
 
     /**
      * Word-to-number mapping for starting hand sizes.
