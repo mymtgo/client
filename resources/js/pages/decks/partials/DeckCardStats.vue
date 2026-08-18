@@ -346,7 +346,7 @@ async function copyScreenshot(stat: DeckCardStat) {
                                     14 games. A low Cast % on a mainboard card may indicate it's hard to cast or frequently sided out.
                                 </div>
                                 <p class="mt-1 text-sm text-muted-foreground">
-                                    If a card was cast via an alternative cost (flashback, madness, evoke), the breakdown appears below the cast count.
+                                    If a card was cast via an alternative cost or casting method (flashback, madness, evoke, warp, free, dash, escape, ...), the breakdown appears below the cast count.
                                 </p>
                             </section>
 

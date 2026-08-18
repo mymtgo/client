@@ -1,3 +1,33 @@
+import type { DeckCardStat } from '@/types/decks';
+
+/**
+ * Casting-method count columns (hidden by default). `statField` is the
+ * DeckCardStat total the column reads and sorts on.
+ */
+export const CASTING_METHOD_COLUMNS = [
+    { key: 'warp', label: 'Warp', statField: 'totalWarp' },
+    { key: 'freeCast', label: 'Free Cast', statField: 'totalFreeCast' },
+    { key: 'bargained', label: 'Bargain', statField: 'totalBargained' },
+    { key: 'dashed', label: 'Dash', statField: 'totalDashed' },
+    { key: 'bestowed', label: 'Bestow', statField: 'totalBestowed' },
+    { key: 'replicated', label: 'Replicate', statField: 'totalReplicated' },
+    { key: 'spectacle', label: 'Spectacle', statField: 'totalSpectacle' },
+    { key: 'rebound', label: 'Rebound', statField: 'totalRebound' },
+    { key: 'escaped', label: 'Escape', statField: 'totalEscaped' },
+    { key: 'ninjutsu', label: 'Ninjutsu', statField: 'totalNinjutsu' },
+    { key: 'suspended', label: 'Suspend', statField: 'totalSuspended' },
+    { key: 'buyback', label: 'Buyback', statField: 'totalBuyback' },
+    { key: 'disturb', label: 'Disturb', statField: 'totalDisturb' },
+    { key: 'foretold', label: 'Foretell', statField: 'totalForetold' },
+    { key: 'retraced', label: 'Retrace', statField: 'totalRetraced' },
+    { key: 'mayhem', label: 'Mayhem', statField: 'totalMayhem' },
+    { key: 'miracle', label: 'Miracle', statField: 'totalMiracle' },
+    { key: 'gifted', label: 'Gift', statField: 'totalGifted' },
+    { key: 'casualty', label: 'Casualty', statField: 'totalCasualty' },
+] as const satisfies readonly { key: string; label: string; statField: keyof DeckCardStat }[];
+
+export type CastingMethodColumnKey = (typeof CASTING_METHOD_COLUMNS)[number]['key'];
+
 export const CARD_STATS_COLUMNS = [
     { key: 'type', label: 'Type' },
     { key: 'sb', label: 'SB' },
@@ -8,6 +38,7 @@ export const CARD_STATS_COLUMNS = [
     { key: 'playedPct', label: 'Played %' },
     { key: 'kicked', label: 'Kicked' },
     { key: 'activated', label: 'Activated' },
+    ...CASTING_METHOD_COLUMNS.map(({ key, label }) => ({ key, label })),
     { key: 'pregamePct', label: 'Pregame %' },
     { key: 'pregameWinPct', label: 'Pregame Win %' },
     { key: 'seenPct', label: 'Seen %' },
@@ -19,6 +50,25 @@ export const CARD_STATS_COLUMNS = [
 
 export type CardStatsColumnKey = (typeof CARD_STATS_COLUMNS)[number]['key'];
 
+/**
+ * Picker groupings — display-only, the table keeps CARD_STATS_COLUMNS order.
+ */
+export const CARD_STATS_COLUMN_GROUPS: readonly { label: string; keys: readonly CardStatsColumnKey[] }[] = [
+    { label: 'Card info', keys: ['type', 'sb'] },
+    {
+        label: 'Game metrics',
+        keys: [
+            'keptPct', 'keptWinPct', 'castPct', 'castWinPct', 'playedPct',
+            'pregamePct', 'pregameWinPct', 'seenPct', 'seenWinPct',
+            'sbOutPct', 'sbInPct', 'games',
+        ],
+    },
+    {
+        label: 'Casting costs',
+        keys: ['kicked', 'activated', ...CASTING_METHOD_COLUMNS.map((col) => col.key)],
+    },
+];
+
 export type CardStatsVisibility = Record<CardStatsColumnKey, boolean>;
 
 export type CardStatsPerspective = 'mine' | 'theirs';
@@ -29,8 +79,10 @@ export type CardStatsPerspective = 'mine' | 'theirs';
  */
 export const LOCAL_ONLY_COLUMNS: readonly CardStatsColumnKey[] = ['sb', 'keptPct', 'keptWinPct', 'sbOutPct', 'sbInPct'] as const;
 
+const CASTING_METHOD_KEYS: readonly string[] = CASTING_METHOD_COLUMNS.map((col) => col.key);
+
 export const DEFAULT_CARD_STATS_VISIBILITY: CardStatsVisibility = Object.fromEntries(
-    CARD_STATS_COLUMNS.map((col) => [col.key, true]),
+    CARD_STATS_COLUMNS.map((col) => [col.key, !CASTING_METHOD_KEYS.includes(col.key)]),
 ) as CardStatsVisibility;
 
 export const CARD_STATS_VISIBILITY_STORAGE_KEY = 'cardStatsVisibleColumns';

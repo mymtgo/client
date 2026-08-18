@@ -3,6 +3,7 @@
 namespace App\Actions;
 
 use App\Actions\Archetypes\EstimateArchetypeLocally;
+use App\Jobs\DownloadArchetypes;
 use App\Models\Archetype;
 use App\Models\ArchetypeDeck;
 use App\Models\ArchetypeMatchAttempt;
@@ -50,7 +51,8 @@ class DetermineDeckArchetype
 
         if ($response->ok() && is_array($archetypes) && count($archetypes)) {
             $archetype = $archetypes[0];
-            $archetypeModel = Archetype::where('uuid', $archetype['uuid'])->first();
+            $archetypeModel = Archetype::where('uuid', $archetype['uuid'])->first()
+                ?? self::syncUnknownArchetype($archetype['uuid']);
 
             if ($archetypeModel) {
                 $deckVersionUuid = $archetype['deck_version_uuid'] ?? null;
@@ -85,6 +87,26 @@ class DetermineDeckArchetype
         }
 
         return $result;
+    }
+
+    /**
+     * The API mints archetypes on demand, so an estimate can name a uuid this
+     * client has never synced. Pull the current archetype list and upsert it
+     * rather than dropping a perfectly good classification on the floor.
+     */
+    private static function syncUnknownArchetype(string $uuid): ?Archetype
+    {
+        try {
+            $response = Http::mymtgoApi()->get('/api/archetypes');
+
+            if ($response->ok() && is_array($response->json())) {
+                DownloadArchetypes::upsert($response->json());
+            }
+        } catch (\Throwable $e) {
+            Log::warning('Failed to sync unknown archetype from API: '.$e->getMessage());
+        }
+
+        return Archetype::where('uuid', $uuid)->first();
     }
 
     private static function logAttempt(

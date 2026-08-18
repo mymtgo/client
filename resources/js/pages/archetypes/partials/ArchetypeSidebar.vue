@@ -1,16 +1,13 @@
 <script setup lang="ts">
 import ShowController from '@/actions/App/Http/Controllers/Archetypes/ShowController';
 import CreateController from '@/actions/App/Http/Controllers/Archetypes/CreateController';
-import DownloadController from '@/actions/App/Http/Controllers/Archetypes/DownloadController';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import ManaSymbols from '@/components/ManaSymbols.vue';
-import { useToast } from '@/composables/useToast';
-import { Link, router, usePage } from '@inertiajs/vue3';
+import RefreshShowController from '@/actions/App/Http/Controllers/Archetypes/Refresh/ShowController';
+import { Link, router } from '@inertiajs/vue3';
 import { ChevronLeft, ChevronRight, Plus, RefreshCw } from 'lucide-vue-next';
 import { ref, watch } from 'vue';
-
-const { add: toast } = useToast();
 
 const props = defineProps<{
     archetypes: {
@@ -28,26 +25,6 @@ const props = defineProps<{
 
 const search = ref(props.filters.search);
 const format = ref(props.filters.format);
-const syncing = ref(false);
-
-function syncArchetypes() {
-    if (syncing.value) return;
-
-    syncing.value = true;
-    router.post(DownloadController.url(), {}, {
-        preserveState: true,
-        preserveScroll: true,
-        onSuccess: (page) => {
-            const flash = (page.props as { flash?: { error?: string } }).flash;
-            if (flash?.error) {
-                toast({ type: 'error', title: 'Sync Failed', message: flash.error });
-            }
-        },
-        onFinish: () => {
-            syncing.value = false;
-        },
-    });
-}
 
 let debounceTimer: ReturnType<typeof setTimeout>;
 
@@ -106,14 +83,13 @@ function goToPage(page: number) {
                 <Plus class="size-4" />
                 Create New
             </Link>
-            <button
-                :disabled="syncing"
-                class="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground disabled:opacity-50"
-                title="Sync archetypes"
-                @click="syncArchetypes"
+            <Link
+                :href="RefreshShowController.url()"
+                class="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground"
+                title="Refresh archetypes"
             >
-                <RefreshCw class="size-4" :class="{ 'animate-spin': syncing }" />
-            </button>
+                <RefreshCw class="size-4" />
+            </Link>
         </div>
 
         <div class="flex-1 overflow-y-auto">

@@ -7,6 +7,53 @@ use App\Actions\Matches\ExtractGameResults;
 class ExtractCardsFromGameLog
 {
     /**
+     * Every per-card counter this extractor produces. Shared by the stats
+     * pipeline (aggregation, card_game_stats columns, API payload).
+     *
+     * @var list<string>
+     */
+    public const COUNTER_FIELDS = [
+        'cast', 'played', 'kicked', 'flashback', 'madness', 'evoked', 'warp',
+        'free_cast', 'bargained', 'dashed', 'bestowed', 'replicated',
+        'spectacle', 'rebound', 'escaped', 'ninjutsu', 'suspended', 'buyback',
+        'disturb', 'foretold', 'retraced', 'mayhem', 'miracle', 'gifted',
+        'casualty', 'activated',
+    ];
+
+    /**
+     * Casting-method detection: counter field => needles matched (case-sensitive,
+     * any hit) against the text after the card reference in a "casts" line.
+     * Phrasings captured from real MTGO logs — casing is exactly what MTGO emits.
+     *
+     * @var array<string, list<string>>
+     */
+    private const CAST_SUFFIX_FLAGS = [
+        'kicked' => ['with kicker', 'kicked '],
+        'flashback' => ['Flashback'],
+        'madness' => ['Madness'],
+        'evoked' => ['evoke'],
+        'warp' => ['with warp', 'for its warp cost'],
+        'free_cast' => ['without paying its mana cost'],
+        'bargained' => ['with Bargain'],
+        'dashed' => ['with dash', 'for its dash cost'],
+        'bestowed' => ['with Bestow', 'for its bestow cost'],
+        'replicated' => ['with Replicate', '(Replicated'],
+        'spectacle' => ['with Spectacle', 'for its spectacle cost'],
+        'rebound' => ['with Rebound'],
+        'escaped' => ['for its escape cost'],
+        'ninjutsu' => ['with sneak'],
+        'suspended' => ['with suspend'],
+        'buyback' => ['with buyback'],
+        'disturb' => ['with disturb'],
+        'foretold' => ['foretell cost'],
+        'retraced' => ['with Retrace'],
+        'mayhem' => ['with Mayhem'],
+        'miracle' => ['with Miracle'],
+        'gifted' => ['with Gift'],
+        'casualty' => ['with Casualty'],
+    ];
+
+    /**
      * Extract unique card names and CatalogIDs per player from parsed game log entries.
      *
      * Returns match-level aggregates (cards_by_player), per-game breakdowns (cards_by_game),
@@ -20,7 +67,7 @@ class ExtractCardsFromGameLog
         $players = ExtractGameResults::detectPlayers($entries);
         $games = ExtractGameResults::splitIntoGames($entries);
 
-        $aggregateFields = ['cast', 'played', 'kicked', 'flashback', 'madness', 'evoked', 'activated'];
+        $aggregateFields = self::COUNTER_FIELDS;
 
         // Per-game extraction
         $cardsByGame = [];
@@ -81,7 +128,7 @@ class ExtractCardsFromGameLog
     {
         $cardsByPlayer = [];
         $seen = [];
-        $counterFields = ['cast', 'played', 'kicked', 'flashback', 'madness', 'evoked', 'activated'];
+        $counterFields = self::COUNTER_FIELDS;
         $counts = [];
 
         foreach ($players as $player) {
@@ -114,13 +161,7 @@ class ExtractCardsFromGameLog
                     $cardsByPlayer[$player][] = [
                         'mtgo_id' => $card['mtgo_id'],
                         'name' => $card['name'],
-                        'cast' => 0,
-                        'played' => 0,
-                        'kicked' => 0,
-                        'flashback' => 0,
-                        'madness' => 0,
-                        'evoked' => 0,
-                        'activated' => 0,
+                        ...array_fill_keys(self::COUNTER_FIELDS, 0),
                     ];
                 }
             }
@@ -154,27 +195,38 @@ class ExtractCardsFromGameLog
         // ---------------------------------------------------------------
 
         // "@PPlayer casts @[Card]..."
-        // The cast card is the player's. Capture rest of line for alternative cost detection.
+        // The cast card is the player's. Capture rest of line for casting-method detection.
         if (preg_match('/@P'.$qp.' casts @\[([^@]+)@:(\d+),\d+:@\](.*)/', $msg, $m)) {
             $suffix = $m[3];
 
-            return [self::card($m[1], $m[2],
-                cast: true,
-                kicked: str_contains($suffix, 'with kicker'),
-                flashback: str_contains($suffix, 'Flashback'),
-                madness: str_contains($suffix, 'Madness'),
-                evoked: str_contains($suffix, 'evoke'),
-            )];
+            $flags = ['cast'];
+            foreach (self::CAST_SUFFIX_FLAGS as $field => $needles) {
+                foreach ($needles as $needle) {
+                    if (str_contains($suffix, $needle)) {
+                        $flags[] = $field;
+
+                        break;
+                    }
+                }
+            }
+
+            return [self::card($m[1], $m[2], $flags)];
         }
 
         // "@PPlayer plays @[Card]."
         if (preg_match('/@P'.$qp.' plays @\[([^@]+)@:(\d+),\d+:@\]/', $msg, $m)) {
-            return [self::card($m[1], $m[2], played: true)];
+            return [self::card($m[1], $m[2], ['played'])];
+        }
+
+        // "@PPlayer activates Ninjutsu ability of @[Card]." — ninjutsu puts the
+        // creature onto the battlefield without a cast line.
+        if (preg_match('/@P'.$qp.' activates Ninjutsu ability of @\[([^@]+)@:(\d+),\d+:@\]/', $msg, $m)) {
+            return [self::card($m[1], $m[2], ['ninjutsu'])];
         }
 
         // "@PPlayer activates an ability of @[Card]..."
         if (preg_match('/@P'.$qp.' activates an ability of @\[([^@]+)@:(\d+),\d+:@\]/', $msg, $m)) {
-            return [self::card($m[1], $m[2], activated: true)];
+            return [self::card($m[1], $m[2], ['activated'])];
         }
 
         // "@PPlayer puts a triggered ability from @[Card] onto the stack..."
@@ -366,24 +418,25 @@ class ExtractCardsFromGameLog
     }
 
     /**
-     * Build a card entry from a regex match.
+     * Build a card entry from a regex match with the given counter flags set.
      *
-     * @return array{mtgo_id: int, name: string, cast: bool, played: bool, kicked: bool, flashback: bool, madness: bool, evoked: bool, activated: bool}
+     * @param  list<string>  $flags  COUNTER_FIELDS entries to mark true
+     * @return array<string, mixed>
      */
-    private static function card(string $name, string $rawId, bool $cast = false, bool $played = false, bool $kicked = false, bool $flashback = false, bool $madness = false, bool $evoked = false, bool $activated = false): array
+    private static function card(string $name, string $rawId, array $flags = []): array
     {
         // Game log IDs are doubled CatalogIDs (front face = catId*2,
         // back face = catId*2+1). Right-shift to get the real CatalogID.
-        return [
+        $entry = [
             'mtgo_id' => (int) $rawId >> 1,
             'name' => $name,
-            'cast' => $cast,
-            'played' => $played,
-            'kicked' => $kicked,
-            'flashback' => $flashback,
-            'madness' => $madness,
-            'evoked' => $evoked,
-            'activated' => $activated,
+            ...array_fill_keys(self::COUNTER_FIELDS, false),
         ];
+
+        foreach ($flags as $flag) {
+            $entry[$flag] = true;
+        }
+
+        return $entry;
     }
 }

@@ -3,6 +3,7 @@ import DashboardController from '@/actions/App/Http/Controllers/IndexController'
 import ImportIndexController from '@/actions/App/Http/Controllers/Import/IndexController';
 import SettingsIndexController from '@/actions/App/Http/Controllers/Settings/IndexController';
 import SwitchAccountController from '@/actions/App/Http/Controllers/Settings/SwitchAccountController';
+import AppNav from '@/components/AppNav.vue';
 import { ButtonLink } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Link, router, usePage } from '@inertiajs/vue3';
@@ -25,10 +26,16 @@ function switchAccount(username: string) {
 </script>
 
 <template>
-    <header class="flex h-12 shrink-0 items-center justify-between border-b border-black/80 bg-black/10 px-4 text-sidebar-foreground">
-        <Link :href="DashboardController.url()" class="text-base font-semibold tracking-tight"> mymtgo </Link>
+    <header class="flex h-12 shrink-0 items-center justify-between gap-4 border-b border-black/80 bg-black/10 px-4 text-sidebar-foreground">
+        <div class="flex min-w-0 items-center gap-3">
+            <Link :href="DashboardController.url()" class="shrink-0" aria-label="mymtgo home">
+                <img src="/icon.png" alt="mymtgo" class="size-7 rounded-md" />
+            </Link>
 
-        <div class="flex items-center gap-2">
+            <AppNav />
+        </div>
+
+        <div class="flex shrink-0 items-center gap-2">
             <DropdownMenu v-if="page.props.accounts && page.props.accounts.length > 1">
                 <DropdownMenuTrigger
                     class="inline-flex items-center gap-1 rounded-md px-2 py-1 text-sm text-sidebar-foreground/70 transition-colors hover:text-sidebar-foreground"

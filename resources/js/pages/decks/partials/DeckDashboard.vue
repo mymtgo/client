@@ -51,7 +51,8 @@ const worstArchetype = computed(() => {
     if (!props.matchupSpread?.length) return null;
     const eligible = props.matchupSpread.filter((m: any) => m.matches >= MIN_MATCHES_THRESHOLD);
     if (!eligible.length) return null;
-    return eligible.reduce((worst: any, m: any) => m.match_winrate < worst.match_winrate ? m : worst);
+    const worst = eligible.reduce((worst: any, m: any) => m.match_winrate < worst.match_winrate ? m : worst);
+    return worst === bestArchetype.value ? null : worst;
 });
 
 const activeLeagueResults = computed(() => props.leagueResults ?? { '5-0': 0, '4-1': 0, '3-2': 0, '2-3': 0, '1-4': 0, '0-5': 0 });

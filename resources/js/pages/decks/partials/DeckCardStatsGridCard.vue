@@ -5,33 +5,17 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import type { ShrinkKey } from '@/lib/stats/shrinkage';
 import {
     CARD_STATS_COLUMNS,
+    CASTING_METHOD_COLUMNS,
     DEFAULT_CARD_STATS_VISIBILITY,
     type CardStatsColumnKey,
     type CardStatsPerspective,
     type CardStatsVisibility,
 } from '@/pages/decks/partials/cardStatsColumns';
+import type { DeckCardStat } from '@/types/decks';
 import { ImageOff } from 'lucide-vue-next';
 import { computed } from 'vue';
 
-type CardStat = {
-    name: string;
-    oracleId: string;
-    colorIdentity: string | null;
-    type: string | null;
-    image: string | null;
-    isSideboard: boolean;
-    totalGames: number;
-    keptGames: number;
-    seenGames: number;
-    castGames: number;
-    postboardGames: number;
-    sidedOutGames: number;
-    sidedInGames: number;
-    playedGames: number;
-    totalKicked: number;
-    totalActivated: number;
-    pregameGames: number;
-};
+type CardStat = DeckCardStat;
 
 const props = withDefaults(
     defineProps<{
@@ -97,9 +81,15 @@ function buildField(key: CardStatsColumnKey): Omit<GridField, 'key'> | null {
             return { label: 'SB in', render: { kind: 'pct', value: fmt.pct(s.sidedInGames, s.postboardGames), count: s.sidedInGames } };
         case 'games':
             return { label: 'Games', render: { kind: 'count', value: s.totalGames, zeroDash: false } };
-        default:
+        default: {
+            const castingColumn = CASTING_METHOD_COLUMNS.find((col) => col.key === key);
+            if (castingColumn) {
+                return { label: castingColumn.label, render: { kind: 'count', value: s[castingColumn.statField] as number, zeroDash: true } };
+            }
+
             // 'type' / 'sb' carry no stat value in tile form.
             return null;
+        }
     }
 }
 

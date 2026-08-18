@@ -371,3 +371,43 @@ it('credits a concede win to a dotted local player', function () {
     expect($result['games'][0]['winner'])->toBe('mr.moo');
     expect($result['games'][0]['end_reason'])->toBe('concede');
 });
+
+/*
+|--------------------------------------------------------------------------
+| Spaced Usernames
+|--------------------------------------------------------------------------
+| MTGO usernames may contain spaces (e.g. "Steve O"). A spaced player
+| whose name fails the pattern is invisible to the whole pipeline: never
+| detected, so their results, cards, and stats are all silently dropped.
+*/
+
+it('detects players with spaces in usernames', function () {
+    $entries = [
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@PSteve O rolled a 3.'],
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@Panticloser rolled a 4.'],
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@PSteve O joined the game.'],
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@Panticloser joined the game.'],
+    ];
+
+    $players = ExtractGameResults::detectPlayers($entries);
+
+    expect($players)->toContain('Steve O');
+    expect($players)->toContain('anticloser');
+});
+
+it('resolves game results against a spaced opponent', function () {
+    $entries = [
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@PSteve O joined the game.'],
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@Panticloser joined the game.'],
+        ['timestamp' => '2026-01-01T00:00:01+00:00', 'message' => '@PSteve O chooses to play first.'],
+        ['timestamp' => '2026-01-01T00:00:02+00:00', 'message' => '@PSteve O begins the game with seven cards in hand.'],
+        ['timestamp' => '2026-01-01T00:00:02+00:00', 'message' => '@Panticloser begins the game with seven cards in hand.'],
+        ['timestamp' => '2026-01-01T00:00:03+00:00', 'message' => '@Panticloser wins the game.'],
+    ];
+
+    $result = ExtractGameResults::run($entries, 'anticloser');
+
+    expect($result['games'][0]['winner'])->toBe('anticloser');
+    expect($result['games'][0]['on_play'])->toBe('Steve O');
+    expect($result['games'][0]['starting_hands'])->toHaveKey('Steve O');
+});

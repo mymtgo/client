@@ -4,7 +4,6 @@ namespace App\Jobs;
 
 use App\Facades\AppSettings;
 use App\Models\Archetype;
-use Carbon\Carbon;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Bus;
@@ -25,18 +24,13 @@ class RefreshArchetypes implements ShouldQueue
 
     public function handle(): void
     {
-        // Guard against re-entry. NativePHP respawns `schedule:run` mid-tick,
-        // and the scheduler's `withoutOverlapping` only covers the milliseconds
-        // it takes to push this parent job onto the queue — not the long-lived
-        // batch this parent dispatches. Without this check, every fresh
-        // schedule:run within the daily-eligible minute would queue another
-        // parent, each spawning a full 700+ child batch. See
-        // memory/refresh_archetypes_re_entry_trap.md.
-        if (! self::isStale() || AppSettings::archetypesRefreshInProgress()) {
+        // Guard against re-entry: a manual refresh can be triggered again while
+        // the long-lived decklist batch from a previous run is still in flight.
+        // Without this check each trigger would spawn another full 700+ child
+        // batch. See memory/refresh_archetypes_re_entry_trap.md.
+        if (AppSettings::archetypesRefreshInProgress()) {
             return;
         }
-
-        (new DownloadArchetypes)->handle();
 
         $archetypeIds = Archetype::query()
             ->where('is_fallback', false)
@@ -68,13 +62,6 @@ class RefreshArchetypes implements ShouldQueue
                 self::bumpCacheVersion();
             })
             ->dispatch();
-    }
-
-    public static function isStale(): bool
-    {
-        $last = AppSettings::archetypesLastRefreshedAt();
-
-        return ! $last || Carbon::parse($last)->lt(now()->subDay());
     }
 
     private static function bumpCacheVersion(): void

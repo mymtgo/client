@@ -311,6 +311,63 @@ it('treats different printings of the same card as identical (oracle_id match)',
     expect($result['sideboardChanges'])->toBe([]);
 });
 
+it('includes opponent cards seen only in the game log (absent from final snapshot)', function () {
+    // A card the opponent cast that later left visible zones (e.g. Lembas
+    // shuffled into its owner's library) is missing from deck_json but
+    // present in the game log. It must still appear in opponentCardsSeen.
+    $land = Card::factory()->create(['mtgo_id' => 8001, 'name' => 'Swamp', 'type' => 'Basic Land — Swamp']);
+    $lembas = Card::factory()->create(['mtgo_id' => 8002, 'name' => 'Lembas', 'type' => 'Artifact']);
+
+    $game = makeGameWithLocalDeck([], [
+        ['mtgo_id' => 8001, 'quantity' => 2, 'sideboard' => false],
+    ]);
+
+    $cardsByMtgoId = collect([8001 => $land, 8002 => $lembas]);
+
+    $result = BuildMatchGameData::run($game, 1, $cardsByMtgoId, collect(), [], [
+        ['mtgo_id' => 8002, 'name' => 'Lembas', 'cast' => 1, 'played' => 0],
+    ]);
+
+    $names = collect($result['opponentCardsSeen'])->pluck('name');
+    expect($names)->toContain('Swamp')
+        ->and($names)->toContain('Lembas');
+
+    $lembasEntry = collect($result['opponentCardsSeen'])->firstWhere('name', 'Lembas');
+    expect($lembasEntry['quantity'])->toBe(1)
+        ->and($lembasEntry['type'])->toBe('Artifact');
+});
+
+it('does not duplicate a log card already visible under its multi-face parent name', function () {
+    // Log records the cast under the face name/id (Petty Theft), the snapshot
+    // stores the parent printing (Brazen Borrower // Petty Theft). The rail
+    // already shows the parent — do not add a second entry.
+    $parent = Card::factory()->create(['mtgo_id' => 9001, 'name' => 'Brazen Borrower // Petty Theft', 'type' => 'Creature']);
+
+    $game = makeGameWithLocalDeck([], [
+        ['mtgo_id' => 9001, 'quantity' => 1, 'sideboard' => false],
+    ]);
+
+    $cardsByMtgoId = collect([9001 => $parent]);
+
+    $result = BuildMatchGameData::run($game, 1, $cardsByMtgoId, collect(), [], [
+        ['mtgo_id' => 9002, 'name' => 'Petty Theft', 'cast' => 1, 'played' => 0],
+    ]);
+
+    expect($result['opponentCardsSeen'])->toHaveCount(1)
+        ->and($result['opponentCardsSeen'][0]['name'])->toBe('Brazen Borrower // Petty Theft');
+});
+
+it('falls back to the log-provided name when the log card id is unknown', function () {
+    $game = makeGameWithLocalDeck([], []);
+
+    $result = BuildMatchGameData::run($game, 1, collect(), collect(), [], [
+        ['mtgo_id' => 7777, 'name' => 'Once Upon a Time', 'cast' => 1, 'played' => 0],
+    ]);
+
+    expect($result['opponentCardsSeen'])->toHaveCount(1)
+        ->and($result['opponentCardsSeen'][0]['name'])->toBe('Once Upon a Time');
+});
+
 it('compares correctly when registered cards are legacy (oracle_id only, no mtgo_id)', function () {
     // Legacy DeckVersion accessor output: oracle_id present, mtgo_id absent.
     // cardsByOracleId provides the mtgo_id resolution path.

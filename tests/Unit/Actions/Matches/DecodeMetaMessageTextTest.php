@@ -232,3 +232,27 @@ it('extracts opening-hand reveal text', function () {
 
     expect(DecodeMetaMessageText::run($bytes))->toBe('@PPlayer reveals @[Card@:111,2:@] from their opening hand');
 });
+
+it('extracts cast text for usernames containing spaces', function () {
+    $text = '@PSteve O casts @[Behold the Multiverse@:174834,100:@] by paying its foretell cost.';
+    $len = strlen($text);
+    $bytes = array_merge(
+        [$len + 24, 0, 0, 0, 3, 17, 186, 129, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [$len, 0, 0, 0],
+        array_map('ord', str_split($text)),
+    );
+
+    expect(DecodeMetaMessageText::run($bytes))->toBe($text);
+});
+
+it('extracts roll text for usernames containing spaces', function () {
+    $text = '@PSteve O rolled a 3.';
+    $len = strlen($text);
+    $bytes = array_merge(
+        [$len + 24, 0, 0, 0, 3, 17, 186, 129, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [$len, 0, 0, 0],
+        array_map('ord', str_split($text)),
+    );
+
+    expect(DecodeMetaMessageText::run($bytes))->toBe($text);
+});
