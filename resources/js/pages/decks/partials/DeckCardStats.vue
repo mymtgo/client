@@ -236,7 +236,7 @@ async function copyScreenshot(stat: DeckCardStat) {
 </script>
 
 <template>
-    <div class="space-y-3">
+    <div class="flex min-h-0 flex-1 flex-col gap-3">
         <div class="flex flex-wrap items-center justify-between gap-2">
             <TimeframeFilter :model-value="props.timeframe ?? 'alltime'" @update:model-value="setTimeframe" />
 
