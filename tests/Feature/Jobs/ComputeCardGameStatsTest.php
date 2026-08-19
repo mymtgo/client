@@ -1299,3 +1299,45 @@ it('preserves stats for a game the log has no entry for (game-index misalignment
     expect($g2)->not->toBeNull();
     expect($g2->cast)->toBe(4);
 });
+
+it('still updates existing stats when the log does cover the game', function () {
+    // Guard regression check: preserving data when the log cannot speak for a
+    // game must NOT freeze games the log covers — those stay authoritative.
+    [$match, $deckVersion, $local, $opponent] = createMatchWithGames();
+
+    Card::factory()->create(['oracle_id' => 'oracle-a', 'mtgo_id' => 1001, 'name' => 'Card A']);
+
+    $game = Game::factory()->for($match, 'match')->create(['won' => true, 'started_at' => now()]);
+    attachPlayers($game, $local, $opponent, deckJson: [
+        ['mtgo_id' => 1001, 'quantity' => 4, 'sideboard' => false],
+    ]);
+    createTimeline($game, [
+        ['Id' => 10, 'CatalogID' => 1001, 'Zone' => 'Hand', 'Owner' => 0, 'Controller' => 0],
+    ]);
+
+    // Stale row from an earlier run claims a single cast.
+    DB::table('card_game_stats')->insert([
+        'oracle_id' => 'oracle-a', 'game_id' => $game->id, 'deck_version_id' => $deckVersion->id,
+        'quantity' => 4, 'kept' => 1, 'seen' => 1, 'cast' => 1,
+        'won' => true, 'is_postboard' => false, 'sided_out' => false, 'sided_in' => false,
+        'opponent' => false, 'created_at' => now(), 'updated_at' => now(),
+    ]);
+
+    GameLog::create([
+        'match_token' => $match->token,
+        'file_path' => '/some/path.dat',
+        'decoded_entries' => [
+            ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@Ptestplayer joined the game.'],
+            ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@Popponent joined the game.'],
+            ['timestamp' => '2026-01-01T00:00:01+00:00', 'message' => '@Ptestplayer casts @[Card A@:2002,100:@].'],
+            ['timestamp' => '2026-01-01T00:00:02+00:00', 'message' => '@Ptestplayer casts @[Card A@:2002,101:@].'],
+            ['timestamp' => '2026-01-01T00:00:03+00:00', 'message' => '@Ptestplayer wins the game.'],
+        ],
+    ]);
+
+    (new ComputeCardGameStats($match->id, fromGameLog: true))->handle();
+
+    // Log says two casts — the recompute must win, not the preserved row.
+    expect(DB::table('card_game_stats')->where('game_id', $game->id)->value('cast'))->toBe(2);
+    expect(DB::table('card_game_stats')->where('game_id', $game->id)->count())->toBe(1);
+});
