@@ -136,6 +136,68 @@ it('aggregates opponent cards across games and caps quantity at 4', function ():
     });
 });
 
+it('sends per-game turn count and timing', function (): void {
+    Http::fake([
+        '*/api/matches/report' => Http::response([], 200),
+        '*' => Http::response([]),
+    ]);
+
+    $match = makeSubmittableMatch([
+        [['mtgo_id' => 4001, 'quantity' => 1]],
+    ]);
+
+    $match->games()->update([
+        'turn_count' => 12,
+        'started_at' => '2026-08-19 10:00:00',
+        'ended_at' => '2026-08-19 10:14:30',
+    ]);
+
+    SubmitMatchToApi::run($match->id);
+
+    Http::assertSent(function ($request) {
+        if (! str_contains($request->url(), '/api/matches/report')) {
+            return false;
+        }
+
+        expect($request['games'][0]['turn_count'])->toBe(12);
+        expect($request['games'][0]['started_at'])->toBe('2026-08-19T10:00:00+00:00');
+        expect($request['games'][0]['ended_at'])->toBe('2026-08-19T10:14:30+00:00');
+
+        return true;
+    });
+});
+
+it('sends null turn count and ended_at for games that never recorded them', function (): void {
+    Http::fake([
+        '*/api/matches/report' => Http::response([], 200),
+        '*' => Http::response([]),
+    ]);
+
+    $match = makeSubmittableMatch([
+        [['mtgo_id' => 4002, 'quantity' => 1]],
+    ]);
+
+    $match->games()->update([
+        'turn_count' => null,
+        'ended_at' => null,
+    ]);
+
+    SubmitMatchToApi::run($match->id);
+
+    Http::assertSent(function ($request) {
+        if (! str_contains($request->url(), '/api/matches/report')) {
+            return false;
+        }
+
+        expect($request['games'][0])->toHaveKeys(['turn_count', 'started_at', 'ended_at']);
+        expect($request['games'][0]['turn_count'])->toBeNull();
+        expect($request['games'][0]['ended_at'])->toBeNull();
+        expect($request['games'][0]['started_at'])->not->toBeNull();
+
+        return true;
+    });
+});
+
 it('sends a null league_run for non-league matches', function (): void {
     Http::fake([
         '*/api/matches/report' => Http::response([], 200),
