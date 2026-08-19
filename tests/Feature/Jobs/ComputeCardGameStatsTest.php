@@ -1198,3 +1198,104 @@ it('stores free_cast counts on card_game_stats', function () {
     expect($stat->cast)->toBe(1);
     expect($stat->free_cast)->toBe(1);
 });
+
+it('preserves existing stats when regenerating a match with no game-log source', function () {
+    // Regression: the upgrade regen recomputes fromGameLog. For matches whose
+    // .dat is gone and log_events are pruned there is NO log source — the
+    // recompute must skip the match, not overwrite good cast counts with 0.
+    [$match, $deckVersion, $local, $opponent] = createMatchWithGames();
+
+    Card::factory()->create(['oracle_id' => 'oracle-a', 'mtgo_id' => 1001, 'name' => 'Card A']);
+
+    $game = Game::factory()->for($match, 'match')->create([
+        'won' => true,
+        'started_at' => now(),
+    ]);
+    attachPlayers($game, $local, $opponent, deckJson: [
+        ['mtgo_id' => 1001, 'quantity' => 4, 'sideboard' => false],
+    ]);
+    createTimeline($game, [
+        ['Id' => 10, 'CatalogID' => 1001, 'Zone' => 'Hand', 'Owner' => 0, 'Controller' => 0],
+    ]);
+
+    // Existing stats from an earlier live-path run.
+    DB::table('card_game_stats')->insert([
+        'oracle_id' => 'oracle-a',
+        'game_id' => $game->id,
+        'deck_version_id' => $deckVersion->id,
+        'quantity' => 4,
+        'kept' => 1,
+        'seen' => 1,
+        'cast' => 5,
+        'won' => true,
+        'is_postboard' => false,
+        'sided_out' => false,
+        'sided_in' => false,
+        'opponent' => false,
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    // No GameLog row, no log_events: nothing to recompute casts from.
+    (new ComputeCardGameStats($match->id, fromGameLog: true))->handle();
+
+    $stat = DB::table('card_game_stats')
+        ->where('oracle_id', 'oracle-a')
+        ->where('game_id', $game->id)
+        ->first();
+
+    expect($stat)->not->toBeNull();
+    expect($stat->cast)->toBe(5);
+});
+
+it('preserves stats for a game the log has no entry for (game-index misalignment)', function () {
+    // Regression: log stats are joined to DB games by array index. When the
+    // decoded log holds fewer games than the DB (partial .dat, imported match),
+    // the trailing DB games look up a nonexistent index and every log-derived
+    // counter is written as 0, wiping good data.
+    [$match, $deckVersion, $local, $opponent] = createMatchWithGames();
+
+    Card::factory()->create(['oracle_id' => 'oracle-a', 'mtgo_id' => 1001, 'name' => 'Card A']);
+    $deckJson = [['mtgo_id' => 1001, 'quantity' => 4, 'sideboard' => false]];
+
+    $game1 = Game::factory()->for($match, 'match')->create(['won' => true, 'started_at' => now()]);
+    attachPlayers($game1, $local, $opponent, deckJson: $deckJson);
+    createTimeline($game1, [
+        ['Id' => 10, 'CatalogID' => 1001, 'Zone' => 'Hand', 'Owner' => 0, 'Controller' => 0],
+    ]);
+
+    $game2 = Game::factory()->for($match, 'match')->create(['won' => true, 'started_at' => now()->addMinutes(10)]);
+    attachPlayers($game2, $local, $opponent, deckJson: $deckJson);
+    createTimeline($game2, [
+        ['Id' => 11, 'CatalogID' => 1001, 'Zone' => 'Hand', 'Owner' => 0, 'Controller' => 0],
+    ]);
+
+    // Game 2 already has good log-derived data from the live path.
+    DB::table('card_game_stats')->insert([
+        'oracle_id' => 'oracle-a', 'game_id' => $game2->id, 'deck_version_id' => $deckVersion->id,
+        'quantity' => 4, 'kept' => 1, 'seen' => 1, 'cast' => 4,
+        'won' => true, 'is_postboard' => true, 'sided_out' => false, 'sided_in' => false,
+        'opponent' => false, 'created_at' => now(), 'updated_at' => now(),
+    ]);
+
+    // Decoded log covers ONE game only.
+    GameLog::create([
+        'match_token' => $match->token,
+        'file_path' => '/some/path.dat',
+        'decoded_entries' => [
+            ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@Ptestplayer joined the game.'],
+            ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@Popponent joined the game.'],
+            ['timestamp' => '2026-01-01T00:00:01+00:00', 'message' => '@Ptestplayer casts @[Card A@:2002,100:@].'],
+            ['timestamp' => '2026-01-01T00:00:02+00:00', 'message' => '@Ptestplayer wins the game.'],
+        ],
+    ]);
+
+    (new ComputeCardGameStats($match->id, fromGameLog: true))->handle();
+
+    $g1 = DB::table('card_game_stats')->where('game_id', $game1->id)->where('oracle_id', 'oracle-a')->first();
+    $g2 = DB::table('card_game_stats')->where('game_id', $game2->id)->where('oracle_id', 'oracle-a')->first();
+
+    expect($g1->cast)->toBe(1);
+    expect($g2)->not->toBeNull();
+    expect($g2->cast)->toBe(4);
+});

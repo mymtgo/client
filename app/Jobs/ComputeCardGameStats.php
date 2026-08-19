@@ -17,6 +17,7 @@ use App\Models\Game;
 use App\Models\MtgoMatch;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 
 class ComputeCardGameStats implements ShouldQueue
@@ -44,10 +45,6 @@ class ComputeCardGameStats implements ShouldQueue
 
         $games = $match->games->sortBy('started_at')->values();
 
-        // Delete-then-insert: re-runs stay idempotent. Without this, insertOrIgnore
-        // leaves stale rows for cards no longer in the deck or no longer signaled by opp.
-        CardGameStat::whereIn('game_id', $games->pluck('id'))->delete();
-
         $imported = (bool) $match->imported;
 
         // Imported matches are created with a random token unrelated to their
@@ -70,6 +67,30 @@ class ComputeCardGameStats implements ShouldQueue
             ? ExtractCardsFromGameLog::run($entries)
             : null;
 
+        // No game-log source (the .dat is gone from disk and log_events are
+        // pruned): recomputing would overwrite good log-derived counters (cast,
+        // played, ...) with zeros. Keep whatever an earlier run produced and
+        // only compute fresh when the match has no stats at all — timeline
+        // -derived kept/seen are still better than nothing.
+        if ($gameLogStats === null
+            && CardGameStat::whereIn('game_id', $games->pluck('id'))->exists()
+        ) {
+            Log::channel('pipeline')->info("ComputeCardGameStats: no game-log source for match {$match->id}, keeping existing stats");
+
+            return;
+        }
+
+        // Log stats are joined to games by array index, but the two lists are
+        // derived independently — a partial .dat can hold fewer games than the
+        // DB, so trailing games would look up a nonexistent index and have every
+        // log-derived counter written as 0. Skip any game the log cannot speak
+        // for when it already carries counters from an earlier run.
+        $skipGameIds = $this->gamesWithoutLogCoverage($games, $gameLogStats);
+
+        // Delete-then-insert: re-runs stay idempotent. Without this, insertOrIgnore
+        // leaves stale rows for cards no longer in the deck or no longer signaled by opp.
+        CardGameStat::whereIn('game_id', $games->pluck('id')->diff($skipGameIds))->delete();
+
         $sideboardOracleIds = $this->resolveSideboardOracleIds($match->deck_version_id);
 
         // Imported matches build deck_json from cards "seen" in the game log only,
@@ -82,6 +103,10 @@ class ComputeCardGameStats implements ShouldQueue
         $game1Quantities = null;
 
         foreach ($games as $index => $game) {
+            if ($skipGameIds->contains($game->id)) {
+                continue;
+            }
+
             $isPostboard = $index > 0;
             $next = $this->processGame($game, $match->deck_version_id, $isPostboard, $game1Quantities, $gameLogStats, $index, $sideboardOracleIds, $imported);
 
@@ -89,6 +114,45 @@ class ComputeCardGameStats implements ShouldQueue
                 $game1Quantities = $next;
             }
         }
+    }
+
+    /**
+     * Ids of games the game log holds no entry for, which already carry
+     * log-derived counters from an earlier run. Recomputing these would replace
+     * real counters with zeros, so they are left exactly as they are.
+     *
+     * @param  Collection<int, Game>  $games
+     * @param  array<string, mixed>|null  $gameLogStats
+     * @return Collection<int, int>
+     */
+    private function gamesWithoutLogCoverage($games, ?array $gameLogStats)
+    {
+        if ($gameLogStats === null) {
+            return collect();
+        }
+
+        $signalExpression = collect(ExtractCardsFromGameLog::COUNTER_FIELDS)
+            ->map(fn (string $field) => "COALESCE(\"{$field}\", 0)")
+            ->implode(' + ');
+
+        return $games
+            ->filter(function (Game $game, int $index) use ($gameLogStats) {
+                $localPlayer = $game->players->first(fn ($p) => $p->pivot->is_local);
+
+                if (! $localPlayer) {
+                    return false;
+                }
+
+                $logCards = $gameLogStats['cards_by_game'][$index][$localPlayer->username] ?? null;
+
+                return empty($logCards);
+            })
+            ->filter(fn (Game $game) => CardGameStat::query()
+                ->where('game_id', $game->id)
+                ->whereRaw("({$signalExpression}) > 0")
+                ->exists())
+            ->pluck('id')
+            ->values();
     }
 
     /**
