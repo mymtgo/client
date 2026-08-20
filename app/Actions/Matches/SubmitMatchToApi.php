@@ -56,6 +56,9 @@ class SubmitMatchToApi
             ->values()
             ->map(fn ($game, $index) => [
                 'game_number' => $index + 1,
+                'turn_count' => $game->turn_count,
+                'started_at' => $game->started_at?->toIso8601String(),
+                'ended_at' => $game->ended_at?->toIso8601String(),
                 ...ExtractGameHandData::run($game),
             ])
             ->toArray();

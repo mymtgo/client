@@ -463,7 +463,7 @@ defineExpose({ selectedArchetype, selectedPlayDraw, selectedBoard, visibleColumn
 </script>
 
 <template>
-    <div v-if="archetypes.length || stats.length" class="mb-4 flex flex-col gap-4">
+    <div v-if="archetypes.length || stats.length" class="flex shrink-0 flex-col gap-4">
         <div class="flex items-center gap-4">
             <div class="relative flex-1">
                 <Search class="pointer-events-none absolute top-1/2 left-2 size-3.5 -translate-y-1/2 text-muted-foreground" />
@@ -663,8 +663,8 @@ defineExpose({ selectedArchetype, selectedPlayDraw, selectedBoard, visibleColumn
         <p class="max-w-sm text-sm text-muted-foreground">Enable some card types in the filter to view stats.</p>
     </div>
 
-    <Card v-else-if="viewMode === 'table'" class="gap-0 p-0">
-        <CardContent class="px-0 [&_[data-slot=table-container]]:max-h-[70vh] [&_[data-slot=table-container]]:overflow-auto">
+    <Card v-else-if="viewMode === 'table'" class="min-h-0 flex-1 gap-0 p-0">
+        <CardContent class="min-h-0 flex-1 px-0 [&_[data-slot=table-container]]:h-full [&_[data-slot=table-container]]:overflow-auto">
             <Table>
                 <TableHeader>
                     <TableRow>
@@ -829,7 +829,10 @@ defineExpose({ selectedArchetype, selectedPlayDraw, selectedBoard, visibleColumn
         </CardContent>
     </Card>
 
-    <div v-else class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+    <div
+        v-else
+        class="grid min-h-0 flex-1 grid-cols-1 content-start gap-3 overflow-y-auto sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"
+    >
         <ContextMenu v-for="entry in filteredAndSortedStats" :key="entry.raw.oracleId">
             <ContextMenuTrigger as-child>
                 <DeckCardStatsGridCard

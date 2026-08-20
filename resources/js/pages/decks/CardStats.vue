@@ -18,7 +18,7 @@ const props = defineProps<{
 </script>
 
 <template>
-    <div class="space-y-4 p-3 lg:p-4">
+    <div class="flex min-h-0 flex-1 flex-col gap-4 p-3 lg:p-4">
         <DeckCardStats
             :card-stats="cardStats"
             :deck-id="deck.id"

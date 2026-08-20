@@ -92,20 +92,22 @@ function handleFilterChange(payload: FilterPayload) {
         >
             No matches yet for {{ archetypeName }} in {{ formatLabel }}.
         </div>
-        <Deferred v-else data="cardStats">
-            <template #fallback>
-                <div class="animate-pulse rounded border border-black/60 bg-background/60 p-8">
-                    <div class="mb-3 h-4 w-1/3 rounded bg-white/10"></div>
-                    <div class="mb-2 h-3 w-full rounded bg-white/5"></div>
-                </div>
-            </template>
-            <CardStatsView
-                v-if="cardStats"
-                :stats="cardStats.stats"
-                :archetypes="cardStats.archetypes"
-                :perspective="cardStats.perspective"
-                @filter-change="handleFilterChange"
-            />
-        </Deferred>
+        <div v-else class="flex h-full min-h-0 flex-col gap-4">
+            <Deferred data="cardStats">
+                <template #fallback>
+                    <div class="animate-pulse rounded border border-black/60 bg-background/60 p-8">
+                        <div class="mb-3 h-4 w-1/3 rounded bg-white/10"></div>
+                        <div class="mb-2 h-3 w-full rounded bg-white/5"></div>
+                    </div>
+                </template>
+                <CardStatsView
+                    v-if="cardStats"
+                    :stats="cardStats.stats"
+                    :archetypes="cardStats.archetypes"
+                    :perspective="cardStats.perspective"
+                    @filter-change="handleFilterChange"
+                />
+            </Deferred>
+        </div>
     </ReportsLayout>
 </template>
