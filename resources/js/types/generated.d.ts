@@ -181,6 +181,9 @@ sidedInGames: number;
 wins: number;
 losses: number;
 winrate: number | null;
+communitySidedIn: number | null;
+communityGames: number | null;
+communityRate: number | null;
 };
 export type SideboardGuideData = {
 sidedIn: Array<any>;
@@ -194,5 +197,8 @@ name: string;
 type: string | null;
 image: string | null;
 sidedOutGames: number;
+communitySidedOut: number | null;
+communityGames: number | null;
+communityRate: number | null;
 };
 }

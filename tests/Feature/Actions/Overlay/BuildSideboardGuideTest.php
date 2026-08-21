@@ -219,3 +219,77 @@ it('keeps sideboard cards out of the sided-out list', function () {
 
     expect(collect($guide->sidedOut)->pluck('oracleId'))->not->toContain('o-rip');
 });
+
+it('annotates sideboard cards with the community inclusion rate', function () {
+    $archetype = Archetype::factory()->create(['name' => 'Esper Blink', 'format' => 'modern']);
+    $deck = Deck::factory()->create();
+    $version = guideVersion($deck, [['201', '2', '1'], ['203', '2', '1'], ['202', '4', '0']]);
+
+    $community = collect([
+        'o-rip' => ['sidedIn' => 60, 'sidedOut' => 0, 'games' => 80],
+    ]);
+
+    $guide = BuildSideboardGuide::run($version, $archetype, $community);
+
+    $rip = collect($guide->sidedIn)->firstWhere('oracleId', 'o-rip');
+
+    expect($rip->communitySidedIn)->toBe(60);
+    expect($rip->communityGames)->toBe(80);
+    expect($rip->communityRate)->toBe(75);
+
+    // Cut Down is in the sideboard but absent from the API payload: local data
+    // stands alone rather than being reported as a 0% community rate.
+    $cut = collect($guide->sidedIn)->firstWhere('oracleId', 'o-cut');
+
+    expect($cut->communityRate)->toBeNull();
+    expect($cut->communitySidedIn)->toBeNull();
+});
+
+it('orders the sided-in list by the community inclusion rate when it is known', function () {
+    $archetype = Archetype::factory()->create(['name' => 'Esper Blink', 'format' => 'modern']);
+    $deck = Deck::factory()->create();
+
+    // Neither card has any local history, so the name-ordered fallback would
+    // put Cut Down first. The community rates must override that.
+    $version = guideVersion($deck, [['201', '2', '1'], ['203', '2', '1']]);
+
+    $community = collect([
+        'o-rip' => ['sidedIn' => 72, 'sidedOut' => 0, 'games' => 80],
+        'o-cut' => ['sidedIn' => 8, 'sidedOut' => 0, 'games' => 80],
+    ]);
+
+    $guide = BuildSideboardGuide::run($version, $archetype, $community);
+
+    expect(collect($guide->sidedIn)->pluck('oracleId')->all())->toBe(['o-rip', 'o-cut']);
+});
+
+it('lists a maindeck card the community cuts even when you never have', function () {
+    $archetype = Archetype::factory()->create(['name' => 'Esper Blink', 'format' => 'modern']);
+    $deck = Deck::factory()->create();
+    $version = guideVersion($deck, [['201', '2', '1'], ['202', '4', '0']]);
+
+    $community = collect([
+        'o-bolt' => ['sidedIn' => 0, 'sidedOut' => 32, 'games' => 80],
+    ]);
+
+    $guide = BuildSideboardGuide::run($version, $archetype, $community);
+
+    $bolt = collect($guide->sidedOut)->firstWhere('oracleId', 'o-bolt');
+
+    expect($bolt)->not->toBeNull();
+    expect($bolt->sidedOutGames)->toBe(0);
+    expect($bolt->communitySidedOut)->toBe(32);
+    expect($bolt->communityRate)->toBe(40);
+});
+
+it('leaves every community field null when no rates are supplied', function () {
+    $archetype = Archetype::factory()->create(['name' => 'Esper Blink', 'format' => 'modern']);
+    $deck = Deck::factory()->create();
+    $version = guideVersion($deck, [['201', '2', '1']]);
+
+    $guide = BuildSideboardGuide::run($version, $archetype);
+
+    expect($guide->sidedIn[0]->communityRate)->toBeNull();
+    expect($guide->sidedIn[0]->communitySidedIn)->toBeNull();
+    expect($guide->sidedIn[0]->communityGames)->toBeNull();
+});

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Overlay;
 use App\Actions\Cards\ComputeDrawOdds;
 use App\Actions\Overlay\BuildSideboardGuide;
 use App\Actions\Overlay\DetectSideboarding;
+use App\Actions\Overlay\FetchCommunitySideboardRates;
 use App\Actions\Overlay\GetArchetypeNotes;
 use App\Actions\Overlay\ResolveOverlayOpponent;
 use App\Data\Front\ArchetypeData;
@@ -82,7 +83,11 @@ class GameOverlayController extends Controller
             return null;
         }
 
-        return BuildSideboardGuide::run($match->deckVersion, $archetype);
+        return BuildSideboardGuide::run(
+            $match->deckVersion,
+            $archetype,
+            FetchCommunitySideboardRates::run($match->deckVersion, $archetype),
+        );
     }
 
     /**

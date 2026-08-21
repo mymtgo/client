@@ -311,3 +311,130 @@ it('still responds when a pre-upgrade league cache entry is missing its uuid', f
             ->where('hasArchetype', false)
         );
 });
+
+it('annotates the sideboard guide with community rates for a classified deck', function () {
+    [$match, $opponent, $deck, $version] = liveOverlayMatch();
+
+    $deckArchetype = Archetype::factory()->create(['uuid' => 'my-deck-uuid', 'format' => 'modern']);
+    $deck->update(['archetype_id' => $deckArchetype->id, 'format' => 'CMODERN']);
+
+    // 102 moved to the sideboard so Lightning Bolt is listed as a sided-in card.
+    $version->update(['signature' => overlaySignature([['101', '20', '0'], ['102', '4', '1']])]);
+
+    $opponentArchetype = Archetype::factory()->create([
+        'uuid' => 'opp-uuid', 'name' => 'Esper Blink', 'format' => 'modern',
+    ]);
+
+    MatchArchetype::create([
+        'mtgo_match_id' => $match->id,
+        'player_id' => $opponent->id,
+        'archetype_id' => $opponentArchetype->id,
+        'confidence' => 1.0,
+        'manual' => true,
+    ]);
+
+    Http::fake(['*card-stats*' => Http::response([
+        'stats' => [[
+            'oracle_id' => 'o-bolt',
+            'games' => 50,
+            'kept' => ['samples' => 0, 'wins' => 0],
+            'seen' => ['samples' => 0, 'wins' => 0],
+            'cast' => ['samples' => 0, 'wins' => 0],
+            'pregame' => ['samples' => 0, 'wins' => 0],
+            'sided_in' => ['samples' => 45],
+            'sided_out' => ['samples' => 0],
+        ]],
+        'archetype_winrate' => ['games' => 50, 'wins' => 30, 'rate' => 0.6],
+        'opponents' => [],
+        'refreshed_at' => null,
+    ], 200)]);
+
+    $this->get(route('overlay.game'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('sideboard.sidedIn.0.oracleId', 'o-bolt')
+            ->where('sideboard.sidedIn.0.communitySidedIn', 45)
+            ->where('sideboard.sidedIn.0.communityRate', 90)
+        );
+});
+
+it('renders the sideboard guide without community rates when stats sharing is off', function () {
+    [$match, $opponent, $deck, $version] = liveOverlayMatch();
+
+    $deckArchetype = Archetype::factory()->create(['uuid' => 'my-deck-uuid', 'format' => 'modern']);
+    $deck->update(['archetype_id' => $deckArchetype->id, 'format' => 'CMODERN']);
+    $version->update(['signature' => overlaySignature([['101', '20', '0'], ['102', '4', '1']])]);
+
+    MatchArchetype::create([
+        'mtgo_match_id' => $match->id,
+        'player_id' => $opponent->id,
+        'archetype_id' => Archetype::factory()->create(['uuid' => 'opp-uuid', 'format' => 'modern'])->id,
+        'confidence' => 1.0,
+        'manual' => true,
+    ]);
+
+    AppSettings::setShouldTransmitMatches(false);
+
+    Http::preventStrayRequests();
+
+    $this->get(route('overlay.game'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('sideboard.sidedIn.0.oracleId', 'o-bolt')
+            ->where('sideboard.sidedIn.0.communityRate', null)
+        );
+});
+
+it('swaps the sideboard guide when a new archetype is pinned', function () {
+    [$match, $opponent, $deck, $version] = liveOverlayMatch();
+
+    $deckArchetype = Archetype::factory()->create(['uuid' => 'my-deck-uuid', 'format' => 'modern']);
+    $deck->update(['archetype_id' => $deckArchetype->id, 'format' => 'CMODERN']);
+    $version->update(['signature' => overlaySignature([['101', '20', '0'], ['102', '4', '1']])]);
+
+    $first = Archetype::factory()->create(['uuid' => 'first-uuid', 'name' => 'Esper Blink', 'format' => 'modern']);
+    $second = Archetype::factory()->create(['uuid' => 'second-uuid', 'name' => 'Ruby Storm', 'format' => 'modern']);
+
+    MatchArchetype::create([
+        'mtgo_match_id' => $match->id,
+        'player_id' => $opponent->id,
+        'archetype_id' => $first->id,
+        'confidence' => 1.0,
+        'manual' => true,
+    ]);
+
+    // Each opponent archetype gets its own community payload, so a stale
+    // response would be visible rather than merely unchanged.
+    $rates = fn (int $sidedIn, int $games) => Http::response([
+        'stats' => [[
+            'oracle_id' => 'o-bolt',
+            'games' => $games,
+            'kept' => ['samples' => 0, 'wins' => 0],
+            'seen' => ['samples' => 0, 'wins' => 0],
+            'cast' => ['samples' => 0, 'wins' => 0],
+            'pregame' => ['samples' => 0, 'wins' => 0],
+            'sided_in' => ['samples' => $sidedIn],
+            'sided_out' => ['samples' => 0],
+        ]],
+        'archetype_winrate' => ['games' => $games, 'wins' => 0, 'rate' => 0.0],
+        'opponents' => [],
+        'refreshed_at' => null,
+    ], 200);
+
+    Http::fake([
+        '*opponent_archetype_uuid=first-uuid*' => $rates(20, 100),
+        '*opponent_archetype_uuid=second-uuid*' => $rates(90, 100),
+    ]);
+
+    $this->get(route('overlay.game'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->where('sideboard.sidedIn.0.communityRate', 20));
+
+    $this->post(route('overlay.archetype'), ['archetype_id' => $second->id])->assertRedirect();
+
+    // The same partial reload GameOverlay.vue asks for after a pick.
+    overlayPartial(['opponent', 'sideboard', 'notes', 'hasArchetype'])
+        ->assertOk()
+        ->assertJsonPath('props.opponent.archetypeName', 'Ruby Storm')
+        ->assertJsonPath('props.sideboard.sidedIn.0.communityRate', 90);
+});

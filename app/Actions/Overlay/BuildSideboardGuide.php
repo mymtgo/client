@@ -29,9 +29,20 @@ class BuildSideboardGuide
      * not a measure of the card's contribution: every card sided in for a game
      * shares that game's single result. `postboardRecord` is the baseline to
      * read them against.
+     *
+     * $community is how often the wider player base sides each card in and out
+     * of this matchup, keyed by oracle_id (see FetchCommunitySideboardRates).
+     * It only ever annotates: which cards are listed still comes from the
+     * player's own sideboard, because a card they do not own cannot be brought
+     * in. The one exception is the sided-out list, where a maindeck card the
+     * field cuts is worth surfacing even with no local history.
+     *
+     * @param  Collection<string, array{sidedIn: int, sidedOut: int, games: int}>|null  $community
      */
-    public static function run(DeckVersion $version, Archetype $archetype): SideboardGuideData
+    public static function run(DeckVersion $version, Archetype $archetype, ?Collection $community = null): SideboardGuideData
     {
+        $community ??= collect();
+
         $versionIds = $version->deck
             ? $version->deck->versions()->pluck('id')->all()
             : [$version->id];
@@ -49,7 +60,7 @@ class BuildSideboardGuide
             ),
             preferSideboard: true,
         )
-            ->map(function (array $card) use ($stats, $metadata) {
+            ->map(function (array $card) use ($stats, $metadata, $community) {
                 $row = $stats->get($card['oracle_id']);
                 // The version's own card row, falling back to the stats join's
                 // copy of the same columns.
@@ -57,6 +68,7 @@ class BuildSideboardGuide
                 $wins = (int) ($row->sided_in_won ?? 0);
                 $losses = (int) ($row->sided_in_lost ?? 0);
                 $games = (int) ($row->sided_in_games ?? 0);
+                $peers = $community->get($card['oracle_id']);
 
                 return new SideboardCardData(
                     oracleId: $card['oracle_id'],
@@ -69,9 +81,17 @@ class BuildSideboardGuide
                     wins: $wins,
                     losses: $losses,
                     winrate: $games > 0 ? Winrate::percentage($wins, $losses) : null,
+                    communitySidedIn: $peers === null ? null : $peers['sidedIn'],
+                    communityGames: $peers === null ? null : $peers['games'],
+                    communityRate: self::rate($peers, 'sidedIn'),
                 );
             })
-            ->sort(fn (SideboardCardData $a, SideboardCardData $b) => [$b->sidedInGames, $a->name] <=> [$a->sidedInGames, $b->name])
+            // The community rate leads: "what does the field bring in against
+            // this deck" is the question the panel exists to answer, and it has
+            // a sample long before the player's own history does. Cards the API
+            // does not know fall back to the local ordering rather than sorting
+            // as 0%.
+            ->sort(fn (SideboardCardData $a, SideboardCardData $b) => [$b->communityRate ?? -1, $b->sidedInGames, $a->name] <=> [$a->communityRate ?? -1, $a->sidedInGames, $b->name])
             ->values()
             ->all();
 
@@ -81,9 +101,10 @@ class BuildSideboardGuide
             ),
             preferSideboard: false,
         )
-            ->map(function (array $card) use ($stats, $metadata) {
+            ->map(function (array $card) use ($stats, $metadata, $community) {
                 $row = $stats->get($card['oracle_id']);
                 $meta = $metadata->get($card['oracle_id']) ?? $row;
+                $peers = $community->get($card['oracle_id']);
 
                 return new SidedOutCardData(
                     oracleId: $card['oracle_id'],
@@ -91,10 +112,15 @@ class BuildSideboardGuide
                     type: $meta->type ?? null,
                     image: self::imageUrl($meta),
                     sidedOutGames: (int) ($row->sided_out_games ?? 0),
+                    communitySidedOut: $peers === null ? null : $peers['sidedOut'],
+                    communityGames: $peers === null ? null : $peers['games'],
+                    communityRate: self::rate($peers, 'sidedOut'),
                 );
             })
-            ->filter(fn (SidedOutCardData $card) => $card->sidedOutGames > 0)
-            ->sort(fn (SidedOutCardData $a, SidedOutCardData $b) => [$b->sidedOutGames, $a->name] <=> [$a->sidedOutGames, $b->name])
+            // A card nobody has ever cut is not a cut suggestion, so an
+            // all-zero row is dropped whichever side it came from.
+            ->filter(fn (SidedOutCardData $card) => $card->sidedOutGames > 0 || ($card->communitySidedOut ?? 0) > 0)
+            ->sort(fn (SidedOutCardData $a, SidedOutCardData $b) => [$b->communityRate ?? -1, $b->sidedOutGames, $a->name] <=> [$a->communityRate ?? -1, $a->sidedOutGames, $b->name])
             ->values()
             ->all();
 
@@ -244,6 +270,22 @@ class BuildSideboardGuide
             'games' => (int) ($row->games ?? 0),
             'wins' => (int) ($row->wins ?? 0),
         ];
+    }
+
+    /**
+     * One community counter as a whole percentage of the games behind it, or
+     * null when the API has no row for the card at all — which is a different
+     * statement from "the field never does this", and must not read as 0%.
+     *
+     * @param  array{sidedIn: int, sidedOut: int, games: int}|null  $peers
+     */
+    private static function rate(?array $peers, string $counter): ?int
+    {
+        if ($peers === null || $peers['games'] <= 0) {
+            return null;
+        }
+
+        return (int) round($peers[$counter] / $peers['games'] * 100);
     }
 
     private static function imageUrl(?object $row): ?string

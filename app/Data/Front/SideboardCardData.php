@@ -18,5 +18,11 @@ class SideboardCardData extends Data
         public int $wins,
         public int $losses,
         public ?int $winrate,
+        /** How many of the wider player base's games sided this card in. */
+        public ?int $communitySidedIn = null,
+        /** The games those counts are drawn from, as the rate's denominator. */
+        public ?int $communityGames = null,
+        /** communitySidedIn as a percentage, or null when the API has no row. */
+        public ?int $communityRate = null,
     ) {}
 }
