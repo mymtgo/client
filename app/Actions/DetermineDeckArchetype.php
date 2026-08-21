@@ -36,7 +36,16 @@ class DetermineDeckArchetype
         return self::estimateViaApi($cards, $format, $matchId, $playerId);
     }
 
-    private static function estimateViaApi(Collection $cards, string $format, ?int $matchId, ?int $playerId): ?array
+    /**
+     * Ask the API to classify a card set. Public because the game overlay calls
+     * it directly: the overlay slots the API guess BELOW the opponent's league
+     * list in its precedence chain, so it cannot use run()'s local-then-API
+     * sequence, which has no seam between the two.
+     *
+     * @param  Collection<int, array{mtgo_id: int|string, quantity: int}>  $cards
+     * @return array{archetype_id: int, archetype_deck_id: int|null, confidence: float}|null
+     */
+    public static function estimateViaApi(Collection $cards, string $format, ?int $matchId = null, ?int $playerId = null): ?array
     {
         $payload = [
             'format' => $format,

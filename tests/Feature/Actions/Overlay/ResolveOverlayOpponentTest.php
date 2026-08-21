@@ -3,6 +3,7 @@
 use App\Actions\Overlay\ResolveOverlayOpponent;
 use App\Enums\MatchOutcome;
 use App\Enums\MatchState;
+use App\Facades\AppSettings;
 use App\Models\Archetype;
 use App\Models\ArchetypeDeck;
 use App\Models\Card;
@@ -288,4 +289,106 @@ it('falls through past a live estimate below the confidence floor', function () 
 
     expect($result->source)->toBe('league');
     expect($result->archetypeId)->toBe($winner->id);
+});
+
+/**
+ * A live match whose opponent has revealed only 2 of the 15 cards in the
+ * locally-downloaded list built by overlayLiveArchetypeDeck() — thin enough
+ * that EstimateArchetypeLocally lands below the 0.8 confidence floor, so
+ * resolution falls through to the league and then the API.
+ *
+ * @return array{0: MtgoMatch, 1: Player}
+ */
+function overlayThinlyRevealedMatch(string $token): array
+{
+    $match = MtgoMatch::create([
+        'mtgo_id' => 'm-'.$token, 'token' => $token, 'format' => 'CModern',
+        'match_type' => 'League', 'state' => MatchState::InProgress, 'started_at' => now(),
+    ]);
+    $opponent = Player::create(['username' => 'opp-'.$token]);
+    $game = Game::create(['match_id' => $match->id, 'mtgo_id' => 'g-'.$token, 'started_at' => now()]);
+
+    $game->players()->attach($opponent->id, [
+        'is_local' => 0,
+        'instance_id' => 'i-2',
+        'deck_json' => [
+            ['mtgo_id' => 1001, 'quantity' => 4],
+            ['mtgo_id' => 1002, 'quantity' => 4],
+        ],
+    ]);
+
+    return [$match->fresh(), $opponent];
+}
+
+it('falls back to an API estimate when the local guess is thin and no league list exists', function () {
+    overlayLiveArchetypeDeck('Big Modern Deck', 'modern');
+
+    $guessed = Archetype::factory()->create([
+        'uuid' => 'api-guess-uuid',
+        'name' => 'API Guess',
+        'format' => 'modern',
+        'color_identity' => 'BR',
+    ]);
+
+    [$match] = overlayThinlyRevealedMatch('tok-api');
+
+    Http::fake([
+        '*/api/players' => Http::response([], 404),
+        '*/api/archetypes/estimate' => Http::response([
+            ['uuid' => 'api-guess-uuid', 'confidence' => 0.5, 'deck_version_uuid' => null],
+        ]),
+    ]);
+
+    $result = ResolveOverlayOpponent::run($match);
+
+    expect($result->source)->toBe('api');
+    expect($result->archetypeId)->toBe($guessed->id);
+    expect($result->archetypeName)->toBe('API Guess');
+    expect($result->manual)->toBeFalse();
+});
+
+it('prefers a league list over the API estimate', function () {
+    overlayLiveArchetypeDeck('Big Modern Deck', 'modern');
+
+    Archetype::factory()->create(['uuid' => 'api-guess-uuid', 'name' => 'API Guess', 'format' => 'modern']);
+    $league = Archetype::factory()->create(['uuid' => 'league-uuid', 'name' => 'League List', 'format' => 'modern']);
+
+    [$match] = overlayThinlyRevealedMatch('tok-api-vs-league');
+
+    Http::fake([
+        '*/api/players' => Http::response([
+            'data' => ['league_result' => ['archetype' => ['uuid' => 'league-uuid', 'name' => 'League List']]],
+        ]),
+        '*/api/archetypes/estimate' => Http::response([
+            ['uuid' => 'api-guess-uuid', 'confidence' => 1.0, 'deck_version_uuid' => null],
+        ]),
+    ]);
+
+    $result = ResolveOverlayOpponent::run($match);
+
+    expect($result->source)->toBe('league');
+    expect($result->archetypeId)->toBe($league->id);
+});
+
+it('never calls the API estimator when stats sharing is switched off', function () {
+    overlayLiveArchetypeDeck('Big Modern Deck', 'modern');
+
+    Archetype::factory()->create(['uuid' => 'api-guess-uuid', 'name' => 'API Guess', 'format' => 'modern']);
+
+    AppSettings::setShouldTransmitMatches(false);
+
+    [$match] = overlayThinlyRevealedMatch('tok-api-off');
+
+    Http::fake([
+        '*/api/players' => Http::response([], 404),
+        '*/api/archetypes/estimate' => Http::response([
+            ['uuid' => 'api-guess-uuid', 'confidence' => 1.0, 'deck_version_uuid' => null],
+        ]),
+    ]);
+
+    $result = ResolveOverlayOpponent::run($match);
+
+    expect($result->source)->toBe('none');
+    expect($result->archetypeId)->toBeNull();
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), '/api/archetypes/estimate'));
 });

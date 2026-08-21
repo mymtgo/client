@@ -4,9 +4,11 @@ namespace App\Actions\Overlay;
 
 use App\Actions\Archetypes\AggregateOpponentCards;
 use App\Actions\Archetypes\EstimateArchetypeLocally;
+use App\Actions\DetermineDeckArchetype;
 use App\Actions\Leagues\FetchOpponentLeagueArchetype;
 use App\Data\Front\OverlayOpponentData;
 use App\Enums\MatchOutcome;
+use App\Facades\AppSettings;
 use App\Models\Archetype;
 use App\Models\MatchArchetype;
 use App\Models\MtgoMatch;
@@ -25,6 +27,9 @@ class ResolveOverlayOpponent
 
     /** How long a live estimate stays valid for an unchanged revealed card set. */
     private const LIVE_CACHE_MINUTES = 30;
+
+    /** The same window for the API estimate, which is the more expensive call. */
+    private const API_CACHE_MINUTES = 30;
 
     public static function run(MtgoMatch $match): ?OverlayOpponentData
     {
@@ -99,16 +104,40 @@ class ResolveOverlayOpponent
             return [$manualRow->archetype, 'manual', true];
         }
 
-        $live = self::liveEstimate($match, $opponent);
+        $cards = self::revealedCards($match, $opponent);
 
-        if ($live) {
-            return [$live, 'live', false];
+        // AggregateOpponentCards guarantees mtgo_id is an int, but
+        // EstimateArchetypeLocally's array shape is int|string to also
+        // accommodate SyncDecks::prefillArchetype, which passes oracle_id
+        // strings under the same key. Widen here rather than narrowing either
+        // action's own (accurate) declared shape.
+        /** @var Collection<int, array{mtgo_id: int|string, quantity: int}>|null $cards */
+        $fingerprint = $cards ? self::fingerprint($cards) : null;
+
+        if ($cards && $fingerprint) {
+            $live = self::localEstimate($match, $cards, $fingerprint);
+
+            if ($live) {
+                return [$live, 'live', false];
+            }
         }
 
         $league = self::leagueArchetype($match, $opponent);
 
         if ($league) {
             return [$league, 'league', false];
+        }
+
+        // Below the league list on purpose: a 5-0 decklist filed under this
+        // opponent's name is near-certain, while the API guess is scored from a
+        // partial reveal. It sits above `lastSeen`, which only knows what they
+        // brought some other day.
+        if ($cards && $fingerprint) {
+            $api = self::apiEstimate($match, $opponent, $cards, $fingerprint);
+
+            if ($api) {
+                return [$api, 'api', false];
+            }
         }
 
         $lastSeen = $opponent->matchArchetypes()
@@ -125,12 +154,11 @@ class ResolveOverlayOpponent
     }
 
     /**
-     * Score the opponent's revealed cards against locally downloaded
-     * decklists. Cached against a hash of the card set: EstimateArchetypeLocally
-     * scores every variant for the format, which is far too expensive to redo
-     * on every poll while nothing new has been revealed.
+     * Everything this opponent has revealed so far, or null if that is nothing.
+     *
+     * @return Collection<int, array{mtgo_id: int, quantity: int}>|null
      */
-    private static function liveEstimate(MtgoMatch $match, Player $opponent): ?Archetype
+    private static function revealedCards(MtgoMatch $match, Player $opponent): ?Collection
     {
         $cards = AggregateOpponentCards::run($match)[$opponent->id] ?? null;
 
@@ -138,16 +166,32 @@ class ResolveOverlayOpponent
             return null;
         }
 
-        // AggregateOpponentCards guarantees mtgo_id is an int, but
-        // EstimateArchetypeLocally's array shape is int|string to also
-        // accommodate SyncDecks::prefillArchetype, which passes oracle_id
-        // strings under the same key. Widen the annotation here rather than
-        // narrowing either action's own (accurate) declared shape.
-        /** @var Collection<int, array{mtgo_id: int|string, quantity: int}> $cards */
-        $fingerprint = md5($cards->sortBy('mtgo_id')->map(
+        return $cards;
+    }
+
+    /**
+     * A stable hash of the revealed card set, so both estimators can cache
+     * against "nothing new has been revealed since last time".
+     *
+     * @param  Collection<int, array{mtgo_id: int|string, quantity: int}>  $cards
+     */
+    private static function fingerprint(Collection $cards): string
+    {
+        return md5($cards->sortBy('mtgo_id')->map(
             fn (array $card) => $card['mtgo_id'].':'.$card['quantity']
         )->implode('|'));
+    }
 
+    /**
+     * Score the revealed cards against locally downloaded decklists. Cached
+     * against the card-set fingerprint: EstimateArchetypeLocally scores every
+     * variant for the format, which is far too expensive to redo on every poll
+     * while nothing new has been revealed.
+     *
+     * @param  Collection<int, array{mtgo_id: int|string, quantity: int}>  $cards
+     */
+    private static function localEstimate(MtgoMatch $match, Collection $cards, string $fingerprint): ?Archetype
+    {
         $estimate = Cache::remember(
             "overlay_live_archetype_{$match->id}_{$fingerprint}",
             now()->addMinutes(self::LIVE_CACHE_MINUTES),
@@ -155,6 +199,49 @@ class ResolveOverlayOpponent
         );
 
         if (! $estimate || $estimate['confidence'] < self::LIVE_CONFIDENCE_THRESHOLD) {
+            return null;
+        }
+
+        return Archetype::query()->find($estimate['archetype_id']);
+    }
+
+    /**
+     * Ask the API to classify the revealed cards. Its estimator falls back to a
+     * vector scorer when its rules engine finds nothing, so it can name a deck
+     * from a handful of cards where the local lists cannot.
+     *
+     * No confidence floor: the API answers or it doesn't, and a partial answer
+     * is exactly what this position in the chain is for. Cached against the
+     * card-set fingerprint so the overlay's 5s poll makes at most one call per
+     * distinct reveal.
+     *
+     * Gated on stats sharing: this sends the opponent's revealed cards off the
+     * machine, which is the same bargain ShipCardStats makes.
+     *
+     * @param  Collection<int, array{mtgo_id: int|string, quantity: int}>  $cards
+     */
+    private static function apiEstimate(
+        MtgoMatch $match,
+        Player $opponent,
+        Collection $cards,
+        string $fingerprint,
+    ): ?Archetype {
+        if (! AppSettings::shouldTransmitMatches()) {
+            return null;
+        }
+
+        $estimate = Cache::remember(
+            "overlay_api_archetype_{$match->id}_{$fingerprint}",
+            now()->addMinutes(self::API_CACHE_MINUTES),
+            fn () => DetermineDeckArchetype::estimateViaApi(
+                $cards,
+                $match->format,
+                $match->id,
+                $opponent->id,
+            ) ?? false,
+        );
+
+        if (! $estimate) {
             return null;
         }
 

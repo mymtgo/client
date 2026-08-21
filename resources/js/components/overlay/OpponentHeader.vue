@@ -17,6 +17,26 @@ const headToHead = computed(() => {
 
     return `${props.opponent.wins}–${props.opponent.losses} vs you`;
 });
+
+/**
+ * Where the shown archetype came from, in the player's terms. `manual` is
+ * deliberately unlabelled: they picked it, so nothing needs explaining. `live`
+ * is a confident match against a downloaded decklist, so it needs no caveat
+ * either — only the weaker sources are called out.
+ */
+const sourceLabels: Record<string, string> = {
+    league: '5-0 list',
+    api: 'guess',
+    local: 'last seen',
+};
+
+const sourceLabel = computed(() => {
+    if (!props.opponent?.archetypeId) {
+        return null;
+    }
+
+    return sourceLabels[props.opponent.source] ?? null;
+});
 </script>
 
 <template>
@@ -32,6 +52,7 @@ const headToHead = computed(() => {
                 :format="props.format"
                 :current-archetype-id="props.opponent.archetypeId"
                 :current-archetype-name="props.opponent.archetypeName"
+                :source-label="sourceLabel"
                 @select="emit('select', $event)"
             />
         </template>

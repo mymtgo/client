@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { Input } from '@/components/ui/input';
 import ManaSymbols from '@/components/ManaSymbols.vue';
+import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useArchetypeSplit } from '@/composables/useArchetypeSplit';
@@ -12,6 +12,8 @@ const props = defineProps<{
     format: string | null;
     currentArchetypeId: number | null;
     currentArchetypeName: string | null;
+    /** Short label for where the archetype came from, e.g. "guess". */
+    sourceLabel?: string | null;
     disabled?: boolean;
 }>();
 
@@ -47,7 +49,14 @@ function choose(archetypeId: number): void {
             style="-webkit-app-region: no-drag"
         >
             <span class="truncate">{{ props.currentArchetypeName ?? 'Unknown archetype' }}</span>
-            <ChevronDown class="size-4 shrink-0 text-muted-foreground" />
+            <span class="flex shrink-0 items-center gap-1.5">
+                <span
+                    v-if="props.sourceLabel"
+                    class="rounded bg-muted px-1 py-px text-[10px] font-medium tracking-wide text-muted-foreground uppercase"
+                    >{{ props.sourceLabel }}</span
+                >
+                <ChevronDown class="size-4 text-muted-foreground" />
+            </span>
         </PopoverTrigger>
 
         <PopoverContent
@@ -88,9 +97,7 @@ function choose(archetypeId: number): void {
                     <Skeleton v-for="row in 5" :key="row" class="h-5 w-full" />
                 </div>
 
-                <p v-else-if="empty" class="px-2 py-4 text-center text-xs text-muted-foreground">
-                    No archetypes found.
-                </p>
+                <p v-else-if="empty" class="px-2 py-4 text-center text-xs text-muted-foreground">No archetypes found.</p>
             </div>
         </PopoverContent>
     </Popover>
