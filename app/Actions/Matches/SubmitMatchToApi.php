@@ -5,6 +5,7 @@ namespace App\Actions\Matches;
 use App\Actions\RegisterDevice;
 use App\Exceptions\OfflineModeException;
 use App\Facades\AppSettings;
+use App\Models\Archetype;
 use App\Models\Card;
 use App\Models\DeckVersion;
 use App\Models\MtgoMatch;
@@ -66,8 +67,8 @@ class SubmitMatchToApi
         $payload = [
             'match_token' => $match->token,
             'username' => $match->games->first()->localPlayers->first()->username,
-            'player_archetype_uuid' => $playerArchetype->archetype->uuid,
-            'opponent_archetype_uuid' => $opponentArchetype?->archetype?->uuid,
+            'player_archetype_uuid' => self::reportableUuid($playerArchetype->archetype),
+            'opponent_archetype_uuid' => self::reportableUuid($opponentArchetype?->archetype),
             'result' => $match->isWin() ? 'win' : 'loss',
             'format' => $match->format,
             'is_tournament' => $isTournament,
@@ -109,6 +110,29 @@ class SubmitMatchToApi
                 'error' => $e->getMessage(),
             ]);
         }
+    }
+
+    /**
+     * The archetype uuid the API can resolve, or null.
+     *
+     * Two kinds of uuid never survive the trip. An archetype created on this
+     * machine carries a device-prefixed uuid from StoreManualArchetype, which
+     * the API validates as `nullable|uuid` and rejects — 422ing the whole
+     * report, so the match never lands and scopeSubmittable re-queues it
+     * forever. The Homebrew and Rogue fallbacks are client-side seeds the API
+     * has no row for, so they store as a seat that can never join and drop the
+     * match out of every matchup built from it.
+     *
+     * Null costs nothing either way: the API re-derives both seats from the
+     * decks carried in the same payload.
+     */
+    private static function reportableUuid(?Archetype $archetype): ?string
+    {
+        if ($archetype === null || $archetype->manual || $archetype->is_fallback) {
+            return null;
+        }
+
+        return $archetype->uuid;
     }
 
     /**

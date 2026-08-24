@@ -9,6 +9,7 @@ use App\Models\MtgoMatch;
 use App\Models\Player;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
 
 uses(RefreshDatabase::class);
 
@@ -216,6 +217,108 @@ it('sends a null league_run for non-league matches', function (): void {
         }
 
         expect($request['league_run'])->toBeNull();
+
+        return true;
+    });
+});
+
+/**
+ * A locally created archetype's uuid is `<8-char device id>-<uuid>`
+ * (StoreManualArchetype), which the API's `nullable|uuid` rule rejects — so
+ * sending it 422s the whole report and the match retries forever. The API
+ * cannot resolve a client-local uuid anyway, and re-derives the seat from the
+ * deck it was sent, so the seat goes over as null.
+ */
+it('sends a null opponent archetype uuid when the opponent archetype is local to this client', function (): void {
+    Http::fake([
+        '*/api/matches/report' => Http::response([], 200),
+        '*' => Http::response([]),
+    ]);
+
+    $match = makeSubmittableMatch([[['mtgo_id' => 3001, 'quantity' => 1]]]);
+
+    $local = Archetype::factory()->manual()->create([
+        'uuid' => 'a1b2c3d4-'.Str::uuid(),
+    ]);
+
+    $match->opponentArchetypes()->first()->update(['archetype_id' => $local->id]);
+
+    SubmitMatchToApi::run($match->id);
+
+    Http::assertSent(function ($request) {
+        if (! str_contains($request->url(), '/api/matches/report')) {
+            return false;
+        }
+
+        expect($request['opponent_archetype_uuid'])->toBeNull();
+
+        return true;
+    });
+
+    expect($match->fresh()->submitted_at)->not->toBeNull();
+});
+
+it('sends a null player archetype uuid when the player archetype is local to this client', function (): void {
+    Http::fake([
+        '*/api/matches/report' => Http::response([], 200),
+        '*' => Http::response([]),
+    ]);
+
+    $match = makeSubmittableMatch([[['mtgo_id' => 3002, 'quantity' => 1]]]);
+
+    $local = Archetype::factory()->manual()->create([
+        'uuid' => 'b2c3d4e5-'.Str::uuid(),
+    ]);
+
+    $opponentPlayerIds = $match->opponentArchetypes()->pluck('player_id')->all();
+
+    $match->archetypes()
+        ->whereNotIn('player_id', $opponentPlayerIds)
+        ->first()
+        ->update(['archetype_id' => $local->id]);
+
+    SubmitMatchToApi::run($match->id);
+
+    Http::assertSent(function ($request) {
+        if (! str_contains($request->url(), '/api/matches/report')) {
+            return false;
+        }
+
+        expect($request['player_archetype_uuid'])->toBeNull();
+
+        return true;
+    });
+
+    expect($match->fresh()->submitted_at)->not->toBeNull();
+});
+
+/**
+ * Homebrew and Rogue are client-side seeds the API has no row for, so their
+ * sentinel uuids store as a permanently dangling seat and drop the match from
+ * every matchup the API builds.
+ */
+it('sends a null opponent archetype uuid for the fallback archetypes', function (): void {
+    Http::fake([
+        '*/api/matches/report' => Http::response([], 200),
+        '*' => Http::response([]),
+    ]);
+
+    $match = makeSubmittableMatch([[['mtgo_id' => 3003, 'quantity' => 1]]]);
+
+    $homebrew = Archetype::query()
+        ->where('uuid', '00000000-0000-0000-0000-000000000001')
+        ->sole();
+
+    $match->opponentArchetypes()->first()->update(['archetype_id' => $homebrew->id]);
+
+    SubmitMatchToApi::run($match->id);
+
+    Http::assertSent(function ($request) {
+        if (! str_contains($request->url(), '/api/matches/report')) {
+            return false;
+        }
+
+        expect($request['opponent_archetype_uuid'])->toBeNull();
 
         return true;
     });
