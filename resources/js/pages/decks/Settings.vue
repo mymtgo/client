@@ -9,10 +9,12 @@ import CoverArtOptionsController from '@/actions/App/Http/Controllers/Decks/Cove
 import UpdateColorIdentityController from '@/actions/App/Http/Controllers/Decks/UpdateColorIdentityController';
 import UpdateCoverArtController from '@/actions/App/Http/Controllers/Decks/UpdateCoverArtController';
 import UpdateDeckArchetypeController from '@/actions/App/Http/Controllers/Decks/UpdateDeckArchetypeController';
+import DeckDestroyController from '@/actions/App/Http/Controllers/Decks/DestroyController';
+import DeckRestoreController from '@/actions/App/Http/Controllers/Decks/RestoreController';
 import UpdateNameController from '@/actions/App/Http/Controllers/Decks/UpdateNameController';
 import ManaSymbols from '@/components/ManaSymbols.vue';
 import { Input } from '@/components/ui/input';
-import { RotateCcw } from 'lucide-vue-next';
+import { RotateCcw, TriangleAlert, Undo2 } from 'lucide-vue-next';
 import type { VersionStats } from '@/types/decks';
 import { computed, nextTick, ref, watch } from 'vue';
 import { router } from '@inertiajs/vue3';
@@ -45,7 +47,7 @@ const loadingOptions = ref(false);
 const saving = ref(false);
 
 const isReadonly = computed(() => !!props.deck?.deletedAt);
-const readonlyTitle = 'Deck deleted on MTGO — read-only';
+const readonlyTitle = 'Deck deleted — restore it in the danger zone to make changes';
 
 if (props.coverArt?.name) {
     selectedCardName.value = props.coverArt.name;
@@ -295,6 +297,41 @@ function saveIdentity() {
 
 function resetIdentity() {
     selectedColors.value = parseIdentity(props.deck.colorIdentity);
+}
+
+const DELETE_KEYWORD = 'DELETE';
+
+const deleteConfirmation = ref('');
+const deleting = ref(false);
+const restoring = ref(false);
+
+const canDelete = computed(() => deleteConfirmation.value.trim() === DELETE_KEYWORD);
+
+function deleteDeck() {
+    if (!canDelete.value) {
+        return;
+    }
+
+    deleting.value = true;
+    router.delete(DeckDestroyController.url({ deck: props.deck.id }), {
+        data: { confirmation: DELETE_KEYWORD },
+        onFinish: () => { deleting.value = false; },
+    });
+}
+
+function restoreDeck() {
+    restoring.value = true;
+    router.patch(
+        DeckRestoreController.url({ deck: props.deck.id }),
+        {},
+        {
+            preserveScroll: true,
+            onFinish: () => {
+                restoring.value = false;
+                deleteConfirmation.value = '';
+            },
+        },
+    );
 }
 </script>
 
@@ -549,6 +586,58 @@ function resetIdentity() {
                             Remove
                         </Button>
                     </div>
+                </CardContent>
+            </Card>
+            <Card class="mt-4 border-destructive/40">
+                <CardHeader>
+                    <CardTitle class="flex items-center gap-2 text-destructive">
+                        <TriangleAlert class="size-4" />
+                        Danger zone
+                    </CardTitle>
+                    <CardDescription>
+                        Deleting a deck hides it from your deck list and stops it being updated. Match
+                        history is kept, so you can restore the deck at any time.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent class="flex flex-col gap-4">
+                    <template v-if="isReadonly">
+                        <p class="text-sm text-muted-foreground">
+                            This deck is deleted and read-only. Restore it to make changes again.
+                        </p>
+                        <div>
+                            <Button variant="outline" :disabled="restoring" @click="restoreDeck">
+                                <Spinner v-if="restoring" class="mr-2 size-4" />
+                                <Undo2 v-else class="mr-2 size-4" />
+                                Restore deck
+                            </Button>
+                        </div>
+                    </template>
+                    <template v-else>
+                        <div class="flex flex-col gap-2">
+                            <label for="delete-confirmation" class="text-sm text-muted-foreground">
+                                Type <span class="font-mono font-medium text-foreground">DELETE</span> to confirm.
+                            </label>
+                            <div class="flex flex-col gap-2 sm:flex-row">
+                                <Input
+                                    id="delete-confirmation"
+                                    v-model="deleteConfirmation"
+                                    autocomplete="off"
+                                    placeholder="DELETE"
+                                    class="sm:flex-1"
+                                    :disabled="deleting"
+                                    @keydown.enter.prevent="deleteDeck"
+                                />
+                                <Button
+                                    variant="destructive"
+                                    :disabled="!canDelete || deleting"
+                                    @click="deleteDeck"
+                                >
+                                    <Spinner v-if="deleting" class="mr-2 size-4" />
+                                    Delete deck
+                                </Button>
+                            </div>
+                        </div>
+                    </template>
                 </CardContent>
             </Card>
         </div>

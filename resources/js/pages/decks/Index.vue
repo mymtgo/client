@@ -217,7 +217,7 @@ function updatePage(page: number) {
             </template>
 
             <template v-else-if="mode === 'flat' && decks">
-                <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <div class="grid grid-cols-1 items-start gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                     <DeckCard v-for="deck in decks.data" :key="deck.id" :deck="deck" />
                 </div>
 

@@ -26,7 +26,7 @@ const winrateColorClass = computed(() => {
             </span>
         </header>
 
-        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div class="grid grid-cols-1 items-start gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             <DeckCard v-for="deck in decks" :key="deck.id" :deck="deck" />
         </div>
     </section>

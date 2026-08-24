@@ -27,12 +27,14 @@ use App\Http\Controllers\Decks\CardStatsController;
 use App\Http\Controllers\Decks\CoverArtOptionsController;
 use App\Http\Controllers\Decks\DashboardController;
 use App\Http\Controllers\Decks\DecklistController;
+use App\Http\Controllers\Decks\DestroyController as DeckDestroyController;
 use App\Http\Controllers\Decks\GameStatsController;
 use App\Http\Controllers\Decks\LeaguesController;
 use App\Http\Controllers\Decks\MatchesController;
 use App\Http\Controllers\Decks\MatchupDetailController;
 use App\Http\Controllers\Decks\MatchupsController;
 use App\Http\Controllers\Decks\RegenerateCardStatsController;
+use App\Http\Controllers\Decks\RestoreController as DeckRestoreController;
 use App\Http\Controllers\Decks\ScreenshotDataController;
 use App\Http\Controllers\Decks\SettingsController;
 use App\Http\Controllers\Decks\ToggleGroupingController;
@@ -194,6 +196,8 @@ Route::group([], function (Router $router) {
         $group->patch('{deck:id}/archetype', UpdateDeckArchetypeController::class)->name('decks.update-archetype')->withTrashed();
         $group->patch('{deck:id}/name', UpdateNameController::class)->name('decks.update-name')->withTrashed();
         $group->patch('{deck:id}/color-identity', UpdateColorIdentityController::class)->name('decks.update-color-identity')->withTrashed();
+        $group->patch('{deck:id}/restore', DeckRestoreController::class)->name('decks.restore')->withTrashed();
+        $group->delete('{deck:id}', DeckDestroyController::class)->name('decks.destroy')->withTrashed();
         $group->post('{deck:id}/export-dek', App\Http\Controllers\Decks\ExportDekController::class)
             ->name('decks.export-dek')
             ->withTrashed();
