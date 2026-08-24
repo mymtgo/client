@@ -4,8 +4,7 @@ namespace App\Http\Controllers\Settings;
 
 use App\Actions\Leagues\CloseOverlayWindow;
 use App\Actions\Leagues\OpenOverlayWindow;
-use App\Actions\Overlay\CloseGameOverlayWindow;
-use App\Actions\Overlay\OpenGameOverlayWindow;
+use App\Actions\Overlay\SyncGameOverlayVisibility;
 use App\Facades\AppSettings;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
@@ -36,11 +35,9 @@ class UpdateOverlaySettingsController extends Controller
         if (isset($validated['game_overlay'])) {
             AppSettings::setShowGameOverlay($validated['game_overlay']);
 
-            if ($validated['game_overlay']) {
-                OpenGameOverlayWindow::run();
-            } else {
-                CloseGameOverlayWindow::run();
-            }
+            // Overlay lifecycle is match-driven: enabling only opens the
+            // window if a match is currently in progress.
+            SyncGameOverlayVisibility::run();
         }
 
         /**

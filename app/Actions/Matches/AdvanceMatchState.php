@@ -3,6 +3,7 @@
 namespace App\Actions\Matches;
 
 use App\Actions\Logs\ConvertMtgoTimestamp;
+use App\Actions\Overlay\SyncGameOverlayVisibility;
 use App\Actions\Tournaments\AssignTournament;
 use App\Actions\Util\ExtractJson;
 use App\Actions\Util\ExtractKeyValueBlock;
@@ -57,9 +58,11 @@ class AdvanceMatchState
             return null;
         }
 
+        $previousState = MtgoMatch::where('mtgo_id', $matchId)->value('state');
+
         // Wrap all state-advancement writes in a single transaction so
         // the SQLite write-lock is held once instead of 10–15 times.
-        return TimedTransaction::run("AdvanceMatchState:{$matchId}", function () use ($matchToken, $matchId, $events, $stateChanges, $joinedState) {
+        $match = TimedTransaction::run("AdvanceMatchState:{$matchId}", function () use ($matchToken, $matchId, $events, $stateChanges, $joinedState) {
             // ── Find or create the match ────────────────────────────────
             $match = MtgoMatch::where('mtgo_id', $matchId)->first();
 
@@ -182,6 +185,14 @@ class AdvanceMatchState
 
             return $match->refresh();
         });
+
+        // Reconcile the overlay window only when the state actually moved —
+        // syncing hits the Electron window API, too heavy for every tick.
+        if ($match && $match->state !== $previousState) {
+            SyncGameOverlayVisibility::run();
+        }
+
+        return $match;
     }
 
     /**

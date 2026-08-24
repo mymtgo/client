@@ -10,6 +10,7 @@ use App\Models\LogInstance;
 use App\Models\MtgoMatch;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Native\Desktop\Facades\Window;
 
 uses(RefreshDatabase::class);
 
@@ -198,4 +199,19 @@ it('abandons when the local username cannot be resolved', function () {
     AbandonStaleMatches::run();
 
     expect($match->refresh()->state)->toBe(MatchState::Abandoned);
+});
+
+it('closes the game overlay when a stale match is abandoned', function () {
+    AppSettings::setShowGameOverlay(true);
+    Window::fake()->alwaysReturnWindows([
+        new Native\Desktop\Windows\Window('main'),
+        new Native\Desktop\Windows\Window('game-overlay'),
+    ]);
+
+    stuckMatch('tok-overlay', '14');
+    stateChangeEvent('tok-overlay', '14', 'Match State Changed for tok-overlay from MatchJoinedEventUnderwayState to MatchJoinedSideboardingState', now()->subMinutes(90), processedAt: now());
+
+    AbandonStaleMatches::run();
+
+    Window::assertClosed('game-overlay');
 });

@@ -2,6 +2,7 @@
 
 namespace App\Actions\Matches;
 
+use App\Actions\Overlay\SyncGameOverlayVisibility;
 use App\Enums\MatchOutcome;
 use App\Enums\MatchState;
 use App\Facades\Mtgo;
@@ -32,21 +33,29 @@ class AbandonStaleMatches
     {
         $cutoff = now()->subMinutes((int) config('mtgo.match_abandon_after_minutes', 60));
 
-        MtgoMatch::query()
+        $resolvedAny = MtgoMatch::query()
             ->where('state', MatchState::InProgress)
             ->whereNull('failed_at')
             ->get()
-            ->each(fn (MtgoMatch $match) => self::evaluate($match, $cutoff));
+            ->map(fn (MtgoMatch $match) => self::evaluate($match, $cutoff))
+            ->contains(true);
+
+        if ($resolvedAny) {
+            SyncGameOverlayVisibility::run();
+        }
     }
 
-    private static function evaluate(MtgoMatch $match, Carbon $cutoff): void
+    /**
+     * Returns true when the match was given a terminal state.
+     */
+    private static function evaluate(MtgoMatch $match, Carbon $cutoff): bool
     {
         $stateChanges = LogEvent::where('match_token', $match->token)
             ->where('event_type', 'match_state_changed')
             ->get();
 
         if (self::hasEndSignal($stateChanges)) {
-            return;
+            return false;
         }
 
         $lastActivity = self::lastActivityAt($match);
@@ -54,7 +63,7 @@ class AbandonStaleMatches
         // Still active (or active recently) — a disconnect here may still be
         // followed by a reconnect, so we must not decide anything yet.
         if ($lastActivity === null || $lastActivity->greaterThan($cutoff)) {
-            return;
+            return false;
         }
 
         // The match has conclusively gone quiet. If its last logged action was
@@ -63,7 +72,7 @@ class AbandonStaleMatches
         if (self::resolveByDisconnect($match)) {
             self::stopRediscovery($match);
 
-            return;
+            return true;
         }
 
         $match->update([
@@ -74,6 +83,8 @@ class AbandonStaleMatches
         self::stopRediscovery($match);
 
         Log::channel('pipeline')->info("Match {$match->mtgo_id}: marked Abandoned (no end signal, inactive since {$lastActivity->toDateTimeString()})");
+
+        return true;
     }
 
     /**
