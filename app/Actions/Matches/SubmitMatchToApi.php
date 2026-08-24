@@ -3,11 +3,11 @@
 namespace App\Actions\Matches;
 
 use App\Actions\RegisterDevice;
+use App\Exceptions\OfflineModeException;
 use App\Facades\AppSettings;
 use App\Models\Card;
 use App\Models\DeckVersion;
 use App\Models\MtgoMatch;
-use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -15,7 +15,7 @@ class SubmitMatchToApi
 {
     public static function run(int $matchId): void
     {
-        if (! AppSettings::shouldTransmitMatches()) {
+        if (AppSettings::isOffline()) {
             return;
         }
 
@@ -82,13 +82,11 @@ class SubmitMatchToApi
         ];
 
         try {
-            $response = self::authenticatedRequest()
-                ->post(config('mymtgo_api.url').'/api/matches/report', $payload);
+            $response = Http::mymtgoApi()->post('/api/matches/report', $payload);
 
             if ($response->status() === 401) {
                 RegisterDevice::run();
-                $response = self::authenticatedRequest()
-                    ->post(config('mymtgo_api.url').'/api/matches/report', $payload);
+                $response = Http::mymtgoApi()->post('/api/matches/report', $payload);
             }
 
             if ($response->successful()) {
@@ -100,20 +98,17 @@ class SubmitMatchToApi
                     'body' => $response->body(),
                 ]);
             }
+        } catch (OfflineModeException) {
+            // Offline mode was toggled on between the early-return check above
+            // and this request. A user choice, not a fault — skip quietly,
+            // the match stays unsubmitted and is retried whenever this runs
+            // again with offline mode off.
         } catch (\Throwable $e) {
             Log::error('SubmitMatchToApi: exception', [
                 'match_id' => $matchId,
                 'error' => $e->getMessage(),
             ]);
         }
-    }
-
-    private static function authenticatedRequest(): PendingRequest
-    {
-        return Http::withHeaders([
-            'X-Device-Id' => AppSettings::deviceId(),
-            'X-Api-Key' => RegisterDevice::retrieveKey(),
-        ]);
     }
 
     /**

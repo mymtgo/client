@@ -7,6 +7,7 @@ use App\Facades\AppSettings;
 use App\Facades\Mtgo;
 use App\Http\Controllers\Controller;
 use App\Models\Account;
+use App\Models\ArchetypeDeck;
 use App\Models\MtgoMatch;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
@@ -45,7 +46,14 @@ class IndexController extends Controller
             'watcherActive' => AppSettings::isWatcherActive(),
             'logPathStatus' => ValidatePath::forLogs($logPath),
             'dataPathStatus' => ValidatePath::forData($dataPath),
-            'shareStats' => AppSettings::shouldTransmitMatches(),
+            // EstimateArchetypeLocally scores against ArchetypeDeck decklists, not
+            // Archetype rows — a fresh install has ~877 Archetype rows (names only)
+            // and zero decklists, so probing Archetype alone left this warning
+            // permanently suppressed while every match went unclassified.
+            'hasArchetypeCatalog' => ArchetypeDeck::query()->exists(),
+            // Drives the settings toggle's disabled state. Sent as a page prop
+            // rather than a shared one: only this page needs it.
+            'offlineModeLockedUntil' => AppSettings::offlineModeLockedUntil(),
             'pendingMatches' => MtgoMatch::submittable()
                 ->latest('started_at')
                 ->get(['id', 'format', 'outcome', 'started_at']),
@@ -53,8 +61,10 @@ class IndexController extends Controller
             'debugMode' => AppSettings::isDebugMode(),
             'appVersion' => config('nativephp.version'),
             'leagueWindowEnabled' => AppSettings::showLeagueWindow(),
-            'opponentWindowEnabled' => AppSettings::showOpponentWindow(),
-            'deckWindowEnabled' => AppSettings::showDeckWindow(),
+            'gameOverlayEnabled' => AppSettings::showGameOverlay(),
+            'overlayShowOpponent' => AppSettings::overlayShowOpponent(),
+            'overlayShowDrawOdds' => AppSettings::overlayShowDrawOdds(),
+            'overlayShowSideboard' => AppSettings::overlayShowSideboard(),
             'overlayBackgroundUrl' => $overlayBackgroundUrl,
             'localImages' => AppSettings::downloadImagesLocally(),
             'localImagesSize' => $this->getLocalImagesSize(),

@@ -6,17 +6,16 @@ import UploadOverlayBackgroundController from '@/actions/App/Http/Controllers/Se
 import UpdateAccountTrackingController from '@/actions/App/Http/Controllers/Settings/UpdateAccountTrackingController';
 import UpdateDataPathController from '@/actions/App/Http/Controllers/Settings/UpdateDataPathController';
 import UpdateLogPathController from '@/actions/App/Http/Controllers/Settings/UpdateLogPathController';
+import UpdateOfflineModeController from '@/actions/App/Http/Controllers/Settings/UpdateOfflineModeController';
 import UpdateOverlaySettingsController from '@/actions/App/Http/Controllers/Settings/UpdateOverlaySettingsController';
-import UpdateShareStatsController from '@/actions/App/Http/Controllers/Settings/UpdateShareStatsController';
 import UpdateDebugModeController from '@/actions/App/Http/Controllers/Settings/UpdateDebugModeController';
 import UpdateLocalImagesController from '@/actions/App/Http/Controllers/Settings/UpdateLocalImagesController';
 import UpdateWatcherController from '@/actions/App/Http/Controllers/Settings/UpdateWatcherController';
 import UpdateAutostartController from '@/actions/App/Http/Controllers/Settings/UpdateAutostartController';
 import type { LeagueData } from '@/components/leagues/LeagueTracker.vue';
 import LeagueTracker from '@/components/leagues/LeagueTracker.vue';
-import type { OpponentData } from '@/components/leagues/OpponentScout.vue';
-import OpponentScout from '@/components/leagues/OpponentScout.vue';
 import ApiStatusCard from '@/components/settings/ApiStatusCard.vue';
+import DataDisclosure from '@/components/settings/DataDisclosure.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -25,6 +24,8 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Spinner } from '@/components/ui/spinner';
 import { Switch } from '@/components/ui/switch';
+import { useOfflineMode } from '@/composables/useOfflineMode';
+import OfflineModeRejoinDialog from '@/components/settings/OfflineModeRejoinDialog.vue';
 import { router, usePage } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 
@@ -32,14 +33,17 @@ const props = defineProps<{
     logPath: string;
     dataPath: string;
     watcherActive: boolean;
-    shareStats: boolean;
+    hasArchetypeCatalog: boolean;
+    offlineModeLockedUntil: string | null;
     logPathStatus: { valid: boolean; fileCount: number; message: string };
     dataPathStatus: { valid: boolean; fileCount: number; message: string };
     pendingMatches: Array<{ id: number; format: string; outcome: string | null; started_at: string }>;
     accounts: Array<{ id: number; username: string; tracked: boolean; active: boolean }>;
 leagueWindowEnabled: boolean;
-    opponentWindowEnabled: boolean;
-    deckWindowEnabled: boolean;
+    gameOverlayEnabled: boolean;
+    overlayShowOpponent: boolean;
+    overlayShowDrawOdds: boolean;
+    overlayShowSideboard: boolean;
     overlayBackgroundUrl: string | null;
     debugMode: boolean;
     localImages: boolean;
@@ -53,6 +57,8 @@ const logPathInput = ref(props.logPath);
 const dataPathInput = ref(props.dataPath);
 
 const pathsValid = computed(() => props.logPathStatus.valid && props.dataPathStatus.valid);
+
+const offlineMode = useOfflineMode();
 
 const errors = computed(() => usePage().props.errors as Record<string, string>);
 
@@ -102,9 +108,33 @@ function toggleWatcher() {
     withProcessing('watcher', 'patch', UpdateWatcherController.url(), { active: !props.watcherActive });
 }
 
-function toggleShareStats(val: boolean) {
-    withProcessing('shareStats', 'patch', UpdateShareStatsController.url(), { enabled: val });
+const rejoinDialogOpen = ref(false);
+
+// Leaving offline mode starts a cooldown, so confirm before it happens rather
+// than explaining afterwards. Turning it back ON is never gated behind a
+// dialog — privacy should not need confirming.
+function toggleOfflineMode(val: boolean) {
+    if (!val) {
+        rejoinDialogOpen.value = true;
+
+        return;
+    }
+
+    withProcessing('offlineMode', 'patch', UpdateOfflineModeController.url(), { enabled: true });
 }
+
+function confirmRejoin() {
+    rejoinDialogOpen.value = false;
+    withProcessing('offlineMode', 'patch', UpdateOfflineModeController.url(), { enabled: false });
+}
+
+const offlineModeLocked = computed<boolean>(() => {
+    if (props.offlineModeLockedUntil === null) {
+        return false;
+    }
+
+    return new Date(props.offlineModeLockedUntil).getTime() > Date.now();
+});
 
 function toggleAutostart(val: boolean) {
     withProcessing('autostart', 'patch', UpdateAutostartController.url(), { enabled: val });
@@ -122,12 +152,14 @@ function setLeagueWindowEnabled(val: boolean) {
     withProcessing('leagueWindow', 'post', UpdateOverlaySettingsController.url(), { league_window: val });
 }
 
-function setOpponentWindowEnabled(val: boolean) {
-    withProcessing('opponentWindow', 'post', UpdateOverlaySettingsController.url(), { opponent_window: val });
+function setGameOverlayEnabled(val: boolean) {
+    withProcessing('gameOverlay', 'post', UpdateOverlaySettingsController.url(), { game_overlay: val });
 }
 
-function setDeckWindowEnabled(val: boolean) {
-    withProcessing('deckWindow', 'post', UpdateOverlaySettingsController.url(), { deck_window: val });
+function setOverlaySection(key: 'opponent' | 'draw_odds' | 'sideboard', val: boolean) {
+    withProcessing(`overlay-${key}`, 'post', UpdateOverlaySettingsController.url(), {
+        [`overlay_show_${key}`]: val,
+    });
 }
 
 function toggleDebugMode(val: boolean) {
@@ -190,15 +222,6 @@ const sampleLeague: LeagueData = {
         { won: false, ended: true },
         { won: null, ended: false },
     ],
-};
-
-const sampleOpponent: OpponentData = {
-    username: 'Opponent123',
-    previousMatches: 2,
-    wins: 1,
-    losses: 1,
-    lastArchetype: 'Azorius Control',
-    lastArchetypeColors: 'W,U',
 };
 </script>
 
@@ -288,38 +311,53 @@ const sampleOpponent: OpponentData = {
 
                     <div class="flex items-center justify-between">
                         <div>
-                            <Label>Opponent scouting window</Label>
+                            <Label>Game overlay</Label>
                             <p class="text-sm text-muted-foreground">
-                                Show opponent history and last known archetype in a separate window during matches.
+                                Show a floating panel during matches with your opponent's archetype, live draw odds,
+                                and your sideboard guide.
                             </p>
                         </div>
                         <Switch
-                            :modelValue="props.opponentWindowEnabled"
-                            @update:modelValue="setOpponentWindowEnabled"
-                            :disabled="processing === 'opponentWindow'"
+                            :modelValue="props.gameOverlayEnabled"
+                            @update:modelValue="setGameOverlayEnabled"
+                            :disabled="processing === 'gameOverlay'"
                         />
                     </div>
 
-                    <div class="mx-auto w-64 overflow-hidden rounded-md border border-border">
-                        <OpponentScout :opponent="sampleOpponent" />
-                    </div>
-
-                    <Separator />
-
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <Label>Deck odds</Label>
-                            <p class="text-sm text-muted-foreground">
-                                Show live draw odds for your deck in a separate window during matches.
-                            </p>
+                    <div class="flex flex-col gap-3 pl-6">
+                        <div class="flex items-center justify-between">
+                            <Label :class="props.gameOverlayEnabled ? '' : 'text-muted-foreground'">
+                                Show opponent scout
+                            </Label>
+                            <Switch
+                                :modelValue="props.overlayShowOpponent"
+                                @update:modelValue="(val: boolean) => setOverlaySection('opponent', val)"
+                                :disabled="!props.gameOverlayEnabled || processing === 'overlay-opponent'"
+                            />
                         </div>
-                        <Switch
-                            :modelValue="props.deckWindowEnabled"
-                            @update:modelValue="setDeckWindowEnabled"
-                            :disabled="processing === 'deckWindow'"
-                        />
-                    </div>
 
+                        <div class="flex items-center justify-between">
+                            <Label :class="props.gameOverlayEnabled ? '' : 'text-muted-foreground'">
+                                Show draw odds
+                            </Label>
+                            <Switch
+                                :modelValue="props.overlayShowDrawOdds"
+                                @update:modelValue="(val: boolean) => setOverlaySection('draw_odds', val)"
+                                :disabled="!props.gameOverlayEnabled || processing === 'overlay-draw_odds'"
+                            />
+                        </div>
+
+                        <div class="flex items-center justify-between">
+                            <Label :class="props.gameOverlayEnabled ? '' : 'text-muted-foreground'">
+                                Show sideboard guide
+                            </Label>
+                            <Switch
+                                :modelValue="props.overlayShowSideboard"
+                                @update:modelValue="(val: boolean) => setOverlaySection('sideboard', val)"
+                                :disabled="!props.gameOverlayEnabled || processing === 'overlay-sideboard'"
+                            />
+                        </div>
+                    </div>
                 </CardContent>
             </Card>
 
@@ -461,16 +499,37 @@ const sampleOpponent: OpponentData = {
                     <CardDescription>Control what data is collected from your use of the app.</CardDescription>
                 </CardHeader>
                 <CardContent class="flex flex-col gap-4">
-                    <div class="flex items-center justify-between">
+                    <div class="flex items-center justify-between gap-4">
                         <div>
-                            <Label>Share match stats</Label>
+                            <Label>Offline mode</Label>
                             <p class="text-sm text-muted-foreground">
-                                Contribute match data to the community. Your deck, archetype, result, and format are submitted after each match.
+                                No data leaves this device and no community data comes in. Your matches stay private, so
+                                you won't get community card stats, opponent scouting or archetype updates. Card data
+                                still refreshes so your decks keep working.
                             </p>
                         </div>
-                        <Switch :modelValue="props.shareStats" @update:modelValue="toggleShareStats" :disabled="processing === 'shareStats'" />
+                        <Switch
+                            :modelValue="offlineMode"
+                            @update:modelValue="toggleOfflineMode"
+                            :disabled="processing === 'offlineMode' || (!offlineMode && offlineModeLocked)"
+                            :title="!offlineMode && offlineModeLocked ? 'Offline mode is on cooldown until tomorrow after coming back online.' : undefined"
+                        />
                     </div>
-                    <div v-if="props.shareStats" class="flex items-center justify-between">
+                    <p v-if="!offlineMode && offlineModeLocked" class="text-xs text-warning">
+                        Offline mode is on cooldown after coming back online. You can turn it on again
+                        tomorrow.
+                    </p>
+                    <p v-if="!props.hasArchetypeCatalog" class="text-xs text-warning">
+                        <template v-if="offlineMode">
+                            No archetype catalog has been downloaded yet, so deck archetype detection is
+                            unreliable until you turn offline mode off long enough to sync one.
+                        </template>
+                        <template v-else>
+                            No archetype catalog has been downloaded yet. Turning offline mode on now would
+                            leave deck archetype detection unreliable until one syncs.
+                        </template>
+                    </p>
+                    <div v-if="!offlineMode" class="flex items-center justify-between">
                         <p class="text-sm text-muted-foreground">{{ pendingMatches.length }} matches pending.</p>
                         <Button
                             variant="outline"
@@ -486,6 +545,8 @@ const sampleOpponent: OpponentData = {
                             }}
                         </Button>
                     </div>
+                    <Separator />
+                    <DataDisclosure />
                 </CardContent>
             </Card>
 
@@ -512,5 +573,11 @@ const sampleOpponent: OpponentData = {
 
             <p class="text-xs text-muted-foreground">mymtgo v{{ appVersion }}</p>
         </div>
+
+        <OfflineModeRejoinDialog
+            v-model:open="rejoinDialogOpen"
+            :submitting="processing === 'offlineMode'"
+            @confirm="confirmRejoin"
+        />
     </div>
 </template>

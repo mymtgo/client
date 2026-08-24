@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Archetypes\Refresh;
 
 use App\Actions\Archetypes\ApplyArchetypeRefresh;
+use App\Exceptions\OfflineModeException;
 use App\Http\Requests\ApplyArchetypeRefreshRequest;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Log;
@@ -13,6 +14,8 @@ class ApplyController
     {
         try {
             $summary = ApplyArchetypeRefresh::run($request->mappings());
+        } catch (OfflineModeException) {
+            return back()->with('error', 'Offline mode is enabled. Turn it off in Settings to refresh archetypes.');
         } catch (\Throwable $e) {
             Log::error('Archetype refresh apply failed', ['exception' => $e]);
             report($e);

@@ -20,7 +20,7 @@ class ResolveCardsFromDek
         $mtgoIds = array_column($parsedCards, 'mtgo_id');
         $quantityMap = collect($parsedCards)->keyBy('mtgo_id');
 
-        $response = Http::mymtgoApi()->post('/api/cards/resolve', [
+        $response = Http::mymtgoReference()->post('/api/cards/resolve', [
             'mtgo_ids' => $mtgoIds,
         ]);
 

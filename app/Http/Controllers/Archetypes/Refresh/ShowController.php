@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Archetypes\Refresh;
 
 use App\Actions\Archetypes\ComputeArchetypeRefreshPlan;
+use App\Exceptions\OfflineModeException;
 use App\Models\Archetype;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Log;
@@ -15,6 +16,10 @@ class ShowController
     {
         try {
             $plan = ComputeArchetypeRefreshPlan::run();
+        } catch (OfflineModeException) {
+            return redirect()
+                ->route('archetypes.index')
+                ->with('error', 'Offline mode is enabled. Turn it off in Settings to refresh archetypes.');
         } catch (\Throwable $e) {
             Log::error('Archetype refresh preview failed', ['exception' => $e]);
             report($e);

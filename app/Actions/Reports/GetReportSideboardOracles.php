@@ -35,7 +35,13 @@ class GetReportSideboardOracles
             ->map(fn () => true);
     }
 
-    private static function isSideboard(mixed $sideboard): bool
+    /**
+     * Whether a DeckVersion cards-accessor `sideboard` value means "sideboard".
+     *
+     * Public because BuildSideboardGuide has to make the same call on individual
+     * card entries when a card is split across the maindeck and the sideboard.
+     */
+    public static function isSideboard(mixed $sideboard): bool
     {
         return $sideboard === true
             || $sideboard === 'true'

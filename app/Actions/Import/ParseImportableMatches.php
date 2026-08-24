@@ -182,10 +182,7 @@ class ParseImportableMatches
 
         foreach ($unpopulated->chunk(200) as $chunk) {
             try {
-                $response = Http::withHeaders([
-                    'X-Device-Id' => $deviceId,
-                    'X-Api-Key' => $apiKey,
-                ])->post(config('mymtgo_api.url').'/api/cards', [
+                $response = Http::mymtgoReference()->post('/api/cards', [
                     'ids' => $chunk->values(),
                     'tokens' => [],
                 ]);

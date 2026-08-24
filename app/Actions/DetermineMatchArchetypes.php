@@ -2,17 +2,22 @@
 
 namespace App\Actions;
 
+use App\Actions\Archetypes\AggregateOpponentCards;
 use App\Actions\Archetypes\ResolveMergedArchetype;
 use App\Jobs\DownloadArchetypeDecklists;
 use App\Models\Archetype;
 use App\Models\MtgoMatch;
-use App\Models\Player;
 
 class DetermineMatchArchetypes
 {
     public static function run(MtgoMatch $match): void
     {
         $matchArchetypes = [];
+
+        $manualPlayerIds = $match->archetypes()
+            ->where('manual', true)
+            ->pluck('player_id')
+            ->all();
 
         $firstGame = $match->games->first();
 
@@ -22,7 +27,7 @@ class DetermineMatchArchetypes
 
         $player = $firstGame->localPlayers->first();
 
-        if ($player) {
+        if ($player && ! in_array($player->id, $manualPlayerIds, true)) {
             $deckArchetypeId = $match->deckVersion?->deck?->archetype_id;
 
             if ($deckArchetypeId) {
@@ -52,35 +57,16 @@ class DetermineMatchArchetypes
             }
         }
 
-        $opponentDecks = [];
+        $opponentDecks = AggregateOpponentCards::run($match);
 
-        foreach ($match->games as $game) {
-            $opponents = $game->opponents->filter(
-                fn (Player $player) => ! $player->pivot->is_local
-            );
-
-            foreach ($opponents as $opponent) {
-                $opponentDecks[$opponent->id] = $opponentDecks[$opponent->id] ?? [];
-
-                $cards = collect($opponent->pivot->deck_json)->values();
-
-                $opponentDecks[$opponent->id] = [
-                    ...$opponentDecks[$opponent->id],
-                    ...$cards->toArray(),
-                ];
-            }
-        }
         $homebrewId = null;
 
         foreach ($opponentDecks as $opponentId => $opponentCards) {
-            $cards = collect($opponentCards)->groupBy('mtgo_id')->map(function ($cards) {
-                return [
-                    'mtgo_id' => $cards[0]['mtgo_id'],
-                    'quantity' => min(4, $cards->sum('quantity')),
-                ];
-            });
+            if (in_array($opponentId, $manualPlayerIds, true)) {
+                continue;
+            }
 
-            $archetype = DetermineDeckArchetype::run($cards, $match->format, $match->id, $opponentId);
+            $archetype = DetermineDeckArchetype::run($opponentCards, $match->format, $match->id, $opponentId);
 
             if (! $archetype) {
                 $homebrewId ??= Archetype::query()
@@ -106,7 +92,7 @@ class DetermineMatchArchetypes
             ];
         }
 
-        $match->archetypes()->delete();
+        $match->archetypes()->where('manual', false)->delete();
 
         $match->archetypes()->createMany($matchArchetypes);
 

@@ -13,12 +13,19 @@ class MigrateSettingsToJson
      * Null defaults are intentional — e.g. device_id must stay null so
      * MtgoManager::runInitialSetup() detects an unregistered device.
      *
+     * `share_stats` is retained deliberately. This class reads the legacy
+     * NativePHP Settings store, where that is the key that exists. Removing it
+     * would read an absent `offline_mode`, default to false, and silently put a
+     * user who opted out back online. RenameShareStatsToOfflineMode converts it
+     * afterwards.
+     *
      * @var array<string, mixed>
      */
     private const KEYS = [
         'log_path' => '',
         'log_data_path' => '',
         'share_stats' => true,
+        'offline_mode' => false,
         'watcher_active' => true,
         'debug_mode' => false,
         'league_window' => false,

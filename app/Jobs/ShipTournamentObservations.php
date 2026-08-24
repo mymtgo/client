@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Actions\RegisterDevice;
+use App\Exceptions\OfflineModeException;
 use App\Facades\AppSettings;
 use App\Models\TournamentObservationQueue;
 use Illuminate\Bus\Queueable;
@@ -29,6 +30,13 @@ class ShipTournamentObservations implements ShouldQueue
 
     public int $maxExceptions = 1;
 
+    /**
+     * Set by send() when offline mode was toggled on between the handle()
+     * guard and the request. Distinguishes "skip quietly" from "real
+     * failure" for a null return, since ?int has no room for a third state.
+     */
+    private bool $offlineDuringSend = false;
+
     public function middleware(): array
     {
         return [(new WithoutOverlapping('ship-tournament-observations'))->dontRelease()];
@@ -36,6 +44,10 @@ class ShipTournamentObservations implements ShouldQueue
 
     public function handle(): void
     {
+        if (AppSettings::isOffline()) {
+            return;
+        }
+
         $rows = $this->claim();
 
         if ($rows->isEmpty()) {
@@ -45,6 +57,20 @@ class ShipTournamentObservations implements ShouldQueue
         $response = $this->send($rows);
 
         if ($response === null) {
+            if ($this->offlineDuringSend) {
+                // Not a failed request — it never went out. Release the
+                // claim without charging an attempt or applying backoff.
+                // Matches ShipCardStats::releaseStrandedClaims(): filter on
+                // status='sending' so this can't resurrect a row a
+                // concurrent run already moved past 'sending' (e.g. to
+                // 'sent') if chunking is ever added here.
+                TournamentObservationQueue::whereIn('id', $rows->pluck('id'))
+                    ->where('status', 'sending')
+                    ->update(['status' => 'pending', 'updated_at' => now()]);
+
+                return;
+            }
+
             $this->markFailure($rows, 'request threw exception');
 
             return;
@@ -110,16 +136,19 @@ class ShipTournamentObservations implements ShouldQueue
         $gz = gzencode(json_encode($body));
 
         try {
-            $response = Http::withHeaders([
-                'X-Device-Id' => AppSettings::deviceId(),
-                'X-Api-Key' => RegisterDevice::retrieveKey(),
-                'Content-Encoding' => 'gzip',
-                'Content-Type' => 'application/json',
-            ])
+            $response = Http::mymtgoApi()
+                ->withHeaders([
+                    'Content-Encoding' => 'gzip',
+                    'Content-Type' => 'application/json',
+                ])
                 ->withBody($gz, 'application/json')
-                ->post(config('mymtgo_api.url').'/api/tournament-observations');
+                ->post('/api/tournament-observations');
 
             return $response->status();
+        } catch (OfflineModeException) {
+            $this->offlineDuringSend = true;
+
+            return null;
         } catch (Throwable $e) {
             Log::warning('ShipTournamentObservations: send failed', [
                 'error' => $e->getMessage(),

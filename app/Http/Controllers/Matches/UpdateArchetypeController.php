@@ -43,6 +43,7 @@ class UpdateArchetypeController extends Controller
                 [
                     'archetype_id' => $request->input('archetype_id'),
                     'confidence' => 1.0,
+                    'manual' => true,
                 ]
             );
         } else {

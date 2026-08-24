@@ -2,8 +2,7 @@
 
 namespace App\Actions\Tournaments;
 
-use App\Actions\RegisterDevice;
-use App\Facades\AppSettings;
+use App\Exceptions\OfflineModeException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -21,13 +20,7 @@ class FetchTournamentMetadata
     public static function run(int $mtgoEventId): ?array
     {
         try {
-            $response = Http::withHeaders([
-                'X-Device-Id' => AppSettings::deviceId(),
-                'X-Api-Key' => RegisterDevice::retrieveKey(),
-                'Accept' => 'application/json',
-            ])
-                ->timeout(5)
-                ->get(config('mymtgo_api.url')."/api/tournaments/{$mtgoEventId}");
+            $response = Http::mymtgoApi()->timeout(5)->get("/api/tournaments/{$mtgoEventId}");
 
             if (! $response->successful()) {
                 return null;
@@ -42,6 +35,8 @@ class FetchTournamentMetadata
                     ? Carbon::parse($body['started_at'])
                     : null,
             ];
+        } catch (OfflineModeException) {
+            return null;
         } catch (Throwable $e) {
             Log::warning('FetchTournamentMetadata: lookup failed', [
                 'mtgo_event_id' => $mtgoEventId,

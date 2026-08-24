@@ -11,6 +11,12 @@ class ComputeArchetypeRefreshPlan
     /**
      * Diff the API archetype list against local non-manual, non-fallback archetypes.
      *
+     * `Http::mymtgoApi()` throws `OfflineModeException` (a `RuntimeException`)
+     * when offline mode is on. That is deliberately left unhandled here: both
+     * callers (`ShowController` and `ApplyController`) already catch
+     * `\Throwable` around this call and redirect with an error message.
+     *
+     *
      * @return array{
      *     api: array<int, array{uuid: string, name: string, format: string, colorIdentity: string|null}>,
      *     added: int,
@@ -19,6 +25,8 @@ class ComputeArchetypeRefreshPlan
      *     removed: array<int, array{id: int, name: string, format: string|null, match_count: int, suggested_id: int|null, suggested_uuid: string|null}>,
      *     match_ids: array<int, int>,
      * }
+     *
+     * @throws \RuntimeException
      */
     public static function run(): array
     {

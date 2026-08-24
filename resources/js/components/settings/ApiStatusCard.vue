@@ -5,14 +5,12 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Spinner } from '@/components/ui/spinner';
 import { onMounted, ref } from 'vue';
-import {
-    Badge
-} from '../../../../nativephp/electron/dist/win-unpacked/resources/build/app/resources/js/components/ui/badge';
 
 type ApiStatus =
     | { state: 'ok' }
     | { state: 'noauth'; message: string }
-    | { state: 'unreachable'; error: string };
+    | { state: 'unreachable'; error: string }
+    | { state: 'offline' };
 
 const status = ref<ApiStatus | null>(null);
 const checking = ref(false);
@@ -86,13 +84,22 @@ onMounted(() => {
                         :class="{
                             'bg-muted-foreground/40 animate-pulse': status === null,
                             'bg-success': status?.state === 'ok',
-                            'bg-destructive': status !== null && status.state !== 'ok',
+                            'bg-warning': status?.state === 'offline',
+                            'bg-destructive': status !== null && status.state !== 'ok' && status.state !== 'offline',
                         }"
                     />
-                    <span class="text-sm" :class="status && status.state !== 'ok' ? 'text-destructive' : 'text-muted-foreground'">
+                    <span
+                        class="text-sm"
+                        :class="{
+                            'text-warning': status?.state === 'offline',
+                            'text-destructive': status !== null && status.state !== 'ok' && status.state !== 'offline',
+                            'text-muted-foreground': status === null || status.state === 'ok',
+                        }"
+                    >
                         <template v-if="status === null">Checking…</template>
                         <template v-else-if="status.state === 'ok'">Connected</template>
                         <template v-else-if="status.state === 'noauth'">{{ status.message }}</template>
+                        <template v-else-if="status.state === 'offline'">Offline mode is enabled</template>
                         <template v-else>Cannot reach API</template>
                     </span>
                 </div>

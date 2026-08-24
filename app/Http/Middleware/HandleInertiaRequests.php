@@ -39,6 +39,7 @@ class HandleInertiaRequests extends Middleware
                 'pendingMatchCount' => MtgoMatch::submittable()->count(),
             ],
             'debugMode' => fn () => AppSettings::isDebugMode(),
+            'offlineMode' => fn () => AppSettings::isOffline(),
             'activeAccount' => fn () => Account::current()?->username,
             'accounts' => fn () => Account::tracked()->orderBy('username')->get(['id', 'username', 'active']),
             'availableUpdate' => fn () => Cache::get('available_update'),

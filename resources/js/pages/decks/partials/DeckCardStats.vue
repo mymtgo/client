@@ -19,8 +19,7 @@ import { useTrustSetting } from '@/composables/useTrustSetting';
 import { timeframeLabel } from '@/lib/timeframes';
 import { Skeleton } from '@/components/ui/skeleton';
 import { loadCardStatsVisibility, type CardStatsPerspective } from '@/pages/decks/partials/cardStatsColumns';
-import type { DeckCardStat } from '@/types/decks';
-import type { ReportArchetypeOption } from '@/types/reports';
+import type { CardStatsPayload, DeckCardStat } from '@/types/decks';
 import { Deferred, router } from '@inertiajs/vue3';
 import { useTimeAgo } from '@vueuse/core';
 import { CircleHelp, RefreshCw } from 'lucide-vue-next';
@@ -31,16 +30,7 @@ const props = defineProps<{
     deckArchetypeId: number | null;
     timeframe?: string;
     deletedAt?: string | null;
-    cardStats?: {
-        stats: DeckCardStat[];
-        archetypes: ReportArchetypeOption[];
-        perspective?: CardStatsPerspective;
-        deckWinrate: { wins: number; games: number; rate: number };
-        trust: number;
-        source: 'local' | 'external';
-        refreshedAt: string | null;
-        externalError: boolean;
-    };
+    cardStats?: CardStatsPayload;
 }>();
 
 const isReadonly = computed(() => Boolean(props.deletedAt));
@@ -53,7 +43,7 @@ const deckWinrate = computed(() => props.cardStats?.deckWinrate ?? { wins: 0, ga
 const initialTrust = computed(() => props.cardStats?.trust ?? 50);
 const source = computed<'local' | 'external'>(() => props.cardStats?.source ?? 'local');
 const refreshedAt = computed<string | null>(() => props.cardStats?.refreshedAt ?? null);
-const externalError = computed<boolean>(() => props.cardStats?.externalError ?? false);
+const externalError = computed<false | 'unavailable' | 'offline'>(() => props.cardStats?.externalError ?? false);
 const archetypeMissing = computed<boolean>(() => props.deckArchetypeId === null);
 
 const toggleLoading = ref(false);
@@ -79,14 +69,20 @@ const refreshedAgo = computed<string | null>(() => {
 // ── External error toast ─────────────────────────────────────────────────────
 
 const { add: toast } = useToast();
-watch(() => externalError.value, (isError) => {
-    if (isError) {
-        toast({
+watch(() => externalError.value, (reason) => {
+    if (!reason) return;
+
+    toast(reason === 'offline'
+        ? {
+            type: 'warning',
+            title: 'Offline mode',
+            message: 'Community stats are unavailable while offline mode is enabled.',
+        }
+        : {
             type: 'error',
             title: 'Community stats unavailable',
             message: "Couldn't reach the community stats service. Try again later.",
         });
-    }
 });
 
 // ── Timeframe ────────────────────────────────────────────────────────────────

@@ -57,6 +57,11 @@ class BulkUpdateArchetypeController extends Controller
                 [
                     'archetype_id' => $request->input('archetype_id'),
                     'confidence' => 1.0,
+                    // Same as the single-match UpdateArchetypeController: a
+                    // hand-assigned archetype must not be wiped by a later
+                    // re-detect, whether it was assigned one match or fifty
+                    // at a time.
+                    'manual' => true,
                 ]
             );
         }

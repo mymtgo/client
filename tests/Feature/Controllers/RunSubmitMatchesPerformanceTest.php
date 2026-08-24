@@ -17,7 +17,7 @@ uses(RefreshDatabase::class);
 
 it('dispatches submit jobs asynchronously instead of blocking', function () {
     Queue::fake();
-    AppSettings::setShouldTransmitMatches(true);
+    AppSettings::setOffline(false);
 
     $account = Account::create(['username' => 'testplayer', 'active' => true, 'tracked' => true]);
     $deck = Deck::factory()->create(['account_id' => $account->id]);
@@ -56,7 +56,7 @@ it('dispatches submit jobs asynchronously instead of blocking', function () {
 
 it('does not dispatch when sharing is disabled', function () {
     Queue::fake();
-    AppSettings::setShouldTransmitMatches(false);
+    AppSettings::setOffline(true);
 
     $this->post('/settings/submit-matches')->assertRedirect();
 

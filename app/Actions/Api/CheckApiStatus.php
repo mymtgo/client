@@ -2,16 +2,21 @@
 
 namespace App\Actions\Api;
 
+use App\Facades\AppSettings;
 use Illuminate\Support\Facades\Http;
 use Throwable;
 
 class CheckApiStatus
 {
     /**
-     * @return array{state: 'ok'}|array{state: 'noauth', message: string}|array{state: 'unreachable', error: string}
+     * @return array{state: 'ok'}|array{state: 'noauth', message: string}|array{state: 'unreachable', error: string}|array{state: 'offline'}
      */
     public static function run(): array
     {
+        if (AppSettings::isOffline()) {
+            return ['state' => 'offline'];
+        }
+
         try {
             $response = Http::mymtgoApi()
                 ->timeout(5)

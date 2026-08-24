@@ -122,7 +122,7 @@ class MtgoManager
 
     public function retryUnsubmittedMatches(): void
     {
-        if (! AppSettings::shouldTransmitMatches()) {
+        if (AppSettings::isOffline()) {
             return;
         }
 
@@ -147,8 +147,17 @@ class MtgoManager
 
         // Bool settings: seed only when the key has never been written
         // (raw get returns null). Explicit false must be preserved.
-        if (AppSettings::get('share_stats') === null) {
-            AppSettings::setShouldTransmitMatches(true);
+        //
+        // offline_mode is handled separately, deliberately not via the same
+        // `get() === null` check as the rest: this method runs on every boot
+        // with no first-run gate, and get() can't tell "never configured"
+        // apart from "settings.json could not be read right now" — a
+        // transient boot-time read failure would otherwise look exactly like
+        // a fresh install and get offline_mode permanently written back to
+        // false over whatever the user actually chose. See
+        // AppSettings::offlineModeNeverSet().
+        if (AppSettings::offlineModeNeverSet()) {
+            AppSettings::setOffline(false);
         }
         if (AppSettings::get('watcher_active') === null) {
             AppSettings::setWatcherActive(true);
@@ -158,12 +167,6 @@ class MtgoManager
         }
         if (AppSettings::get('league_window') === null) {
             AppSettings::setShowLeagueWindow(false);
-        }
-        if (AppSettings::get('opponent_window') === null) {
-            AppSettings::setShowOpponentWindow(false);
-        }
-        if (AppSettings::get('deck_window') === null) {
-            AppSettings::setShowDeckWindow(false);
         }
         if (AppSettings::get('local_images') === null) {
             AppSettings::setDownloadImagesLocally(false);
@@ -179,7 +182,7 @@ class MtgoManager
             RegisterDevice::run();
         }
 
-        if (! Archetype::query()->where('is_fallback', false)->exists()) {
+        if (! AppSettings::isOffline() && ! Archetype::query()->where('is_fallback', false)->exists()) {
             $this->downloadArchetypes(sync: false);
         }
 
@@ -250,7 +253,8 @@ class MtgoManager
         // Periodic maintenance (unchanged)
         $schedule->call(fn () => $this->retryUnsubmittedMatches())
             ->everyMinute()
-            ->name('submit_matches');
+            ->name('submit_matches')
+            ->skip(fn () => AppSettings::isOffline());
 
         // Pick up new/updated deck XML files so RunPipeline's orphan relinker
         // has fresh DeckVersions to match against.
@@ -261,16 +265,19 @@ class MtgoManager
         $schedule->job(new ShipTournamentObservations)
             ->everyThirtySeconds()
             ->name('ship_tournament_observations')
-            ->withoutOverlapping(60);
+            ->withoutOverlapping(60)
+            ->skip(fn () => AppSettings::isOffline());
 
         $schedule->job(new ShipCardStats)
             ->everyThirtySeconds()
             ->name('ship_card_stats')
-            ->withoutOverlapping(60);
+            ->withoutOverlapping(60)
+            ->skip(fn () => AppSettings::isOffline());
 
         $schedule->call(fn () => EnqueueCardStats::run())
             ->everyMinute()
-            ->name('enqueue_card_stats');
+            ->name('enqueue_card_stats')
+            ->skip(fn () => AppSettings::isOffline());
 
         $schedule->call(fn () => $this->populateMissingCardData())
             ->hourly();

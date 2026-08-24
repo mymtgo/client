@@ -3,6 +3,7 @@
 namespace App\Actions\Tournaments;
 
 use App\Enums\LogEventType;
+use App\Facades\AppSettings;
 use App\Models\LogEvent;
 use App\Models\TournamentObservationQueue;
 use Illuminate\Support\Facades\Log;
@@ -16,6 +17,10 @@ class EnqueueTournamentObservations
      */
     public static function run(int $limit = 500): int
     {
+        if (AppSettings::isOffline()) {
+            return 0;
+        }
+
         $events = LogEvent::query()
             ->whereIn('event_type', LogEventType::tournamentValues())
             ->whereNotIn('id', fn ($q) => $q

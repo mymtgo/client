@@ -45,6 +45,7 @@ it('returns archetype with colors from local archetype lookup on 200', function 
     $result = FetchOpponentLeagueArchetype::run('Foo', 'CModern');
 
     expect($result)->toBe([
+        'uuid' => 'arch-uuid-1',
         'name' => 'Izzet Phoenix',
         'colors' => 'UR',
     ]);
@@ -71,7 +72,7 @@ it('returns archetype with null colors when local archetype is missing', functio
     ]);
 
     expect(FetchOpponentLeagueArchetype::run('Bar', 'CPioneer'))
-        ->toBe(['name' => 'Mystery Brew', 'colors' => null]);
+        ->toBe(['uuid' => 'unknown-uuid', 'name' => 'Mystery Brew', 'colors' => null]);
 });
 
 it('returns null on 404 response', function () {

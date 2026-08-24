@@ -15,6 +15,12 @@ class DownloadArchetypeDecklist
 {
     /**
      * @throws \RuntimeException
+     *
+     * `Http::mymtgoApi()` throws `OfflineModeException` (itself a
+     * `RuntimeException`) when offline mode is on. That is deliberately left
+     * unhandled here: `DownloadDecklistController` already catches
+     * `\RuntimeException` and returns its message as a 422, and "Offline mode
+     * is enabled." is exactly the message a caller should see in that case.
      */
     public static function run(Archetype $archetype): void
     {

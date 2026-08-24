@@ -2,6 +2,7 @@
 
 namespace App\Actions\Leagues;
 
+use App\Exceptions\OfflineModeException;
 use App\Models\Archetype;
 use App\Models\MtgoMatch;
 use Illuminate\Support\Facades\Http;
@@ -14,7 +15,7 @@ class FetchOpponentLeagueArchetype
      * Fetch the latest 5-0 league archetype for an opponent from the API.
      * The API only stores 5-0 finishes, so any successful response is a 5-0.
      *
-     * @return array{name: string, colors: string|null}|null
+     * @return array{uuid: string, name: string, colors: string|null}|null
      */
     public static function run(string $username, string $rawFormat): ?array
     {
@@ -26,6 +27,8 @@ class FetchOpponentLeagueArchetype
                     'username' => $username,
                     'format' => $format,
                 ]);
+        } catch (OfflineModeException) {
+            return null;
         } catch (Throwable $e) {
             Log::warning('Opponent league lookup failed', [
                 'username' => $username,
@@ -51,6 +54,7 @@ class FetchOpponentLeagueArchetype
             ->value('color_identity');
 
         return [
+            'uuid' => $archetype['uuid'],
             'name' => $archetype['name'],
             'colors' => $colors,
         ];

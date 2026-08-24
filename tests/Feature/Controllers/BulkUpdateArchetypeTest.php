@@ -73,6 +73,24 @@ it('updates existing archetypes when bulk setting', function () {
     expect(MatchArchetype::where('mtgo_match_id', $match->id)->count())->toBe(1);
 });
 
+it('marks a bulk-assigned archetype manual so a re-detect cannot wipe it', function () {
+    $opponent = Player::create(['username' => 'TestOpponent']);
+    $archetype = Archetype::factory()->create();
+    $match = createMatchWithOpponent($opponent);
+
+    $this->patch('/matches/bulk-archetype', [
+        'match_ids' => [$match->id],
+        'archetype_id' => $archetype->id,
+    ])->assertRedirect();
+
+    // Same guarantee the single-match UpdateArchetypeController gives.
+    $this->assertDatabaseHas('match_archetypes', [
+        'mtgo_match_id' => $match->id,
+        'player_id' => $opponent->id,
+        'manual' => true,
+    ]);
+});
+
 it('validates match_ids and archetype_id are required', function () {
     $this->patch('/matches/bulk-archetype', [])
         ->assertSessionHasErrors(['match_ids', 'archetype_id']);

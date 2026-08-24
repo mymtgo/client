@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Facades\AppSettings;
 use App\Models\Archetype;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -19,6 +20,10 @@ class DownloadArchetypes implements ShouldQueue
 
     public function handle(): void
     {
+        if (AppSettings::isOffline()) {
+            return;
+        }
+
         $response = Http::mymtgoApi()->throw()->get('/api/archetypes');
 
         self::upsert($response->json());

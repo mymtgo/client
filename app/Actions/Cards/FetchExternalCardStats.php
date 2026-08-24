@@ -38,7 +38,7 @@ final class FetchExternalCardStats
 
         try {
             $response = Http::mymtgoApi()->timeout(10)
-                ->get(config('mymtgo_api.url').'/api/card-stats', $params);
+                ->get('/api/card-stats', $params);
 
         } catch (ConnectionException $e) {
             throw new ExternalCardStatsUnavailable('network', 0, $e);
@@ -102,8 +102,8 @@ final class FetchExternalCardStats
                     'castWon' => (int) ($row['cast']['wins'] ?? 0),
                     'castLost' => (int) ($row['cast']['samples'] ?? 0) - (int) ($row['cast']['wins'] ?? 0),
                     'postboardGames' => 0,
-                    'sidedOutGames' => 0,
-                    'sidedInGames' => 0,
+                    'sidedOutGames' => (int) ($row['sided_out']['samples'] ?? 0),
+                    'sidedInGames' => (int) ($row['sided_in']['samples'] ?? 0),
                     'totalPlayed' => 0,
                     'playedGames' => 0,
                     'totalKicked' => 0,

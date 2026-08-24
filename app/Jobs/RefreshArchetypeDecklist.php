@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Actions\Archetypes\DownloadArchetypeDecklist;
+use App\Facades\AppSettings;
 use App\Models\Archetype;
 use Illuminate\Bus\Batchable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -26,13 +27,27 @@ class RefreshArchetypeDecklist implements ShouldQueue
 
     public function handle(): void
     {
+        if (AppSettings::isOffline()) {
+            return;
+        }
+
         $archetype = Archetype::find($this->archetypeId);
 
         if (! $archetype || $archetype->is_fallback || $archetype->manual || $archetype->merged_into_id) {
             return;
         }
 
-        DownloadArchetypeDecklist::run($archetype);
+        // Matches DownloadArchetypeDecklists' degradation: a failure here (offline
+        // mode toggled on mid-batch, API hiccup) shouldn't burn through tries=3 and
+        // its [10, 60, 300]s backoff for every archetype in a refresh batch.
+        try {
+            DownloadArchetypeDecklist::run($archetype);
+        } catch (Throwable $e) {
+            Log::warning('RefreshArchetypeDecklist: failed', [
+                'archetype_id' => $this->archetypeId,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 
     public function failed(Throwable $e): void

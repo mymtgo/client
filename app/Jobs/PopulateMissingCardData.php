@@ -5,7 +5,6 @@ namespace App\Jobs;
 use App\Actions\Cards\CreateMissingCardsFromTimelines;
 use App\Actions\Cards\DownloadCardImage;
 use App\Actions\Cards\PopulateTokensFromXml;
-use App\Actions\RegisterDevice;
 use App\Facades\AppSettings;
 use App\Models\Card;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -58,39 +57,44 @@ class PopulateMissingCardData implements ShouldQueue
         $tokenCards = $unresolved->where('rarity', 'token')->whereNotNull('name');
 
         $downloadImages = AppSettings::downloadImagesLocally();
-        $http = $this->apiClient();
 
         // Process regular cards in batches to avoid overwhelming the API
-        $regularCards->chunk(50)->each(function (Collection $chunk) use ($http, $downloadImages) {
-            $this->fetchAndUpdate($http, $chunk, collect(), $downloadImages);
+        $regularCards->chunk(50)->each(function (Collection $chunk) use ($downloadImages) {
+            $this->fetchAndUpdate($chunk, collect(), $downloadImages);
         });
 
         // Process tokens in a single call (small set of unique names)
         if ($tokenCards->isNotEmpty()) {
-            $this->fetchAndUpdate($http, collect(), $tokenCards, $downloadImages);
+            $this->fetchAndUpdate(collect(), $tokenCards, $downloadImages);
         }
     }
 
+    /**
+     * Build a fresh client per request rather than reusing one across chunks.
+     *
+     * The macro resolves the API key when the closure runs, so a builder held
+     * across multiple sends would keep using whatever key was current when it
+     * was first built. This job can run long enough for the key to expire
+     * mid-run, so each chunk needs its own client to pick up a re-registered
+     * key.
+     */
     private function apiClient(): PendingRequest
     {
-        return Http::withHeaders([
-            'X-Device-Id' => AppSettings::deviceId(),
-            'X-Api-Key' => RegisterDevice::retrieveKey(),
-        ])->timeout(15);
+        return Http::mymtgoReference()->timeout(15);
     }
 
     /**
      * @param  Collection<int, Card>  $regularCards
      * @param  Collection<int, Card>  $tokenCards
      */
-    private function fetchAndUpdate(PendingRequest $http, Collection $regularCards, Collection $tokenCards, bool $downloadImages): void
+    private function fetchAndUpdate(Collection $regularCards, Collection $tokenCards, bool $downloadImages): void
     {
         if ($regularCards->isEmpty() && $tokenCards->isEmpty()) {
             return;
         }
 
         try {
-            $response = $http->post(config('mymtgo_api.url').'/api/cards', [
+            $response = $this->apiClient()->post('/api/cards', [
                 'ids' => $regularCards->pluck('mtgo_id')->values(),
                 'tokens' => $tokenCards->pluck('name')->unique()->values(),
             ]);

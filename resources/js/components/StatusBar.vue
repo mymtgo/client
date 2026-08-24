@@ -3,6 +3,7 @@ import { usePage } from '@inertiajs/vue3';
 import { computed } from 'vue';
 import HelpPopover from '@/components/HelpPopover.vue';
 import SupportPopover from '@/components/SupportPopover.vue';
+import { useOfflineMode } from '@/composables/useOfflineMode';
 
 const page = usePage();
 
@@ -11,6 +12,8 @@ const status = computed(() => page.props.status as {
     lastIngestAt: string | null;
     lastIngestAtHuman: string | null;
 });
+
+const offlineMode = useOfflineMode();
 </script>
 
 <template>
@@ -23,6 +26,14 @@ const status = computed(() => page.props.status as {
             />
             <span>{{ status.watcherRunning ? 'Watching' : 'Stopped' }}</span>
         </div>
+
+        <template v-if="offlineMode">
+            <div class="h-3 w-px bg-border" />
+            <div class="flex items-center gap-1.5">
+                <div class="size-1.5 rounded-full bg-warning" />
+                <span>Offline mode</span>
+            </div>
+        </template>
 
         <div class="h-3 w-px bg-border" />
 

@@ -2,6 +2,7 @@
 
 namespace App\Settings;
 
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -66,8 +67,19 @@ class AppSettings
                     if (! flock($handle, LOCK_EX)) {
                         throw new \RuntimeException("Could not acquire exclusive lock on {$path} after quarantine");
                     }
+
+                    // A corrupt file means whatever offline_mode was set to is
+                    // unrecoverable. Rebuild fail-closed so a lost privacy opt-in
+                    // never silently reverts to online — the explicit $key/$value
+                    // being written below still wins if this write IS offline_mode.
+                    // Scoped to this branch only: an empty, newly-created file (a
+                    // genuine fresh install's very first write, nothing to
+                    // quarantine above) must NOT trip this — that would bake
+                    // offline_mode: true into every new install's first write.
+                    $data = ['offline_mode' => true];
+                } else {
+                    $data = [];
                 }
-                $data = [];
             }
 
             $data[$key] = $value;
@@ -173,14 +185,113 @@ class AppSettings
         $this->set('log_data_path', $path);
     }
 
-    public function shouldTransmitMatches(): bool
+    /**
+     * Whether the app should make no community API calls.
+     *
+     * Fails CLOSED: if settings.json cannot be read right now (locked,
+     * unreadable, corrupt), the user is treated as offline rather than
+     * silently falling back to the "online" default. This method reads the
+     * file itself — via readResult() — rather than going through get(),
+     * because get()/read() collapse every failure into the same empty array
+     * as "no settings yet", which is exactly the ambiguity that must not
+     * leak into a privacy switch. No other setting's read-failure behaviour
+     * changes; this is the only caller of readResult().
+     *
+     * The try/catch matters as much as the ok flag: a hard fopen()/flock()
+     * failure surfaces here as a PHP warning that this app's error handler
+     * (bootstrap/app.php) promotes to an ErrorException — e.g. the same
+     * "AV/indexer still holds the file" condition already seen with Blade
+     * cache renames — rather than returning false cleanly. Letting that
+     * propagate would fail OPEN by crashing whatever caller assumed
+     * isOffline() can't throw; catching it and returning true keeps the
+     * fail-closed guarantee real under the exact conditions that motivate it.
+     */
+    public function isOffline(): bool
     {
-        return (bool) $this->get('share_stats', true);
+        try {
+            $result = $this->readResult();
+        } catch (\Throwable) {
+            return true;
+        }
+
+        if (! $result['ok']) {
+            return true;
+        }
+
+        return array_key_exists('offline_mode', $result['data'])
+            ? (bool) $result['data']['offline_mode']
+            : false;
     }
 
-    public function setShouldTransmitMatches(bool $value): void
+    public function setOffline(bool $value): void
     {
-        $this->set('share_stats', $value);
+        $this->set('offline_mode', $value);
+    }
+
+    /**
+     * When offline mode may be switched back on, if a cooldown is running.
+     *
+     * Set when a user leaves offline mode, so that grabbing a fresh archetype
+     * catalogue and immediately going private again costs a day online rather
+     * than two clicks. Deliberately NOT obfuscated: it lives in plain
+     * settings.json and a determined user can delete it. This is friction and
+     * an honesty signal, not enforcement — real enforcement would have to live
+     * on the API, which knows who has actually submitted anything.
+     */
+    public function offlineModeLockedUntil(): ?string
+    {
+        $value = $this->get('offline_mode_locked_until');
+
+        return is_string($value) && $value !== '' ? $value : null;
+    }
+
+    public function setOfflineModeLockedUntil(?string $isoTimestamp): void
+    {
+        $this->set('offline_mode_locked_until', $isoTimestamp);
+    }
+
+    /**
+     * Unlike isOffline(), this deliberately fails OPEN: an unreadable or
+     * unparseable timestamp means "not locked". Failing closed here would trap
+     * a user OUT of privacy on a bad read, which is the opposite of what the
+     * offline-mode guarantee is for.
+     */
+    public function isOfflineModeLocked(): bool
+    {
+        $until = $this->offlineModeLockedUntil();
+
+        if ($until === null) {
+            return false;
+        }
+
+        try {
+            return Carbon::parse($until)->isFuture();
+        } catch (\Throwable) {
+            return false;
+        }
+    }
+
+    /**
+     * Whether offline_mode has genuinely never been recorded, as opposed to
+     * a read failure that would look identical to "unset" through a plain
+     * get(). `MtgoManager::runInitialSetup()` runs on every boot with no
+     * first-run gate, and seeds offline_mode: false the first time it finds
+     * the key unset — a boot-time read failure must not be mistaken for a
+     * genuine fresh install there, or a transient hiccup permanently
+     * overwrites whatever the user actually chose. Any doubt (a failed read,
+     * or an exception) returns false — "don't know" must never be treated
+     * as "never set" for this flag, so this boot simply skips reseeding it
+     * rather than guessing.
+     */
+    public function offlineModeNeverSet(): bool
+    {
+        try {
+            $result = $this->readResult();
+        } catch (\Throwable) {
+            return false;
+        }
+
+        return $result['ok'] && ! array_key_exists('offline_mode', $result['data']);
     }
 
     public function isWatcherActive(): bool
@@ -223,24 +334,59 @@ class AppSettings
         $this->set('donation_prompt_seen', $value);
     }
 
-    public function showOpponentWindow(): bool
+    /**
+     * Whether the game overlay window is enabled.
+     *
+     * Falls back to the two windows this one replaced so an upgrade does not
+     * silently drop an overlay the player already had open. Settings live in a
+     * JSON file, so there is no migration to carry this — the fallback is the
+     * migration.
+     */
+    public function showGameOverlay(): bool
     {
-        return (bool) $this->get('opponent_window', false);
+        $explicit = $this->get('game_overlay');
+
+        if ($explicit !== null) {
+            return (bool) $explicit;
+        }
+
+        return (bool) $this->get('deck_window', false)
+            || (bool) $this->get('opponent_window', false);
     }
 
-    public function setShowOpponentWindow(bool $value): void
+    public function setShowGameOverlay(bool $value): void
     {
-        $this->set('opponent_window', $value);
+        $this->set('game_overlay', $value);
     }
 
-    public function showDeckWindow(): bool
+    public function overlayShowOpponent(): bool
     {
-        return (bool) $this->get('deck_window', false);
+        return (bool) $this->get('overlay_show_opponent', true);
     }
 
-    public function setShowDeckWindow(bool $value): void
+    public function setOverlayShowOpponent(bool $value): void
     {
-        $this->set('deck_window', $value);
+        $this->set('overlay_show_opponent', $value);
+    }
+
+    public function overlayShowDrawOdds(): bool
+    {
+        return (bool) $this->get('overlay_show_draw_odds', true);
+    }
+
+    public function setOverlayShowDrawOdds(bool $value): void
+    {
+        $this->set('overlay_show_draw_odds', $value);
+    }
+
+    public function overlayShowSideboard(): bool
+    {
+        return (bool) $this->get('overlay_show_sideboard', true);
+    }
+
+    public function setOverlayShowSideboard(bool $value): void
+    {
+        $this->set('overlay_show_sideboard', $value);
     }
 
     public function downloadImagesLocally(): bool
@@ -414,20 +560,43 @@ class AppSettings
      */
     private function read(): array
     {
+        return $this->readResult()['data'];
+    }
+
+    /**
+     * Read settings.json, distinguishing "could not read right now" from
+     * "read fine, key/file just isn't there yet".
+     *
+     * A missing file is `ok: true` with empty data — that is the normal,
+     * expected state for a fresh install and every setting's documented
+     * default already accounts for it. `fopen`/`flock` failing on an
+     * existing file, an empty/false raw read, and invalid JSON are all
+     * `ok: false` — the file exists but its current content cannot be
+     * trusted, which is a materially different situation for a caller that
+     * cannot afford to assume the least-private default (see isOffline()).
+     *
+     * This is the only place that draws that distinction; read() collapses
+     * it back to an empty array for every other caller, so no other
+     * setting's read-failure behaviour changes.
+     *
+     * @return array{ok: bool, data: array<string, mixed>}
+     */
+    private function readResult(): array
+    {
         $path = $this->path();
 
         if (! is_file($path)) {
-            return [];
+            return ['ok' => true, 'data' => []];
         }
 
         $handle = fopen($path, 'r');
         if ($handle === false) {
-            return [];
+            return ['ok' => false, 'data' => []];
         }
 
         try {
             if (! flock($handle, LOCK_SH)) {
-                return [];
+                return ['ok' => false, 'data' => []];
             }
 
             $raw = stream_get_contents($handle);
@@ -439,17 +608,17 @@ class AppSettings
         }
 
         if ($raw === false || $raw === '') {
-            return [];
+            return ['ok' => false, 'data' => []];
         }
 
         $decoded = json_decode($raw, true);
         if (is_array($decoded)) {
-            return $decoded;
+            return ['ok' => true, 'data' => $decoded];
         }
 
         $this->quarantine($path, $raw);
 
-        return [];
+        return ['ok' => false, 'data' => []];
     }
 
     /**

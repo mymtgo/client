@@ -21,23 +21,36 @@ it('round-trips logPath', function () {
 });
 
 it('casts bool settings correctly with defaults', function () {
-    expect(AppSettings::shouldTransmitMatches())->toBeTrue();
     expect(AppSettings::isWatcherActive())->toBeTrue();
     expect(AppSettings::isDebugMode())->toBeFalse();
     expect(AppSettings::showLeagueWindow())->toBeFalse();
-    expect(AppSettings::showOpponentWindow())->toBeFalse();
-    expect(AppSettings::showDeckWindow())->toBeFalse();
+    expect(AppSettings::showGameOverlay())->toBeFalse();
+    expect(AppSettings::overlayShowOpponent())->toBeTrue();
+    expect(AppSettings::overlayShowDrawOdds())->toBeTrue();
+    expect(AppSettings::overlayShowSideboard())->toBeTrue();
     expect(AppSettings::downloadImagesLocally())->toBeFalse();
 });
 
 it('round-trips bool mutators', function () {
-    AppSettings::setShouldTransmitMatches(false);
     AppSettings::setWatcherActive(false);
     AppSettings::setDebugMode(true);
 
-    expect(AppSettings::shouldTransmitMatches())->toBeFalse();
     expect(AppSettings::isWatcherActive())->toBeFalse();
     expect(AppSettings::isDebugMode())->toBeTrue();
+});
+
+it('defaults offline mode to false when the key has never been written', function () {
+    expect(AppSettings::isOffline())->toBeFalse();
+});
+
+it('round-trips offline mode', function () {
+    AppSettings::setOffline(true);
+
+    expect(AppSettings::isOffline())->toBeTrue();
+
+    AppSettings::setOffline(false);
+
+    expect(AppSettings::isOffline())->toBeFalse();
 });
 
 it('defaults systemTimezone to UTC', function () {

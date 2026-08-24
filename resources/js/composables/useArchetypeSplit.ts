@@ -1,5 +1,11 @@
 import { computed, type Ref } from 'vue';
 
+/**
+ * Raw MTGO format codes (`CModern`) mapped to the lowercased `archetypes.format`
+ * values `DownloadArchetypes` stores. Keys are uppercased and matched
+ * case-insensitively, so both a raw code and an already-humanised `Modern`
+ * resolve to the same value.
+ */
 const formatMap: Record<string, string> = {
     CMODERN: 'modern',
     CPAUPER: 'pauper',
@@ -20,7 +26,7 @@ export function useArchetypeSplit(
         if (!format.value) {
             return true;
         }
-        const mapped = formatMap[format.value] ?? format.value.toLowerCase();
+        const mapped = formatMap[format.value.toUpperCase()] ?? format.value.toLowerCase();
         return a.format === mapped;
     };
 

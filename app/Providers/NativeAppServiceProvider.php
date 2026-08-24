@@ -2,9 +2,8 @@
 
 namespace App\Providers;
 
-use App\Actions\Decks\OpenDeckPopoutWindow;
-use App\Actions\Leagues\OpenOpponentScoutWindow;
 use App\Actions\Leagues\OpenOverlayWindow;
+use App\Actions\Overlay\OpenGameOverlayWindow;
 use App\Actions\Tray\CreateTrayMenuBar;
 use App\Actions\Updates\RunAppUpdates;
 use App\Facades\AppSettings;
@@ -53,12 +52,8 @@ class NativeAppServiceProvider implements ProvidesPhpIni
             OpenOverlayWindow::run();
         }
 
-        if (AppSettings::showOpponentWindow()) {
-            OpenOpponentScoutWindow::run();
-        }
-
-        if (AppSettings::showDeckWindow()) {
-            OpenDeckPopoutWindow::run();
+        if (AppSettings::showGameOverlay()) {
+            OpenGameOverlayWindow::run();
         }
     }
 

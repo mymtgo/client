@@ -22,6 +22,7 @@ it('copies every known key from NativePHP Settings', function () {
 
     expect($data['log_path'])->toBe('C:\\logs');
     expect($data['share_stats'])->toBeTrue();
+    expect($data['offline_mode'])->toBeFalse();
     expect($data['watcher_active'])->toBeFalse();
     expect($data['system_tz'])->toBe('Europe/London');
     expect($data['device_id'])->toBe('dev-42');
@@ -47,6 +48,7 @@ it('falls back to defaults for keys that throw during read', function () {
 
     expect($data['log_path'])->toBe('C:\\only-readable');
     expect($data['share_stats'])->toBeTrue();          // default
+    expect($data['offline_mode'])->toBeFalse();        // default
     expect($data['watcher_active'])->toBeTrue();       // default
 });
 

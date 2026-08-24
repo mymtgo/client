@@ -3,6 +3,7 @@
 namespace App\Actions;
 
 use App\Actions\Archetypes\EstimateArchetypeLocally;
+use App\Facades\AppSettings;
 use App\Jobs\DownloadArchetypes;
 use App\Models\Archetype;
 use App\Models\ArchetypeDeck;
@@ -20,7 +21,12 @@ class DetermineDeckArchetype
     {
         $localResult = EstimateArchetypeLocally::run($cards, $format);
 
-        if ($localResult && $localResult['confidence'] >= self::LOCAL_CONFIDENCE_THRESHOLD) {
+        // Offline mode has no API to escalate to, and an unclassified deck
+        // contributes to no grouping at all. Take the best local guess at any
+        // confidence rather than discarding it.
+        $acceptAnyConfidence = AppSettings::isOffline();
+
+        if ($localResult && ($acceptAnyConfidence || $localResult['confidence'] >= self::LOCAL_CONFIDENCE_THRESHOLD)) {
             self::logAttempt(
                 matchId: $matchId,
                 playerId: $playerId,
@@ -33,11 +39,38 @@ class DetermineDeckArchetype
             return $localResult;
         }
 
+        if ($acceptAnyConfidence) {
+            return null;
+        }
+
         return self::estimateViaApi($cards, $format, $matchId, $playerId);
     }
 
-    private static function estimateViaApi(Collection $cards, string $format, ?int $matchId, ?int $playerId): ?array
+    /**
+     * Ask the API to classify a card set. Public because the game overlay calls
+     * it directly: the overlay slots the API guess BELOW the opponent's league
+     * list in its precedence chain, so it cannot use run()'s local-then-API
+     * sequence, which has no seam between the two.
+     *
+     * Guarded against offline mode here, not just in run(): this method is
+     * public and already has a caller (ResolveOverlayOpponent) that bypasses
+     * run() entirely, so run()'s two guards cannot protect it. Any future
+     * caller that forgets its own check would otherwise let
+     * Http::mymtgoApi() throw OfflineModeException — fatal if that caller is
+     * a queued job, since the exception retries forever. This check is a
+     * safety net local to the method, not a duplicate of run()'s behaviour
+     * guards (which decide whether to accept a low-confidence local result);
+     * do not remove it as "redundant".
+     *
+     * @param  Collection<int, array{mtgo_id: int|string, quantity: int}>  $cards
+     * @return array{archetype_id: int, archetype_deck_id: int|null, confidence: float}|null
+     */
+    public static function estimateViaApi(Collection $cards, string $format, ?int $matchId = null, ?int $playerId = null): ?array
     {
+        if (AppSettings::isOffline()) {
+            return null;
+        }
+
         $payload = [
             'format' => $format,
             'cards' => $cards->values(),

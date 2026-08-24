@@ -223,3 +223,37 @@ it('emits Unknown name when card not in local table', function () {
     expect($result->stats[0]['name'])->toBe('Unknown');
     expect($result->stats[0]['colorIdentity'])->toBeNull();
 });
+
+it('maps the sideboard counters the api reports', function () {
+    $player = Archetype::factory()->create(['uuid' => 'player-uuid']);
+    Card::create(['mtgo_id' => '900', 'oracle_id' => 'o-sb', 'name' => 'Rest in Peace', 'type' => 'Enchantment']);
+
+    Http::fake(['*card-stats*' => Http::response([
+        'stats' => [[
+            'oracle_id' => 'o-sb',
+            'games' => 80,
+            'kept' => ['samples' => 0, 'wins' => 0],
+            'seen' => ['samples' => 0, 'wins' => 0],
+            'cast' => ['samples' => 0, 'wins' => 0],
+            'pregame' => ['samples' => 0, 'wins' => 0],
+            'sided_in' => ['samples' => 60],
+            'sided_out' => ['samples' => 7],
+        ]],
+        'archetype_winrate' => ['games' => 80, 'wins' => 44, 'rate' => 0.55],
+        'opponents' => [],
+        'refreshed_at' => null,
+    ], 200)]);
+
+    $response = FetchExternalCardStats::run(
+        archetype: $player,
+        format: 'CMODERN',
+        opponentArchetypeId: null,
+        onPlay: null,
+        isPostboard: true,
+        perspective: 'mine',
+    );
+
+    expect($response->stats[0]['sidedInGames'])->toBe(60);
+    expect($response->stats[0]['sidedOutGames'])->toBe(7);
+    expect($response->stats[0]['totalGames'])->toBe(80);
+});

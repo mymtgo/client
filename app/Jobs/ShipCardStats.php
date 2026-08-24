@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Actions\RegisterDevice;
+use App\Exceptions\OfflineModeException;
 use App\Facades\AppSettings;
 use App\Models\CardStatShipQueue;
 use Illuminate\Bus\Queueable;
@@ -31,6 +32,13 @@ class ShipCardStats implements ShouldQueue
 
     public int $maxExceptions = 1;
 
+    /**
+     * Set by send() when offline mode was toggled on between the handle()
+     * guard and the request. Distinguishes "skip quietly" from "real
+     * failure" for a null return, since ?int has no room for a third state.
+     */
+    private bool $offlineDuringSend = false;
+
     public function middleware(): array
     {
         return [(new WithoutOverlapping('ship-card-stats'))->dontRelease()];
@@ -38,6 +46,10 @@ class ShipCardStats implements ShouldQueue
 
     public function handle(): void
     {
+        if (AppSettings::isOffline()) {
+            return;
+        }
+
         $rows = $this->claim();
 
         if ($rows->isEmpty()) {
@@ -48,6 +60,16 @@ class ShipCardStats implements ShouldQueue
             $status = $this->send($chunk);
 
             if ($status === null) {
+                if ($this->offlineDuringSend) {
+                    // Release every row this run claimed but never got to
+                    // send — the current chunk and any still queued behind
+                    // it — back to pending. No backoff, no attempt charged:
+                    // this wasn't a failed request, it just never went out.
+                    $this->releaseStrandedClaims($rows);
+
+                    return;
+                }
+
                 $this->markFailure($chunk, 'request threw exception');
 
                 continue;
@@ -105,18 +127,21 @@ class ShipCardStats implements ShouldQueue
         $gz = gzencode(json_encode($body));
 
         try {
-            $response = Http::withHeaders([
-                'X-Device-Id' => AppSettings::deviceId(),
-                'X-Api-Key' => RegisterDevice::retrieveKey(),
-                'Content-Encoding' => 'gzip',
-                'Content-Type' => 'application/json',
-            ])
+            $response = Http::mymtgoApi()
+                ->withHeaders([
+                    'Content-Encoding' => 'gzip',
+                    'Content-Type' => 'application/json',
+                ])
                 ->timeout(30)
                 ->connectTimeout(10)
                 ->withBody($gz, 'application/json')
-                ->post(config('mymtgo_api.url').'/api/card-stats/report');
+                ->post('/api/card-stats/report');
 
             return $response->status();
+        } catch (OfflineModeException) {
+            $this->offlineDuringSend = true;
+
+            return null;
         } catch (Throwable $e) {
             Log::warning('ShipCardStats: send failed', [
                 'error' => $e->getMessage(),
@@ -124,6 +149,16 @@ class ShipCardStats implements ShouldQueue
 
             return null;
         }
+    }
+
+    /**
+     * @param  Collection<int, CardStatShipQueue>  $rows
+     */
+    private function releaseStrandedClaims(Collection $rows): void
+    {
+        CardStatShipQueue::whereIn('id', $rows->pluck('id'))
+            ->where('status', 'sending')
+            ->update(['status' => 'pending', 'updated_at' => now()]);
     }
 
     /**

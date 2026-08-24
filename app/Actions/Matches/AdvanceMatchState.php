@@ -12,7 +12,6 @@ use App\Events\DeckLinkedToMatch;
 use App\Events\GameCardsSnapshotChanged;
 use App\Events\LeagueMatchStarted;
 use App\Facades\Mtgo;
-use App\Jobs\SubmitMatchLogSample;
 use App\Models\LogEvent;
 use App\Models\MtgoMatch;
 use App\Support\TimedTransaction;
@@ -134,14 +133,6 @@ class AdvanceMatchState
                     LinkMatchToTournament::run($match);
                     $match->refresh();
                 }
-
-                SubmitMatchLogSample::dispatch(
-                    matchToken: $matchToken,
-                    matchType: $match->match_type,
-                    format: $match->format,
-                    rawText: $joinedState->raw_text,
-                    username: $username ?? null,
-                );
 
                 Log::channel('pipeline')->info("Match {$matchId}: created in Started state", [
                     'token' => $matchToken,

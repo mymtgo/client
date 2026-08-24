@@ -3,6 +3,7 @@
 namespace App\Actions\Cards;
 
 use App\Enums\MatchState;
+use App\Facades\AppSettings;
 use App\Models\CardStatShipQueue;
 use App\Models\Game;
 
@@ -14,6 +15,10 @@ class EnqueueCardStats
      */
     public static function run(int $limit = 500): int
     {
+        if (AppSettings::isOffline()) {
+            return 0;
+        }
+
         $games = Game::query()
             ->whereNotNull('won')
             ->whereDoesntHave('shipQueueEntry')

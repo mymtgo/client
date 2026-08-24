@@ -8,6 +8,7 @@ use App\Actions\Decks\GetDeckViewSharedProps;
 use App\Actions\Decks\GetFilteredDeckWinrate;
 use App\Concerns\HasTimeframeFilter;
 use App\Exceptions\ExternalCardStatsUnavailable;
+use App\Exceptions\OfflineModeException;
 use App\Http\Controllers\Controller;
 use App\Models\Deck;
 use App\Models\DeckVersion;
@@ -53,6 +54,7 @@ class CardStatsController extends Controller
                 $source = $request->input('card_stats_source') === 'external' ? 'external' : 'local';
                 $perspective = $opponent ? 'theirs' : 'mine';
                 $trust = app(AppSettings::class)->cardStatsTrust();
+                $externalError = false;
 
                 if ($source === 'external' && $deck->archetype_id !== null && $deck->archetype !== null) {
                     try {
@@ -75,9 +77,14 @@ class CardStatsController extends Controller
                             'refreshedAt' => $external->refreshedAt,
                             'externalError' => false,
                         ];
+                    } catch (OfflineModeException) {
+                        // Offline mode is a user choice, not a fault — fall
+                        // through to local without reporting it.
+                        $externalError = 'offline';
                     } catch (ExternalCardStatsUnavailable $e) {
                         report($e);
                         // fall through to local with error flag
+                        $externalError = 'unavailable';
                     }
                 }
 
@@ -89,7 +96,7 @@ class CardStatsController extends Controller
                     'trust' => $trust,
                     'source' => 'local',
                     'refreshedAt' => null,
-                    'externalError' => $source === 'external',
+                    'externalError' => $externalError,
                 ];
             },
         ]);

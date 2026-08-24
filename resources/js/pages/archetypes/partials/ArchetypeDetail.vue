@@ -15,6 +15,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import ManaSymbols from '@/components/ManaSymbols.vue';
+import { useOfflineMode } from '@/composables/useOfflineMode';
 import { router, Link } from '@inertiajs/vue3';
 import { RefreshCw, Pencil, Trash2, GitMerge } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
@@ -23,6 +24,8 @@ import MergeArchetypeDialog from './MergeArchetypeDialog.vue';
 const props = defineProps<{
     detail: App.Data.Front.ArchetypeDetailData;
 }>();
+
+const offlineMode = useOfflineMode();
 
 const downloading = ref(false);
 const confirmingDelete = ref(false);
@@ -62,6 +65,10 @@ function deleteArchetype() {
 }
 
 async function downloadDecklist() {
+    if (offlineMode.value) {
+        return;
+    }
+
     downloading.value = true;
     try {
         const xsrf = document.cookie.match(/XSRF-TOKEN=([^;]+)/)?.[1] ?? '';
@@ -105,7 +112,8 @@ async function downloadDecklist() {
                         v-if="!detail.archetype.isFallback && !detail.archetype.manual && detail.decks.length > 0"
                         variant="outline"
                         size="sm"
-                        :disabled="downloading"
+                        :disabled="downloading || offlineMode"
+                        :title="offlineMode ? 'Offline mode is enabled — turn it off in Settings to download decklists.' : undefined"
                         @click="downloadDecklist"
                     >
                         <RefreshCw class="mr-1.5 size-3.5" :class="{ 'animate-spin': downloading }" />
@@ -172,7 +180,11 @@ async function downloadDecklist() {
                 class="flex h-full flex-col items-center justify-center gap-3"
             >
                 <p class="text-sm text-muted-foreground">Decklist not yet downloaded</p>
-                <Button @click="downloadDecklist">
+                <Button
+                    :disabled="offlineMode"
+                    :title="offlineMode ? 'Offline mode is enabled — turn it off in Settings to download decklists.' : undefined"
+                    @click="downloadDecklist"
+                >
                     Download Decklist
                 </Button>
             </div>

@@ -53,6 +53,9 @@
     --color-success: var(--success);
     --color-success-foreground: var(--success-foreground);
 
+    --color-warning: var(--warning);
+    --color-warning-foreground: var(--warning-foreground);
+
     --color-border: var(--border);
     --color-input: var(--input);
     --color-ring: var(--ring);
@@ -111,6 +114,8 @@
     --destructive-foreground: oklch(0.985 0 0);
     --success: oklch(0.696 0.17 162.48);
     --success-foreground: oklch(0.985 0 0);
+    --warning: oklch(0.769 0.158 70.08);
+    --warning-foreground: oklch(0.145 0 0);
     --border: oklch(0.922 0 0);
     --input: oklch(0.922 0 0);
     --ring: oklch(0.55 0.12 230);

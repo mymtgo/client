@@ -3,7 +3,6 @@
 namespace App\Jobs;
 
 use App\Actions\Cards\DownloadCardImage;
-use App\Actions\RegisterDevice;
 use App\Facades\AppSettings;
 use App\Models\Card;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -63,10 +62,7 @@ class BackfillCardDetails implements ShouldQueue
      */
     private function updateRegularCards($cards): void
     {
-        $response = Http::withHeaders([
-            'X-Device-Id' => AppSettings::deviceId(),
-            'X-Api-Key' => RegisterDevice::retrieveKey(),
-        ])->post(config('mymtgo_api.url').'/api/cards', [
+        $response = Http::mymtgoReference()->post('/api/cards', [
             'ids' => $cards->pluck('mtgo_id')->values(),
         ]);
 
@@ -111,10 +107,7 @@ class BackfillCardDetails implements ShouldQueue
      */
     private function updateTokenCards($cards): void
     {
-        $response = Http::withHeaders([
-            'X-Device-Id' => AppSettings::deviceId(),
-            'X-Api-Key' => RegisterDevice::retrieveKey(),
-        ])->post(config('mymtgo_api.url').'/api/cards', [
+        $response = Http::mymtgoReference()->post('/api/cards', [
             'tokens' => $cards->pluck('name')->unique()->values(),
         ]);
 

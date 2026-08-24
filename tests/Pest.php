@@ -82,6 +82,26 @@ pest()->extend(TestCase::class)
             {
                 unset($this->store[$key]);
             }
+
+            // isOffline() on the real AppSettings reads settings.json directly
+            // (via a private method, so this override can't fall through to
+            // it) to fail closed on a read failure that get()'s default
+            // can't express. The in-memory store here never fails to read,
+            // so there's nothing to fail closed on — just read the store like
+            // every other accessor.
+            public function isOffline(): bool
+            {
+                return (bool) ($this->store['offline_mode'] ?? false);
+            }
+
+            // Same private-method-resolution problem as isOffline() above:
+            // offlineModeNeverSet() also reads settings.json directly on the
+            // real class. The in-memory store can't fail a read, so "never
+            // set" here just means the key is absent from the store.
+            public function offlineModeNeverSet(): bool
+            {
+                return ! array_key_exists('offline_mode', $this->store);
+            }
         });
     })
     ->in('Feature');

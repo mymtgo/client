@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import ManaSymbols from '@/components/ManaSymbols.vue';
 import RefreshShowController from '@/actions/App/Http/Controllers/Archetypes/Refresh/ShowController';
+import { useOfflineMode } from '@/composables/useOfflineMode';
 import { Link, router } from '@inertiajs/vue3';
 import { ChevronLeft, ChevronRight, Plus, RefreshCw } from 'lucide-vue-next';
 import { ref, watch } from 'vue';
@@ -22,6 +23,8 @@ const props = defineProps<{
     };
     selectedId?: number;
 }>();
+
+const offlineMode = useOfflineMode();
 
 const search = ref(props.filters.search);
 const format = ref(props.filters.format);
@@ -84,12 +87,22 @@ function goToPage(page: number) {
                 Create New
             </Link>
             <Link
+                v-if="!offlineMode"
                 :href="RefreshShowController.url()"
                 class="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground"
                 title="Refresh archetypes"
             >
                 <RefreshCw class="size-4" />
             </Link>
+            <button
+                v-else
+                type="button"
+                disabled
+                class="cursor-not-allowed rounded-md p-1.5 text-muted-foreground/40"
+                title="Offline mode is enabled — turn it off in Settings to refresh archetypes."
+            >
+                <RefreshCw class="size-4" />
+            </button>
         </div>
 
         <div class="flex-1 overflow-y-auto">

@@ -106,7 +106,7 @@ export interface CardStatsPayload {
     trust: number;
     source: 'local' | 'external';
     refreshedAt: string | null;
-    externalError: boolean;
+    externalError: false | 'unavailable' | 'offline';
 }
 
 export type DeckCardStat = {

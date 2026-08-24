@@ -18,6 +18,7 @@ beforeEach(function () {
 
     AppSettings::setDeviceId('test-device');
     AppSettings::setApiKey('test-key');
+    AppSettings::setApiKeyExpiresAt(now()->addDay()->toIso8601String());
 });
 
 function enqueueObservation(string $eventType = 'tournament_sync'): TournamentObservationQueue

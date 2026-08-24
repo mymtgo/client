@@ -9,11 +9,20 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int|null $wins
  * @property int|null $losses
  * @property int|null $total
+ * @property bool $manual
  * @property-read Archetype|null $archetype
  */
 class MatchArchetype extends Model
 {
     protected $guarded = [];
+
+    /** @return array<string, string> */
+    protected function casts(): array
+    {
+        return [
+            'manual' => 'boolean',
+        ];
+    }
 
     /** @return BelongsTo<MtgoMatch, $this> */
     public function match(): BelongsTo

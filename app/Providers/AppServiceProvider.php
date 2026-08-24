@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Actions\RegisterDevice;
+use App\Exceptions\OfflineModeException;
 use App\Facades\AppSettings;
 use App\Listeners\Tray\HandleTrayClick;
 use App\Managers\MtgoManager;
@@ -52,10 +53,22 @@ class AppServiceProvider extends ServiceProvider
             ]);
         }
 
-        Http::macro('mymtgoApi', fn () => Http::withHeaders([
-            'X-Device-Id' => AppSettings::deviceId(),
-            'X-Api-Key' => RegisterDevice::retrieveKey(),
-        ])->baseUrl(config('mymtgo_api.url')));
+        Http::macro('mymtgoReference', function () {
+            RegisterDevice::ensureFresh();
+
+            return Http::withHeaders([
+                'X-Device-Id' => AppSettings::deviceId(),
+                'X-Api-Key' => RegisterDevice::retrieveKey(),
+            ])->baseUrl(config('mymtgo_api.url'));
+        });
+
+        Http::macro('mymtgoApi', function () {
+            if (AppSettings::isOffline()) {
+                throw new OfflineModeException;
+            }
+
+            return Http::mymtgoReference();
+        });
 
         Carbon::macro('toLocal', function () {
             /** @var Carbon $this */

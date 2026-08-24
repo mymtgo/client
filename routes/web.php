@@ -22,6 +22,7 @@ use App\Http\Controllers\Debug\Matches\ProcessController;
 use App\Http\Controllers\Debug\Matches\ReprocessController;
 use App\Http\Controllers\Debug\Matches\RestoreController;
 use App\Http\Controllers\Debug\Matches\UpdateController;
+use App\Http\Controllers\Debug\Overlay\PhaseController;
 use App\Http\Controllers\Decks\CardStatsController;
 use App\Http\Controllers\Decks\CoverArtOptionsController;
 use App\Http\Controllers\Decks\DashboardController;
@@ -31,7 +32,6 @@ use App\Http\Controllers\Decks\LeaguesController;
 use App\Http\Controllers\Decks\MatchesController;
 use App\Http\Controllers\Decks\MatchupDetailController;
 use App\Http\Controllers\Decks\MatchupsController;
-use App\Http\Controllers\Decks\PopoutController;
 use App\Http\Controllers\Decks\RegenerateCardStatsController;
 use App\Http\Controllers\Decks\ScreenshotDataController;
 use App\Http\Controllers\Decks\SettingsController;
@@ -57,7 +57,6 @@ use App\Http\Controllers\IndexController;
 use App\Http\Controllers\Leagues\AvailableMatchesController;
 use App\Http\Controllers\Leagues\DropController;
 use App\Http\Controllers\Leagues\LinkMatchController;
-use App\Http\Controllers\Leagues\OpponentScoutWindowController;
 use App\Http\Controllers\Leagues\OverlayController;
 use App\Http\Controllers\Leagues\UnlinkMatchController;
 use App\Http\Controllers\Matches\BulkUpdateArchetypeController;
@@ -66,6 +65,10 @@ use App\Http\Controllers\Matches\DetectArchetypeController;
 use App\Http\Controllers\Matches\ShowController;
 use App\Http\Controllers\Matches\UpdateArchetypeController;
 use App\Http\Controllers\Matches\UpdateNotesController;
+use App\Http\Controllers\Overlay\DestroyNoteController;
+use App\Http\Controllers\Overlay\GameOverlayController;
+use App\Http\Controllers\Overlay\StoreNoteController;
+use App\Http\Controllers\Overlay\UpdateOpponentArchetypeController;
 use App\Http\Controllers\Reports\CardStatsController as ReportsCardStatsController;
 use App\Http\Controllers\Reports\IndexController as ReportsIndexController;
 use App\Http\Controllers\Reports\MatchesController as ReportsMatchesController;
@@ -84,8 +87,8 @@ use App\Http\Controllers\Settings\UpdateDataPathController;
 use App\Http\Controllers\Settings\UpdateDebugModeController;
 use App\Http\Controllers\Settings\UpdateLocalImagesController;
 use App\Http\Controllers\Settings\UpdateLogPathController;
+use App\Http\Controllers\Settings\UpdateOfflineModeController;
 use App\Http\Controllers\Settings\UpdateOverlaySettingsController;
-use App\Http\Controllers\Settings\UpdateShareStatsController;
 use App\Http\Controllers\Settings\UpdateTrustSettingController;
 use App\Http\Controllers\Settings\UpdateWatcherController;
 use App\Http\Controllers\Settings\UploadOverlayBackgroundController;
@@ -129,13 +132,24 @@ Route::group([], function (Router $router) {
         $group->post('/', App\Http\Controllers\Leagues\StoreController::class)->name('leagues.store');
         $group->get('/', App\Http\Controllers\Leagues\IndexController::class)->name('leagues.index');
         $group->get('overlay', OverlayController::class)->name('leagues.overlay');
-        $group->get('opponent-scout', OpponentScoutWindowController::class)->name('leagues.opponent-scout');
         $group->patch('{league}/notes', App\Http\Controllers\Leagues\UpdateNotesController::class)->name('leagues.update-notes');
         $group->patch('{league}/drop', DropController::class)->name('leagues.drop');
         $group->post('{league}/matches', LinkMatchController::class)->name('leagues.matches.link');
         $group->delete('{league}/matches/{mtgoMatch}', UnlinkMatchController::class)->name('leagues.matches.unlink');
         $group->get('{league}/available-matches', AvailableMatchesController::class)
             ->name('leagues.available-matches');
+    });
+
+    $router->group([
+        'prefix' => 'game-overlay',
+    ], function (Router $group) {
+        $group->get('/', GameOverlayController::class)->name('overlay.game');
+        $group->post('archetype', UpdateOpponentArchetypeController::class)
+            ->name('overlay.archetype');
+        $group->post('notes', StoreNoteController::class)
+            ->name('overlay.notes.store');
+        $group->delete('notes/{note}', DestroyNoteController::class)
+            ->name('overlay.notes.destroy');
     });
 
     $router->group([
@@ -162,7 +176,6 @@ Route::group([], function (Router $router) {
         'prefix' => 'decks',
     ], function (Router $group) {
         $group->get('/', App\Http\Controllers\Decks\IndexController::class)->name('decks.index');
-        $group->get('popout', PopoutController::class)->name('decks.popout');
         $group->get('{deck:id}', DashboardController::class)->name('decks.show')->withTrashed();
         $group->get('{deck:id}/card-stats', CardStatsController::class)->name('decks.card-stats')->withTrashed();
         $group->post('{deck:id}/card-stats/regenerate', RegenerateCardStatsController::class)->name('decks.card-stats.regenerate')->withTrashed();
@@ -229,7 +242,7 @@ Route::group([], function (Router $router) {
         $group->post('ingest', RunIngestController::class)->name('settings.ingest');
         $group->post('sync', RunSyncController::class)->name('settings.sync');
         $group->post('populate-cards', RunPopulateCardsController::class)->name('settings.populate-cards');
-        $group->patch('share-stats', UpdateShareStatsController::class)->name('settings.share-stats');
+        $group->patch('offline-mode', UpdateOfflineModeController::class)->name('settings.offline-mode');
         $group->post('submit-matches', RunSubmitMatchesController::class)->name('settings.submit-matches');
         $group->patch('switch-account', SwitchAccountController::class)->name('settings.switch-account');
         $group->patch('account-tracking', UpdateAccountTrackingController::class)->name('settings.account-tracking');
@@ -316,5 +329,11 @@ Route::group([], function (Router $router) {
 
         // Pipeline Log
         $group->get('pipeline-log', App\Http\Controllers\Debug\PipelineLog\IndexController::class)->name('debug.pipeline-log.index');
+
+        // Overlay simulator
+        $group->get('overlay', App\Http\Controllers\Debug\Overlay\IndexController::class)->name('debug.overlay.index');
+        $group->post('overlay/fake-match', App\Http\Controllers\Debug\Overlay\StoreController::class)->name('debug.overlay.store');
+        $group->post('overlay/phase', PhaseController::class)->name('debug.overlay.phase');
+        $group->delete('overlay/fake-match', App\Http\Controllers\Debug\Overlay\DestroyController::class)->name('debug.overlay.destroy');
     });
 });

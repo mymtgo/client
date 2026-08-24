@@ -1,5 +1,6 @@
 <?php
 
+use App\Facades\AppSettings;
 use App\Models\Archetype;
 use App\Models\Deck;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -50,11 +51,11 @@ it('falls back to local when deck has no archetype', function () {
     $this->get(route('decks.card-stats', $deck).'?card_stats_source=external')
         ->assertInertia(fn (Assert $page) => $page
             ->where('cardStats.source', 'local')
-            ->where('cardStats.externalError', true)
+            ->where('cardStats.externalError', false)
         );
 });
 
-it('falls back to local with error flag when api fails', function () {
+it('falls back to local with an unavailable reason when api fails', function () {
     $archetype = Archetype::factory()->create();
     $deck = Deck::factory()->create(['archetype_id' => $archetype->id, 'format' => 'Standard']);
 
@@ -63,6 +64,20 @@ it('falls back to local with error flag when api fails', function () {
     $this->get(route('decks.card-stats', $deck).'?card_stats_source=external')
         ->assertInertia(fn (Assert $page) => $page
             ->where('cardStats.source', 'local')
-            ->where('cardStats.externalError', true)
+            ->where('cardStats.externalError', 'unavailable')
+        );
+});
+
+it('falls back to local with an offline reason and without a 500 when offline mode is enabled', function () {
+    $archetype = Archetype::factory()->create();
+    $deck = Deck::factory()->create(['archetype_id' => $archetype->id, 'format' => 'Standard']);
+
+    AppSettings::setOffline(true);
+    Http::preventStrayRequests();
+
+    $this->get(route('decks.card-stats', $deck).'?card_stats_source=external')
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('cardStats.source', 'local')
+            ->where('cardStats.externalError', 'offline')
         );
 });

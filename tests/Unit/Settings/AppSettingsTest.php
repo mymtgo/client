@@ -21,9 +21,9 @@ it('returns null default by default', function () {
 });
 
 it('round-trips a scalar value', function () {
-    $this->settings->set('share_stats', true);
+    $this->settings->set('offline_mode', true);
 
-    expect($this->settings->get('share_stats'))->toBeTrue();
+    expect($this->settings->get('offline_mode'))->toBeTrue();
 });
 
 it('persists across instances (simulating separate processes)', function () {
@@ -34,7 +34,7 @@ it('persists across instances (simulating separate processes)', function () {
 });
 
 it('returns default for key not in file', function () {
-    $this->settings->set('share_stats', true);
+    $this->settings->set('offline_mode', true);
 
     expect($this->settings->get('missing', 'x'))->toBe('x');
 });
@@ -48,12 +48,12 @@ it('does not leave temp file artifacts', function () {
 });
 
 it('produces a file readable by json_decode', function () {
-    $this->settings->set('share_stats', true);
+    $this->settings->set('offline_mode', true);
     $this->settings->set('system_tz', 'UTC');
 
     $raw = Storage::disk()->get('settings.json');
     expect(json_decode($raw, true))->toBe([
-        'share_stats' => true,
+        'offline_mode' => true,
         'system_tz' => 'UTC',
     ]);
 });
@@ -118,12 +118,12 @@ it('renames a corrupt file aside and returns defaults on read', function () {
 it('allows a subsequent set to create a fresh valid file', function () {
     file_put_contents(Storage::disk()->path('settings.json'), '{not valid');
 
-    $this->settings->get('share_stats'); // triggers quarantine
-    $this->settings->set('share_stats', true);
+    $this->settings->get('offline_mode'); // triggers quarantine
+    $this->settings->set('offline_mode', true);
 
-    expect($this->settings->get('share_stats'))->toBeTrue();
+    expect($this->settings->get('offline_mode'))->toBeTrue();
     expect(json_decode(Storage::disk()->get('settings.json'), true))
-        ->toBe(['share_stats' => true]);
+        ->toBe(['offline_mode' => true]);
 });
 
 it('resolves the facade to the singleton instance', function () {
@@ -138,7 +138,7 @@ it('quarantines a corrupt file from within set() without a prior read', function
 
     Log::spy();
 
-    $this->settings->set('share_stats', true);
+    $this->settings->set('offline_mode', true);
 
     $disk = Storage::disk();
     $corrupt = collect($disk->files())->first(
@@ -149,7 +149,7 @@ it('quarantines a corrupt file from within set() without a prior read', function
 
     expect($disk->exists('settings.json'))->toBeTrue();
     expect(json_decode($disk->get('settings.json'), true))
-        ->toBe(['share_stats' => true]);
+        ->toBe(['offline_mode' => true]);
 
     Log::shouldHaveReceived('error')
         ->once()

@@ -4,6 +4,7 @@ import ApplyController from '@/actions/App/Http/Controllers/Archetypes/Refresh/A
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import SuccessorSelect, { type SuccessorOption } from '@/pages/archetypes/partials/SuccessorSelect.vue';
+import { useOfflineMode } from '@/composables/useOfflineMode';
 import { Link, router } from '@inertiajs/vue3';
 import { ArrowLeft, RefreshCw } from 'lucide-vue-next';
 import { computed, reactive, ref } from 'vue';
@@ -34,6 +35,8 @@ const mappings = reactive<Record<number, number | string | null>>(
     Object.fromEntries(props.removals.map((removal) => [removal.id, removal.suggested_id ?? removal.suggested_uuid])),
 );
 
+const offlineMode = useOfflineMode();
+
 const applying = ref(false);
 
 const totalRemoved = computed(() => props.removals.length + props.removed_without_matches);
@@ -57,7 +60,7 @@ function restoreSuggestions(): void {
 }
 
 function apply(): void {
-    if (applying.value) return;
+    if (applying.value || offlineMode.value) return;
 
     applying.value = true;
     router.post(
@@ -168,7 +171,11 @@ function apply(): void {
                     <Button variant="outline" :disabled="applying" as-child>
                         <Link :href="IndexController.url()">Cancel</Link>
                     </Button>
-                    <Button :disabled="applying" @click="apply">
+                    <Button
+                        :disabled="applying || offlineMode"
+                        :title="offlineMode ? 'Offline mode is enabled — turn it off in Settings to refresh archetypes.' : undefined"
+                        @click="apply"
+                    >
                         <RefreshCw class="size-4" :class="{ 'animate-spin': applying }" />
                         {{ applying ? 'Refreshing…' : 'Apply refresh' }}
                     </Button>
