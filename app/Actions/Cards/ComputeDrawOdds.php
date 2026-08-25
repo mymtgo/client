@@ -64,20 +64,30 @@ class ComputeDrawOdds
 
         $librarySize = (int) $remainingByMtgoId->sum();
 
-        $cards = $deckByMtgoId->map(function (int $total, int $mtgoId) use ($cardMeta, $remainingByMtgoId) {
-            $remaining = $remainingByMtgoId[$mtgoId];
-            $meta = $cardMeta->get($mtgoId);
+        // Merge printings: the remaining math runs per CatalogID (snapshot
+        // zones reference the exact printing), but the player sees one card —
+        // a deck with four different Urza's Mine printings is one row of 4.
+        $cards = $deckByMtgoId
+            ->map(fn (int $total, int $mtgoId) => [
+                'mtgoId' => $mtgoId,
+                'meta' => $cardMeta->get($mtgoId),
+                'remaining' => $remainingByMtgoId[$mtgoId],
+                'total' => $total,
+            ])
+            ->groupBy(fn (array $card) => $card['meta']?->name ?? "#{$card['mtgoId']}")
+            ->map(function (Collection $printings, string $name) {
+                $first = $printings->first();
 
-            return new DrawOddsCardData(
-                mtgoId: $mtgoId,
-                name: $meta?->name ?? "#{$mtgoId}",
-                type: $meta?->type ?? 'Unknown',
-                identity: $meta?->color_identity,
-                image: $meta?->image_url,
-                remaining: $remaining,
-                total: $total,
-            );
-        })
+                return new DrawOddsCardData(
+                    mtgoId: $first['mtgoId'],
+                    name: $name,
+                    type: $first['meta']?->type ?? 'Unknown',
+                    identity: $first['meta']?->color_identity,
+                    image: $first['meta']?->image_url,
+                    remaining: (int) $printings->sum('remaining'),
+                    total: (int) $printings->sum('total'),
+                );
+            })
             ->values()
             ->sortByDesc(fn (DrawOddsCardData $c) => $c->remaining)
             ->values();

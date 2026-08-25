@@ -366,3 +366,76 @@ it('includes card identity, image, and mtgoId in the payload', function () {
     expect($card->identity)->toBe('U');
     expect($card->image)->toBe('https://img/snap.jpg');
 });
+
+it('merges different printings of the same card into one row', function () {
+    // Four printings of Urza's Mine, one copy each — the physical deck has
+    // 4 distinct CatalogIDs but the player sees one card.
+    foreach ([201, 202, 203, 204] as $mtgoId) {
+        Card::create(['mtgo_id' => (string) $mtgoId, 'oracle_id' => 'o-mine', 'name' => "Urza's Mine", 'type' => 'Land']);
+    }
+    Card::create(['mtgo_id' => '205', 'oracle_id' => 'o-temple', 'name' => 'Eldrazi Temple', 'type' => 'Land']);
+
+    $deck = Deck::factory()->create();
+    $deckVersion = DeckVersion::create([
+        'deck_id' => $deck->id,
+        'signature' => signatureFor([
+            ['201', '1', 'false'], ['202', '1', 'false'], ['203', '1', 'false'], ['204', '1', 'false'],
+            ['205', '4', 'false'],
+        ]),
+        'modified_at' => now(),
+    ]);
+
+    $match = MtgoMatch::create([
+        'mtgo_id' => '400010', 'token' => 'mt-d10', 'format' => 'CModern',
+        'match_type' => 'League', 'state' => MatchState::InProgress,
+        'started_at' => now(), 'deck_version_id' => $deckVersion->id,
+    ]);
+
+    $result = ComputeDrawOdds::run($match);
+
+    $mines = collect($result->cards->all())->where('name', "Urza's Mine");
+    expect($mines)->toHaveCount(1);
+    expect($mines->first()->remaining)->toBe(4);
+    expect($mines->first()->total)->toBe(4);
+    expect($result->librarySize)->toBe(8);
+});
+
+it('subtracts a drawn printing from the merged row', function () {
+    Card::create(['mtgo_id' => '201', 'oracle_id' => 'o-mine', 'name' => "Urza's Mine", 'type' => 'Land']);
+    Card::create(['mtgo_id' => '202', 'oracle_id' => 'o-mine', 'name' => "Urza's Mine", 'type' => 'Land']);
+
+    $deck = Deck::factory()->create();
+    $deckVersion = DeckVersion::create([
+        'deck_id' => $deck->id,
+        'signature' => signatureFor([['201', '1', 'false'], ['202', '1', 'false']]),
+        'modified_at' => now(),
+    ]);
+
+    $match = MtgoMatch::create([
+        'mtgo_id' => '400011', 'token' => 'mt-d11', 'format' => 'CModern',
+        'match_type' => 'League', 'state' => MatchState::InProgress,
+        'started_at' => now(), 'deck_version_id' => $deckVersion->id,
+    ]);
+
+    $game = Game::create(['match_id' => $match->id, 'mtgo_id' => 'g-d11', 'started_at' => now()]);
+    $local = Player::create(['username' => 'me']);
+    $game->players()->attach($local->id, ['is_local' => 1, 'instance_id' => 1]);
+
+    GameTimeline::create([
+        'game_id' => $game->id,
+        'timestamp' => '10:00:05',
+        'content' => [
+            'Players' => [['Id' => 1, 'LibraryCount' => 1]],
+            'Cards' => [
+                ['Id' => 901, 'CatalogID' => 202, 'Owner' => 1, 'Zone' => 'Hand'],
+            ],
+        ],
+    ]);
+
+    $result = ComputeDrawOdds::run($match);
+
+    $mines = collect($result->cards->all())->where('name', "Urza's Mine");
+    expect($mines)->toHaveCount(1);
+    expect($mines->first()->remaining)->toBe(1);
+    expect($mines->first()->total)->toBe(2);
+});
