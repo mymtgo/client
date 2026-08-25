@@ -2,6 +2,7 @@
 
 namespace App\Actions\Overlay;
 
+use App\Facades\AppSettings;
 use Native\Desktop\Facades\Window;
 
 class OpenGameOverlayWindow
@@ -15,7 +16,7 @@ class OpenGameOverlayWindow
         }
 
         Window::open('game-overlay')
-            ->route('overlay.game')
+            ->url(self::overlayUrl())
             ->width(320)
             ->height(640)
             ->minWidth(300)
@@ -31,5 +32,22 @@ class OpenGameOverlayWindow
             ->hideMenu()
             ->showDevTools(false)
             ->title('Game overlay');
+    }
+
+    /**
+     * Absolute overlay URL that works from any process. route() alone is only
+     * correct inside an HTTP request — in a queue worker or the watch daemon
+     * it builds from APP_URL, which points at nothing (or, on dev machines,
+     * at Herd), giving a blank window. Use the server URL captured at boot.
+     */
+    private static function overlayUrl(): string
+    {
+        $base = AppSettings::appServerUrl();
+
+        if ($base === null) {
+            return route('overlay.game');
+        }
+
+        return $base.route('overlay.game', absolute: false);
     }
 }

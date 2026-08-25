@@ -25,6 +25,12 @@ class NativeAppServiceProvider implements ProvidesPhpIni
         $detected = System::timezone();
         AppSettings::setSystemTimezone($detected ?? AppSettings::systemTimezone());
 
+        // Capture the live server URL for background processes: boot runs in
+        // an HTTP request so url('/') is the real 127.0.0.1:<port> address,
+        // which queue workers can't otherwise resolve (their APP_URL points
+        // nowhere). Windows opened from the pipeline build URLs from this.
+        AppSettings::setAppServerUrl(url('/'));
+
         RunAppUpdates::run();
 
         if (PHP_OS_FAMILY !== 'Linux') {

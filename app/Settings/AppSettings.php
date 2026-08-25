@@ -342,6 +342,23 @@ class AppSettings
      * JSON file, so there is no migration to carry this — the fallback is the
      * migration.
      */
+    /**
+     * The running NativePHP web server's base URL, captured at app boot.
+     * Background processes (queue workers, the watch daemon) can't derive
+     * this themselves — their route() falls back to APP_URL, which points
+     * nowhere — so any window opened outside an HTTP request must build
+     * its URL from this value.
+     */
+    public function appServerUrl(): ?string
+    {
+        return $this->get('app_server_url');
+    }
+
+    public function setAppServerUrl(string $url): void
+    {
+        $this->set('app_server_url', rtrim($url, '/'));
+    }
+
     public function showGameOverlay(): bool
     {
         $explicit = $this->get('game_overlay');

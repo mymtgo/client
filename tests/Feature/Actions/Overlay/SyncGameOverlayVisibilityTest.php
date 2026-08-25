@@ -138,3 +138,29 @@ it('closes the overlay when AdvanceMatchState ends the match', function () {
     expect($match->fresh()->state)->toBe(MatchState::Ended);
     Window::assertClosed('game-overlay');
 });
+
+it('opens the overlay against the stored app server url when set', function () {
+    $window = new WindowInstance('main');
+    Window::fake()->alwaysReturnWindows([$window]);
+
+    AppSettings::setShowGameOverlay(true);
+    AppSettings::setAppServerUrl('http://127.0.0.1:54321');
+    overlayMatch();
+
+    SyncGameOverlayVisibility::run();
+
+    Window::assertOpened('game-overlay');
+    expect($window->toArray()['url'])->toBe('http://127.0.0.1:54321/game-overlay');
+});
+
+it('falls back to the default route url when no server url is stored', function () {
+    $window = new WindowInstance('main');
+    Window::fake()->alwaysReturnWindows([$window]);
+
+    AppSettings::setShowGameOverlay(true);
+    overlayMatch();
+
+    SyncGameOverlayVisibility::run();
+
+    expect($window->toArray()['url'])->toBe(route('overlay.game'));
+});
