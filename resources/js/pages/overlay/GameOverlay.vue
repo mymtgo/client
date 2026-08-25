@@ -3,6 +3,7 @@ import UpdateOpponentArchetypeController from '@/actions/App/Http/Controllers/Ov
 import DrawOddsPanel from '@/components/decks/DrawOddsPanel.vue';
 import OpponentHeader from '@/components/overlay/OpponentHeader.vue';
 import OverlayTabs from '@/components/overlay/OverlayTabs.vue';
+import RevealedCards from '@/components/overlay/RevealedCards.vue';
 import SideboardGuide from '@/components/overlay/SideboardGuide.vue';
 import OverlayLayout from '@/Layouts/OverlayLayout.vue';
 import { router, usePoll } from '@inertiajs/vue3';
@@ -28,11 +29,12 @@ type DrawOdds = Omit<App.Data.Front.DrawOddsData, 'cards'> & {
  */
 const props = withDefaults(
     defineProps<{
-        sections: { opponent: boolean; drawOdds: boolean; sideboard: boolean };
+        sections: { opponent: boolean; drawOdds: boolean; sideboard: boolean; reveals: boolean };
         opponent: App.Data.Front.OverlayOpponentData | null;
         archetypes?: App.Data.Front.ArchetypeData[];
         drawOdds?: DrawOdds | null;
         sideboard: App.Data.Front.SideboardGuideData | null;
+        reveals: App.Data.Front.RevealedCardData[] | null;
         notes: { current: App.Data.Front.ArchetypeNoteData[]; other: App.Data.Front.ArchetypeNoteData[] };
         isSideboarding: boolean;
         /** Whether a live match exists at all, independent of any section toggle. */
@@ -81,6 +83,7 @@ usePoll(5000, {
     only: [
         'opponent',
         'sideboard',
+        'reveals',
         'notes',
         'isSideboarding',
         'sections',
@@ -121,9 +124,14 @@ function selectArchetype(archetypeId: number): void {
             v-model="activeTab"
             :show-draw-odds="props.sections.drawOdds"
             :show-sideboard="props.sections.sideboard"
+            :show-reveals="props.sections.reveals"
         >
             <template #draw-odds>
                 <DrawOddsPanel :draw-odds="props.drawOdds" />
+            </template>
+
+            <template #reveals>
+                <RevealedCards :reveals="props.reveals" :has-match="props.hasMatch" />
             </template>
 
             <template #sideboard>

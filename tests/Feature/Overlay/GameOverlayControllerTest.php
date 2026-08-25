@@ -438,3 +438,28 @@ it('swaps the sideboard guide when a new archetype is pinned', function () {
         ->assertJsonPath('props.opponent.archetypeName', 'Ruby Storm')
         ->assertJsonPath('props.sideboard.sidedIn.0.communityRate', 90);
 });
+
+it('renders revealed opponent cards for the active match', function () {
+    [$match, $opponent] = liveOverlayMatch();
+
+    $game = $match->games()->first();
+    $game->players()->updateExistingPivot($opponent->id, [
+        'deck_json' => [['mtgo_id' => 102, 'quantity' => 2]],
+    ]);
+
+    overlayPartial(['reveals', 'sections'])
+        ->assertSuccessful()
+        ->assertJsonPath('props.sections.reveals', true)
+        ->assertJsonPath('props.reveals.0.name', 'Lightning Bolt')
+        ->assertJsonPath('props.reveals.0.quantity', 2);
+});
+
+it('omits reveals when the section is disabled', function () {
+    AppSettings::setOverlayShowReveals(false);
+    liveOverlayMatch();
+
+    overlayPartial(['reveals', 'sections'])
+        ->assertSuccessful()
+        ->assertJsonPath('props.sections.reveals', false)
+        ->assertJsonPath('props.reveals', null);
+});

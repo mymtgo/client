@@ -439,3 +439,24 @@ it('subtracts a drawn printing from the merged row', function () {
     expect($mines->first()->remaining)->toBe(1);
     expect($mines->first()->total)->toBe(2);
 });
+
+it('includes the art crop in the payload, taking the first printing that has one', function () {
+    Card::create(['mtgo_id' => '211', 'oracle_id' => 'o-mine', 'name' => "Urza's Mine", 'type' => 'Land']);
+    Card::create(['mtgo_id' => '212', 'oracle_id' => 'o-mine', 'name' => "Urza's Mine", 'type' => 'Land', 'art_crop' => 'https://img/mine-art.jpg']);
+
+    $deck = Deck::factory()->create();
+    $deckVersion = DeckVersion::create([
+        'deck_id' => $deck->id,
+        'signature' => signatureFor([['211', '1', 'false'], ['212', '1', 'false']]),
+        'modified_at' => now(),
+    ]);
+    $match = MtgoMatch::create([
+        'mtgo_id' => '400012', 'token' => 'mt-d12', 'format' => 'CModern',
+        'match_type' => 'League', 'state' => MatchState::InProgress,
+        'started_at' => now(), 'deck_version_id' => $deckVersion->id,
+    ]);
+
+    $card = collect(ComputeDrawOdds::run($match)->cards->all())->firstWhere('name', "Urza's Mine");
+
+    expect($card->artCrop)->toBe('https://img/mine-art.jpg');
+});

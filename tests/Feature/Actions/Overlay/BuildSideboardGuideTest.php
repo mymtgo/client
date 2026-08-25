@@ -293,3 +293,24 @@ it('leaves every community field null when no rates are supplied', function () {
     expect($guide->sidedIn[0]->communitySidedIn)->toBeNull();
     expect($guide->sidedIn[0]->communityGames)->toBeNull();
 });
+
+it('includes the art crop on sided-in and sided-out cards', function () {
+    Card::where('mtgo_id', '201')->update(['art_crop' => 'https://img/rip-art.jpg']);
+    Card::where('mtgo_id', '202')->update(['art_crop' => 'https://img/bolt-art.jpg']);
+
+    $archetype = Archetype::factory()->create(['name' => 'Esper Blink', 'format' => 'modern']);
+    $deck = Deck::factory()->create();
+    $version = guideVersion($deck, [['201', '2', '1'], ['202', '4', '0']]);
+
+    $community = collect([
+        'o-bolt' => ['sidedIn' => 0, 'sidedOut' => 32, 'games' => 80],
+    ]);
+
+    $guide = BuildSideboardGuide::run($version, $archetype, $community);
+
+    $rip = collect($guide->sidedIn)->firstWhere('oracleId', 'o-rip');
+    $bolt = collect($guide->sidedOut)->firstWhere('oracleId', 'o-bolt');
+
+    expect($rip->artCrop)->toBe('https://img/rip-art.jpg');
+    expect($bolt->artCrop)->toBe('https://img/bolt-art.jpg');
+});

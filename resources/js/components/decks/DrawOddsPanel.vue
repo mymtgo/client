@@ -1,18 +1,17 @@
 <script setup lang="ts">
-import ManaSymbols from '@/components/ManaSymbols.vue';
+import OverlayCardRow from '@/components/overlay/OverlayCardRow.vue';
 import { useCardHoverPreview } from '@/composables/useCardHoverPreview';
 import { groupByType } from '@/composables/useCardTypeGroups';
 import { hypergeometric } from '@/composables/useHypergeometric';
 import { computed, ref, watch } from 'vue';
 
 /**
- * Presentational draw-odds overlay. Mirrors the visual language of the deck
- * popout (resources/js/pages/decks/Popout.vue) — cards grouped by type with a
- * color left-border, a leading bold count, the card name, and mana symbols on
- * the right, plus a hover card-image preview anchored top-right inside the
- * window. The extras over the popout are a per-card remaining/total count and
- * a player-controlled sample-size stepper showing the per-card chance to draw
- * at least one copy in the next N draws.
+ * Presentational draw-odds overlay: cards grouped by type as shared
+ * OverlayCardRow rows (count, art crop, name), plus a hover card-image
+ * preview anchored top-right inside the window. The extras over the other
+ * overlay lists are a per-card remaining/total count and a player-controlled
+ * sample-size stepper showing the per-card chance to draw at least one copy
+ * in the next N draws.
  *
  * The backend serializes `cards` as plain arrays at runtime, but the generated
  * types describe them as keyed records (a Spatie DataCollection artifact).
@@ -60,37 +59,6 @@ function drawChance(card: DrawOddsCard): number {
 }
 
 const { hoveredCard, previewTop, onCardEnter, onCardLeave } = useCardHoverPreview<DrawOddsCard>();
-
-const COLOR_MAP: Record<string, string> = {
-    W: '#F8F6D8',
-    U: '#C1D7E9',
-    B: '#BAB1AB',
-    R: '#E49977',
-    G: '#A3C095',
-};
-
-const FALLBACK_COLOR = '#888';
-
-function colorBorder(identity: string | null): string {
-    if (!identity) return FALLBACK_COLOR;
-    const colors = identity
-        .split(',')
-        .map((c) => COLOR_MAP[c.trim()])
-        .filter(Boolean);
-    if (colors.length === 0) return FALLBACK_COLOR;
-    if (colors.length === 1) return colors[0];
-    const pct = 100 / colors.length;
-    const stops = colors.map((c, i) => `${c} ${i * pct}% ${(i + 1) * pct}%`).join(', ');
-    return `linear-gradient(to bottom, ${stops})`;
-}
-
-function borderStyle(identity: string | null): Record<string, string> {
-    const val = colorBorder(identity);
-    if (val.startsWith('linear-gradient')) {
-        return { borderImage: `${val} 1`, borderLeftWidth: '4px', borderLeftStyle: 'solid' };
-    }
-    return { borderLeftColor: val, borderLeftWidth: '4px', borderLeftStyle: 'solid' };
-}
 
 const groupedCards = computed<Record<string, DrawOddsCard[]>>(() => groupByType(props.drawOdds?.cards ?? [], (card) => card.type));
 
@@ -213,10 +181,13 @@ watch(
                         <span class="w-12 shrink-0 text-right text-muted-foreground tabular-nums">{{ pct(typeChance(cards)) }}</span>
                     </h3>
                     <div class="divide-y text-xs">
-                        <div
+                        <OverlayCardRow
                             v-for="card in cards"
                             :key="card.mtgoId ?? card.name"
-                            class="flex items-center gap-2 text-sm transition-colors duration-300"
+                            :name="card.name"
+                            :count="card.remaining"
+                            :art-crop="card.artCrop"
+                            class="transition-colors duration-300"
                             :class="{
                                 'opacity-20': card.remaining === 0,
                                 'is-flashing': highlighted.has(cardKey(card)),
@@ -224,18 +195,12 @@ watch(
                             @mouseenter="onCardEnter(card, $event)"
                             @mouseleave="onCardLeave"
                         >
-                            <span class="min-w-0 w-8 text-center shrink-0 border-r bg-black/20 px-2 py-1">
-                                <span class="font-semibold tabular-nums">{{ card.remaining }}</span>
-                            </span>
-                            <span class="min-w-0 grow truncate">
-                                {{ card.name }}
-                            </span>
                             <div class="flex shrink-0 items-center gap-2 px-2">
                                 <span class="w-12 text-right font-medium text-muted-foreground tabular-nums">
                                     {{ pct(drawChance(card)) }}
                                 </span>
                             </div>
-                        </div>
+                        </OverlayCardRow>
                     </div>
                 </div>
             </div>

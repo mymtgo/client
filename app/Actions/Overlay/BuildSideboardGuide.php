@@ -76,6 +76,7 @@ class BuildSideboardGuide
                     type: $meta->type ?? null,
                     colorIdentity: $meta->color_identity ?? null,
                     image: self::imageUrl($meta),
+                    artCrop: self::artCropUrl($meta),
                     quantity: (int) $card['quantity'],
                     sidedInGames: $games,
                     wins: $wins,
@@ -111,6 +112,7 @@ class BuildSideboardGuide
                     name: $meta->name ?? 'Unknown card',
                     type: $meta->type ?? null,
                     image: self::imageUrl($meta),
+                    artCrop: self::artCropUrl($meta),
                     sidedOutGames: (int) ($row->sided_out_games ?? 0),
                     communitySidedOut: $peers === null ? null : $peers['sidedOut'],
                     communityGames: $peers === null ? null : $peers['games'],
@@ -194,7 +196,7 @@ class BuildSideboardGuide
 
         $rows = Card::query()
             ->whereIn('oracle_id', $oracleIds)
-            ->get(['mtgo_id', 'oracle_id', 'name', 'type', 'color_identity', 'image', 'local_image']);
+            ->get(['mtgo_id', 'oracle_id', 'name', 'type', 'color_identity', 'image', 'local_image', 'art_crop', 'local_art_crop']);
 
         foreach ($rows as $row) {
             if (in_array((string) $row->mtgo_id, $preferred, true) || ! $metadata->has($row->oracle_id)) {
@@ -217,7 +219,7 @@ class BuildSideboardGuide
 
         $query = DB::table('card_game_stats as cgs')
             ->join(
-                DB::raw('(SELECT oracle_id, name, color_identity, image, local_image FROM cards WHERE oracle_id IS NOT NULL GROUP BY oracle_id) as c'),
+                DB::raw('(SELECT oracle_id, name, color_identity, image, local_image, art_crop, local_art_crop FROM cards WHERE oracle_id IS NOT NULL GROUP BY oracle_id) as c'),
                 'c.oracle_id',
                 '=',
                 'cgs.oracle_id'
@@ -235,6 +237,8 @@ class BuildSideboardGuide
                 c.color_identity,
                 c.image,
                 c.local_image,
+                c.art_crop,
+                c.local_art_crop,
                 SUM(CASE WHEN cgs.sided_in THEN 1 ELSE 0 END) as sided_in_games,
                 SUM(CASE WHEN cgs.sided_in AND cgs.won THEN 1 ELSE 0 END) as sided_in_won,
                 SUM(CASE WHEN cgs.sided_in AND NOT cgs.won THEN 1 ELSE 0 END) as sided_in_lost,
@@ -297,5 +301,16 @@ class BuildSideboardGuide
         return $row->local_image
             ? Storage::disk('cards')->url($row->local_image)
             : $row->image;
+    }
+
+    private static function artCropUrl(?object $row): ?string
+    {
+        if (! $row) {
+            return null;
+        }
+
+        return ($row->local_art_crop ?? null)
+            ? Storage::disk('cards')->url($row->local_art_crop)
+            : ($row->art_crop ?? null);
     }
 }

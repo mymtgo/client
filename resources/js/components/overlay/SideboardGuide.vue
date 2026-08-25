@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import ArchetypeNotes from '@/components/overlay/ArchetypeNotes.vue';
+import OverlayCardRow from '@/components/overlay/OverlayCardRow.vue';
 import { useCardHoverPreview } from '@/composables/useCardHoverPreview';
 import { groupByType } from '@/composables/useCardTypeGroups';
 import { useOfflineMode } from '@/composables/useOfflineMode';
@@ -152,18 +153,16 @@ const offlineMode = useOfflineMode();
                     </span>
                 </h3>
                 <div class="divide-y text-xs">
-                    <div
+                    <OverlayCardRow
                         v-for="card in cards"
                         :key="card.oracleId"
-                        class="flex items-center gap-2 text-sm"
+                        :name="card.name"
+                        :count="card.quantity"
+                        :art-crop="card.artCrop"
                         :class="{ 'opacity-40': card.sidedInGames === 0 && card.communityRate === null }"
                         @mouseenter="onCardEnter(card, $event)"
                         @mouseleave="onCardLeave"
                     >
-                        <span class="w-8 min-w-0 shrink-0 border-r bg-black/20 px-2 py-1 text-center">
-                            <span class="font-semibold tabular-nums">{{ card.quantity }}</span>
-                        </span>
-                        <span class="min-w-0 grow truncate">{{ card.name }}</span>
                         <div class="flex shrink-0 items-center gap-2 px-2">
                             <span class="w-8 text-right text-[10px] font-bold tracking-wider uppercase">
                                 <span v-if="recommended(card.communityRate, card.sidedInGames)" class="text-emerald-400">In</span>
@@ -182,7 +181,7 @@ const offlineMode = useOfflineMode();
                                 <template v-else>—</template>
                             </span>
                         </div>
-                    </div>
+                    </OverlayCardRow>
                 </div>
             </div>
 
@@ -198,17 +197,15 @@ const offlineMode = useOfflineMode();
                     </span>
                 </h3>
                 <div class="divide-y text-xs">
-                    <div
+                    <OverlayCardRow
                         v-for="card in sidedOutCards"
                         :key="card.oracleId"
-                        class="flex items-center gap-2 text-sm"
+                        :name="card.name"
+                        :count="null"
+                        :art-crop="card.artCrop"
                         @mouseenter="onCardEnter(card, $event)"
                         @mouseleave="onCardLeave"
                     >
-                        <span class="w-8 min-w-0 shrink-0 border-r bg-black/20 px-2 py-1 text-center">
-                            <span class="font-semibold tabular-nums">&nbsp;</span>
-                        </span>
-                        <span class="min-w-0 grow truncate">{{ card.name }}</span>
                         <div class="flex shrink-0 items-center gap-2 px-2">
                             <span class="w-8 text-right text-[10px] font-bold tracking-wider uppercase">
                                 <span v-if="recommended(card.communityRate, card.sidedOutGames)" class="text-red-400">Out</span>
@@ -225,7 +222,7 @@ const offlineMode = useOfflineMode();
                                 <template v-else>—</template>
                             </span>
                         </div>
-                    </div>
+                    </OverlayCardRow>
                 </div>
             </template>
         </template>

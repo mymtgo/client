@@ -92,3 +92,9 @@ it('closes an open game overlay when disabled mid-match', function () {
     expect(AppSettings::showGameOverlay())->toBeFalse();
     Window::assertClosed('game-overlay');
 });
+
+it('persists the reveals section toggle', function () {
+    $this->post(route('settings.overlay'), ['overlay_show_reveals' => false])->assertRedirect();
+
+    expect(AppSettings::overlayShowReveals())->toBeFalse();
+});

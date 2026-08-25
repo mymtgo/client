@@ -65,6 +65,7 @@ class IndexController extends Controller
             'overlayShowOpponent' => AppSettings::overlayShowOpponent(),
             'overlayShowDrawOdds' => AppSettings::overlayShowDrawOdds(),
             'overlayShowSideboard' => AppSettings::overlayShowSideboard(),
+            'overlayShowReveals' => AppSettings::overlayShowReveals(),
             'overlayBackgroundUrl' => $overlayBackgroundUrl,
             'localImages' => AppSettings::downloadImagesLocally(),
             'localImagesSize' => $this->getLocalImagesSize(),

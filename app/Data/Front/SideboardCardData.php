@@ -13,6 +13,7 @@ class SideboardCardData extends Data
         public ?string $type,
         public ?string $colorIdentity,
         public ?string $image,
+        public ?string $artCrop,
         public int $quantity,
         public int $sidedInGames,
         public int $wins,

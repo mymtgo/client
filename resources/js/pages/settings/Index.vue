@@ -44,6 +44,7 @@ leagueWindowEnabled: boolean;
     overlayShowOpponent: boolean;
     overlayShowDrawOdds: boolean;
     overlayShowSideboard: boolean;
+    overlayShowReveals: boolean;
     overlayBackgroundUrl: string | null;
     debugMode: boolean;
     localImages: boolean;
@@ -156,7 +157,7 @@ function setGameOverlayEnabled(val: boolean) {
     withProcessing('gameOverlay', 'post', UpdateOverlaySettingsController.url(), { game_overlay: val });
 }
 
-function setOverlaySection(key: 'opponent' | 'draw_odds' | 'sideboard', val: boolean) {
+function setOverlaySection(key: 'opponent' | 'draw_odds' | 'sideboard' | 'reveals', val: boolean) {
     withProcessing(`overlay-${key}`, 'post', UpdateOverlaySettingsController.url(), {
         [`overlay_show_${key}`]: val,
     });
@@ -344,6 +345,17 @@ const sampleLeague: LeagueData = {
                                 :modelValue="props.overlayShowDrawOdds"
                                 @update:modelValue="(val: boolean) => setOverlaySection('draw_odds', val)"
                                 :disabled="!props.gameOverlayEnabled || processing === 'overlay-draw_odds'"
+                            />
+                        </div>
+
+                        <div class="flex items-center justify-between">
+                            <Label :class="props.gameOverlayEnabled ? '' : 'text-muted-foreground'">
+                                Show revealed cards
+                            </Label>
+                            <Switch
+                                :modelValue="props.overlayShowReveals"
+                                @update:modelValue="(val: boolean) => setOverlaySection('reveals', val)"
+                                :disabled="!props.gameOverlayEnabled || processing === 'overlay-reveals'"
                             />
                         </div>
 

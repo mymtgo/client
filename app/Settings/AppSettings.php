@@ -396,6 +396,16 @@ class AppSettings
         $this->set('overlay_show_draw_odds', $value);
     }
 
+    public function overlayShowReveals(): bool
+    {
+        return (bool) $this->get('overlay_show_reveals', true);
+    }
+
+    public function setOverlayShowReveals(bool $value): void
+    {
+        $this->set('overlay_show_reveals', $value);
+    }
+
     public function overlayShowSideboard(): bool
     {
         return (bool) $this->get('overlay_show_sideboard', true);

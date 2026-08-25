@@ -20,6 +20,7 @@ class UpdateOverlaySettingsController extends Controller
             'overlay_show_opponent' => 'sometimes|boolean',
             'overlay_show_draw_odds' => 'sometimes|boolean',
             'overlay_show_sideboard' => 'sometimes|boolean',
+            'overlay_show_reveals' => 'sometimes|boolean',
         ]);
 
         if (isset($validated['league_window'])) {
@@ -55,6 +56,10 @@ class UpdateOverlaySettingsController extends Controller
 
         if (isset($validated['overlay_show_sideboard'])) {
             AppSettings::setOverlayShowSideboard($validated['overlay_show_sideboard']);
+        }
+
+        if (isset($validated['overlay_show_reveals'])) {
+            AppSettings::setOverlayShowReveals($validated['overlay_show_reveals']);
         }
 
         return back();

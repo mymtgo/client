@@ -7,6 +7,7 @@ use App\Actions\Overlay\BuildSideboardGuide;
 use App\Actions\Overlay\DetectSideboarding;
 use App\Actions\Overlay\FetchCommunitySideboardRates;
 use App\Actions\Overlay\GetArchetypeNotes;
+use App\Actions\Overlay\GetOpponentReveals;
 use App\Actions\Overlay\ResolveOverlayOpponent;
 use App\Data\Front\ArchetypeData;
 use App\Data\Front\SideboardGuideData;
@@ -30,6 +31,7 @@ class GameOverlayController extends Controller
             'opponent' => AppSettings::overlayShowOpponent(),
             'drawOdds' => AppSettings::overlayShowDrawOdds(),
             'sideboard' => AppSettings::overlayShowSideboard(),
+            'reveals' => AppSettings::overlayShowReveals(),
         ];
 
         // The opponent is resolved whenever ANY section that derives from it is
@@ -60,6 +62,7 @@ class GameOverlayController extends Controller
             'drawOdds' => Inertia::defer(
                 fn () => $match && $sections['drawOdds'] ? ComputeDrawOdds::run($match) : null
             ),
+            'reveals' => $match && $sections['reveals'] ? GetOpponentReveals::run($match) : null,
             'sideboard' => $sections['sideboard'] ? $this->sideboardGuide($match, $archetype) : null,
             'notes' => $sections['sideboard'] ? $this->notes($match, $archetype) : ['current' => [], 'other' => []],
             'isSideboarding' => $match && $sections['sideboard'] ? DetectSideboarding::run($match) : false,

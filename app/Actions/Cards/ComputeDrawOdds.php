@@ -51,7 +51,7 @@ class ComputeDrawOdds
             ->mapWithKeys(fn ($c) => [(int) $c['mtgo_id'] => (int) $c['quantity']]);
 
         $cardMeta = Card::whereIn('mtgo_id', $deckByMtgoId->keys())
-            ->get(['mtgo_id', 'name', 'type', 'color_identity', 'image', 'local_image'])
+            ->get(['mtgo_id', 'name', 'type', 'color_identity', 'image', 'local_image', 'art_crop', 'local_art_crop'])
             ->keyBy(fn ($c) => (int) $c->mtgo_id);
 
         // Copies of each mtgo_id seen outside the local player's library.
@@ -84,6 +84,7 @@ class ComputeDrawOdds
                     type: $first['meta']?->type ?? 'Unknown',
                     identity: $first['meta']?->color_identity,
                     image: $first['meta']?->image_url,
+                    artCrop: $printings->pluck('meta')->first(fn ($meta) => $meta?->art_crop_url)?->art_crop_url,
                     remaining: (int) $printings->sum('remaining'),
                     total: (int) $printings->sum('total'),
                 );
