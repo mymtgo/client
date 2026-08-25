@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Decks;
 
+use App\Actions\Limited\EnsureLimitedDeckVersion;
 use App\Data\Front\ArchetypeData;
 use App\Data\Front\DeckData;
 use App\Data\Front\DeckGroupData;
@@ -20,6 +21,7 @@ class IndexController
     public function __invoke(Request $request): Response
     {
         $query = Deck::forActiveAccount()
+            ->where('format', '!=', EnsureLimitedDeckVersion::FORMAT)
             ->with(['cover', 'archetype' => fn ($q) => $q->withExists('decks')])
             ->withCount(['wonMatches', 'lostMatches', 'matches'])
             ->withMax('matches', 'started_at');
@@ -47,6 +49,7 @@ class IndexController
         };
 
         $formats = Deck::forActiveAccount()
+            ->where('format', '!=', EnsureLimitedDeckVersion::FORMAT)
             ->distinct()
             ->pluck('format')
             ->mapWithKeys(fn ($f) => [$f => MtgoMatch::displayFormat($f)])

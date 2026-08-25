@@ -1,0 +1,4 @@
+12:26:27 [INF] (Collection Management|League User Initial Grant) Adding limited league pool to collection for league: 11039, unique catalog ids: 30
+CatalogID: 153892, AddedQuantity: 1, OldQuantity: 0, NewQuantity: 1
+CatalogID: 153896, AddedQuantity: 1, OldQuantity: 0, NewQuantity: 1
+CatalogID: 153914, AddedQuantity: 1, OldQuantity: 0, NewQuantity: 1

@@ -2,6 +2,7 @@
 
 namespace App\Actions\Matches;
 
+use App\Actions\Limited\SyncLimitedMatchDeck;
 use App\Actions\Logs\ConvertMtgoTimestamp;
 use App\Actions\Overlay\SyncGameOverlayVisibility;
 use App\Actions\Tournaments\AssignTournament;
@@ -254,6 +255,14 @@ class AdvanceMatchState
         // ── Assign league (if not already assigned) ──
         if (! $match->league_id) {
             AssignLeague::run($match, $gameMeta);
+        }
+
+        // ── Limited: snapshot the registered deck and keep the league's
+        //    deck_version_id current. Shared with RelinkOrphanMatches, which
+        //    has to do the same for a match whose league arrived late. ──
+        if ($match->league_id) {
+            $match->refresh();
+            SyncLimitedMatchDeck::run($match);
         }
 
         // ── Assign tournament (if not already assigned) ──

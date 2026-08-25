@@ -47,3 +47,7 @@ CLAUDE.md
 /agentdb.rvf
 /agentdb.rvf.lock
 /ruvector.db
+/.swarm
+
+# Real MTGO log fixtures used by tests
+!tests/Fixtures/logs/*.log

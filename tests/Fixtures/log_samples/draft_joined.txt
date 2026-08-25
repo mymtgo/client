@@ -1,0 +1,1 @@
+12:12:00 [INF] (Leagues|Received FlsLeagueUserJoinDraftRespMessage) Message: {"LeagueID":11039,"DraftGroupID":6781001,"DraftToken":"791bacca-caea-4d88-b6c7-3bc067d412c2","ResponseCode":1}, ResponseCode: Success

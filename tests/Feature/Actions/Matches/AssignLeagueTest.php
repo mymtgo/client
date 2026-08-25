@@ -1,9 +1,14 @@
 <?php
 
 use App\Actions\Matches\AssignLeague;
+use App\Enums\LeagueKind;
 use App\Enums\LeagueState;
+use App\Models\Card;
 use App\Models\DeckVersion;
+use App\Models\Draft;
+use App\Models\DraftPick;
 use App\Models\League;
+use App\Models\LogEvent;
 use App\Models\MtgoMatch;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -34,6 +39,21 @@ function defaultGameMeta(string $token = 'league-token-123', string $format = 'C
         'PlayFormatCd' => $format,
         'GameStructureCd' => 'Constructed',
     ];
+}
+
+/**
+ * A match_deck_registered log line, matching the FlsMatchDeckGetRespMessage
+ * shape AssignLeague's registeredMainDeck() decodes via RepairJson.
+ *
+ * @param  array<int, array{0: int, 1: int, 2: bool}>  $cards  [catalog_id, quantity, in_sideboard]
+ */
+function matchDeckRegisteredLogLine(string $matchToken, int $matchId, array $cards): string
+{
+    $json = json_encode(['MatchToken' => $matchToken, 'MatchID' => $matchId, 'Cards' => array_map(fn ($c) => [
+        'CatalogID' => $c[0], 'Annotation' => 0, 'PermissionTypeCode' => 0, 'Quantity' => $c[1], 'InSideboard' => $c[2],
+    ], $cards), 'ResponseCode' => 1]);
+
+    return "12:37:19 [INF] (BaseClient|Inbound: FlsMatchDeckGetRespMessage) {$json}";
 }
 
 /*
@@ -366,4 +386,338 @@ it('leaves match unassigned when no league token is present', function () {
 
     expect($match->fresh()->league_id)->toBeNull();
     expect(League::count())->toBe(0);
+});
+
+/*
+|--------------------------------------------------------------------------
+| Limited Re-entry Pool Guard
+|--------------------------------------------------------------------------
+*/
+
+it('mints a new draft league when the registered deck does not fit the current pool', function () {
+    // Match logs never carry EventId in a parseable form, so step 1 always
+    // misses for real matches. The guard has to catch this after step 2
+    // (token + Active) resolves the stale run.
+    $token = 'league-token-draft-guard';
+    $league = League::factory()->create([
+        'token' => $token,
+        'kind' => LeagueKind::Draft,
+        'state' => LeagueState::Active,
+    ]);
+    $draft = Draft::factory()->for($league)->finished()->create();
+    $pool = range(1000, 1022);
+    foreach (array_values($pool) as $i => $catalogId) {
+        DraftPick::factory()->for($draft)->create(['ordinal' => $i + 1, 'picked_catalog_id' => $catalogId]);
+    }
+
+    $mismatched = range(5000, 5022);
+    foreach ($mismatched as $catalogId) {
+        Card::factory()->create(['mtgo_id' => (string) $catalogId, 'type' => 'Creature']);
+    }
+
+    $match = MtgoMatch::factory()->create(['token' => 'm-guard-mismatch']);
+    LogEvent::factory()->create([
+        'event_type' => 'match_deck_registered',
+        'match_token' => 'm-guard-mismatch',
+        'raw_text' => matchDeckRegisteredLogLine('m-guard-mismatch', (int) $match->mtgo_id, array_map(fn ($id) => [$id, 1, false], $mismatched)),
+    ]);
+
+    callAssignLeague($match, ['League Token' => $token, 'PlayFormatCd' => 'DHOB']);
+
+    $match->refresh();
+    expect(League::where('token', $token)->count())->toBe(2)
+        ->and($league->fresh()->state)->toBe(LeagueState::Partial)
+        ->and($match->league_id)->not->toBe($league->id)
+        ->and($match->league->kind)->toBe(LeagueKind::Draft)
+        ->and($match->league->token)->toBe($token);
+});
+
+it('reuses the draft league when the registered deck fits the current pool', function () {
+    $token = 'league-token-draft-guard-fits';
+    $league = League::factory()->create([
+        'token' => $token,
+        'kind' => LeagueKind::Draft,
+        'state' => LeagueState::Active,
+    ]);
+    $draft = Draft::factory()->for($league)->finished()->create();
+    $pool = range(1000, 1022);
+    foreach (array_values($pool) as $i => $catalogId) {
+        DraftPick::factory()->for($draft)->create(['ordinal' => $i + 1, 'picked_catalog_id' => $catalogId]);
+        Card::factory()->create(['mtgo_id' => (string) $catalogId, 'type' => 'Creature']);
+    }
+
+    $match = MtgoMatch::factory()->create(['token' => 'm-guard-fits']);
+    LogEvent::factory()->create([
+        'event_type' => 'match_deck_registered',
+        'match_token' => 'm-guard-fits',
+        'raw_text' => matchDeckRegisteredLogLine('m-guard-fits', (int) $match->mtgo_id, array_map(fn ($id) => [$id, 1, false], $pool)),
+    ]);
+
+    callAssignLeague($match, ['League Token' => $token, 'PlayFormatCd' => 'DHOB']);
+
+    $match->refresh();
+    expect(League::where('token', $token)->count())->toBe(1)
+        ->and($match->league_id)->toBe($league->id)
+        ->and($league->fresh()->state)->toBe(LeagueState::Active);
+});
+
+it('leaves a constructed league untouched by the pool guard', function () {
+    $token = 'league-token-constructed-guard';
+    $league = League::factory()->create([
+        'token' => $token,
+        'kind' => LeagueKind::Constructed,
+        'state' => LeagueState::Active,
+    ]);
+
+    $match = MtgoMatch::factory()->create(['token' => 'm-guard-constructed']);
+    LogEvent::factory()->create([
+        'event_type' => 'match_deck_registered',
+        'match_token' => 'm-guard-constructed',
+        'raw_text' => matchDeckRegisteredLogLine('m-guard-constructed', (int) $match->mtgo_id, [[9999, 4, false]]),
+    ]);
+
+    callAssignLeague($match, ['League Token' => $token, 'PlayFormatCd' => 'CStandard']);
+
+    $match->refresh();
+    expect(League::where('token', $token)->count())->toBe(1)
+        ->and($match->league_id)->toBe($league->id)
+        ->and($league->fresh()->state)->toBe(LeagueState::Active);
+});
+
+it('leaves an unfinished draft league alone even when the registered deck does not fit the partial pool', function () {
+    // A catch-up replay can still be projecting picks when this runs. The
+    // pool isn't fully known yet, so a mismatch here can't be trusted: the
+    // guard must not split the league just because the pool looks small.
+    $token = 'league-token-draft-unfinished';
+    $league = League::factory()->create([
+        'token' => $token,
+        'kind' => LeagueKind::Draft,
+        'state' => LeagueState::Active,
+    ]);
+    $draft = Draft::factory()->for($league)->create();
+    $pool = range(1000, 1011);
+    foreach (array_values($pool) as $i => $catalogId) {
+        DraftPick::factory()->for($draft)->create(['ordinal' => $i + 1, 'picked_catalog_id' => $catalogId]);
+    }
+
+    $mismatched = range(5000, 5022);
+    foreach ($mismatched as $catalogId) {
+        Card::factory()->create(['mtgo_id' => (string) $catalogId, 'type' => 'Creature']);
+    }
+
+    $match = MtgoMatch::factory()->create(['token' => 'm-guard-unfinished']);
+    LogEvent::factory()->create([
+        'event_type' => 'match_deck_registered',
+        'match_token' => 'm-guard-unfinished',
+        'raw_text' => matchDeckRegisteredLogLine('m-guard-unfinished', (int) $match->mtgo_id, array_map(fn ($id) => [$id, 1, false], $mismatched)),
+    ]);
+
+    callAssignLeague($match, ['League Token' => $token, 'PlayFormatCd' => 'DHOB']);
+
+    $match->refresh();
+    expect(League::where('token', $token)->count())->toBe(1)
+        ->and($match->league_id)->toBe($league->id)
+        ->and($league->fresh()->state)->toBe(LeagueState::Active);
+});
+
+it('reuses the draft league across a deck-version change when the registered deck fits the pool', function () {
+    // A synthetic Limited DeckVersion is minted after the run's first match
+    // (in AdvanceMatchState, which runs after AssignLeague), so by the
+    // second match the match's deck_version_id already differs from the
+    // league's stored value. The dv-split heuristic in step 2 must not
+    // treat that as a new run for limited leagues; the pool guard is the
+    // real re-entry detector for those.
+    $token = 'league-token-draft-dv-change';
+    $deckV1 = DeckVersion::factory()->create();
+    $deckV2 = DeckVersion::factory()->create();
+    $league = League::factory()->create([
+        'token' => $token,
+        'kind' => LeagueKind::Draft,
+        'state' => LeagueState::Active,
+        'deck_version_id' => $deckV1->id,
+    ]);
+    $draft = Draft::factory()->for($league)->finished()->create();
+    $pool = range(1000, 1022);
+    foreach (array_values($pool) as $i => $catalogId) {
+        DraftPick::factory()->for($draft)->create(['ordinal' => $i + 1, 'picked_catalog_id' => $catalogId]);
+        Card::factory()->create(['mtgo_id' => (string) $catalogId, 'type' => 'Creature']);
+    }
+
+    $match = MtgoMatch::factory()->create(['token' => 'm-dv-change', 'deck_version_id' => $deckV2->id]);
+    LogEvent::factory()->create([
+        'event_type' => 'match_deck_registered',
+        'match_token' => 'm-dv-change',
+        'raw_text' => matchDeckRegisteredLogLine('m-dv-change', (int) $match->mtgo_id, array_map(fn ($id) => [$id, 1, false], $pool)),
+    ]);
+
+    callAssignLeague($match, ['League Token' => $token, 'PlayFormatCd' => 'DHOB']);
+
+    $match->refresh();
+    expect(League::where('token', $token)->count())->toBe(1)
+        ->and($match->league_id)->toBe($league->id)
+        ->and($league->fresh()->deck_version_id)->toBe($deckV1->id);
+});
+
+it('mints a new constructed league on a deck-version change, proving the dv-split heuristic is untouched', function () {
+    $token = 'league-token-constructed-dv-change';
+    $deckV1 = DeckVersion::factory()->create();
+    $deckV2 = DeckVersion::factory()->create();
+    $league = League::factory()->create([
+        'token' => $token,
+        'kind' => LeagueKind::Constructed,
+        'state' => LeagueState::Active,
+        'deck_version_id' => $deckV1->id,
+    ]);
+
+    $match = MtgoMatch::factory()->create(['token' => 'm-dv-change-constructed', 'deck_version_id' => $deckV2->id]);
+
+    callAssignLeague($match, ['League Token' => $token, 'PlayFormatCd' => 'CStandard']);
+
+    $match->refresh();
+    expect(League::where('token', $token)->count())->toBe(2)
+        ->and($match->league_id)->not->toBe($league->id)
+        ->and($league->fresh()->state)->toBe(LeagueState::Partial);
+});
+
+it('does not backfill deck_version_id onto a limited league in step 2', function () {
+    // Guards the kind check on the dv backfill added alongside step 2.2:
+    // for limited leagues, AdvanceMatchState is the sole owner of
+    // league.deck_version_id (it syncs to whichever deck a match actually
+    // played, match to match). If step 2 backfilled from whichever match
+    // happens to attach first instead, a later match with a different but
+    // equally legitimate deck_version_id would miss the league via step
+    // 2's own dv filter and mint a spurious extra league.
+    $token = 'league-token-draft-no-backfill';
+    $deckVersion = DeckVersion::factory()->create();
+    $league = League::factory()->create([
+        'token' => $token,
+        'kind' => LeagueKind::Draft,
+        'state' => LeagueState::Active,
+        'deck_version_id' => null,
+    ]);
+
+    $match = MtgoMatch::factory()->create(['token' => 'm-no-backfill', 'deck_version_id' => $deckVersion->id]);
+
+    callAssignLeague($match, ['League Token' => $token, 'PlayFormatCd' => 'DHOB']);
+
+    $match->refresh();
+    expect($match->league_id)->toBe($league->id)
+        ->and($league->fresh()->deck_version_id)->toBeNull();
+});
+
+/*
+|--------------------------------------------------------------------------
+| Placeholder Token Healing
+|--------------------------------------------------------------------------
+*/
+
+it('heals a placeholder draft token instead of splitting the run', function () {
+    // ResolveDraftLeague mints "draft-{leagueId}-{courseId}" when the draft
+    // lines arrive before any league_joined panel view. Steps 2 and 2.2 look
+    // up the real League Token, so without healing the run splits forever.
+    $token = '48a2e914-f2ee-4fce-a4ad-47e396488889';
+    $league = League::factory()->create([
+        'token' => 'draft-11039-35746768',
+        'event_id' => 11039,
+        'mtgo_course_id' => 35746768,
+        'kind' => LeagueKind::Draft,
+        'state' => LeagueState::Active,
+        'started_at' => now()->subHour(),
+    ]);
+
+    LogEvent::factory()->create([
+        'event_type' => 'league_joined',
+        'match_token' => $token,
+        'match_id' => '11039',
+        'logged_at' => now()->subMinutes(30),
+    ]);
+
+    $match = MtgoMatch::factory()->create(['token' => 'm-heal-placeholder']);
+
+    callAssignLeague($match, ['League Token' => $token, 'PlayFormatCd' => 'DHOBHOBHOB']);
+
+    $match->refresh();
+    expect(League::count())->toBe(1)
+        ->and($match->league_id)->toBe($league->id)
+        ->and($league->fresh()->token)->toBe($token);
+});
+
+it('does not heal a placeholder league whose pool the registered deck fails', function () {
+    // Unwatched re-entry: the placeholder run is a previous draft, and its
+    // pool says so. The match must mint its own run rather than glue on.
+    $token = '48a2e914-f2ee-4fce-a4ad-47e396488889';
+    $league = League::factory()->create([
+        'token' => 'draft-11039-35746768',
+        'event_id' => 11039,
+        'mtgo_course_id' => 35746768,
+        'kind' => LeagueKind::Draft,
+        'state' => LeagueState::Active,
+        'started_at' => now()->subHour(),
+    ]);
+    $draft = Draft::factory()->for($league)->finished()->create();
+    foreach (array_values(range(1000, 1022)) as $i => $catalogId) {
+        DraftPick::factory()->for($draft)->create(['ordinal' => $i + 1, 'picked_catalog_id' => $catalogId]);
+    }
+
+    $mismatched = range(5000, 5022);
+    foreach ($mismatched as $catalogId) {
+        Card::factory()->create(['mtgo_id' => (string) $catalogId, 'type' => 'Creature']);
+    }
+
+    LogEvent::factory()->create([
+        'event_type' => 'league_joined',
+        'match_token' => $token,
+        'match_id' => '11039',
+        'logged_at' => now()->subMinutes(30),
+    ]);
+
+    $match = MtgoMatch::factory()->create(['token' => 'm-heal-mismatch']);
+    LogEvent::factory()->create([
+        'event_type' => 'match_deck_registered',
+        'match_token' => 'm-heal-mismatch',
+        'raw_text' => matchDeckRegisteredLogLine('m-heal-mismatch', (int) $match->mtgo_id, array_map(fn ($id) => [$id, 1, false], $mismatched)),
+    ]);
+
+    callAssignLeague($match, ['League Token' => $token, 'PlayFormatCd' => 'DHOBHOBHOB']);
+
+    $match->refresh();
+    expect(League::count())->toBe(2)
+        ->and($match->league_id)->not->toBe($league->id)
+        ->and($league->fresh()->token)->toBe('draft-11039-35746768');
+});
+
+it('completes a stale draft run rejected by the pool guard once it has its matches', function () {
+    // Three matches is a run MTGO considers played out, so the rejected
+    // league is Complete with a completion timestamp, not Partial.
+    $token = 'league-token-draft-guard-complete';
+    $league = League::factory()->create([
+        'token' => $token,
+        'kind' => LeagueKind::Draft,
+        'state' => LeagueState::Active,
+    ]);
+    MtgoMatch::factory()->count(3)->create(['league_id' => $league->id]);
+
+    $draft = Draft::factory()->for($league)->finished()->create();
+    foreach (array_values(range(1000, 1022)) as $i => $catalogId) {
+        DraftPick::factory()->for($draft)->create(['ordinal' => $i + 1, 'picked_catalog_id' => $catalogId]);
+    }
+
+    $mismatched = range(5000, 5022);
+    foreach ($mismatched as $catalogId) {
+        Card::factory()->create(['mtgo_id' => (string) $catalogId, 'type' => 'Creature']);
+    }
+
+    $match = MtgoMatch::factory()->create(['token' => 'm-guard-complete']);
+    LogEvent::factory()->create([
+        'event_type' => 'match_deck_registered',
+        'match_token' => 'm-guard-complete',
+        'raw_text' => matchDeckRegisteredLogLine('m-guard-complete', (int) $match->mtgo_id, array_map(fn ($id) => [$id, 1, false], $mismatched)),
+    ]);
+
+    callAssignLeague($match, ['League Token' => $token, 'PlayFormatCd' => 'DHOB']);
+
+    $league->refresh();
+    expect($league->state)->toBe(LeagueState::Complete)
+        ->and($league->completed_at)->not->toBeNull()
+        ->and($match->fresh()->league_id)->not->toBe($league->id);
 });

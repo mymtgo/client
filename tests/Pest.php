@@ -1,7 +1,12 @@
 <?php
 
+use App\Actions\Logs\IngestLogInstance;
+use App\Actions\Pipeline\RunPipeline;
+use App\Enums\LogEventType;
 use App\Facades\AppSettings;
+use App\Managers\MtgoManager;
 use App\Models\Account;
+use App\Models\LogEvent;
 use Illuminate\Support\Facades\Http;
 use Native\Desktop\Facades\Settings;
 use Native\Desktop\Facades\Window;
@@ -135,4 +140,57 @@ expect()->extend('toBeOne', function () {
 function something()
 {
     // ..
+}
+
+/*
+|--------------------------------------------------------------------------
+| Limited fixture helpers
+|--------------------------------------------------------------------------
+*/
+
+function ingestFixtureLog(string $name, string $date = '2026-08-22'): string
+{
+    $source = base_path("tests/Fixtures/logs/{$name}");
+    $target = sys_get_temp_dir().'/mymtgo_fixture_'.bin2hex(random_bytes(4)).'_'.$name;
+
+    copy($source, $target);
+    register_shutdown_function(static function () use ($target): void {
+        @unlink($target);
+    });
+
+    $mtime = Carbon\Carbon::parse("{$date} 13:00:00", 'UTC')->getTimestamp();
+    touch($target, $mtime, $mtime);
+
+    IngestLogInstance::run($target);
+
+    return $target;
+}
+
+function mockMtgoManagerForPipeline(): void
+{
+    $mock = Mockery::mock(MtgoManager::class)->makePartial();
+    $mock->shouldReceive('pathsAreValid')->andReturn(true);
+    $mock->shouldReceive('ingestLogs')->andReturnNull();
+    $mock->shouldReceive('getLogDataPath')->andReturn(sys_get_temp_dir());
+    app()->instance('mtgo', $mock);
+}
+
+function runPipelineUntilIdle(int $maxTicks = 20): int
+{
+    $types = [...LogEventType::draftValues(), 'game_management_json'];
+
+    for ($tick = 1; $tick <= $maxTicks; $tick++) {
+        RunPipeline::run();
+
+        $pending = LogEvent::query()
+            ->whereIn('event_type', $types)
+            ->whereNull('processed_at')
+            ->exists();
+
+        if (! $pending) {
+            return $tick;
+        }
+    }
+
+    return $maxTicks;
 }

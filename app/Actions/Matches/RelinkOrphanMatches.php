@@ -2,6 +2,7 @@
 
 namespace App\Actions\Matches;
 
+use App\Actions\Limited\SyncLimitedMatchDeck;
 use App\Actions\Util\ExtractKeyValueBlock;
 use App\Enums\LogEventType;
 use App\Enums\MatchState;
@@ -26,6 +27,11 @@ class RelinkOrphanMatches
      * Both passes are scoped to InProgress / Ended / Complete states and
      * windowed by started_at so pre-Complete matches (no ended_at) are
      * still considered.
+     *
+     * Both also hand the match to SyncLimitedMatchDeck afterwards: a limited
+     * match that only just got its league (or its deck) still needs the
+     * registered snapshot and the synthetic deck version AdvanceMatchState
+     * would have given it, and nothing else would ever record them.
      */
     public static function run(int $limit = 20, int $withinDays = 7): void
     {
@@ -41,7 +47,10 @@ class RelinkOrphanMatches
             ->orderByDesc('started_at')
             ->limit($limit)
             ->get()
-            ->each(fn (MtgoMatch $match) => DetermineMatchDeck::run($match));
+            ->each(function (MtgoMatch $match): void {
+                DetermineMatchDeck::run($match);
+                SyncLimitedMatchDeck::run($match->refresh());
+            });
 
         MtgoMatch::whereIn('state', $orphanStates)
             ->whereNull('league_id')
@@ -50,7 +59,10 @@ class RelinkOrphanMatches
             ->orderByDesc('started_at')
             ->limit($limit)
             ->get()
-            ->each(fn (MtgoMatch $match) => self::retryAssignLeague($match));
+            ->each(function (MtgoMatch $match): void {
+                self::retryAssignLeague($match);
+                SyncLimitedMatchDeck::run($match->refresh());
+            });
 
         self::inheritTournamentDecks();
     }
