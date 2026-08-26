@@ -1,7 +1,9 @@
 <?php
 
+use App\Enums\DraftState;
 use App\Enums\MatchState;
 use App\Facades\AppSettings;
+use App\Models\Draft;
 use App\Models\MtgoMatch;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
@@ -97,4 +99,54 @@ it('persists the reveals section toggle', function () {
     $this->post(route('settings.overlay'), ['overlay_show_reveals' => false])->assertRedirect();
 
     expect(AppSettings::overlayShowReveals())->toBeFalse();
+});
+
+it('persists the draft notes window setting', function () {
+    $this->post(route('settings.overlay'), ['draft_notes_window' => false])->assertRedirect();
+
+    expect(AppSettings::showDraftNotesWindow())->toBeFalse();
+
+    $this->post(route('settings.overlay'), ['draft_notes_window' => true])->assertRedirect();
+
+    expect(AppSettings::showDraftNotesWindow())->toBeTrue();
+});
+
+it('validates the draft notes window setting is boolean', function () {
+    $this->post(route('settings.overlay'), ['draft_notes_window' => 'nope'])
+        ->assertSessionHasErrors(['draft_notes_window']);
+});
+
+it('leaves the draft notes window setting alone when the key is absent', function () {
+    AppSettings::setShowDraftNotesWindow(false);
+
+    $this->post(route('settings.overlay'), ['game_overlay' => true])->assertRedirect();
+
+    expect(AppSettings::showDraftNotesWindow())->toBeFalse();
+});
+
+it('opens the draft notes window when enabled during a live draft', function () {
+    AppSettings::setShowDraftNotesWindow(false);
+    Draft::factory()->create(['state' => DraftState::Picking]);
+
+    $this->post(route('settings.overlay'), ['draft_notes_window' => true])->assertRedirect();
+
+    Window::assertOpened('draft-notes');
+});
+
+it('closes an open draft notes window when disabled mid-draft', function () {
+    Window::fake()->alwaysReturnWindows([
+        new WindowInstance('main'),
+        new WindowInstance('draft-notes'),
+    ]);
+    Draft::factory()->create(['state' => DraftState::Picking]);
+
+    $this->post(route('settings.overlay'), ['draft_notes_window' => false])->assertRedirect();
+
+    Window::assertClosed('draft-notes');
+});
+
+it('does not open the draft notes window when enabled with no live draft', function () {
+    $this->post(route('settings.overlay'), ['draft_notes_window' => true])->assertRedirect();
+
+    Window::assertOpenedCount(0);
 });

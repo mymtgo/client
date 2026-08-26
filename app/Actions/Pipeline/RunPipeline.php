@@ -10,6 +10,7 @@ use App\Actions\Leagues\ProcessLeagueEvents;
 use App\Actions\Matches\AbandonStaleMatches;
 use App\Actions\Matches\LinkMatchToTournament;
 use App\Actions\Matches\RelinkOrphanMatches;
+use App\Actions\Overlay\SyncDraftNotesWindowVisibility;
 use App\Actions\Tournaments\EnqueueTournamentObservations;
 use App\Models\MtgoMatch;
 use Illuminate\Support\Facades\Log;
@@ -62,6 +63,14 @@ class RunPipeline
             // rather than leaving the run split in two. Needs the picks
             // projected, so it cannot happen inside ResolveDraftLeague.
             AdoptCourselessDraftLeague::run();
+
+            // Phase 2.8: Reconcile the draft notes window against draft
+            // state. One indexed query per tick; the Electron window API is
+            // only touched when the desired state flips, so an idle machine
+            // pays for the query alone. Opens within a tick of the first
+            // PendingPick, closes on abandonment, and expires the 30 second
+            // post-draft grace without a timer because this runs every tick.
+            SyncDraftNotesWindowVisibility::run();
 
             // Phase 3: Backfill tournament tokens on matches whose round_info
             // event arrived after the match itself was created.

@@ -62,6 +62,7 @@ class IndexController extends Controller
             'appVersion' => config('nativephp.version'),
             'leagueWindowEnabled' => AppSettings::showLeagueWindow(),
             'gameOverlayEnabled' => AppSettings::showGameOverlay(),
+            'draftNotesWindowEnabled' => AppSettings::showDraftNotesWindow(),
             'overlayShowOpponent' => AppSettings::overlayShowOpponent(),
             'overlayShowDrawOdds' => AppSettings::overlayShowDrawOdds(),
             'overlayShowSideboard' => AppSettings::overlayShowSideboard(),

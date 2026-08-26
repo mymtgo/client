@@ -28,11 +28,6 @@ function makeKnownDraftSpells(array $catalogIds, ?string $setCode = null): void
 /** @param  array<int, int>  $catalogIds */
 function draftWithPool(array $catalogIds): Draft
 {
-    // DraftPickFactory draws its default ordinal from a unique(1, 42) pool
-    // that is process-global, not scoped per draft; reset it so a second
-    // draft's picks in the same test don't exhaust the range.
-    fake()->unique($reset = true);
-
     $draft = Draft::factory()->create(['league_id' => null]);
     foreach (array_values($catalogIds) as $i => $id) {
         DraftPick::factory()->for($draft)->create(['ordinal' => $i + 1, 'picked_catalog_id' => $id]);

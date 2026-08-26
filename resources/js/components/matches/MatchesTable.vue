@@ -1,22 +1,22 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
-import MatchRowContextMenu from '@/components/matches/MatchRowContextMenu.vue';
-import { Checkbox } from '@/components/ui/checkbox';
-import ManaSymbols from '@/components/ManaSymbols.vue';
-import ResultBadge from '@/components/matches/ResultBadge.vue';
-import MatchNotesDialog from '@/components/matches/MatchNotesDialog.vue';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Button } from '@/components/ui/button';
-import { useForm, router } from '@inertiajs/vue3';
+import DeckDashboardController from '@/actions/App/Http/Controllers/Decks/DashboardController';
 import DeleteController from '@/actions/App/Http/Controllers/Matches/DeleteController';
 import DetectArchetypeController from '@/actions/App/Http/Controllers/Matches/DetectArchetypeController';
 import ShowController from '@/actions/App/Http/Controllers/Matches/ShowController';
-import DeckDashboardController from '@/actions/App/Http/Controllers/Decks/DashboardController';
+import ManaSymbols from '@/components/ManaSymbols.vue';
+import MatchNotesDialog from '@/components/matches/MatchNotesDialog.vue';
+import MatchRowContextMenu from '@/components/matches/MatchRowContextMenu.vue';
+import ResultBadge from '@/components/matches/ResultBadge.vue';
 import SetArchetypeDialog from '@/components/matches/SetArchetypeDialog.vue';
-import { useToast } from '@/composables/useToast';
-import { NotepadText, RefreshCw, Tags, X } from 'lucide-vue-next';
 import SortableHeader from '@/components/SortableHeader.vue';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { useToast } from '@/composables/useToast';
+import { router, useForm } from '@inertiajs/vue3';
+import { NotepadText, RefreshCw, Tags, X } from 'lucide-vue-next';
+import { computed, ref } from 'vue';
 
 const props = defineProps<{
     matches: App.Data.Front.MatchData[];
@@ -24,7 +24,11 @@ const props = defineProps<{
     sortBy?: string | null;
     sortDir?: 'asc' | 'desc';
     showDeck?: boolean;
+    /** Where a row click goes; defaults to the deck-view match page. */
+    matchUrl?: (matchId: number) => string;
 }>();
+
+const urlFor = (matchId: number): string => (props.matchUrl ?? ((id: number) => ShowController({ id }).url))(matchId);
 
 const emit = defineEmits<{
     sort: [column: string];
@@ -90,7 +94,7 @@ const prefetchedIds = new Set<number>();
 const prefetchMatch = (matchId: number) => {
     if (prefetchedIds.has(matchId)) return;
     prefetchedIds.add(matchId);
-    router.prefetch(ShowController({ id: matchId }).url, {}, { cacheFor: '10s' });
+    router.prefetch(urlFor(matchId), {}, { cacheFor: '10s' });
 };
 
 const detectArchetype = (matchId: number) => {
@@ -141,10 +145,7 @@ const detectArchetype = (matchId: number) => {
         <TableHeader class="sticky top-0 z-10 backdrop-blur-sm">
             <TableRow>
                 <TableHead class="w-10">
-                    <Checkbox
-                        :model-value="allSelected ? true : someSelected ? 'indeterminate' : false"
-                        @update:model-value="toggleAll"
-                    />
+                    <Checkbox :model-value="allSelected ? true : someSelected ? 'indeterminate' : false" @update:model-value="toggleAll" />
                 </TableHead>
                 <TableHead class="cursor-pointer select-none" @click="emit('sort', 'outcome')">
                     <SortableHeader label="Result" column="outcome" :sort-by="sortBy" :sort-dir="sortDir" />
@@ -185,14 +186,11 @@ const detectArchetype = (matchId: number) => {
                     <TableRow
                         class="cursor-pointer"
                         :data-state="selectedIds.includes(match.id) ? 'selected' : undefined"
-                        @click="router.visit(ShowController({ id: match.id }).url)"
+                        @click="router.visit(urlFor(match.id))"
                         @mouseenter="prefetchMatch(match.id)"
                     >
                         <TableCell @click.stop>
-                            <Checkbox
-                                :model-value="selectedIds.includes(match.id)"
-                                @update:model-value="(val) => toggleMatch(match.id, val)"
-                            />
+                            <Checkbox :model-value="selectedIds.includes(match.id)" @update:model-value="(val) => toggleMatch(match.id, val)" />
                         </TableCell>
                         <TableCell>
                             <ResultBadge :won="match.gamesWon > match.gamesLost" v-if="match.gamesWon !== match.gamesLost" :showText="true" />

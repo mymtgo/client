@@ -4,9 +4,16 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 
 /**
- * @property array<int, array{catalog_id: int, quantity: int, sideboard: bool}> $cards
+ * @property int $id
+ * @property int $league_id
+ * @property int|null $match_id
+ * @property string $source
+ * @property string $signature
+ * @property Carbon $captured_at
+ * @property array<int, array{catalog_id?: int, quantity?: int, sideboard?: bool}> $cards
  */
 class LimitedDeckSnapshot extends Model
 {

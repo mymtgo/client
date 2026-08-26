@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Actions\Leagues\OpenOverlayWindow;
+use App\Actions\Overlay\SyncDraftNotesWindowVisibility;
 use App\Actions\Overlay\SyncGameOverlayVisibility;
 use App\Actions\Tray\CreateTrayMenuBar;
 use App\Actions\Updates\RunAppUpdates;
@@ -62,6 +63,13 @@ class NativeAppServiceProvider implements ProvidesPhpIni
         // (e.g. app restarted mid-match). Otherwise stays closed until
         // the pipeline advances a match to InProgress.
         SyncGameOverlayVisibility::run();
+
+        // Draft-driven: reopens only if a draft is mid-pick at launch
+        // (app restarted during a draft). Otherwise stays closed until
+        // the pipeline sees a PendingPick. Forced: the memo the tick-driven
+        // sync keeps is empty here, and a window remembered from the last
+        // session may already be on screen.
+        SyncDraftNotesWindowVisibility::run(force: true);
     }
 
     /**

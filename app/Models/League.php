@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\LeagueKind;
 use App\Enums\LeagueState;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -61,5 +62,16 @@ class League extends Model
     public function deckSnapshots(): HasMany
     {
         return $this->hasMany(LimitedDeckSnapshot::class)->orderBy('captured_at');
+    }
+
+    /**
+     * Draft and sealed leagues only.
+     *
+     * @param  Builder<League>  $query
+     * @return Builder<League>
+     */
+    public function scopeLimited(Builder $query): Builder
+    {
+        return $query->whereIn('kind', [LeagueKind::Draft->value, LeagueKind::Sealed->value]);
     }
 }
