@@ -1,6 +1,19 @@
+import type { LeagueMatch, LeagueRecord } from '@/types/leagues';
+
 export const NO_VALUE = '—';
 
 export type StateVariant = 'default' | 'success' | 'warning' | 'destructive' | 'secondary';
+
+/**
+ * An index row with its `matches` narrowed. The transformer widens the
+ * untyped PHP array to `Array<any>`; the rows are the same ones the Leagues
+ * index renders, so they carry the leagues type.
+ */
+export type LimitedIndexRow = Omit<App.Data.Front.LimitedIndexRowData, 'matches' | 'onPlayRecord' | 'onDrawRecord'> & {
+    matches: LeagueMatch[];
+    onPlayRecord: LeagueRecord;
+    onDrawRecord: LeagueRecord;
+};
 
 export type LimitedFiltersState = {
     set: string | null;
@@ -201,11 +214,22 @@ export const POOL_STATUS_ORDER: PoolStatus[] = ['main', 'side', 'pool', 'cut'];
 
 export const POOL_STATUS_LABELS: Record<PoolStatus, string> = { main: 'Main', side: 'Side', pool: 'Pool', cut: 'Cut' };
 
-export function poolStatusVariant(status: PoolStatus): 'default' | 'destructive' | 'outline' {
-    if (status === 'main') {
-        return 'default';
+/**
+ * Pool status renders as a tinted outline chip, the same treatment league
+ * state uses: these sit in a dense table beside plain text, so a filled
+ * badge on every row reads as noise.
+ */
+export function poolStatusTint(status: PoolStatus): string {
+    switch (status) {
+        case 'main':
+            return 'border-sky-400/30 text-sky-300';
+        case 'side':
+            return 'border-border text-muted-foreground';
+        case 'cut':
+            return 'border-rose-500/30 text-rose-300';
+        default:
+            return 'border-border text-muted-foreground';
     }
-    return status === 'cut' ? 'destructive' : 'outline';
 }
 
 export type LimitedCardRow = {

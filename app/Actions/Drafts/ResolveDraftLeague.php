@@ -10,13 +10,6 @@ use Illuminate\Support\Facades\Log;
 
 class ResolveDraftLeague
 {
-    /**
-     * Number of matches a draft league run must have reached before an
-     * abandoned older run counts as complete rather than partial. Public
-     * because AssignLeague's pool guard closes stale runs on the same rule.
-     */
-    public const COMPLETE_MATCH_COUNT = 3;
-
     /** Prefix of the synthetic token minted when the real one is unknown. */
     public const PLACEHOLDER_PREFIX = 'draft-';
 
@@ -65,7 +58,7 @@ class ResolveDraftLeague
             ->where('id', '!=', $league->id)
             ->get()
             ->each(function (League $older): void {
-                $isComplete = $older->matches()->count() >= self::COMPLETE_MATCH_COUNT;
+                $isComplete = $older->matches()->count() >= $older->kind->roundCount();
 
                 $older->update([
                     'state' => $isComplete ? LeagueState::Complete : LeagueState::Partial,

@@ -30,10 +30,13 @@ class GetActiveLeague
             return null;
         }
 
+        /** A full run is three matches for a draft league, five otherwise. */
+        $rounds = $league->kind->roundCount();
+
         $matches = MtgoMatch::complete()->where('league_id', $league->id)
             ->with(['deck.cover', 'deck.archetype'])
             ->latest('started_at')
-            ->take(5)
+            ->take($rounds)
             ->get()
             ->reverse()
             ->values();
@@ -52,8 +55,8 @@ class GetActiveLeague
         return [
             'name' => $league->name,
             'format' => MtgoMatch::displayFormat($league->format),
-            'isActive' => $matches->count() < 5,
-            'isTrophy' => $wins === 5,
+            'isActive' => $matches->count() < $rounds,
+            'isTrophy' => $wins === $rounds,
             'deckName' => $league->deckVersion?->deck->name ?? $matches->last()?->deck?->name,
             'versionLabel' => $versionLabel,
             'results' => $matches

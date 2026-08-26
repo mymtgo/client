@@ -39,6 +39,15 @@ class DetermineMatchArchetypesJob implements ShouldBeUnique, ShouldQueue
             return;
         }
 
+        // Limited decks have no archetype to detect: there is no metagame
+        // corpus for a 40-card draft pool, and every path that enqueues
+        // detection funnels through here, so one guard covers them all.
+        if ($match->isLimitedFormat()) {
+            $this->clearQueuedFlag();
+
+            return;
+        }
+
         try {
             DetermineMatchArchetypes::run($match);
         } finally {

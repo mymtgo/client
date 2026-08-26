@@ -12,12 +12,12 @@ import {
     ordinalLabel,
     POOL_STATUS_LABELS,
     POOL_STATUS_ORDER,
-    poolStatusVariant,
+    poolStatusTint,
     type LimitedCardTable,
     type PoolStatus,
 } from '@/types/limited';
 import { Head } from '@inertiajs/vue3';
-import { ArrowDown, ArrowUp, Layers } from 'lucide-vue-next';
+import { ArrowDown, ArrowUp, Check, Layers } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 
 defineOptions({ layout: [AppLayout, LimitedEventLayout] });
@@ -151,7 +151,7 @@ function alignClass(align: 'left' | 'right' | 'center'): string {
                         </TableCell>
                         <TableCell class="whitespace-nowrap tabular-nums">{{ row.labels.join(' · ') }}</TableCell>
                         <TableCell class="text-center">
-                            <Badge :variant="poolStatusVariant(row.status)">{{ POOL_STATUS_LABELS[row.status] }}</Badge>
+                            <Badge variant="outline" :class="poolStatusTint(row.status)">{{ POOL_STATUS_LABELS[row.status] }}</Badge>
                         </TableCell>
                         <TableCell class="text-right tabular-nums">{{ row.gamesCast }}</TableCell>
                         <TableCell
@@ -160,9 +160,10 @@ function alignClass(align: 'left' | 'right' | 'center'): string {
                         >
                             {{ row.winPctCast !== null ? `${row.winPctCast}%` : NO_VALUE }}
                         </TableCell>
-                        <TableCell class="text-right whitespace-nowrap tabular-nums">
-                            {{ row.seenCount }}
-                            <Badge v-if="row.wheeled" variant="outline" class="ml-1 border-amber-500/40 text-amber-300">wheeled</Badge>
+                        <TableCell class="text-right tabular-nums">{{ row.seenCount }}</TableCell>
+                        <TableCell class="text-center">
+                            <Check v-if="row.wheeled" class="mx-auto size-4 text-muted-foreground" />
+                            <span v-else class="text-muted-foreground">{{ NO_VALUE }}</span>
                         </TableCell>
                         <TableCell class="text-right whitespace-nowrap text-muted-foreground tabular-nums">
                             <template v-if="row.priorDrafts === 0">{{ NO_VALUE }}</template>

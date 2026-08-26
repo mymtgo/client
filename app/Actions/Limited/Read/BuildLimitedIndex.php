@@ -2,6 +2,7 @@
 
 namespace App\Actions\Limited\Read;
 
+use App\Actions\Leagues\FormatLeagueRuns;
 use App\Data\Front\LimitedIndexKpisData;
 use App\Data\Front\LimitedIndexRowData;
 use App\Enums\DraftState;
@@ -51,7 +52,11 @@ class BuildLimitedIndex
 
         $timings = self::pickTimings($leagues->pluck('draft')->filter()->merge($unlinked));
 
-        $rows = $leagues->map(fn (League $league) => self::leagueRow($league, $timings))
+        // The run rows the Leagues index renders, so a limited row expands
+        // into the same stats and table rather than a second implementation.
+        $runs = collect(FormatLeagueRuns::run($leagues))->keyBy('id');
+
+        $rows = $leagues->map(fn (League $league) => self::leagueRow($league, $timings, $runs[$league->id] ?? []))
             ->toBase()
             ->merge($unlinked->map(fn (Draft $draft) => self::unlinkedRow($draft, $timings))->toBase())
             ->sortByDesc(fn (LimitedIndexRowData $row) => $row->startedAt ?? '')
@@ -100,8 +105,9 @@ class BuildLimitedIndex
 
     /**
      * @param  array<int, array{avg: int|null, indecisive: int, picks: int}>  $timings
+     * @param  array<string, mixed>  $run  One FormatLeagueRuns row, or empty
      */
-    private static function leagueRow(League $league, array $timings): LimitedIndexRowData
+    private static function leagueRow(League $league, array $timings, array $run): LimitedIndexRowData
     {
         $draft = $league->draft;
         $matches = $league->matches;
@@ -128,6 +134,11 @@ class BuildLimitedIndex
             versionCount: $league->deckSnapshots->pluck('signature')->unique()->count(),
             avgPickSeconds: $draft ? ($timings[$draft->id]['avg'] ?? null) : null,
             opponents: $matches->pluck('opponent_name')->filter()->values()->all(),
+            matches: $run['matches'] ?? [],
+            gameWins: (int) ($run['gameWins'] ?? 0),
+            gameLosses: (int) ($run['gameLosses'] ?? 0),
+            onPlayRecord: $run['onPlayRecord'] ?? ['wins' => 0, 'losses' => 0],
+            onDrawRecord: $run['onDrawRecord'] ?? ['wins' => 0, 'losses' => 0],
             note: $matches->isEmpty() && $league->state === LeagueState::Complete ? 'Draft finished, league ended without play' : null,
             linked: true,
         );
@@ -157,6 +168,11 @@ class BuildLimitedIndex
             versionCount: 0,
             avgPickSeconds: $timings[$draft->id]['avg'] ?? null,
             opponents: [],
+            matches: [],
+            gameWins: 0,
+            gameLosses: 0,
+            onPlayRecord: ['wins' => 0, 'losses' => 0],
+            onDrawRecord: ['wins' => 0, 'losses' => 0],
             note: 'Will link when a match or pool grant arrives',
             linked: false,
         );

@@ -1,6 +1,6 @@
 import type { LimitedCardRow, PoolStatus } from '@/types/limited';
 
-export type SortKey = 'pick' | 'name' | 'status' | 'gamesCast' | 'winPctCast' | 'seenCount' | 'prior';
+export type SortKey = 'pick' | 'name' | 'status' | 'gamesCast' | 'winPctCast' | 'seenCount' | 'wheeled' | 'prior';
 
 export type CardColumn = { key: SortKey; label: string; align: 'left' | 'right' | 'center' };
 
@@ -11,6 +11,7 @@ export const COLUMNS: CardColumn[] = [
     { key: 'gamesCast', label: 'Games cast', align: 'right' },
     { key: 'winPctCast', label: 'Win % cast', align: 'right' },
     { key: 'seenCount', label: 'Seen', align: 'right' },
+    { key: 'wheeled', label: 'Wheeled', align: 'center' },
     { key: 'prior', label: 'Prior drafts', align: 'right' },
 ];
 
@@ -33,6 +34,8 @@ export function compareRows(a: LimitedCardRow, b: LimitedCardRow, key: SortKey, 
             return (a.winPctCast ?? -1) - (b.winPctCast ?? -1);
         case 'seenCount':
             return a.seenCount - b.seenCount;
+        case 'wheeled':
+            return Number(a.wheeled) - Number(b.wheeled);
         case 'prior':
             return a.priorTaken - b.priorTaken;
     }

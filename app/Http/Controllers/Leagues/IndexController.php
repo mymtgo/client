@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Leagues;
 use App\Actions\Leagues\FormatLeagueRuns;
 use App\Actions\Leagues\GetLeagueKpis;
 use App\Data\Front\ArchetypeData;
+use App\Enums\LeagueKind;
 use App\Http\Controllers\Controller;
 use App\Models\Account;
 use App\Models\Archetype;
@@ -122,6 +123,9 @@ class IndexController extends Controller
     private function buildQuery(?string $format, ?string $state, ?string $deckId, ?string $archetypeId, ?string $search): Builder
     {
         return League::query()
+            // Limited runs have their own index, which carries the draft,
+            // pool and pick data this page has no column for.
+            ->where('kind', LeagueKind::Constructed)
             ->where(function ($q) {
                 $q->where('manual', true)
                     ->orWhereHas('matches', fn ($mq) => $mq->where('state', 'complete'));

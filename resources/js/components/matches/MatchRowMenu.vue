@@ -20,13 +20,18 @@ import { useToast } from '@/composables/useToast';
 import { router, useForm } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 
-const props = defineProps<{
-    matchId: number;
-    format: string;
-    currentArchetypeId: number | null;
-    notes: string | null;
-    archetypes: App.Data.Front.ArchetypeData[];
-}>();
+const props = withDefaults(
+    defineProps<{
+        matchId: number;
+        format: string;
+        currentArchetypeId: number | null;
+        notes: string | null;
+        archetypes: App.Data.Front.ArchetypeData[];
+        /** Limited matches have no archetype to detect, set or clear. */
+        showArchetype?: boolean;
+    }>(),
+    { showArchetype: true },
+);
 
 const rootOpen = ref(false);
 const submenuOpen = ref(false);
@@ -109,28 +114,30 @@ function openNotes() {
                 {{ notes ? 'Edit notes' : 'Add notes' }}
             </ContextMenuItem>
 
-            <ContextMenuSeparator />
+            <template v-if="showArchetype">
+                <ContextMenuSeparator />
 
-            <ContextMenuLabel class="text-xs tracking-wide text-muted-foreground uppercase">Archetype</ContextMenuLabel>
-            <ContextMenuItem @select="detectArchetype">Detect</ContextMenuItem>
+                <ContextMenuLabel class="text-xs tracking-wide text-muted-foreground uppercase">Archetype</ContextMenuLabel>
+                <ContextMenuItem @select="detectArchetype">Detect</ContextMenuItem>
 
-            <ContextMenuSub v-model:open="submenuOpen">
-                <ContextMenuSubTrigger>Set manually</ContextMenuSubTrigger>
-                <ContextMenuSubContent class="p-0" :align-offset="-4">
-                    <ArchetypePicker
-                        :archetypes="archetypes"
-                        :format="format"
-                        :current-archetype-id="currentArchetypeId"
-                        :open="submenuOpen"
-                        :disabled="setForm.processing"
-                        @select="selectArchetype"
-                    />
-                </ContextMenuSubContent>
-            </ContextMenuSub>
+                <ContextMenuSub v-model:open="submenuOpen">
+                    <ContextMenuSubTrigger>Set manually</ContextMenuSubTrigger>
+                    <ContextMenuSubContent class="p-0" :align-offset="-4">
+                        <ArchetypePicker
+                            :archetypes="archetypes"
+                            :format="format"
+                            :current-archetype-id="currentArchetypeId"
+                            :open="submenuOpen"
+                            :disabled="setForm.processing"
+                            @select="selectArchetype"
+                        />
+                    </ContextMenuSubContent>
+                </ContextMenuSub>
 
-            <ContextMenuItem @select="createFromMatch">Create from match</ContextMenuItem>
+                <ContextMenuItem @select="createFromMatch">Create from match</ContextMenuItem>
 
-            <ContextMenuItem :disabled="!hasArchetype" @select="clearArchetype">Clear</ContextMenuItem>
+                <ContextMenuItem :disabled="!hasArchetype" @select="clearArchetype">Clear</ContextMenuItem>
+            </template>
 
             <ContextMenuSeparator />
 

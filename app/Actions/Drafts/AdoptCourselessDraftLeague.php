@@ -2,6 +2,7 @@
 
 namespace App\Actions\Drafts;
 
+use App\Actions\Leagues\CompleteLeague;
 use App\Enums\LeagueKind;
 use App\Enums\LeagueState;
 use App\Models\Draft;
@@ -133,6 +134,11 @@ class AdoptCourselessDraftLeague
 
             $draft->update(['league_id' => $candidate->id]);
         });
+
+        // The candidate may already have played its full run: an orphan run
+        // whose matches landed before the draft was linked never got a
+        // completion check, and the adoption above forced it back to Active.
+        CompleteLeague::runIfFinished($candidate->refresh());
 
         Log::channel('pipeline')->info("AdoptCourselessDraftLeague: league #{$candidate->id} adopted draft #{$draft->id}", [
             'event_id' => $candidate->event_id,

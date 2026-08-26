@@ -121,7 +121,7 @@ class AssignLeague
         if ($league && self::poolRejects($league, $match)) {
             Log::channel('pipeline')->info("Match {$match->mtgo_id}: deck does not fit league #{$league->id} pool, minting new run");
 
-            if ($league->matches()->count() >= ResolveDraftLeague::COMPLETE_MATCH_COUNT) {
+            if ($league->matches()->count() >= $league->kind->roundCount()) {
                 CompleteLeague::run($league);
             } else {
                 $league->update(['state' => LeagueState::Partial]);
@@ -130,14 +130,15 @@ class AssignLeague
             $league = null;
         }
 
-        // 2.5. Reject the match if the candidate league is already at the
-        //      5-match cap. Backstops the unwatched re-entry edge: if app
-        //      missed both the drop and re-join events, the next match for
-        //      the new run must not glue onto the full prior run. Five
-        //      matches = full MTGO league run, so the prior run is Complete
-        //      (not Partial). The safety-net branch below mints a fresh
-        //      league for the new run.
-        if ($league && $league->matches()->count() >= 5) {
+        // 2.5. Reject the match if the candidate league is already at its
+        //      round cap (three for draft, five for constructed and sealed).
+        //      Backstops the unwatched re-entry edge: if app missed both the
+        //      drop and re-join events, the next match for the new run must
+        //      not glue onto the full prior run. A full round count = full
+        //      MTGO league run, so the prior run is Complete (not Partial).
+        //      The safety-net branch below mints a fresh league for the new
+        //      run.
+        if ($league && $league->matches()->count() >= $league->kind->roundCount()) {
             CompleteLeague::run($league);
             $league = null;
         }
@@ -201,7 +202,7 @@ class AssignLeague
                 'started_at' => $match->started_at ?? now(),
                 'joined_at' => $panelView?->logged_at,
                 'name' => trim(($gameMeta['GameStructureCd'] ?? '').' League '.now()->toLocal()->format('d-m-Y h:ma')),
-                'kind' => str_starts_with((string) ($gameMeta['PlayFormatCd'] ?? ''), 'D') ? LeagueKind::Draft : LeagueKind::Constructed,
+                'kind' => MtgoMatch::isLimitedFormatCode($gameMeta['PlayFormatCd'] ?? null) ? LeagueKind::Draft : LeagueKind::Constructed,
             ]);
             $isNew = true;
         }

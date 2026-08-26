@@ -43,14 +43,11 @@ it('renders every limited page for the hobbit fixture with real data', function 
         ->where('rows.0.results', ['L', 'W', 'L'])
         ->where('rows.0.opponents', ['Manuel_Danninger', 'asWerty', 'Doome'])
         /**
-         * A single hobbit ingest leaves the league Active: nothing in the log
-         * ends the run, and only a second entry for event 11039 completes the
-         * first one (see DraftLeaguePipelineTest). LeagueStateBadge maps
-         * Active to the default badge, so the brief's "Complete" is wrong for
-         * a lone ingest.
+         * Nothing in the log ends the run, but three complete matches is a
+         * full draft league, so the observer's completion check closes it.
          */
-        ->where('rows.0.state', 'Active')
-        ->where('rows.0.stateVariant', 'default')
+        ->where('rows.0.state', 'Complete')
+        ->where('rows.0.stateVariant', 'success')
         ->where('kpis.events', 1)
         ->where('kpis.drafts', 1)
         ->where('kpis.unlinked', 0)

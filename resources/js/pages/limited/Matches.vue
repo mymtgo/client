@@ -185,6 +185,7 @@ function updateSort(column: string): void {
             <MatchesTable
                 :matches="sortedMatches"
                 :show-deck="false"
+                :show-archetype="false"
                 :sort-by="sortBy"
                 :sort-dir="sortDir"
                 :match-url="(id) => MatchController.url({ league: event.id, match: id })"

@@ -6,6 +6,7 @@ use App\Enums\LeagueKind;
 use App\Enums\LeagueState;
 use App\Enums\MatchOutcome;
 use App\Enums\MatchState;
+use App\Models\DeckVersion;
 use App\Models\Draft;
 use App\Models\DraftPick;
 use App\Models\League;
@@ -111,4 +112,42 @@ it('maps states to badges', function () {
     expect($rows[$dropped->id]->state)->toBe('Dropped')
         ->and($rows[$active->id]->state)->toBe('Active')
         ->and($rows[$abandoned->id]->state)->toBe('Draft abandoned');
+});
+
+it('carries the run match rows so a row can expand into them', function () {
+    $league = limitedLeague();
+    draftWithPicks($league);
+
+    $deckVersion = DeckVersion::factory()->create();
+
+    MtgoMatch::factory()->create([
+        'league_id' => $league->id,
+        'deck_version_id' => $deckVersion->id,
+        'state' => MatchState::Complete,
+        'outcome' => MatchOutcome::Win,
+        'started_at' => now()->subMinutes(30),
+        'ended_at' => now()->subMinutes(20),
+    ]);
+    MtgoMatch::factory()->create([
+        'league_id' => $league->id,
+        'deck_version_id' => $deckVersion->id,
+        'state' => MatchState::Complete,
+        'outcome' => MatchOutcome::Loss,
+        'started_at' => now()->subMinutes(15),
+        'ended_at' => now()->subMinutes(5),
+    ]);
+
+    $result = BuildLimitedIndex::run(null, null, now()->subYear(), now()->endOfDay());
+
+    expect($result['rows'][0]->matches)->toHaveCount(2)
+        ->and(array_column($result['rows'][0]->matches, 'result'))->toBe(['W', 'L'])
+        ->and($result['rows'][0]->matches[0])->toHaveKeys(['id', 'opponentName', 'gameResults', 'durationSeconds']);
+});
+
+it('leaves an unlinked draft row with no match rows', function () {
+    Draft::factory()->create(['league_id' => null, 'state' => DraftState::Picking]);
+
+    $result = BuildLimitedIndex::run(null, null, now()->subYear(), now()->endOfDay());
+
+    expect($result['rows'][0]->matches)->toBe([]);
 });

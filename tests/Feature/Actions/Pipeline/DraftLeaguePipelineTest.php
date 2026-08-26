@@ -138,9 +138,10 @@ it('separates two entries of the same league into two runs', function () {
 
     $runs = League::where('event_id', 11039)->orderBy('started_at')->get();
 
+    // Both runs played their full three rounds, so both are Complete.
     expect($runs)->toHaveCount(2)
         ->and($runs->first()->state)->toBe(LeagueState::Complete)
-        ->and($runs->last()->state)->toBe(LeagueState::Active)
+        ->and($runs->last()->state)->toBe(LeagueState::Complete)
         ->and(Draft::count())->toBe(2)
         ->and($runs->first()->matches()->count())->toBe(3)
         ->and($runs->last()->matches()->count())->toBe(3)
@@ -205,7 +206,7 @@ it('adopts the course-less league its matches created when the draft lines arriv
     expect($runs)->toHaveCount(1)
         ->and($runs->first()->id)->toBe($orphanRun->id)
         ->and($runs->first()->mtgo_course_id)->toBe(35746768)
-        ->and($runs->first()->state)->toBe(LeagueState::Active)
+        ->and($runs->first()->state)->toBe(LeagueState::Complete)
         ->and($runs->first()->matches()->count())->toBe(3)
         ->and($runs->first()->draft)->not->toBeNull()
         ->and($runs->first()->draft->picks()->count())->toBe(42)

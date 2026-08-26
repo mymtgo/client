@@ -18,15 +18,20 @@ import { router, useForm } from '@inertiajs/vue3';
 import { NotepadText, RefreshCw, Tags, X } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 
-const props = defineProps<{
-    matches: App.Data.Front.MatchData[];
-    archetypes?: App.Data.Front.ArchetypeData[];
-    sortBy?: string | null;
-    sortDir?: 'asc' | 'desc';
-    showDeck?: boolean;
-    /** Where a row click goes; defaults to the deck-view match page. */
-    matchUrl?: (matchId: number) => string;
-}>();
+const props = withDefaults(
+    defineProps<{
+        matches: App.Data.Front.MatchData[];
+        archetypes?: App.Data.Front.ArchetypeData[];
+        sortBy?: string | null;
+        sortDir?: 'asc' | 'desc';
+        showDeck?: boolean;
+        /** Limited matches carry no archetype, so the columns are dead weight. */
+        showArchetype?: boolean;
+        /** Where a row click goes; defaults to the deck-view match page. */
+        matchUrl?: (matchId: number) => string;
+    }>(),
+    { archetypes: () => [], sortBy: null, sortDir: 'desc', showDeck: false, showArchetype: true, matchUrl: undefined },
+);
 
 const urlFor = (matchId: number): string => (props.matchUrl ?? ((id: number) => ShowController({ id }).url))(matchId);
 
@@ -124,13 +129,13 @@ const detectArchetype = (matchId: number) => {
 </script>
 
 <template>
-    <SetArchetypeDialog ref="archetypeDialog" :archetypes="archetypes ?? []" @archetype-set="clearSelection" />
+    <SetArchetypeDialog ref="archetypeDialog" :archetypes="archetypes" @archetype-set="clearSelection" />
     <MatchNotesDialog ref="notesDialog" />
 
     <div v-if="selectedIds.length > 0" class="flex items-center gap-3 border-b bg-muted/50 px-4 py-2">
         <span class="text-sm font-medium">{{ selectedIds.length }} selected</span>
 
-        <Button variant="outline" size="sm" class="gap-1.5" @click="openBulkSetArchetype">
+        <Button v-if="showArchetype" variant="outline" size="sm" class="gap-1.5" @click="openBulkSetArchetype">
             <Tags class="size-3.5" />
             Set archetype
         </Button>
@@ -152,10 +157,12 @@ const detectArchetype = (matchId: number) => {
                 </TableHead>
                 <TableHead v-if="showDeck">Deck</TableHead>
                 <TableHead>Opponent</TableHead>
-                <TableHead class="cursor-pointer select-none" @click="emit('sort', 'archetype')">
-                    <SortableHeader label="Archetype" column="archetype" :sort-by="sortBy" :sort-dir="sortDir" />
-                </TableHead>
-                <TableHead></TableHead>
+                <template v-if="showArchetype">
+                    <TableHead class="cursor-pointer select-none" @click="emit('sort', 'archetype')">
+                        <SortableHeader label="Archetype" column="archetype" :sort-by="sortBy" :sort-dir="sortDir" />
+                    </TableHead>
+                    <TableHead></TableHead>
+                </template>
                 <TableHead class="cursor-pointer select-none" @click="emit('sort', 'game_1')">
                     <SortableHeader label="Game 1" column="game_1" :sort-by="sortBy" :sort-dir="sortDir" />
                 </TableHead>
@@ -178,7 +185,8 @@ const detectArchetype = (matchId: number) => {
             <template v-for="match in matches" :key="match.id">
                 <MatchRowContextMenu
                     :match="match"
-                    :archetypes="archetypes ?? []"
+                    :archetypes="archetypes"
+                    :show-archetype="showArchetype"
                     @detect="detectArchetype"
                     @delete="deleteMatch"
                     @open-notes="(id, notes) => notesDialog?.openForMatch(id, notes)"
@@ -209,20 +217,22 @@ const detectArchetype = (matchId: number) => {
                             <span v-if="match.opponentName">{{ match.opponentName }}</span>
                             <span v-else class="text-xs text-muted-foreground">&mdash;</span>
                         </TableCell>
-                        <TableCell>
-                            <div class="flex items-center gap-1" v-if="match.opponentArchetypes?.[0]?.archetype">
-                                {{ match.opponentArchetypes[0].archetype.name }}
-                            </div>
-                            <span v-else-if="detectingMatchId === match.id" class="text-muted-foreground">
-                                <RefreshCw class="size-3.5 animate-spin" />
-                            </span>
-                            <span v-else class="text-muted-foreground">Unknown</span>
-                        </TableCell>
-                        <TableCell>
-                            <div v-if="match.opponentArchetypes?.[0]?.archetype">
-                                <ManaSymbols :symbols="match.opponentArchetypes[0].archetype.colorIdentity" />
-                            </div>
-                        </TableCell>
+                        <template v-if="showArchetype">
+                            <TableCell>
+                                <div class="flex items-center gap-1" v-if="match.opponentArchetypes?.[0]?.archetype">
+                                    {{ match.opponentArchetypes[0].archetype.name }}
+                                </div>
+                                <span v-else-if="detectingMatchId === match.id" class="text-muted-foreground">
+                                    <RefreshCw class="size-3.5 animate-spin" />
+                                </span>
+                                <span v-else class="text-muted-foreground">Unknown</span>
+                            </TableCell>
+                            <TableCell>
+                                <div v-if="match.opponentArchetypes?.[0]?.archetype">
+                                    <ManaSymbols :symbols="match.opponentArchetypes[0].archetype.colorIdentity" />
+                                </div>
+                            </TableCell>
+                        </template>
                         <TableCell v-for="gameIdx in 3" :key="gameIdx" class="text-sm">
                             <template v-if="match.gameResults?.[gameIdx - 1]">
                                 <span :class="match.gameResults[gameIdx - 1].result === 'W' ? 'text-success' : 'text-destructive'">

@@ -4,14 +4,14 @@ import IndexController from '@/actions/App/Http/Controllers/Limited/IndexControl
 import LimitedEventRow from '@/pages/limited/partials/LimitedEventRow.vue';
 import LimitedFilters from '@/pages/limited/partials/LimitedFilters.vue';
 import LimitedKpis from '@/pages/limited/partials/LimitedKpis.vue';
-import type { LimitedFiltersState } from '@/types/limited';
+import type { LimitedFiltersState, LimitedIndexRow } from '@/types/limited';
 import { Head, router } from '@inertiajs/vue3';
 import { BookOpen } from 'lucide-vue-next';
 
 defineOptions({ layout: AppLayout });
 
 defineProps<{
-    rows: App.Data.Front.LimitedIndexRowData[];
+    rows: LimitedIndexRow[];
     kpis: App.Data.Front.LimitedIndexKpisData;
     sets: string[];
     filters: LimitedFiltersState;
@@ -45,7 +45,12 @@ function handleFilterChange(next: LimitedFiltersState) {
         </div>
 
         <div v-else class="flex flex-col gap-2">
-            <LimitedEventRow v-for="row in rows" :key="row.leagueId ?? `draft-${row.draftId}`" :row="row" />
+            <LimitedEventRow
+                v-for="(row, index) in rows"
+                :key="row.leagueId ?? `draft-${row.draftId}`"
+                :row="row"
+                :default-expanded="index === 0"
+            />
         </div>
     </div>
 </template>
