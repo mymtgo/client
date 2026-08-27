@@ -41,6 +41,7 @@ const props = defineProps<{
     accounts: Array<{ id: number; username: string; tracked: boolean; active: boolean }>;
 leagueWindowEnabled: boolean;
     gameOverlayEnabled: boolean;
+    draftNotesWindowEnabled: boolean;
     overlayShowOpponent: boolean;
     overlayShowDrawOdds: boolean;
     overlayShowSideboard: boolean;
@@ -155,6 +156,10 @@ function setLeagueWindowEnabled(val: boolean) {
 
 function setGameOverlayEnabled(val: boolean) {
     withProcessing('gameOverlay', 'post', UpdateOverlaySettingsController.url(), { game_overlay: val });
+}
+
+function setDraftNotesWindowEnabled(val: boolean) {
+    withProcessing('draftNotesWindow', 'post', UpdateOverlaySettingsController.url(), { draft_notes_window: val });
 }
 
 function setOverlaySection(key: 'opponent' | 'draw_odds' | 'sideboard' | 'reveals', val: boolean) {
@@ -369,6 +374,23 @@ const sampleLeague: LeagueData = {
                                 :disabled="!props.gameOverlayEnabled || processing === 'overlay-sideboard'"
                             />
                         </div>
+                    </div>
+
+                    <Separator />
+
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <Label>Draft notes window</Label>
+                            <p class="text-sm text-muted-foreground">
+                                Show a small always-on-top window during a draft with the current pick, its
+                                timer, and a place to jot why you took the card.
+                            </p>
+                        </div>
+                        <Switch
+                            :modelValue="props.draftNotesWindowEnabled"
+                            @update:modelValue="setDraftNotesWindowEnabled"
+                            :disabled="processing === 'draftNotesWindow'"
+                        />
                     </div>
                 </CardContent>
             </Card>

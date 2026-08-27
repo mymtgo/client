@@ -1,5 +1,7 @@
 <?php
 
+use App\Enums\LeagueKind;
+use App\Enums\LeagueState;
 use App\Enums\MatchOutcome;
 use App\Enums\MatchState;
 use App\Events\AppNotification;
@@ -7,6 +9,7 @@ use App\Jobs\ComputeCardGameStats;
 use App\Jobs\DetermineMatchArchetypesJob;
 use App\Jobs\SubmitMatch;
 use App\Models\DeckVersion;
+use App\Models\League;
 use App\Models\MtgoMatch;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
@@ -163,4 +166,56 @@ it('does not dispatch ComputeCardGameStats when deck_version_id is cleared (unli
     $match->update(['deck_version_id' => null]);
 
     Queue::assertNotPushed(ComputeCardGameStats::class);
+});
+
+it('completes a draft league after its third match', function () {
+    Queue::fake();
+    Event::fake([AppNotification::class]);
+
+    $league = League::factory()->create([
+        'kind' => LeagueKind::Draft,
+        'state' => LeagueState::Active,
+    ]);
+
+    MtgoMatch::factory()->count(2)->create([
+        'league_id' => $league->id,
+        'state' => MatchState::Complete,
+        'outcome' => MatchOutcome::Loss,
+    ]);
+
+    expect($league->refresh()->state)->toBe(LeagueState::Active);
+
+    $third = MtgoMatch::factory()->create([
+        'league_id' => $league->id,
+        'state' => MatchState::Ended,
+    ]);
+
+    $third->update(['state' => MatchState::Complete, 'outcome' => MatchOutcome::Win]);
+
+    expect($league->refresh()->state)->toBe(LeagueState::Complete);
+});
+
+it('leaves a constructed league active after its third match', function () {
+    Queue::fake();
+    Event::fake([AppNotification::class]);
+
+    $league = League::factory()->create([
+        'kind' => LeagueKind::Constructed,
+        'state' => LeagueState::Active,
+    ]);
+
+    MtgoMatch::factory()->count(2)->create([
+        'league_id' => $league->id,
+        'state' => MatchState::Complete,
+        'outcome' => MatchOutcome::Loss,
+    ]);
+
+    $third = MtgoMatch::factory()->create([
+        'league_id' => $league->id,
+        'state' => MatchState::Ended,
+    ]);
+
+    $third->update(['state' => MatchState::Complete, 'outcome' => MatchOutcome::Win]);
+
+    expect($league->refresh()->state)->toBe(LeagueState::Active);
 });

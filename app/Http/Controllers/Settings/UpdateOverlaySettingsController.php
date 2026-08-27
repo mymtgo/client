@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Settings;
 
 use App\Actions\Leagues\CloseOverlayWindow;
 use App\Actions\Leagues\OpenOverlayWindow;
+use App\Actions\Overlay\SyncDraftNotesWindowVisibility;
 use App\Actions\Overlay\SyncGameOverlayVisibility;
 use App\Facades\AppSettings;
 use App\Http\Controllers\Controller;
@@ -17,6 +18,7 @@ class UpdateOverlaySettingsController extends Controller
         $validated = $request->validate([
             'league_window' => 'sometimes|boolean',
             'game_overlay' => 'sometimes|boolean',
+            'draft_notes_window' => 'sometimes|boolean',
             'overlay_show_opponent' => 'sometimes|boolean',
             'overlay_show_draw_odds' => 'sometimes|boolean',
             'overlay_show_sideboard' => 'sometimes|boolean',
@@ -39,6 +41,15 @@ class UpdateOverlaySettingsController extends Controller
             // Overlay lifecycle is match-driven: enabling only opens the
             // window if a match is currently in progress.
             SyncGameOverlayVisibility::run();
+        }
+
+        if (isset($validated['draft_notes_window'])) {
+            AppSettings::setShowDraftNotesWindow($validated['draft_notes_window']);
+
+            // Draft-driven, like the game overlay: enabling only opens the
+            // window when a draft is live. Forced, because the desired state
+            // did not change here, the setting behind it did.
+            SyncDraftNotesWindowVisibility::run(force: true);
         }
 
         /**

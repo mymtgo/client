@@ -61,6 +61,11 @@ use App\Http\Controllers\Leagues\DropController;
 use App\Http\Controllers\Leagues\LinkMatchController;
 use App\Http\Controllers\Leagues\OverlayController;
 use App\Http\Controllers\Leagues\UnlinkMatchController;
+use App\Http\Controllers\Limited\CardsController;
+use App\Http\Controllers\Limited\DeckController;
+use App\Http\Controllers\Limited\DraftController;
+use App\Http\Controllers\Limited\MatchController;
+use App\Http\Controllers\Limited\UpdatePickNoteController;
 use App\Http\Controllers\Matches\BulkUpdateArchetypeController;
 use App\Http\Controllers\Matches\DeleteController;
 use App\Http\Controllers\Matches\DetectArchetypeController;
@@ -68,6 +73,7 @@ use App\Http\Controllers\Matches\ShowController;
 use App\Http\Controllers\Matches\UpdateArchetypeController;
 use App\Http\Controllers\Matches\UpdateNotesController;
 use App\Http\Controllers\Overlay\DestroyNoteController;
+use App\Http\Controllers\Overlay\DraftNotesController;
 use App\Http\Controllers\Overlay\GameOverlayController;
 use App\Http\Controllers\Overlay\StoreNoteController;
 use App\Http\Controllers\Overlay\UpdateOpponentArchetypeController;
@@ -155,6 +161,12 @@ Route::group([], function (Router $router) {
     });
 
     $router->group([
+        'prefix' => 'draft-notes',
+    ], function (Router $group) {
+        $group->get('/', DraftNotesController::class)->name('overlay.draft-notes');
+    });
+
+    $router->group([
         'prefix' => 'opponents',
     ], function (Router $group) {
         $group->get('/', App\Http\Controllers\Opponents\IndexController::class)->name('opponents.index');
@@ -233,6 +245,22 @@ Route::group([], function (Router $router) {
             ->name('archetypes.variants.reassign');
         $group->post('{archetype}/download', DownloadDecklistController::class)->name('archetypes.download');
         $group->post('{archetype}/export', ExportDekController::class)->name('archetypes.export');
+    });
+
+    $router->group([
+        'prefix' => 'limited',
+    ], function (Router $group) {
+        $group->get('/', App\Http\Controllers\Limited\IndexController::class)->name('limited.index');
+        $group->get('{league:id}/draft', DraftController::class)->name('limited.draft');
+        $group->get('{league:id}/deck', DeckController::class)->name('limited.deck');
+        $group->get('{league:id}/matches', App\Http\Controllers\Limited\MatchesController::class)->name('limited.matches');
+        $group->get('{league:id}/matches/{match}', MatchController::class)
+            ->whereNumber('match')
+            ->name('limited.match');
+        $group->get('{league:id}/cards', CardsController::class)->name('limited.cards');
+        $group->patch('{league:id}/picks/{ordinal}/note', UpdatePickNoteController::class)
+            ->name('limited.picks.note')
+            ->whereNumber('ordinal');
     });
 
     $router->group([

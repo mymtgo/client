@@ -184,9 +184,12 @@ class FormatLeagueRuns
 
         $results = array_map(fn ($m) => $m['result'], $matchData);
 
-        // Pad active leagues to 5 slots
-        if ($league->state->value === 'active' && count($results) < 5) {
-            while (count($results) < 5) {
+        // Pad an active league out to its full round count: five for
+        // constructed and sealed, three for a draft league.
+        $rounds = $league->kind->roundCount();
+
+        if ($league->state->value === 'active' && count($results) < $rounds) {
+            while (count($results) < $rounds) {
                 $results[] = null;
             }
         }
@@ -245,6 +248,9 @@ class FormatLeagueRuns
         $wins = $matches->where('outcome', 'win')->count();
         $state = $league->state->value;
 
+        /** A draft league is three rounds, so its trophy is 3-0, not 5-0. */
+        $rounds = $league->kind->roundCount();
+
         if ($state === 'active') {
             return ['classification' => 'LIVE', 'liveRound' => $matches->count() + 1];
         }
@@ -253,11 +259,11 @@ class FormatLeagueRuns
             return ['classification' => 'BRICK', 'liveRound' => null];
         }
 
-        if ($wins === 5) {
+        if ($wins >= $rounds) {
             return ['classification' => 'TROPHY', 'liveRound' => null];
         }
 
-        if ($wins === 4) {
+        if ($wins === $rounds - 1) {
             return ['classification' => 'CASH', 'liveRound' => null];
         }
 

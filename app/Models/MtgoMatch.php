@@ -135,6 +135,22 @@ class MtgoMatch extends Model
         return MatchOutcome::Unknown;
     }
 
+    /**
+     * Whether an MTGO format code belongs to limited play. MTGO prefixes
+     * constructed codes with 'C' (CModern) and limited codes with 'D'
+     * (DHOBHOBHOB, a draft of three Hobbit packs).
+     */
+    public static function isLimitedFormatCode(?string $format): bool
+    {
+        return $format !== null && preg_match('/^D[A-Z]/', $format) === 1;
+    }
+
+    /** Whether this match was played in a limited format. */
+    public function isLimitedFormat(): bool
+    {
+        return self::isLimitedFormatCode($this->format);
+    }
+
     public static function displayFormat(?string $format): string
     {
         if ($format === null || $format === '') {

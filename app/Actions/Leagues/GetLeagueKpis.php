@@ -28,6 +28,9 @@ class GetLeagueKpis
 
         $stateById = (clone $leaguesQuery)->pluck('state', 'id');
 
+        /** Trophy threshold is the league's own round count: 3-0 for a draft. */
+        $kindById = (clone $leaguesQuery)->pluck('kind', 'id');
+
         $matchOutcomes = DB::table('matches')
             ->whereIn('league_id', $leagueIds)
             ->where('state', 'complete')
@@ -48,7 +51,7 @@ class GetLeagueKpis
             if ($state === 'complete' || $state === 'dropped') {
                 $completed++;
                 $completedWins->push($wins);
-                if ($wins === 5) {
+                if ($wins >= ($kindById[$id]?->roundCount() ?? 5)) {
                     $trophies++;
                 }
             } elseif ($state === 'active') {

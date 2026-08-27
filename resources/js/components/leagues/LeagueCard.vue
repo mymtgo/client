@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import DeckShowController from '@/actions/App/Http/Controllers/Decks/DashboardController';
-import MatchShowController from '@/actions/App/Http/Controllers/Matches/ShowController';
 import ManaSymbols from '@/components/ManaSymbols.vue';
 import LeagueContextMenu from '@/components/leagues/LeagueContextMenu.vue';
 import AddMatchDialog from '@/components/leagues/AddMatchDialog.vue';
@@ -9,16 +8,16 @@ import LeaguesUnlinkMatchController from '@/actions/App/Http/Controllers/Leagues
 import LeagueNotesDialog from '@/components/leagues/LeagueNotesDialog.vue';
 import LeagueResultBadge from '@/components/leagues/LeagueResultBadge.vue';
 import LeagueScreenshot from '@/components/leagues/LeagueScreenshot.vue';
-import MatchRowMenu from '@/components/matches/MatchRowMenu.vue';
 import ResultBadge from '@/components/matches/ResultBadge.vue';
+import RunMatchesTable from '@/components/leagues/RunMatchesTable.vue';
+import RunSummaryStats from '@/components/leagues/RunSummaryStats.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useScreenshot } from '@/composables/useScreenshot';
 import type { LeagueRun, LeagueTimeOfDay } from '@/types/leagues';
 import { router } from '@inertiajs/vue3';
-import { Calendar, ChevronDown, CircleX, Clock, Moon, PencilLine, Plus, Sun, Sunrise, Sunset, Trash2, Wrench } from 'lucide-vue-next';
+import { Calendar, ChevronDown, CircleX, Clock, Moon, PencilLine, Plus, Sun, Sunrise, Sunset, Wrench } from 'lucide-vue-next';
 import { computed, nextTick, ref } from 'vue';
 
 const props = withDefaults(
@@ -65,9 +64,6 @@ const todLabel = computed(() => {
     const t = props.league.timeOfDay;
     return t ? t.charAt(0).toUpperCase() + t.slice(1) : null;
 });
-
-const onPlayTotal = computed(() => props.league.onPlayRecord.wins + props.league.onPlayRecord.losses);
-const onDrawTotal = computed(() => props.league.onDrawRecord.wins + props.league.onDrawRecord.losses);
 
 const screenshotRef = ref<InstanceType<typeof LeagueScreenshot> | null>(null);
 const showScreenshot = ref(false);
@@ -129,11 +125,6 @@ function handleCopySummary() {
 
 function toggle() {
     expanded.value = !expanded.value;
-}
-
-function formatDuration(seconds: number | null) {
-    if (!seconds) return '—';
-    return `${Math.round(seconds / 60)}m`;
 }
 </script>
 
@@ -219,105 +210,21 @@ function formatDuration(seconds: number | null) {
         </button>
 
         <div v-if="expanded" class="flex flex-col gap-4 border-t border-border p-4">
-            <div class="grid grid-cols-2 gap-4 sm:grid-cols-4">
-                <div>
-                    <div class="text-xl font-semibold text-emerald-400 tabular-nums">
-                        {{ league.gameWins }}
-                    </div>
-                    <div class="text-xs text-muted-foreground">Game wins</div>
-                </div>
-                <div>
-                    <div class="text-xl font-semibold text-destructive tabular-nums">
-                        {{ league.gameLosses }}
-                    </div>
-                    <div class="text-xs text-muted-foreground">Game losses</div>
-                </div>
-                <div>
-                    <div class="text-xl font-semibold tabular-nums">{{ onPlayTotal }}</div>
-                    <div class="text-xs text-muted-foreground">On the play</div>
-                </div>
-                <div>
-                    <div class="text-xl font-semibold tabular-nums">{{ onDrawTotal }}</div>
-                    <div class="text-xs text-muted-foreground">On the draw</div>
-                </div>
-            </div>
+            <RunSummaryStats
+                :game-wins="league.gameWins"
+                :game-losses="league.gameLosses"
+                :on-play-record="league.onPlayRecord"
+                :on-draw-record="league.onDrawRecord"
+            />
 
             <template v-if="!isEmptyManual">
-                <div class="isolate overflow-hidden rounded-md border border-border bg-card">
-                    <Table class="table-fixed">
-                        <TableHeader class="!static !backdrop-blur-none">
-                            <TableRow>
-                                <TableHead class="w-[60px] text-center">Match</TableHead>
-                                <TableHead class="w-[110px]">Result</TableHead>
-                                <TableHead class="w-[160px]">Opponent</TableHead>
-                                <TableHead>Vs</TableHead>
-                                <TableHead class="w-[120px] text-center">Game 1</TableHead>
-                                <TableHead class="w-[120px] text-center">Game 2</TableHead>
-                                <TableHead class="w-[120px] text-center">Game 3</TableHead>
-                                <TableHead class="w-[80px] text-right">Time</TableHead>
-                                <TableHead v-if="isManual" class="w-[60px]"></TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            <MatchRowMenu
-                                v-for="(match, matchIndex) in league.matches"
-                                :key="match.id"
-                                :match-id="match.id"
-                                :format="league.format"
-                                :current-archetype-id="match.opponentArchetypeId"
-                                :notes="match.notes"
-                                :archetypes="archetypes"
-                            >
-                            <TableRow
-                                class="cursor-pointer"
-                                @click="router.visit(MatchShowController({ id: match.id }).url)"
-                            >
-                                <TableCell class="text-center text-sm text-muted-foreground tabular-nums">
-                                    {{ matchIndex + 1 }}
-                                </TableCell>
-                                <TableCell>
-                                    <ResultBadge :won="match.result === 'W'" :show-text="true" />
-                                </TableCell>
-                                <TableCell class="truncate font-medium">
-                                    <span v-if="match.opponentName">{{ match.opponentName }}</span>
-                                    <span v-else class="text-muted-foreground">—</span>
-                                </TableCell>
-                                <TableCell class="truncate">
-                                    <span v-if="match.opponentArchetype" class="text-sm">
-                                        {{ match.opponentArchetype }}
-                                    </span>
-                                    <span v-else class="text-xs text-muted-foreground">Unknown</span>
-                                </TableCell>
-                                <TableCell v-for="i in 3" :key="i" class="text-center text-sm">
-                                    <template v-if="match.gameResults[i - 1]">
-                                        <span :class="match.gameResults[i - 1].result === 'W' ? 'text-success' : 'text-destructive'">
-                                            {{ match.gameResults[i - 1].result === 'W' ? 'Win' : 'Loss' }}
-                                        </span>
-                                        <span v-if="match.gameResults[i - 1].onPlay !== null" class="ml-1 text-xs text-muted-foreground">
-                                            ({{ match.gameResults[i - 1].onPlay ? 'OTP' : 'OTD' }})
-                                        </span>
-                                    </template>
-                                    <span v-else class="text-muted-foreground">—</span>
-                                </TableCell>
-                                <TableCell class="text-right text-muted-foreground tabular-nums">
-                                    {{ formatDuration(match.durationSeconds) }}
-                                </TableCell>
-                                <TableCell v-if="isManual" class="text-right">
-                                    <Button
-                                        size="icon"
-                                        variant="ghost"
-                                        class="size-7 text-muted-foreground hover:text-destructive"
-                                        title="Remove from league"
-                                        @click.stop="handleUnlinkMatch(match.id)"
-                                    >
-                                        <Trash2 class="size-3.5" />
-                                    </Button>
-                                </TableCell>
-                            </TableRow>
-                            </MatchRowMenu>
-                        </TableBody>
-                    </Table>
-                </div>
+                <RunMatchesTable
+                    :matches="league.matches"
+                    :format="league.format"
+                    :archetypes="archetypes"
+                    :can-unlink="isManual"
+                    @unlink="handleUnlinkMatch"
+                />
             </template>
 
             <div v-if="isEmptyManual" class="flex flex-col items-center gap-2 rounded-md border border-dashed border-border bg-card/50 p-8 text-center">

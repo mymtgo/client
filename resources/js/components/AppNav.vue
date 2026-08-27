@@ -6,8 +6,9 @@ import LeaguesIndexController from '@/actions/App/Http/Controllers/Leagues/Index
 import OpponentsIndexController from '@/actions/App/Http/Controllers/Opponents/IndexController';
 import ReportsIndexController from '@/actions/App/Http/Controllers/Reports/IndexController';
 import CardsIndexController from '@/actions/App/Http/Controllers/Cards/IndexController';
+import LimitedIndexController from '@/actions/App/Http/Controllers/Limited/IndexController';
 import { Link, usePage } from '@inertiajs/vue3';
-import { BarChart3, Bug, Layers, LayoutDashboard, Puzzle, Swords, Trophy, Layers2Icon } from 'lucide-vue-next';
+import { BarChart3, BookOpen, Bug, Layers, LayoutDashboard, Puzzle, Swords, Trophy, Layers2Icon } from 'lucide-vue-next';
 import { computed } from 'vue';
 
 const page = usePage();
@@ -16,6 +17,7 @@ const nav = [
     { label: 'Dashboard', icon: LayoutDashboard, href: DashboardController.url() },
     { label: 'Decks', icon: Layers, href: DecksIndexController.url() },
     { label: 'Leagues', icon: Trophy, href: LeaguesIndexController.url() },
+    { label: 'Limited', icon: BookOpen, href: LimitedIndexController.url() },
     { label: 'Opponents', icon: Swords, href: OpponentsIndexController.url() },
     { label: 'Archetypes', icon: Puzzle, href: ArchetypesIndexController.url() },
     { label: 'Reports', icon: BarChart3, href: ReportsIndexController.url() },

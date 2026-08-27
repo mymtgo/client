@@ -105,3 +105,16 @@ it('round-trips decksGroupedByArchetype', function () {
     AppSettings::setDecksGroupedByArchetype(true);
     expect(AppSettings::decksGroupedByArchetype())->toBeTrue();
 });
+
+it('defaults the draft notes window on', function () {
+    expect(AppSettings::showDraftNotesWindow())->toBeTrue();
+});
+
+it('round-trips the draft notes window setting', function () {
+    AppSettings::setShowDraftNotesWindow(false);
+    expect(AppSettings::showDraftNotesWindow())->toBeFalse();
+    expect(AppSettings::get('draft_notes_window'))->toBeFalse();
+
+    AppSettings::setShowDraftNotesWindow(true);
+    expect(AppSettings::showDraftNotesWindow())->toBeTrue();
+});

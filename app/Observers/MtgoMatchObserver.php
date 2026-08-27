@@ -51,9 +51,8 @@ class MtgoMatchObserver
             );
 
             // League completion check
-            if (($league = $match->league) && $league->state === LeagueState::Active
-                && $league->matches()->where('state', MatchState::Complete)->count() >= 5) {
-                CompleteLeague::run($league);
+            if (($league = $match->league) && $league->state === LeagueState::Active) {
+                CompleteLeague::runIfFinished($league);
             }
 
             return;

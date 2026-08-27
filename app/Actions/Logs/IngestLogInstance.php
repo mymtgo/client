@@ -371,6 +371,7 @@ class IngestLogInstance
             'match_id' => $event->match_id,
             'match_token' => $event->match_token,
             'tournament_token' => $event->tournament_token,
+            'draft_token' => $event->draft_token,
             'game_id' => $event->game_id,
             'created_at' => $now,
             'updated_at' => $now,

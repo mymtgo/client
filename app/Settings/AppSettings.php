@@ -376,6 +376,21 @@ class AppSettings
         $this->set('game_overlay', $value);
     }
 
+    /**
+     * Whether the live draft notes window opens during a draft. Defaults on:
+     * the window is only ever visible while a draft is actually in progress,
+     * so an opt-out is the meaningful choice, not an opt-in.
+     */
+    public function showDraftNotesWindow(): bool
+    {
+        return (bool) $this->get('draft_notes_window', true);
+    }
+
+    public function setShowDraftNotesWindow(bool $value): void
+    {
+        $this->set('draft_notes_window', $value);
+    }
+
     public function overlayShowOpponent(): bool
     {
         return (bool) $this->get('overlay_show_opponent', true);

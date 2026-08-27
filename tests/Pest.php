@@ -1,8 +1,17 @@
 <?php
 
+use App\Actions\Logs\IngestLogInstance;
+use App\Actions\Overlay\SyncDraftNotesWindowVisibility;
+use App\Actions\Pipeline\RunPipeline;
+use App\Enums\LogEventType;
 use App\Facades\AppSettings;
+use App\Http\Middleware\HandleInertiaRequests;
+use App\Managers\MtgoManager;
 use App\Models\Account;
+use App\Models\LogEvent;
+use Database\Factories\DraftPickFactory;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Testing\TestResponse;
 use Native\Desktop\Facades\Settings;
 use Native\Desktop\Facades\Window;
 use Tests\TestCase;
@@ -107,6 +116,19 @@ pest()->extend(TestCase::class)
     ->in('Feature');
 
 /*
+ * DraftPickFactory's default ordinal walks a process-wide counter, so without
+ * a rewind the ordinals a test sees depend on whatever ran before it.
+ *
+ * SyncDraftNotesWindowVisibility memoizes the last window state it pushed for
+ * the same reason: without a rewind, whether a test's run() reaches the window
+ * API depends on the test before it.
+ */
+pest()->beforeEach(function () {
+    DraftPickFactory::resetOrdinals();
+    SyncDraftNotesWindowVisibility::reset();
+})->in('Feature', 'Unit');
+
+/*
 |--------------------------------------------------------------------------
 | Expectations
 |--------------------------------------------------------------------------
@@ -135,4 +157,76 @@ expect()->extend('toBeOne', function () {
 function something()
 {
     // ..
+}
+
+/*
+|--------------------------------------------------------------------------
+| Limited fixture helpers
+|--------------------------------------------------------------------------
+*/
+
+function ingestFixtureLog(string $name, string $date = '2026-08-22'): string
+{
+    $source = base_path("tests/Fixtures/logs/{$name}");
+    $target = sys_get_temp_dir().'/mymtgo_fixture_'.bin2hex(random_bytes(4)).'_'.$name;
+
+    copy($source, $target);
+    register_shutdown_function(static function () use ($target): void {
+        @unlink($target);
+    });
+
+    $mtime = Carbon\Carbon::parse("{$date} 13:00:00", 'UTC')->getTimestamp();
+    touch($target, $mtime, $mtime);
+
+    IngestLogInstance::run($target);
+
+    return $target;
+}
+
+/**
+ * Request only the named props of an already-rendered Inertia page, the way
+ * the client fetches Inertia::defer props after first paint. The asset version
+ * is resolved from the middleware so a built manifest does not answer 409.
+ *
+ * @param  array<int, string>  $props
+ */
+function inertiaPartial(string $url, string $component, array $props): TestResponse
+{
+    $version = app(HandleInertiaRequests::class)->version(request());
+
+    return test()->get($url, [
+        'X-Inertia' => 'true',
+        'X-Inertia-Version' => (string) $version,
+        'X-Inertia-Partial-Component' => $component,
+        'X-Inertia-Partial-Data' => implode(',', $props),
+    ]);
+}
+
+function mockMtgoManagerForPipeline(): void
+{
+    $mock = Mockery::mock(MtgoManager::class)->makePartial();
+    $mock->shouldReceive('pathsAreValid')->andReturn(true);
+    $mock->shouldReceive('ingestLogs')->andReturnNull();
+    $mock->shouldReceive('getLogDataPath')->andReturn(sys_get_temp_dir());
+    app()->instance('mtgo', $mock);
+}
+
+function runPipelineUntilIdle(int $maxTicks = 20): int
+{
+    $types = [...LogEventType::draftValues(), 'game_management_json'];
+
+    for ($tick = 1; $tick <= $maxTicks; $tick++) {
+        RunPipeline::run();
+
+        $pending = LogEvent::query()
+            ->whereIn('event_type', $types)
+            ->whereNull('processed_at')
+            ->exists();
+
+        if (! $pending) {
+            return $tick;
+        }
+    }
+
+    return $maxTicks;
 }

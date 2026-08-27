@@ -2,6 +2,7 @@
 
 use App\Actions\Decks\GenerateDeckSignature;
 use App\Actions\Matches\RelinkOrphanMatches;
+use App\Enums\LeagueKind;
 use App\Enums\LeagueState;
 use App\Enums\MatchState;
 use App\Models\Account;
@@ -9,6 +10,7 @@ use App\Models\Card;
 use App\Models\Deck;
 use App\Models\DeckVersion;
 use App\Models\League;
+use App\Models\LimitedDeckSnapshot;
 use App\Models\LogEvent;
 use App\Models\MtgoMatch;
 use App\Models\Tournament;
@@ -386,4 +388,86 @@ it('leaves a tournament match that already has a deck version untouched', functi
     RelinkOrphanMatches::run();
 
     expect($match->fresh()->deck_version_id)->toBe($own->id);
+});
+
+/*
+|--------------------------------------------------------------------------
+| Limited deck sync
+|--------------------------------------------------------------------------
+*/
+
+/** @param  array<int, array{0: int, 1: int, 2: bool}>  $cards */
+function limitedRelinkDeckLine(string $matchToken, int $matchId, array $cards): string
+{
+    $json = json_encode(['MatchToken' => $matchToken, 'MatchID' => $matchId, 'Cards' => array_map(fn ($c) => [
+        'CatalogID' => $c[0], 'Annotation' => 0, 'PermissionTypeCode' => 0, 'Quantity' => $c[1], 'InSideboard' => $c[2],
+    ], $cards), 'ResponseCode' => 1]);
+
+    return "12:37:19 [INF] (BaseClient|Inbound: FlsMatchDeckGetRespMessage) {$json}";
+}
+
+it('snapshots and mints a deck version for a match relinked to a draft league', function () {
+    // AdvanceMatchState never got to do this: the match advanced without a
+    // league, so the relinker is the only path that can hand a limited match
+    // its registered snapshot and synthetic deck version.
+    Account::create(['username' => 'LocalPlayer', 'active' => true, 'tracked' => true]);
+
+    $leagueToken = 'draft-league-token-relink';
+    $league = League::factory()->create([
+        'token' => $leagueToken,
+        'kind' => LeagueKind::Draft,
+        'state' => LeagueState::Active,
+        'set_code' => 'HOB',
+        'started_at' => now()->subHours(2),
+    ]);
+
+    $match = MtgoMatch::factory()->create([
+        'state' => MatchState::Complete,
+        'deck_version_id' => null,
+        'league_id' => null,
+        'tournament_event_id' => null,
+        'started_at' => now()->subMinutes(30),
+        'ended_at' => now()->subMinutes(5),
+    ]);
+
+    $game = $match->games()->create([
+        'mtgo_id' => fake()->unique()->numberBetween(100000, 999999),
+        'started_at' => now()->subMinutes(25),
+    ]);
+
+    $cards = [[154228, 2, false], [153894, 6, false], [153896, 1, true]];
+
+    LogEvent::factory()->create([
+        'event_type' => 'match_deck_registered',
+        'match_token' => $match->token,
+        'raw_text' => limitedRelinkDeckLine($match->token, (int) $match->mtgo_id, $cards),
+        'logged_at' => now()->subMinutes(28),
+    ]);
+
+    $deckJson = json_encode(array_map(fn ($c) => [
+        'CatalogId' => $c[0], 'Quantity' => $c[1], 'InSideboard' => $c[2],
+    ], $cards));
+
+    LogEvent::factory()->create([
+        'event_type' => 'deck_used',
+        'game_id' => $game->mtgo_id,
+        'raw_text' => "12:00:00 [INF] (Twitch Info|Username: LocalPlayer Deck Used in Game ID: {$game->mtgo_id}) {$deckJson}",
+        'logged_at' => now()->subMinutes(25),
+    ]);
+
+    makeJoinedStateEvent($match->token, $leagueToken, 'DHOBHOBHOB');
+
+    RelinkOrphanMatches::run();
+
+    $match->refresh();
+
+    expect($match->league_id)->toBe($league->id)
+        ->and($match->deck_version_id)->not->toBeNull()
+        ->and($league->fresh()->deck_version_id)->toBe($match->deck_version_id)
+        ->and($match->deckVersion->deck->format)->toBe('Limited')
+        ->and(LimitedDeckSnapshot::query()
+            ->where('league_id', $league->id)
+            ->where('match_id', $match->id)
+            ->where('source', 'registered')
+            ->exists())->toBeTrue();
 });

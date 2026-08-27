@@ -18,6 +18,7 @@ it('renders the settings page with the game overlay props', function () {
             ->has('overlayShowOpponent')
             ->has('overlayShowDrawOdds')
             ->has('overlayShowSideboard')
+            ->where('draftNotesWindowEnabled', true)
             ->etc()
         );
 });

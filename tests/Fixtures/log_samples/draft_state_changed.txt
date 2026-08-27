@@ -1,0 +1,1 @@
+12:26:27 [INF] (Game Management|Draft State Changed for 791bacca-caea-4d88-b6c7-3bc067d412c2 from DraftWaitingState to DraftFinishedState) 

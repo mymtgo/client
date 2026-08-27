@@ -1,0 +1,1 @@
+12:12:27 [INF] (Game Management|Processing Registered Handler for SubmitDraftSelectionsAction in DraftPickingState) Processor: DraftPickingState Message: SubmitDraftSelectionsAction: Reserved -  ~ Committed - 154228 Receiver: WotC.MtGO.Client.Model.Play.Draft.LeagueDraft

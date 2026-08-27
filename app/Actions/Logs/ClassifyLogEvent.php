@@ -89,6 +89,79 @@ class ClassifyLogEvent
             ]);
         }
 
+        // Draft events. Also before game_management_json: pod state and
+        // pack-opened payloads nest MatchCreateInfo.MatchToken.
+
+        // Draft Created: <uuid> and Draft State Changed for <uuid>: token in context.
+        if (preg_match('/Draft Created: (?<token>[a-f0-9\-]{36})/i', $text, $m)) {
+            return $event->fill([
+                'event_type' => LogEventType::DRAFT_CREATED->value,
+                'draft_token' => $m['token'],
+            ]);
+        }
+
+        if (preg_match('/Draft State Changed for (?<token>[a-f0-9\-]{36}) from \S+ to \S+/i', $text, $m)) {
+            return $event->fill([
+                'event_type' => LogEventType::DRAFT_STATE_CHANGED->value,
+                'draft_token' => $m['token'],
+            ]);
+        }
+
+        // Plain-text reservation / commit line. No token; attributed later.
+        if (str_contains($text, 'SubmitDraftSelectionsAction:')) {
+            return $event->fill(['event_type' => LogEventType::DRAFT_SELECTION->value]);
+        }
+
+        // Pool grant block. Carries "for league: <LeagueID>", no draft token.
+        if (str_contains($text, 'League User Initial Grant')) {
+            return $event->fill(['event_type' => LogEventType::LEAGUE_POOL_GRANTED->value]);
+        }
+
+        // Registered deck fetched at match start. Keyed on the match, not the draft.
+        if (str_contains($text, 'Inbound: FlsMatchDeckGetRespMessage')) {
+            $matchToken = preg_match('/"MatchToken"\s*:\s*"(?<t>[a-f0-9\-]{36})"/i', $text, $m) ? $m['t'] : null;
+            $matchId = preg_match('/"MatchID"\s*:\s*(?<id>\d+)/', $text, $m) ? (int) $m['id'] : null;
+
+            return $event->fill([
+                'event_type' => LogEventType::MATCH_DECK_REGISTERED->value,
+                'match_token' => $matchToken,
+                'match_id' => $matchId,
+            ]);
+        }
+
+        // JSON-carrying draft events. Order matters: PickSucceeded must only
+        // classify the commit (IsReservation:false); reservation acks are noise.
+        $draftJsonMarkers = [
+            'LeagueStanding_t in Draft' => LogEventType::DRAFT_LEAGUE_STANDING,
+            'Received FlsLeagueUserJoinDraftRespMessage' => LogEventType::DRAFT_JOINED,
+            'FlsBoosterDraftStateMessage' => LogEventType::DRAFT_POD_STATE,
+            'FlsBoosterDraftOpenPackMessage' => LogEventType::DRAFT_PACK_OPENED,
+            'FlsBoosterDraftPendingPickMessage' => LogEventType::DRAFT_PENDING_PICK,
+            'FlsBoosterDraftEndedMessage' => LogEventType::DRAFT_ENDED,
+        ];
+
+        foreach ($draftJsonMarkers as $marker => $type) {
+            if (! str_contains($text, $marker)) {
+                continue;
+            }
+
+            return $event->fill([
+                'event_type' => $type->value,
+                'draft_token' => self::extractDraftToken($text, $marker),
+            ]);
+        }
+
+        if (str_contains($text, 'FlsBoosterDraftPickSucceededMessage')) {
+            if (! str_contains($text, '"IsReservation":false')) {
+                return $event;
+            }
+
+            return $event->fill([
+                'event_type' => LogEventType::DRAFT_PICK_COMMITTED->value,
+                'draft_token' => self::extractDraftToken($text, 'FlsBoosterDraftPickSucceededMessage'),
+            ]);
+        }
+
         if (str_contains($text, 'Message:') && (str_contains($text, '{"MatchToken"') || str_contains($text, '{"MatchID"'))) {
             $json = ExtractJson::run($text)->first();
 
@@ -133,7 +206,7 @@ class ClassifyLogEvent
         // distinguishes a real join from a re-display via the presence of a
         // preceding league_join_request, and uses any panel view to attribute
         // a subsequent drop signal.
-        if (preg_match('/(?:Creating GameDetailsView|Join Event|Flip To Details Side)\) League\b/', $text)) {
+        if (preg_match('/(?:Creating GameDetailsView|Join Event|Flip To Details Side|Flip To Game Side: (?:LeagueDraftViewModel|LeagueDeckBuildingViewModel))\) (?:Details: )?League\b/', $text)) {
             $eventToken = null;
             $eventId = null;
 
@@ -154,5 +227,23 @@ class ClassifyLogEvent
         }
 
         return $event;
+    }
+
+    /**
+     * Regex over the raw text rather than json_decode: PendingPick payloads
+     * ship without their outer closing brace.
+     */
+    private static function extractDraftToken(string $text, string $marker): ?string
+    {
+        if (preg_match('/"DraftToken"\s*:\s*"(?<token>[a-f0-9\-]{36})"/i', $text, $m)) {
+            return $m['token'];
+        }
+
+        Log::warning('ClassifyLogEvent: draft marker matched but DraftToken missing', [
+            'marker' => $marker,
+            'text_preview' => mb_substr($text, 0, 200),
+        ]);
+
+        return null;
     }
 }

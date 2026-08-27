@@ -1,0 +1,7 @@
+12:26:27 [INF] (UI|Flip To Game Side: LeagueDeckBuildingViewModel) Details: League
+EventToken=48a2e914-f2ee-4fce-a4ad-47e396488889
+EventId=11039
+CurrentState=WotC.MtGO.Client.Model.Play.LeagueEvent.League+LeagueGenericState
+Description=Play up to three matches with your Draft deck on your schedule!
+FormatDescription=3 Matches
+PlayFormatCd=HOBx3

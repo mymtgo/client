@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\LeagueKind;
 use App\Enums\LeagueState;
 use App\Enums\MatchOutcome;
 use App\Enums\MatchState;
@@ -212,4 +213,19 @@ it('exposes allDecks list', function () {
     $this->get('/leagues')
         ->assertSuccessful()
         ->assertInertia(fn ($p) => $p->has('allDecks')->etc());
+});
+
+it('excludes limited leagues, which have their own index', function () {
+    $constructed = feedLeague($this->dv, LeagueState::Complete, 3, 2);
+
+    $draft = feedLeague($this->dv, LeagueState::Complete, 2, 1);
+    $draft->update(['kind' => LeagueKind::Draft, 'set_code' => 'HOB']);
+
+    $this->get('/leagues')
+        ->assertSuccessful()
+        ->assertInertia(fn ($p) => $p
+            ->where('leagues.data', fn ($runs) => collect($runs)->pluck('id')->all() === [$constructed->id])
+            ->where('kpis.runs.total', 1)
+            ->etc()
+        );
 });
