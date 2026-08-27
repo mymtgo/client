@@ -32,12 +32,29 @@ it('renders the current pick for a live draft', function () {
         ->where('notes.draftId', $draft->id)
         ->where('notes.leagueId', $draft->league_id)
         ->where('notes.state', 'picking')
-        ->where('notes.ordinal', 3)
-        ->where('notes.label', 'P1p3')
-        ->where('notes.cardsInPack', 12)
-        ->where('notes.deadlineAt', now()->addSeconds(41)->toIso8601String())
-        ->where('notes.pickedName', null)
-        ->where('notes.note', null));
+        ->where('notes.currentOrdinal', 3)
+        ->has('notes.picks', 1)
+        ->where('notes.picks.0.ordinal', 3)
+        ->where('notes.picks.0.label', 'P1p3')
+        ->where('notes.picks.0.cardsInPack', 12)
+        ->where('notes.picks.0.deadlineAt', now()->addSeconds(41)->toIso8601String())
+        ->where('notes.picks.0.pickedName', null)
+        ->where('notes.picks.0.note', null));
+});
+
+it('ships every pick so the window can walk back without a round trip', function () {
+    $draft = Draft::factory()->create(['state' => DraftState::Picking]);
+    foreach (range(1, 4) as $ordinal) {
+        DraftPick::factory()->for($draft)->create([
+            'ordinal' => $ordinal, 'pack_number' => 1, 'pick_number' => $ordinal,
+            'note' => $ordinal === 2 ? 'wheeled the bomb' : null,
+        ]);
+    }
+
+    $this->get(route('overlay.draft-notes'))->assertOk()->assertInertia(fn ($page) => $page
+        ->has('notes.picks', 4)
+        ->where('notes.currentOrdinal', 4)
+        ->where('notes.picks.1.note', 'wheeled the bomb'));
 });
 
 it('answers a partial reload of notes only', function () {
@@ -47,6 +64,6 @@ it('answers a partial reload of notes only', function () {
     $response = inertiaPartial(route('overlay.draft-notes'), 'overlay/DraftNotes', ['notes']);
 
     $response->assertOk();
-    expect($response->json('props.notes.ordinal'))->toBe(1)
+    expect($response->json('props.notes.currentOrdinal'))->toBe(1)
         ->and($response->json('props'))->not->toHaveKey('serverNow');
 });

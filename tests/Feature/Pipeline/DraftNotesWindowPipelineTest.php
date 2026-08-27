@@ -61,8 +61,12 @@ it('opens the notes window for the hobbit draft while inside grace and closes it
     $this->get(route('overlay.draft-notes'))->assertOk()->assertInertia(fn ($page) => $page
         ->where('notes.draftId', $draft->id)
         ->where('notes.state', 'finished')
-        ->where('notes.ordinal', 42)
-        ->where('notes.label', 'P3p14'));
+        ->where('notes.currentOrdinal', 42)
+        // The whole draft ships, oldest first, so the window can step back
+        // and pick up notes retroactively inside the grace period.
+        ->has('notes.picks', 42)
+        ->where('notes.picks.0.label', 'P1p1')
+        ->where('notes.picks.41.label', 'P3p14'));
 
     // Past grace: the next tick closes it.
     Carbon::setTestNow($draft->ended_at->copy()->addSeconds(SyncDraftNotesWindowVisibility::GRACE_SECONDS + 1));

@@ -79,17 +79,21 @@ wins: number;
 games: number;
 rate: number;
 };
-export type DraftNotesData = {
-draftId: number;
-leagueId: number | null;
-state: string;
-ordinal: number | null;
-label: string | null;
-cardsInPack: number | null;
+export type DraftNotePickData = {
+ordinal: number;
+label: string;
+cardsInPack: number;
 deadlineAt: string | null;
 pickedCatalogId: number | null;
 pickedName: string | null;
 note: string | null;
+};
+export type DraftNotesData = {
+draftId: number;
+leagueId: number | null;
+state: string;
+currentOrdinal: number | null;
+picks: Array<App.Data.Front.DraftNotePickData>;
 };
 export type DraftPickData = {
 ordinal: number;

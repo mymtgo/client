@@ -51,3 +51,14 @@ it('rejects constructed leagues', function () {
 
     $this->patch(route('limited.picks.note', ['league' => $league->id, 'ordinal' => 1]), ['note' => 'x'])->assertNotFound();
 });
+
+it('saves a note on an earlier pick than the newest one', function () {
+    [$league, $pick] = noteFixture();
+    DraftPick::factory()->create(['draft_id' => $pick->draft_id, 'ordinal' => 12]);
+
+    // Retroactive notes: the overlay pins to a past pick and saves against
+    // that ordinal while later picks already exist.
+    $this->patch(route('limited.picks.note', ['league' => $league->id, 'ordinal' => 7]), ['note' => 'took the removal']);
+
+    expect($pick->fresh()->note)->toBe('took the removal');
+});
