@@ -61,7 +61,7 @@ const colorsPicked = computed(() => {
 </script>
 
 <template>
-    <div class="flex flex-col gap-4 p-3 lg:p-4">
+    <div class="flex flex-col gap-4 p-3">
         <Head :title="`${event.title} · Draft`" />
 
         <div v-if="!review" class="flex flex-col items-center gap-2 py-16 text-center">
@@ -124,7 +124,11 @@ const colorsPicked = computed(() => {
                 />
 
                 <div class="flex flex-col gap-4">
-                    <PickNoteEditor :league-id="event.id" :pick="pick" />
+                    <Card class="p-1 gap-0">
+                        <CardContent class="p-2">
+                            <PickNoteEditor :league-id="event.id" :pick="pick" />
+                        </CardContent>
+                    </Card>
                     <CrossDraftCard
                         :card="
                             selectedCard !== null

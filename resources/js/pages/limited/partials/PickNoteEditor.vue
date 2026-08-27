@@ -80,7 +80,7 @@ onBeforeUnmount(flush);
 </script>
 
 <template>
-    <div class="flex flex-col gap-2 rounded-lg border border-black/60 bg-card p-4">
+    <div class="flex flex-col gap-2">
         <div class="flex items-center justify-between text-xs">
             <span class="font-semibold">Your note</span>
             <span class="inline-flex items-center gap-1 text-muted-foreground">

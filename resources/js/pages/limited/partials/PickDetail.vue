@@ -88,7 +88,7 @@ const wheelSummary = computed(() => {
 </script>
 
 <template>
-    <div class="flex flex-col gap-4 rounded-lg p-4">
+    <div class="flex flex-col gap-4 rounded-lg">
         <div class="flex flex-wrap items-center gap-2">
             <Select :model-value="String(pick.ordinal)" @update:model-value="(value) => emit('select', Number(value))">
                 <SelectTrigger size="sm" class="font-semibold" aria-label="Jump to a pick">
