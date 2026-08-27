@@ -7,6 +7,7 @@ use App\Models\Draft;
 use App\Models\DraftPick;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 uses(RefreshDatabase::class);
 
@@ -25,13 +26,8 @@ it('describes a draft that is connecting with no pick yet', function () {
         ->and($notes->draftId)->toBe($draft->id)
         ->and($notes->leagueId)->toBe($draft->league_id)
         ->and($notes->state)->toBe('connecting')
-        ->and($notes->ordinal)->toBeNull()
-        ->and($notes->label)->toBeNull()
-        ->and($notes->cardsInPack)->toBeNull()
-        ->and($notes->deadlineAt)->toBeNull()
-        ->and($notes->pickedCatalogId)->toBeNull()
-        ->and($notes->pickedName)->toBeNull()
-        ->and($notes->note)->toBeNull();
+        ->and($notes->currentOrdinal)->toBeNull()
+        ->and($notes->picks)->toHaveCount(0);
 });
 
 it('describes the pending pick with its label, pack size, and deadline', function () {
@@ -47,15 +43,33 @@ it('describes the pending pick with its label, pack size, and deadline', functio
         'note' => 'lean red',
     ]);
 
+    $pick = BuildDraftNotes::run()->picks[0];
+
+    expect($pick->ordinal)->toBe(3)
+        ->and($pick->label)->toBe('P1p3')
+        ->and($pick->cardsInPack)->toBe(12)
+        ->and($pick->deadlineAt)->toBe(now()->addSeconds(41)->toIso8601String())
+        ->and($pick->pickedCatalogId)->toBeNull()
+        ->and($pick->pickedName)->toBeNull()
+        ->and($pick->note)->toBe('lean red');
+});
+
+it('returns every pick in ascending ordinal so notes can be edited retroactively', function () {
+    $draft = Draft::factory()->create(['state' => DraftState::Picking]);
+    foreach ([3, 1, 2] as $ordinal) {
+        DraftPick::factory()->for($draft)->create([
+            'ordinal' => $ordinal,
+            'pack_number' => 1,
+            'pick_number' => $ordinal,
+            'note' => "note {$ordinal}",
+        ]);
+    }
+
     $notes = BuildDraftNotes::run();
 
-    expect($notes->ordinal)->toBe(3)
-        ->and($notes->label)->toBe('P1p3')
-        ->and($notes->cardsInPack)->toBe(12)
-        ->and($notes->deadlineAt)->toBe(now()->addSeconds(41)->toIso8601String())
-        ->and($notes->pickedCatalogId)->toBeNull()
-        ->and($notes->pickedName)->toBeNull()
-        ->and($notes->note)->toBe('lean red');
+    expect($notes->picks)->toHaveCount(3)
+        ->and(collect($notes->picks)->pluck('ordinal')->all())->toBe([1, 2, 3])
+        ->and(collect($notes->picks)->pluck('note')->all())->toBe(['note 1', 'note 2', 'note 3']);
 });
 
 it('uses the highest ordinal pick as the current one', function () {
@@ -63,7 +77,7 @@ it('uses the highest ordinal pick as the current one', function () {
     DraftPick::factory()->for($draft)->create(['ordinal' => 1, 'pack_number' => 1, 'pick_number' => 1, 'picked_catalog_id' => 154001]);
     DraftPick::factory()->for($draft)->create(['ordinal' => 2, 'pack_number' => 1, 'pick_number' => 2, 'picked_catalog_id' => null]);
 
-    expect(BuildDraftNotes::run()->ordinal)->toBe(2);
+    expect(BuildDraftNotes::run()->currentOrdinal)->toBe(2);
 });
 
 it('resolves the picked card name after a commit', function () {
@@ -74,10 +88,10 @@ it('resolves the picked card name after a commit', function () {
         'picked_catalog_id' => 154042,
     ]);
 
-    $notes = BuildDraftNotes::run();
+    $pick = BuildDraftNotes::run()->picks[0];
 
-    expect($notes->pickedCatalogId)->toBe(154042)
-        ->and($notes->pickedName)->toBe('Bilbo, Retired Burglar');
+    expect($pick->pickedCatalogId)->toBe(154042)
+        ->and($pick->pickedName)->toBe('Bilbo, Retired Burglar');
 });
 
 it('falls back to the catalog id when the picked card is unknown', function () {
@@ -87,7 +101,29 @@ it('falls back to the catalog id when the picked card is unknown', function () {
         'picked_catalog_id' => 999999,
     ]);
 
-    expect(BuildDraftNotes::run()->pickedName)->toBe('#999999');
+    expect(BuildDraftNotes::run()->picks[0]->pickedName)->toBe('#999999');
+});
+
+it('resolves every picked name in a single card query', function () {
+    // The window polls once a second, so a resolve per pick would be 45
+    // queries a tick by the end of pack three.
+    Card::create(['mtgo_id' => '154001', 'oracle_id' => 'o-1', 'name' => 'One', 'type' => 'Creature']);
+    Card::create(['mtgo_id' => '154002', 'oracle_id' => 'o-2', 'name' => 'Two', 'type' => 'Creature']);
+    $draft = Draft::factory()->create(['state' => DraftState::Picking]);
+    foreach ([154001, 154002, 154003] as $index => $catalogId) {
+        DraftPick::factory()->for($draft)->create([
+            'ordinal' => $index + 1, 'pack_number' => 1, 'pick_number' => $index + 1,
+            'picked_catalog_id' => $catalogId,
+        ]);
+    }
+
+    DB::enableQueryLog();
+    $notes = BuildDraftNotes::run();
+    $cardQueries = collect(DB::getQueryLog())->filter(fn (array $query) => str_contains($query['query'], '"cards"'))->count();
+    DB::disableQueryLog();
+
+    expect($cardQueries)->toBe(1)
+        ->and(collect($notes->picks)->pluck('pickedName')->all())->toBe(['One', 'Two', '#154003']);
 });
 
 it('still describes a finished draft inside the grace window', function () {
@@ -98,8 +134,8 @@ it('still describes a finished draft inside the grace window', function () {
     $notes = BuildDraftNotes::run();
 
     expect($notes->state)->toBe('finished')
-        ->and($notes->ordinal)->toBe(42)
-        ->and($notes->label)->toBe('P3p14');
+        ->and($notes->currentOrdinal)->toBe(42)
+        ->and($notes->picks[0]->label)->toBe('P3p14');
 });
 
 it('reports a null league for a draft that is not linked to one yet', function () {
@@ -113,5 +149,5 @@ it('reports a null league for a draft that is not linked to one yet', function (
     expect($notes)->not->toBeNull()
         ->and($notes->draftId)->toBe($draft->id)
         ->and($notes->leagueId)->toBeNull()
-        ->and($notes->ordinal)->toBe(1);
+        ->and($notes->currentOrdinal)->toBe(1);
 });
