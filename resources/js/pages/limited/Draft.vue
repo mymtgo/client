@@ -2,9 +2,9 @@
 import DraftController from '@/actions/App/Http/Controllers/Limited/DraftController';
 import AppLayout from '@/AppLayout.vue';
 import ManaPips from '@/components/limited/ManaPips.vue';
+import Card from '@/components/ui/card/Card.vue';
 import LimitedEventLayout from '@/Layouts/LimitedEventLayout.vue';
 import CrossDraftCard from '@/pages/limited/partials/CrossDraftCard.vue';
-import PackStrips from '@/pages/limited/partials/PackStrips.vue';
 import PickDetail from '@/pages/limited/partials/PickDetail.vue';
 import PickNoteEditor from '@/pages/limited/partials/PickNoteEditor.vue';
 import SignalsPanel from '@/pages/limited/partials/SignalsPanel.vue';
@@ -27,7 +27,6 @@ const selected = ref<number>(props.selectedOrdinal ?? 1);
 const selectedCard = ref<number | null>(null);
 
 const pick = computed(() => props.review?.picks.find((candidate) => candidate.ordinal === selected.value) ?? null);
-const index = computed(() => (props.review ? props.review.picks.findIndex((candidate) => candidate.ordinal === selected.value) : -1));
 
 function select(ordinal: number) {
     selected.value = ordinal;
@@ -109,26 +108,31 @@ const colorsPicked = computed(() => {
                 </div>
             </div>
 
-            <div class="grid gap-4 lg:grid-cols-[1fr_340px]">
-                <PackStrips :picks="review.picks" :cards="review.cards" :selected="selected" @select="select" />
+            <Card class="gap-0 py-0">
                 <SignalsPanel :signals="review.signals" />
-            </div>
+            </Card>
 
             <div v-if="pick" class="grid gap-4 lg:grid-cols-[1fr_340px]">
                 <PickDetail
                     :pick="pick"
+                    :picks="review.picks"
                     :cards="review.cards"
                     :seen-wheel="review.seenWheel"
-                    :has-prev="index > 0"
-                    :has-next="index >= 0 && index < review.picks.length - 1"
-                    @prev="select(review.picks[index - 1]!.ordinal)"
-                    @next="select(review.picks[index + 1]!.ordinal)"
+                    :pack-size="review.header.packSize"
+                    @select="select"
                     @select-card="(id) => (selectedCard = id)"
                 />
+
                 <div class="flex flex-col gap-4">
                     <PickNoteEditor :league-id="event.id" :pick="pick" />
                     <CrossDraftCard
-                        :card="selectedCard !== null ? cardFor(review.cards, selectedCard) : pick.pickedCatalogId !== null ? cardFor(review.cards, pick.pickedCatalogId) : null"
+                        :card="
+                            selectedCard !== null
+                                ? cardFor(review.cards, selectedCard)
+                                : pick.pickedCatalogId !== null
+                                  ? cardFor(review.cards, pick.pickedCatalogId)
+                                  : null
+                        "
                         :set-code="event.setCode"
                         :stats="crossDraft"
                         :pack-size="review.header.packSize"

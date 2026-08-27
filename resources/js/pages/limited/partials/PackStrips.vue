@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import CardThumb from '@/components/limited/CardThumb.vue';
+import Card from '@/components/ui/card/Card.vue';
+import CardContent from '@/components/ui/card/CardContent.vue';
 import { cardFor, type DraftPick, type LimitedCards } from '@/types/limited';
 import { ArrowLeft, ArrowRight } from 'lucide-vue-next';
 import { computed } from 'vue';
@@ -23,17 +25,13 @@ const packs = computed<[number, DraftPick[]][]>(() => {
 </script>
 
 <template>
-    <div class="flex flex-col gap-3 rounded-lg border border-black/60 bg-card p-4">
-        <div v-for="[pack, list] in packs" :key="pack" class="flex items-start gap-3">
-            <div class="flex w-16 shrink-0 flex-col text-xs">
+    <Card class="flex flex-col gap-0 p-0 divide-y gap-2">
+        <CardContent v-for="[pack, list] in packs" :key="pack" class="p-2">
+            <div class="flex w-32 shrink-0 items-center text-xs gap-2">
+                <component v-if="list[0] && list[0].direction !== null" :is="list[0].direction === 1 ? ArrowRight : ArrowLeft" class="size-3" />
                 <span class="font-semibold">Pack {{ pack }}</span>
-                <span class="inline-flex items-center gap-1 text-muted-foreground">
-                    <component v-if="list[0] && list[0].direction !== null" :is="list[0].direction === 1 ? ArrowRight : ArrowLeft" class="size-3" />
-                    <span v-else aria-hidden="true">·</span>
-                    pass
-                </span>
             </div>
-            <div class="flex flex-wrap gap-2">
+            <div class="grow grid grid-cols-14 gap-2 mt-1">
                 <button
                     v-for="pick in list"
                     :key="pick.ordinal"
@@ -45,7 +43,6 @@ const packs = computed<[number, DraftPick[]][]>(() => {
                 >
                     <CardThumb
                         :card="cardFor(cards, pick.pickedCatalogId ?? 0)"
-                        :width="72"
                         :highlighted="pick.ordinal === selected"
                         :dimmed="pick.pickedCatalogId === null"
                     >
@@ -54,6 +51,6 @@ const packs = computed<[number, DraftPick[]][]>(() => {
                     <span class="block text-center text-[11px] text-muted-foreground">p{{ pick.pickNumber }}</span>
                 </button>
             </div>
-        </div>
-    </div>
+        </CardContent>
+    </Card>
 </template>

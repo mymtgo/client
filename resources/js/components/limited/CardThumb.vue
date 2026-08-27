@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { ImageOff } from 'lucide-vue-next';
 
 withDefaults(
@@ -16,23 +15,16 @@ withDefaults(
 </script>
 
 <template>
-    <TooltipProvider :delay-duration="150">
-        <Tooltip>
-            <TooltipTrigger as-child>
-                <div
-                    class="relative overflow-hidden rounded-md border bg-muted transition-opacity"
-                    :class="[highlighted ? 'border-primary ring-2 ring-primary/60' : 'border-black/60', dimmed ? 'opacity-40' : '']"
-                    :style="{ width: fluid ? '100%' : `${width}px`, aspectRatio: '5 / 7' }"
-                >
-                    <img v-if="card.image" :src="card.image" :alt="card.name" loading="lazy" class="h-full w-full object-cover" />
-                    <div v-else class="flex h-full w-full flex-col items-center justify-center gap-1 p-1 text-center">
-                        <ImageOff class="size-4 text-muted-foreground/60" />
-                        <span class="text-[10px] leading-tight text-muted-foreground">{{ card.name }}</span>
-                    </div>
-                    <slot />
-                </div>
-            </TooltipTrigger>
-            <TooltipContent side="top">{{ card.name }}</TooltipContent>
-        </Tooltip>
-    </TooltipProvider>
+    <div
+        class="relative overflow-hidden rounded-md border bg-muted transition-opacity"
+        :class="[highlighted ? 'border-primary ring-2 ring-primary/60' : 'border-black/60', dimmed ? 'opacity-40' : '']"
+        :style="{ width: fluid ? '100%' : `${width}px`, aspectRatio: '5 / 7' }"
+    >
+        <img v-if="card.image" :src="card.image" :alt="card.name" loading="lazy" class="h-full w-full object-cover" />
+        <div v-else class="flex h-full w-full flex-col items-center justify-center gap-1 p-1 text-center">
+            <ImageOff class="size-4 text-muted-foreground/60" />
+            <span class="text-[10px] leading-tight text-muted-foreground">{{ card.name }}</span>
+        </div>
+        <slot />
+    </div>
 </template>
