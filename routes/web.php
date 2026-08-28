@@ -74,6 +74,7 @@ use App\Http\Controllers\Matches\UpdateArchetypeController;
 use App\Http\Controllers\Matches\UpdateNotesController;
 use App\Http\Controllers\Overlay\DestroyNoteController;
 use App\Http\Controllers\Overlay\DraftNotesController;
+use App\Http\Controllers\Overlay\FitGameOverlayWindowController;
 use App\Http\Controllers\Overlay\GameOverlayController;
 use App\Http\Controllers\Overlay\StoreNoteController;
 use App\Http\Controllers\Overlay\UpdateOpponentArchetypeController;
@@ -154,6 +155,8 @@ Route::group([], function (Router $router) {
         $group->get('/', GameOverlayController::class)->name('overlay.game');
         $group->post('archetype', UpdateOpponentArchetypeController::class)
             ->name('overlay.archetype');
+        $group->post('fit', FitGameOverlayWindowController::class)
+            ->name('overlay.fit');
         $group->post('notes', StoreNoteController::class)
             ->name('overlay.notes.store');
         $group->delete('notes/{note}', DestroyNoteController::class)

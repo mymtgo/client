@@ -7,21 +7,25 @@ use Native\Desktop\Facades\Window;
 
 class OpenGameOverlayWindow
 {
+    public const ID = 'game-overlay';
+
+    public const DEFAULT_WIDTH = 320;
+
     public static function run(): void
     {
-        $alreadyOpen = collect(Window::all())->contains(fn ($w) => $w->getId() === 'game-overlay');
+        $alreadyOpen = collect(Window::all())->contains(fn ($w) => $w->getId() === self::ID);
 
         if ($alreadyOpen) {
             return;
         }
 
-        Window::open('game-overlay')
+        Window::open(self::ID)
             ->url(self::overlayUrl())
-            ->width(320)
-            ->height(640)
+            ->width(self::DEFAULT_WIDTH)
+            ->height(ComputeGameOverlayHeight::fromSettings())
             ->minWidth(300)
             ->maxWidth(400)
-            ->minHeight(400)
+            ->minHeight(ComputeGameOverlayHeight::MIN_HEIGHT)
             ->rememberState()
             ->alwaysOnTop(true, 'screen-saver')
             ->frameless()

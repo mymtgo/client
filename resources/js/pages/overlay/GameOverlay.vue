@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import FitGameOverlayWindowController from '@/actions/App/Http/Controllers/Overlay/FitGameOverlayWindowController';
 import UpdateOpponentArchetypeController from '@/actions/App/Http/Controllers/Overlay/UpdateOpponentArchetypeController';
 import DrawOddsPanel from '@/components/decks/DrawOddsPanel.vue';
 import OpponentHeader from '@/components/overlay/OpponentHeader.vue';
@@ -7,7 +8,7 @@ import RevealedCards from '@/components/overlay/RevealedCards.vue';
 import SideboardGuide from '@/components/overlay/SideboardGuide.vue';
 import OverlayLayout from '@/Layouts/OverlayLayout.vue';
 import { router, usePoll } from '@inertiajs/vue3';
-import { onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
 defineOptions({ layout: OverlayLayout });
 
@@ -80,25 +81,81 @@ watch(
  * rebuilds hypergeometric data mid-turn.
  */
 usePoll(5000, {
-    only: [
-        'opponent',
-        'sideboard',
-        'reveals',
-        'notes',
-        'isSideboarding',
-        'sections',
-        'hasMatch',
-        'hasDeck',
-        'hasArchetype',
-        'format',
-        'offlineMode',
-    ],
+    only: ['opponent', 'sideboard', 'reveals', 'notes', 'isSideboarding', 'sections', 'hasMatch', 'hasDeck', 'hasArchetype', 'format', 'offlineMode'],
 });
 
 onMounted(() => {
     window.Native?.on('App\\Events\\GameCardsSnapshotChanged', () => {
         router.reload({ only: ['drawOdds'] });
     });
+});
+
+const hasTabSections = computed(() => props.sections.drawOdds || props.sections.reveals || props.sections.sideboard);
+
+/**
+ * The window height is `rememberState()`-restored, so a height saved while
+ * every section was on would leave an opponent-only overlay mostly empty. The
+ * page measures its fixed region (the header, or the settings hint) and asks
+ * the backend to size the window around it; the tab area, when present, gets
+ * a fixed default because it scrolls internally and the player sizes that
+ * part by hand. The fit runs on mount and whenever the enabled sections change
+ * (settings are picked up by the poll), never on a plain manual resize.
+ *
+ * Without a tab section the window has nothing to absorb a taller header, so
+ * it also follows the header as it changes shape (no opponent yet → opponent
+ * resolved → archetype picked) via a ResizeObserver.
+ */
+const fixedRegion = ref<HTMLElement | null>(null);
+let lastSentFixedHeight: number | null = null;
+let fitTimer: ReturnType<typeof setTimeout> | null = null;
+
+function fitWindow(): void {
+    const measured = Math.round(fixedRegion.value?.offsetHeight ?? 0);
+    if (measured === lastSentFixedHeight) return;
+    lastSentFixedHeight = measured;
+
+    router.post(FitGameOverlayWindowController.url(), { fixed_height: measured }, { preserveScroll: true, preserveState: true, only: ['sections'] });
+}
+
+function scheduleFit(): void {
+    if (fitTimer) clearTimeout(fitTimer);
+    fitTimer = setTimeout(fitWindow, 100);
+}
+
+const fixedRegionObserver = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(scheduleFit);
+
+watch(
+    hasTabSections,
+    (tabbed) => {
+        fixedRegionObserver?.disconnect();
+        if (!tabbed && fixedRegion.value) {
+            fixedRegionObserver?.observe(fixedRegion.value);
+        }
+    },
+    { flush: 'post' },
+);
+
+watch(
+    () => JSON.stringify(props.sections),
+    () => {
+        // A new section set changes the target height even when the fixed
+        // region measures the same, so force the next fit through.
+        lastSentFixedHeight = null;
+        scheduleFit();
+    },
+    { flush: 'post' },
+);
+
+onMounted(() => {
+    if (!hasTabSections.value && fixedRegion.value) {
+        fixedRegionObserver?.observe(fixedRegion.value);
+    }
+    scheduleFit();
+});
+
+onBeforeUnmount(() => {
+    fixedRegionObserver?.disconnect();
+    if (fitTimer) clearTimeout(fitTimer);
 });
 
 function selectArchetype(archetypeId: number): void {
@@ -112,15 +169,22 @@ function selectArchetype(archetypeId: number): void {
 
 <template>
     <div class="flex h-screen flex-col bg-background text-foreground">
-        <OpponentHeader
-            v-if="props.sections.opponent"
-            :opponent="props.opponent"
-            :archetypes="props.archetypes"
-            :format="props.format ?? null"
-            @select="selectArchetype"
-        />
+        <div ref="fixedRegion" class="shrink-0">
+            <OpponentHeader
+                v-if="props.sections.opponent"
+                :opponent="props.opponent"
+                :archetypes="props.archetypes"
+                :format="props.format ?? null"
+                @select="selectArchetype"
+            />
+
+            <p v-if="!hasTabSections" class="p-3 text-center text-xs text-muted-foreground">
+                Enable draw odds, revealed cards, or the sideboard guide in Settings.
+            </p>
+        </div>
 
         <OverlayTabs
+            v-if="hasTabSections"
             v-model="activeTab"
             :show-draw-odds="props.sections.drawOdds"
             :show-sideboard="props.sections.sideboard"
