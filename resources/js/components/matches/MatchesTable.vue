@@ -163,6 +163,8 @@ const detectArchetype = (matchId: number) => {
                     </TableHead>
                     <TableHead></TableHead>
                 </template>
+                <!-- A draft seat has no archetype; its colours are the only label. -->
+                <TableHead v-else>Colours</TableHead>
                 <TableHead class="cursor-pointer select-none" @click="emit('sort', 'game_1')">
                     <SortableHeader label="Game 1" column="game_1" :sort-by="sortBy" :sort-dir="sortDir" />
                 </TableHead>
@@ -233,6 +235,10 @@ const detectArchetype = (matchId: number) => {
                                 </div>
                             </TableCell>
                         </template>
+                        <TableCell v-else>
+                            <ManaSymbols v-if="match.opponentColors" :symbols="match.opponentColors" />
+                            <span v-else class="text-xs text-muted-foreground">&mdash;</span>
+                        </TableCell>
                         <TableCell v-for="gameIdx in 3" :key="gameIdx" class="text-sm">
                             <template v-if="match.gameResults?.[gameIdx - 1]">
                                 <span :class="match.gameResults[gameIdx - 1].result === 'W' ? 'text-success' : 'text-destructive'">

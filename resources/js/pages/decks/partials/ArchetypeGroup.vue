@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import DeckCard from '@/pages/decks/partials/DeckCard.vue';
+import DeckCardGrid from '@/pages/decks/partials/DeckCardGrid.vue';
 import { computed } from 'vue';
 
 const props = defineProps<{
     archetype: App.Data.Front.ArchetypeData | null;
     stats: App.Data.Front.DeckGroupStatsData;
     decks: App.Data.Front.DeckData[];
+    cardSize?: 'large' | 'compact';
 }>();
 
 const title = computed(() => props.archetype?.name ?? 'Unassigned');
@@ -26,8 +27,6 @@ const winrateColorClass = computed(() => {
             </span>
         </header>
 
-        <div class="grid grid-cols-1 items-start gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            <DeckCard v-for="deck in decks" :key="deck.id" :deck="deck" />
-        </div>
+        <DeckCardGrid :decks="decks" :card-size="cardSize" />
     </section>
 </template>

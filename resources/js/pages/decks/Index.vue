@@ -2,6 +2,8 @@
 import ToggleGroupingController from '@/actions/App/Http/Controllers/Decks/ToggleGroupingController';
 import ToggleHideArchivedController from '@/actions/App/Http/Controllers/Decks/ToggleHideArchivedController';
 import IndexController from '@/actions/App/Http/Controllers/Decks/IndexController';
+import UpdateCardSizeController from '@/actions/App/Http/Controllers/Decks/UpdateCardSizeController';
+import UpdatePerPageController from '@/actions/App/Http/Controllers/Decks/UpdatePerPageController';
 import RunSyncController from '@/actions/App/Http/Controllers/Settings/RunSyncController';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,9 +12,9 @@ import { Pagination, PaginationContent, PaginationItem, PaginationNext, Paginati
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import ArchetypeGroup from '@/pages/decks/partials/ArchetypeGroup.vue';
-import DeckCard from '@/pages/decks/partials/DeckCard.vue';
+import DeckCardGrid from '@/pages/decks/partials/DeckCardGrid.vue';
 import { router } from '@inertiajs/vue3';
-import { ArrowUpDown, Layers, RefreshCw, Search } from 'lucide-vue-next';
+import { ArrowUpDown, Layers, RefreshCw, Rows3, Search } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
 
 type Paginator<T> = { data: T[]; total: number; per_page: number; current_page: number };
@@ -21,14 +23,14 @@ type FlatProps = {
     mode: 'flat';
     decks: Paginator<App.Data.Front.DeckData>;
     formats: Record<string, string>;
-    filters: { format: string; search: string; sort: string; hide_deleted: boolean };
+    filters: { format: string; search: string; sort: string; hide_deleted: boolean; per_page: number; card_size: 'large' | 'compact' };
 };
 
 type GroupedProps = {
     mode: 'grouped';
     groups: App.Data.Front.DeckGroupData[];
     formats: Record<string, string>;
-    filters: { format: string; search: string; sort: string; hide_deleted: boolean };
+    filters: { format: string; search: string; sort: string; hide_deleted: boolean; per_page: number; card_size: 'large' | 'compact' };
 };
 
 const props = defineProps<FlatProps | GroupedProps>();
@@ -37,6 +39,9 @@ const searchInput = ref(props.filters.search);
 const activeFormat = ref(props.filters.format || 'all');
 const sortBy = ref(props.filters.sort);
 const hideArchived = ref(props.filters.hide_deleted);
+const perPage = ref(String(props.filters.per_page));
+const compactCards = ref(props.filters.card_size === 'compact');
+const cardSize = computed(() => (compactCards.value ? 'compact' : 'large'));
 
 const hasAnyDecks = computed(() => {
     if (props.mode === 'flat') return (props.decks?.total ?? 0) > 0;
@@ -65,6 +70,21 @@ function toggleGrouping(value: boolean) {
         { grouped: value },
         { preserveScroll: true },
     );
+}
+
+/**
+ * Page size and card size are persisted app settings rather than query
+ * params: the listing is reached from every deck page, and a preference
+ * that resets on the next visit is worse than no preference at all.
+ */
+function updatePerPage(value: string) {
+    perPage.value = value;
+    router.post(UpdatePerPageController.url(), { per_page: Number(value) }, { preserveScroll: true });
+}
+
+function toggleCompactCards(value: boolean) {
+    compactCards.value = value;
+    router.post(UpdateCardSizeController.url(), { size: value ? 'compact' : 'large' }, { preserveScroll: true });
 }
 
 function toggleHideArchived(value: boolean) {
@@ -159,6 +179,24 @@ function updatePage(page: number) {
                     />
                 </div>
 
+                <!-- Grouped mode renders every deck under its archetype, so there are no pages to size. -->
+                <Select v-if="mode === 'flat'" :modelValue="perPage" @update:modelValue="(value) => updatePerPage(value as string)">
+                    <SelectTrigger size="sm" class="w-32 gap-1.5 text-xs">
+                        <Rows3 class="size-3.5 text-muted-foreground" />
+                        <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="12" class="text-xs">12 per page</SelectItem>
+                        <SelectItem value="24" class="text-xs">24 per page</SelectItem>
+                        <SelectItem value="48" class="text-xs">48 per page</SelectItem>
+                    </SelectContent>
+                </Select>
+
+                <div class="flex items-center gap-2">
+                    <Label for="compact-cards" class="cursor-pointer text-xs">Compact cards</Label>
+                    <Switch id="compact-cards" :modelValue="compactCards" @update:modelValue="toggleCompactCards" />
+                </div>
+
                 <div class="flex items-center gap-2">
                     <Label for="group-by-archetype" class="cursor-pointer text-xs">Group by archetype</Label>
                     <Switch
@@ -213,13 +251,12 @@ function updatePage(page: number) {
                     :archetype="group.archetype"
                     :stats="group.stats"
                     :decks="group.decks"
+                    :card-size="cardSize"
                 />
             </template>
 
             <template v-else-if="mode === 'flat' && decks">
-                <div class="grid grid-cols-1 items-start gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                    <DeckCard v-for="deck in decks.data" :key="deck.id" :deck="deck" />
-                </div>
+                <DeckCardGrid :decks="decks.data" :card-size="cardSize" />
 
                 <Pagination
                     v-if="decks.total > decks.per_page"

@@ -11,6 +11,7 @@ use App\Facades\AppSettings;
 use App\Models\Deck;
 use App\Models\MtgoMatch;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -18,7 +19,7 @@ use Spatie\LaravelData\DataCollection;
 
 class IndexController
 {
-    public function __invoke(Request $request): Response
+    public function __invoke(Request $request): Response|RedirectResponse
     {
         $query = Deck::forActiveAccount()
             ->where('format', '!=', EnsureLimitedDeckVersion::FORMAT)
@@ -60,6 +61,8 @@ class IndexController
             'search' => $request->input('search', ''),
             'sort' => $sort,
             'hide_deleted' => $hideDeleted,
+            'per_page' => AppSettings::decksPerPage(),
+            'card_size' => AppSettings::deckCardSize(),
         ];
 
         $grouped = AppSettings::decksGroupedByArchetype();
@@ -75,7 +78,16 @@ class IndexController
             ]);
         }
 
-        $paginated = $query->paginate(12)->withQueryString();
+        $paginated = $query->paginate(AppSettings::decksPerPage())->withQueryString();
+
+        // Filters and page size are toggled from the listing itself, and those
+        // toggles redirect back to whatever page the user was on. Shrink the
+        // result set from page 3 and that page no longer exists, which renders
+        // as an empty grid rather than an obviously wrong page number — so walk
+        // back to the last page that does.
+        if ($paginated->isEmpty() && $paginated->currentPage() > 1) {
+            return redirect()->to($paginated->url($paginated->lastPage()));
+        }
 
         return Inertia::render('decks/Index', [
             'mode' => 'flat',

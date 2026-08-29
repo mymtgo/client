@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import MatchShowController from '@/actions/App/Http/Controllers/Matches/ShowController';
 import MatchRowMenu from '@/components/matches/MatchRowMenu.vue';
+import ManaSymbols from '@/components/ManaSymbols.vue';
 import ResultBadge from '@/components/matches/ResultBadge.vue';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -46,6 +47,8 @@ function formatDuration(seconds: number | null): string {
                     <TableHead class="w-[110px]">Result</TableHead>
                     <TableHead class="w-[160px]">Opponent</TableHead>
                     <TableHead v-if="showArchetype">Vs</TableHead>
+                    <!-- A draft seat has no archetype; its colours are the only label. -->
+                    <TableHead v-else>Colours</TableHead>
                     <TableHead class="w-[120px] text-center">Game 1</TableHead>
                     <TableHead class="w-[120px] text-center">Game 2</TableHead>
                     <TableHead class="w-[120px] text-center">Game 3</TableHead>
@@ -78,6 +81,10 @@ function formatDuration(seconds: number | null): string {
                         <TableCell v-if="showArchetype" class="truncate">
                             <span v-if="match.opponentArchetype" class="text-sm">{{ match.opponentArchetype }}</span>
                             <span v-else class="text-xs text-muted-foreground">Unknown</span>
+                        </TableCell>
+                        <TableCell v-else>
+                            <ManaSymbols v-if="match.opponentColors" :symbols="match.opponentColors" />
+                            <span v-else class="text-xs text-muted-foreground">{{ NO_VALUE }}</span>
                         </TableCell>
                         <TableCell v-for="i in 3" :key="i" class="text-center text-sm">
                             <template v-if="match.gameResults[i - 1]">

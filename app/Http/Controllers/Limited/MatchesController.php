@@ -4,11 +4,14 @@ namespace App\Http\Controllers\Limited;
 
 use App\Actions\Leagues\FormatLeagueRuns;
 use App\Actions\Limited\Read\GetLimitedEventSharedProps;
+use App\Actions\Matches\ResolveOpponentColorIdentities;
 use App\Data\Front\MatchData;
 use App\Enums\MatchOutcome;
 use App\Enums\MatchState;
 use App\Http\Controllers\Controller;
 use App\Models\League;
+use App\Models\MtgoMatch;
+use Illuminate\Support\Collection;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -38,7 +41,7 @@ class MatchesController extends Controller
         return Inertia::render('limited/Matches', [
             'event' => fn () => GetLimitedEventSharedProps::run($league)['event'],
             'currentPage' => 'matches',
-            'matches' => MatchData::collect($matches),
+            'matches' => self::matchesWithOpponentColors($matches),
             'kpis' => [
                 'wins' => $matches->where('outcome', MatchOutcome::Win)->count(),
                 'losses' => $matches->where('outcome', MatchOutcome::Loss)->count(),
@@ -52,5 +55,25 @@ class MatchesController extends Controller
                 'totalMinutes' => $first && $end ? (int) round($first->started_at->diffInSeconds($end, true) / 60) : null,
             ],
         ]);
+    }
+
+    /**
+     * A draft opponent has no archetype, so the seat is labelled with the
+     * colours they were seen casting instead. Resolved for the whole page at
+     * once rather than per row.
+     *
+     * @param  Collection<int, MtgoMatch>  $matches
+     * @return array<int, MatchData>
+     */
+    private static function matchesWithOpponentColors(Collection $matches): array
+    {
+        $colors = ResolveOpponentColorIdentities::run($matches->pluck('id'));
+
+        return $matches->map(function (MtgoMatch $match) use ($colors) {
+            $data = MatchData::fromModel($match);
+            $data->opponentColors = $colors[$match->id] ?? null;
+
+            return $data;
+        })->values()->all();
     }
 }

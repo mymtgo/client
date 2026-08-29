@@ -77,6 +77,50 @@ function makeSubmittableMatch(array $opponentDeckJsonPerGame, ?League $league = 
     return $match;
 }
 
+it('sends the client version with the report', function (): void {
+    Http::fake([
+        '*/api/matches/report' => Http::response([], 200),
+        '*' => Http::response([]),
+    ]);
+
+    config()->set('nativephp.version', '0.29.0');
+
+    $match = makeSubmittableMatch([[['mtgo_id' => 1001, 'quantity' => 1]]]);
+
+    SubmitMatchToApi::run($match->id);
+
+    Http::assertSent(function ($request) {
+        if (! str_contains($request->url(), '/api/matches/report')) {
+            return false;
+        }
+
+        expect($request['client_version'])->toBe('0.29.0');
+
+        return true;
+    });
+});
+
+it('never reports a limited match', function (): void {
+    Http::fake(['*' => Http::response([])]);
+
+    $match = makeSubmittableMatch([[['mtgo_id' => 1001, 'quantity' => 1]]]);
+    $match->update(['format' => 'DHOBHOBHOB']);
+
+    SubmitMatchToApi::run($match->id);
+
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), '/api/matches/report'));
+    expect($match->fresh()->submitted_at)->toBeNull();
+});
+
+it('leaves limited matches out of the submittable queue', function (): void {
+    $limited = makeSubmittableMatch([[['mtgo_id' => 1001, 'quantity' => 1]]]);
+    $limited->update(['format' => 'DHOBHOBHOB']);
+
+    $constructed = makeSubmittableMatch([[['mtgo_id' => 1001, 'quantity' => 1]]]);
+
+    expect(MtgoMatch::submittable()->pluck('id')->all())->toBe([$constructed->id]);
+});
+
 it('sends league_run and opponent_deck when reporting a match', function (): void {
     Http::fake([
         '*/api/matches/report' => Http::response([], 200),

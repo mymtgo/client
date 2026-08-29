@@ -41,10 +41,12 @@ use App\Http\Controllers\Decks\ToggleGroupingController;
 use App\Http\Controllers\Decks\ToggleHideArchivedController;
 use App\Http\Controllers\Decks\TournamentsController;
 use App\Http\Controllers\Decks\TriggerArchetypeDetectionController;
+use App\Http\Controllers\Decks\UpdateCardSizeController;
 use App\Http\Controllers\Decks\UpdateColorIdentityController;
 use App\Http\Controllers\Decks\UpdateCoverArtController;
 use App\Http\Controllers\Decks\UpdateDeckArchetypeController;
 use App\Http\Controllers\Decks\UpdateNameController;
+use App\Http\Controllers\Decks\UpdatePerPageController;
 use App\Http\Controllers\Games\OpenReplayController;
 use App\Http\Controllers\Import\CancelScanController;
 use App\Http\Controllers\Import\DestroyController as ImportDestroyController;
@@ -218,6 +220,8 @@ Route::group([], function (Router $router) {
             ->withTrashed();
         $group->post('grouping', ToggleGroupingController::class)->name('decks.toggle-grouping');
         $group->post('hide-archived', ToggleHideArchivedController::class)->name('decks.toggle-hide-archived');
+        $group->post('per-page', UpdatePerPageController::class)->name('decks.update-per-page');
+        $group->post('card-size', UpdateCardSizeController::class)->name('decks.update-card-size');
     });
 
     $router->group([

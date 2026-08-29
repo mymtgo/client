@@ -34,6 +34,14 @@ class SubmitMatchToApi
             return;
         }
 
+        // Limited play is never reported. A 40-card draft pool has no
+        // archetype and no counterpart report to pair with, so it can only
+        // ever be a row the aggregates discard. scopeSubmittable filters
+        // these out too; this guard covers the direct-dispatch callers.
+        if ($match->isLimitedFormat()) {
+            return;
+        }
+
         $opponentArchetype = $match->opponentArchetypes()->with('archetype')->first();
         $opponentPlayerIds = $match->opponentArchetypes()->pluck('player_id')->toArray();
 
@@ -77,6 +85,7 @@ class SubmitMatchToApi
             'challenge_token' => $match->tournament_token,
             'tournament_round' => $match->tournament_round,
             'played_at' => $match->started_at->toIso8601String(),
+            'client_version' => config('nativephp.version'),
             'deck' => $deck,
             'opponent_deck' => self::buildOpponentDeckPayload($match),
             'games' => $gamesPayload,

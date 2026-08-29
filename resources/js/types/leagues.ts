@@ -9,6 +9,8 @@ export type LeagueMatch = {
     opponentName: string | null;
     opponentArchetype: string | null;
     opponentArchetypeId: number | null;
+    /** Seen-card colours, WUBRG-ordered. Only resolved for limited runs. */
+    opponentColors?: string | null;
     gameResults: LeagueGameResult[];
     startedAt: string;
     startedAtHuman: string;

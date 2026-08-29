@@ -100,11 +100,27 @@ class MtgoMatch extends Model
             });
     }
 
+    /**
+     * Matches eligible to be reported to the API.
+     *
+     * Limited play is excluded outright. A draft pool is not a metagame deck:
+     * there is no archetype to name it with and no other player will ever
+     * report the same list, so a reported draft match is a row the aggregates
+     * can only ever discard. The archetype requirement below already keeps
+     * them out today (DetermineMatchArchetypesJob skips limited matches), but
+     * that is a side effect of a detection guard, not a reporting decision —
+     * one stray archetype row would put a draft on the wire.
+     *
+     * `whereNull('format')` keeps the pre-existing behaviour for matches whose
+     * format never resolved: they stay eligible, rather than being silently
+     * dropped by a NOT LIKE that evaluates to NULL.
+     */
     public function scopeSubmittable(Builder $query): Builder
     {
         return $query->where('state', MatchState::Complete)
             ->whereNull('submitted_at')
             ->whereNotNull('deck_version_id')
+            ->where(fn (Builder $q) => $q->whereNull('format')->orWhere('format', 'not like', 'D%'))
             ->whereHas('archetypes');
     }
 

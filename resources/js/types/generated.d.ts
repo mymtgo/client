@@ -266,6 +266,7 @@ opponentName: any | string | null;
 leagueName: any | string | null;
 games: any | Array<any>;
 gameResults: any | { [key: number]: App.Data.Front.GameResultSummaryData };
+opponentColors: string | null;
 };
 export type MatchDeckData = {
 deck: any | App.Data.Front.DeckData;

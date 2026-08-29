@@ -2,6 +2,7 @@
 
 namespace App\Actions\Leagues;
 
+use App\Actions\Matches\ResolveOpponentColorIdentities;
 use App\Models\League;
 use App\Models\MtgoMatch;
 use App\Support\Leagues\LeagueEvTable;
@@ -32,12 +33,38 @@ class FormatLeagueRuns
         $gameRecords = self::getGameRecords($matchRows->pluck('id'));
         $opponentByMatch = self::getOpponentsByMatch($matchRows->pluck('id'));
         $matchesByLeague = $matchRows->groupBy('league_id');
+        $opponentColors = self::opponentColorsForLimitedRuns($leagues, $matchRows);
 
         return $leagues
             ->values()
-            ->map(fn (League $league) => self::formatRun($league, $matchesByLeague[$league->id] ?? collect(), $opponentByMatch, $gameRecords))
+            ->map(fn (League $league) => self::formatRun($league, $matchesByLeague[$league->id] ?? collect(), $opponentByMatch, $gameRecords, $opponentColors))
             ->values()
             ->all();
+    }
+
+    /**
+     * Seen-card colours for limited runs only.
+     *
+     * A constructed seat is named by its archetype, so paying for the card
+     * lookup on every league listing would buy nothing. Limited is where the
+     * colours are the label.
+     *
+     * @param  Collection<int, League>  $leagues
+     * @return array<int, string>
+     */
+    private static function opponentColorsForLimitedRuns(Collection $leagues, Collection $matchRows): array
+    {
+        $limitedLeagueIds = $leagues
+            ->filter(fn (League $league) => $league->kind->isLimited())
+            ->pluck('id');
+
+        if ($limitedLeagueIds->isEmpty()) {
+            return [];
+        }
+
+        return ResolveOpponentColorIdentities::run(
+            $matchRows->whereIn('league_id', $limitedLeagueIds)->pluck('id')
+        );
     }
 
     private static function getMatchRows(Collection $leagueIds, ?int $accountId, ?int $deckId): Collection
@@ -124,7 +151,10 @@ class FormatLeagueRuns
         return $opponentByMatch;
     }
 
-    private static function formatRun(League $league, Collection $matches, Collection $opponentByMatch, Collection $gameRecords): array
+    /**
+     * @param  array<int, string>  $opponentColors
+     */
+    private static function formatRun(League $league, Collection $matches, Collection $opponentByMatch, Collection $gameRecords, array $opponentColors = []): array
     {
         // Prefer league's direct deck version; fall back to most common deck in matches
         if ($league->deck_version_id && $league->deckVersion?->deck) {
@@ -153,7 +183,7 @@ class FormatLeagueRuns
                 ->first();
         }
 
-        $matchData = $matches->map(function ($row) use ($opponentByMatch, $gameRecords) {
+        $matchData = $matches->map(function ($row) use ($opponentByMatch, $gameRecords, $opponentColors) {
             $opp = $opponentByMatch[$row->id] ?? null;
             $won = $row->outcome === 'win';
             $games = $gameRecords->get($row->id, collect());
@@ -174,6 +204,7 @@ class FormatLeagueRuns
                 'opponentName' => $opp?->username,
                 'opponentArchetype' => $opp?->archetype_name,
                 'opponentArchetypeId' => $opp?->archetype_id !== null ? (int) $opp->archetype_id : null,
+                'opponentColors' => $opponentColors[$row->id] ?? null,
                 'gameResults' => $gameResults,
                 'startedAt' => $row->started_at,
                 'startedAtHuman' => Carbon::parse($row->started_at)->toLocal()->diffForHumans(),

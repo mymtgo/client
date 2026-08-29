@@ -11,6 +11,17 @@ class AppSettings
 {
     private const FILENAME = 'settings.json';
 
+    /**
+     * How many decks the flat listing shows per page. Constrained to the
+     * options the UI offers so a hand-edited settings.json can't ask for a
+     * page size the listing was never laid out for.
+     *
+     * @var array<int, int>
+     */
+    public const DECKS_PER_PAGE_OPTIONS = [12, 24, 48];
+
+    public const DECK_CARD_SIZES = ['large', 'compact'];
+
     public function get(string $key, mixed $default = null): mixed
     {
         $data = $this->read();
@@ -477,6 +488,38 @@ class AppSettings
     public function setHideArchivedDecks(bool $value): void
     {
         $this->set('hide_archived_decks', $value);
+    }
+
+    public function decksPerPage(): int
+    {
+        $value = (int) $this->get('decks_per_page', 12);
+
+        return in_array($value, self::DECKS_PER_PAGE_OPTIONS, true) ? $value : 12;
+    }
+
+    public function setDecksPerPage(int $value): void
+    {
+        if (! in_array($value, self::DECKS_PER_PAGE_OPTIONS, true)) {
+            return;
+        }
+
+        $this->set('decks_per_page', $value);
+    }
+
+    public function deckCardSize(): string
+    {
+        $value = $this->get('deck_card_size', 'large');
+
+        return in_array($value, self::DECK_CARD_SIZES, true) ? $value : 'large';
+    }
+
+    public function setDeckCardSize(string $value): void
+    {
+        if (! in_array($value, self::DECK_CARD_SIZES, true)) {
+            return;
+        }
+
+        $this->set('deck_card_size', $value);
     }
 
     public function cardStatsTrust(): int

@@ -31,6 +31,15 @@ class MatchData extends Data
         public Lazy|Collection $games,
         /** @var Lazy|list<GameResultSummaryData> */
         public Lazy|array $gameResults,
+        /**
+         * The colours the opponent was seen casting, WUBRG-ordered.
+         *
+         * Only filled where a caller has resolved it in bulk (see
+         * ResolveOpponentColorIdentities) — deriving it per match would mean a
+         * card lookup per row. Limited is the case that needs it: a draft seat
+         * has no archetype, so its colours are all a reader gets.
+         */
+        public ?string $opponentColors = null,
     ) {}
 
     public static function fromModel(MtgoMatch $match): self
