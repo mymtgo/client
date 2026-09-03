@@ -14,7 +14,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useToast } from '@/composables/useToast';
-import { router, useForm } from '@inertiajs/vue3';
+import { config, router, useForm } from '@inertiajs/vue3';
 import { NotepadText, RefreshCw, Tags, X } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 
@@ -95,12 +95,17 @@ const deleteMatch = (id: string | number) => {
     });
 };
 
-const prefetchedIds = new Set<number>();
-const prefetchMatch = (matchId: number) => {
-    if (prefetchedIds.has(matchId)) return;
-    prefetchedIds.add(matchId);
-    router.prefetch(urlFor(matchId), {}, { cacheFor: '10s' });
+// Prefetch only after the pointer dwells on a row, mirroring <Link prefetch>.
+// Inertia dedupes cached and in-flight prefetches itself, so a cleared timer is
+// the only guard needed to stop a sweep down the table hitting the server per row.
+let prefetchTimer: ReturnType<typeof setTimeout> | undefined;
+const startPrefetch = (matchId: number) => {
+    clearTimeout(prefetchTimer);
+    prefetchTimer = setTimeout(() => {
+        router.prefetch(urlFor(matchId), {}, { cacheFor: '10s' });
+    }, config.get('prefetch.hoverDelay'));
 };
+const cancelPrefetch = () => clearTimeout(prefetchTimer);
 
 const detectArchetype = (matchId: number) => {
     detectingMatchId.value = matchId;
@@ -197,7 +202,8 @@ const detectArchetype = (matchId: number) => {
                         class="cursor-pointer"
                         :data-state="selectedIds.includes(match.id) ? 'selected' : undefined"
                         @click="router.visit(urlFor(match.id))"
-                        @mouseenter="prefetchMatch(match.id)"
+                        @mouseenter="startPrefetch(match.id)"
+                        @mouseleave="cancelPrefetch"
                     >
                         <TableCell @click.stop>
                             <Checkbox :model-value="selectedIds.includes(match.id)" @update:model-value="(val) => toggleMatch(match.id, val)" />

@@ -2,14 +2,13 @@
 
 namespace App\Http\Controllers\Decks;
 
+use App\Actions\Archetypes\GetArchetypeOptions;
 use App\Actions\Decks\GetDeckStats;
 use App\Actions\Decks\GetDeckViewSharedProps;
 use App\Actions\Leagues\FormatLeagueRuns;
 use App\Actions\Leagues\GetLeagueKpis;
 use App\Concerns\HasTimeframeFilter;
-use App\Data\Front\ArchetypeData;
 use App\Http\Controllers\Controller;
-use App\Models\Archetype;
 use App\Models\Deck;
 use App\Models\DeckVersion;
 use App\Models\League;
@@ -37,22 +36,17 @@ class LeaguesController extends Controller
         $kpisQuery = League::whereHas('matches', fn ($q) => $q->whereIn('matches.id', $allMatchIds))
             ->whereBetween('started_at', [$from, $to]);
 
-        $leagues = (clone $kpisQuery)
-            ->with(['deckVersion.deck.cover'])
-            ->orderByDesc('started_at')
-            ->get();
-
         return Inertia::render('decks/Leagues', [
             ...$shared,
             'currentVersionId' => $deckVersion?->id,
             'currentPage' => 'leagues',
             'timeframe' => $timeframe,
-            'leagues' => FormatLeagueRuns::run($leagues, deckId: $deck->id),
-            'kpis' => GetLeagueKpis::run($kpisQuery),
-            'archetypes' => Inertia::defer(fn () => Archetype::query()
-                ->orderBy('name')
-                ->get()
-                ->map(fn (Archetype $a) => ArchetypeData::from($a)->toArray())),
+            'leagues' => fn () => FormatLeagueRuns::run(
+                (clone $kpisQuery)->with(['deckVersion.deck.cover'])->orderByDesc('started_at')->get(),
+                deckId: $deck->id,
+            ),
+            'kpis' => fn () => GetLeagueKpis::run($kpisQuery),
+            'archetypes' => Inertia::defer(fn () => GetArchetypeOptions::run()),
         ]);
     }
 }

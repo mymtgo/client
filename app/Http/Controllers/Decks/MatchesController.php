@@ -139,6 +139,7 @@ class MatchesController extends Controller
             // Deferred — heavy filter dropdown data (per-archetype match counts)
             'archetypes' => Inertia::defer(fn () => Archetype::query()
                 ->forFormat($archetypeFormat)
+                ->withExists('decks')
                 ->withCount(['matchArchetypes' => fn ($q) => $q
                     ->whereIn('mtgo_match_id', $allMatchIds)
                     ->whereIn('player_id', function ($sub) {

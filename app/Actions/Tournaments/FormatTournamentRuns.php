@@ -9,7 +9,6 @@ use App\Models\Tournament;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 
 class FormatTournamentRuns
 {
@@ -152,7 +151,6 @@ class FormatTournamentRuns
             'name' => $deck->name,
             'colorIdentity' => $deck->color_identity,
             'coverArt' => $coverArtUrl,
-            'coverArtBase64' => self::toBase64($cover?->art_crop, $cover?->local_art_crop),
         ];
     }
 
@@ -316,40 +314,5 @@ class FormatTournamentRuns
             'onDrawRecord' => ['wins' => $onDrawWins, 'losses' => $onDrawLosses],
             'topMatchups' => $topMatchups,
         ];
-    }
-
-    private static function toBase64(?string $url, ?string $localStoragePath = null): ?string
-    {
-        if (! $url && ! $localStoragePath) {
-            return null;
-        }
-
-        try {
-            if ($localStoragePath && Storage::disk('cards')->exists($localStoragePath)) {
-                $contents = Storage::disk('cards')->get($localStoragePath);
-            } else {
-                if (! $url) {
-                    return null;
-                }
-
-                $contents = file_get_contents($url);
-            }
-
-            if ($contents === false || $contents === null) {
-                return null;
-            }
-
-            $mime = 'image/jpeg';
-            $source = $localStoragePath ?? $url ?? '';
-            if (str_contains($source, '.png')) {
-                $mime = 'image/png';
-            } elseif (str_contains($source, '.webp')) {
-                $mime = 'image/webp';
-            }
-
-            return 'data:'.$mime.';base64,'.base64_encode($contents);
-        } catch (\Throwable) {
-            return null;
-        }
     }
 }

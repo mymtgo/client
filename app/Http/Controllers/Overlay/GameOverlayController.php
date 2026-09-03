@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Overlay;
 
+use App\Actions\Archetypes\GetArchetypeOptions;
 use App\Actions\Cards\ComputeDrawOdds;
 use App\Actions\Overlay\BuildSideboardGuide;
 use App\Actions\Overlay\DetectSideboarding;
@@ -9,7 +10,6 @@ use App\Actions\Overlay\FetchCommunitySideboardRates;
 use App\Actions\Overlay\GetArchetypeNotes;
 use App\Actions\Overlay\GetOpponentReveals;
 use App\Actions\Overlay\ResolveOverlayOpponent;
-use App\Data\Front\ArchetypeData;
 use App\Data\Front\SideboardGuideData;
 use App\Enums\MatchState;
 use App\Facades\AppSettings;
@@ -51,7 +51,7 @@ class GameOverlayController extends Controller
             'sections' => $sections,
             'opponent' => $sections['opponent'] ? $opponent : null,
             'format' => $match ? MtgoMatch::displayFormat($match->format) : null,
-            'archetypes' => Inertia::defer(fn () => ArchetypeData::collect(Archetype::orderBy('name')->get())),
+            'archetypes' => Inertia::defer(fn () => GetArchetypeOptions::run()),
             // Deferred, not a plain value: the 5s poll excludes `drawOdds`, but
             // a plain prop is still evaluated while the props array is built —
             // before Inertia filters on `only` — so every tick would rebuild

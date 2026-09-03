@@ -4,6 +4,7 @@ import type { LeagueRun } from '@/types/leagues';
 
 defineProps<{
     league: LeagueRun;
+    coverArtBase64?: string | null;
 }>();
 
 const colors = {
@@ -31,8 +32,8 @@ const colors = {
     >
         <!-- Cover art background (base64 from server for html-to-image compatibility) -->
         <img
-            v-if="league.deck?.coverArtBase64"
-            :src="league.deck.coverArtBase64"
+            v-if="coverArtBase64"
+            :src="coverArtBase64"
             :style="{
                 position: 'absolute',
                 top: '0',

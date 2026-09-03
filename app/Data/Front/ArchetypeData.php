@@ -29,10 +29,30 @@ class ArchetypeData extends Data
             format: $archetype->format,
             colorIdentity: $archetype->color_identity,
             decklistDownloadedAt: $archetype->decklist_downloaded_at,
-            hasDecklist: isset($archetype->decks_exists) ? (bool) $archetype->decks_exists : $archetype->decks()->exists(),
+            hasDecklist: self::hasDecklist($archetype),
             manual: $archetype->manual,
             isFallback: $archetype->is_fallback,
             mergedIntoId: $archetype->merged_into_id,
         );
+    }
+
+    /**
+     * Read from what the caller already loaded, never probe the database.
+     *
+     * A per-row exists query here turned every archetype list into an N+1,
+     * so list builders must preload with withExists('decks') and detail views
+     * either do the same or load the decks relation itself.
+     */
+    private static function hasDecklist(Archetype $archetype): bool
+    {
+        if (isset($archetype->decks_exists)) {
+            return (bool) $archetype->decks_exists;
+        }
+
+        if ($archetype->relationLoaded('decks')) {
+            return $archetype->decks->isNotEmpty();
+        }
+
+        return false;
     }
 }

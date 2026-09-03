@@ -2,13 +2,13 @@
 
 namespace App\Http\Controllers\Leagues;
 
+use App\Actions\Archetypes\GetArchetypeOptions;
 use App\Actions\Leagues\FormatLeagueRuns;
 use App\Actions\Leagues\GetLeagueKpis;
 use App\Data\Front\ArchetypeData;
 use App\Enums\LeagueKind;
 use App\Http\Controllers\Controller;
 use App\Models\Account;
-use App\Models\Archetype;
 use App\Models\Deck;
 use App\Models\League;
 use App\Models\MtgoMatch;
@@ -72,7 +72,7 @@ class IndexController extends Controller
                     ->join('leagues as l', 'l.deck_version_id', '=', 'dv.id')
                     ->whereNull('l.deleted_at');
             })
-            ->with('archetype')
+            ->with(['archetype' => fn ($q) => $q->withExists('decks')])
             ->orderBy('name')
             ->get(['id', 'name', 'archetype_id']);
 
@@ -113,10 +113,7 @@ class IndexController extends Controller
                 'sort' => $sort,
             ],
             'deckArchetypes' => ArchetypeData::collect($archetypes),
-            'archetypes' => Inertia::defer(fn () => Archetype::query()
-                ->orderBy('name')
-                ->get()
-                ->map(fn (Archetype $a) => ArchetypeData::from($a)->toArray())),
+            'archetypes' => Inertia::defer(fn () => GetArchetypeOptions::run()),
         ]);
     }
 

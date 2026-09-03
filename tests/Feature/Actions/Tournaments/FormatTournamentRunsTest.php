@@ -4,6 +4,7 @@ use App\Actions\Tournaments\FormatTournamentRuns;
 use App\Enums\MatchOutcome;
 use App\Enums\MatchState;
 use App\Models\Archetype;
+use App\Models\Card;
 use App\Models\Deck;
 use App\Models\DeckVersion;
 use App\Models\Game;
@@ -287,4 +288,28 @@ it('exposes per-match durationSeconds and roundNumber', function () {
 
     expect($rows[0]['matches'][0]['durationSeconds'])->toBe(14 * 60);
     expect($rows[0]['matches'][0]['roundNumber'])->toBe(3);
+});
+
+it('does not embed base64 cover art in tournament runs', function () {
+    $cover = Card::factory()->create([
+        'art_crop' => 'https://cards.example.test/art/abc.jpg',
+        'local_art_crop' => null,
+    ]);
+    $deck = Deck::factory()->create(['cover_id' => $cover->id]);
+    $version = DeckVersion::factory()->create(['deck_id' => $deck->id]);
+    $tournament = Tournament::factory()->create(['format' => 'CMODERN', 'started_at' => now()->subHours(3)]);
+    MtgoMatch::factory()->create([
+        'tournament_id' => $tournament->id,
+        'deck_version_id' => $version->id,
+        'tournament_round' => 1,
+        'outcome' => MatchOutcome::Win,
+        'state' => MatchState::Complete,
+        'started_at' => now()->subHours(3),
+        'ended_at' => now()->subHours(3)->addMinutes(15),
+    ]);
+
+    $rows = FormatTournamentRuns::run(Tournament::query()->get(), $deck);
+
+    expect($rows[0]['deck'])->toHaveKey('coverArt', 'https://cards.example.test/art/abc.jpg')
+        ->not->toHaveKey('coverArtBase64');
 });

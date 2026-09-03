@@ -160,7 +160,7 @@ class FormatLeagueRuns
         if ($league->deck_version_id && $league->deckVersion?->deck) {
             $deckModel = $league->deckVersion->deck;
             $coverArtUrl = $deckModel->cover?->art_crop_url;
-            $deck = ['id' => $deckModel->id, 'name' => $deckModel->name, 'colorIdentity' => $deckModel->color_identity, 'coverArt' => $coverArtUrl, 'coverArtBase64' => self::toBase64($deckModel->cover?->art_crop, $deckModel->cover?->local_art_crop)];
+            $deck = ['id' => $deckModel->id, 'name' => $deckModel->name, 'colorIdentity' => $deckModel->color_identity, 'coverArt' => $coverArtUrl];
         } else {
             $topRow = $matches->groupBy('deck_id')->map->count()->sortDesc()->keys()
                 ->map(fn ($deckId) => $matches->firstWhere('deck_id', $deckId))
@@ -178,7 +178,6 @@ class FormatLeagueRuns
                     'name' => $row->deck_name,
                     'colorIdentity' => $row->deck_color_identity,
                     'coverArt' => self::resolveArtCrop($row->deck_cover_art, $row->deck_local_cover_art),
-                    'coverArtBase64' => self::toBase64($row->deck_cover_art, $row->deck_local_cover_art),
                 ])
                 ->first();
         }
@@ -417,40 +416,5 @@ class FormatLeagueRuns
     private static function resolveArtCrop(?string $artCrop, ?string $localArtCrop): ?string
     {
         return $localArtCrop ? Storage::disk('cards')->url($localArtCrop) : $artCrop;
-    }
-
-    private static function toBase64(?string $url, ?string $localStoragePath = null): ?string
-    {
-        if (! $url && ! $localStoragePath) {
-            return null;
-        }
-
-        try {
-            if ($localStoragePath && Storage::disk('cards')->exists($localStoragePath)) {
-                $contents = Storage::disk('cards')->get($localStoragePath);
-            } else {
-                if (! $url) {
-                    return null;
-                }
-
-                $contents = file_get_contents($url);
-            }
-
-            if ($contents === false || $contents === null) {
-                return null;
-            }
-
-            $mime = 'image/jpeg';
-            $source = $localStoragePath ?? $url ?? '';
-            if (str_contains($source, '.png')) {
-                $mime = 'image/png';
-            } elseif (str_contains($source, '.webp')) {
-                $mime = 'image/webp';
-            }
-
-            return 'data:'.$mime.';base64,'.base64_encode($contents);
-        } catch (\Throwable) {
-            return null;
-        }
     }
 }

@@ -61,7 +61,7 @@ class MatchData extends Data
             opponentArchetypes: Lazy::whenLoaded('opponentArchetypes', $match, fn () => MatchArchetypeData::collect($match->opponentArchetypes)),
             opponentName: Lazy::whenLoaded('games', $match, fn () => $match->games->first()?->players->first(fn ($p) => ! $p->pivot->is_local)?->username),
             leagueName: Lazy::whenLoaded('league', $match, fn () => $match->league?->name),
-            games: Lazy::whenLoaded('games', $match, fn () => GameData::collect($match->games)),
+            games: Lazy::create(fn () => GameData::collect($match->games)),
             gameResults: Lazy::whenLoaded('games', $match, fn () => $match->games
                 ->filter(fn ($g) => $g->won !== null)
                 ->sortBy('started_at')

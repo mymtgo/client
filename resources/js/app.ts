@@ -47,5 +47,13 @@ createInertiaApp({
     progress: {
         color: '#4B5563',
     },
+    defaults: {
+        prefetch: {
+            // Inertia fires hover prefetches after 75ms by default. Deck navigation
+            // and match rows are dense vertical lists, so a mouse sweep across them
+            // was issuing a full page request per link. Wait for an actual dwell.
+            hoverDelay: 200,
+        },
+    },
 });
 

@@ -4,6 +4,7 @@ import ManaSymbols from '@/components/ManaSymbols.vue';
 import LeagueContextMenu from '@/components/leagues/LeagueContextMenu.vue';
 import AddMatchDialog from '@/components/leagues/AddMatchDialog.vue';
 import LeagueDropDialog from '@/components/leagues/LeagueDropDialog.vue';
+import LeaguesScreenshotDataController from '@/actions/App/Http/Controllers/Leagues/ScreenshotDataController';
 import LeaguesUnlinkMatchController from '@/actions/App/Http/Controllers/Leagues/UnlinkMatchController';
 import LeagueNotesDialog from '@/components/leagues/LeagueNotesDialog.vue';
 import LeagueResultBadge from '@/components/leagues/LeagueResultBadge.vue';
@@ -98,7 +99,10 @@ function handleDrop() {
     dropDialogRef.value?.openForLeague(props.league.id);
 }
 
+const screenshotCoverArt = ref<string | null>(null);
+
 async function handleScreenshot() {
+    screenshotCoverArt.value = await fetchScreenshotCoverArt();
     showScreenshot.value = true;
     await nextTick();
     const el = screenshotRef.value?.$el as HTMLElement | undefined;
@@ -106,6 +110,22 @@ async function handleScreenshot() {
         await capture(el);
     }
     showScreenshot.value = false;
+    screenshotCoverArt.value = null;
+}
+
+/**
+ * Cover art is inlined as base64 so html-to-image can rasterise it. It is
+ * fetched here, on demand, rather than shipped with every league listing.
+ */
+async function fetchScreenshotCoverArt(): Promise<string | null> {
+    try {
+        const response = await fetch(LeaguesScreenshotDataController.url(props.league.id));
+        if (!response.ok) return null;
+        const data = (await response.json()) as { coverArtBase64: string | null };
+        return data.coverArtBase64;
+    } catch {
+        return null;
+    }
 }
 
 function handleCopySummary() {
@@ -265,7 +285,7 @@ function toggle() {
     </Card>
 
     <div v-if="showScreenshot" style="position: fixed; top: -9999px; left: -9999px; pointer-events: none">
-        <LeagueScreenshot ref="screenshotRef" :league="league" />
+        <LeagueScreenshot ref="screenshotRef" :league="league" :cover-art-base64="screenshotCoverArt" />
     </div>
 
     <LeagueNotesDialog ref="notesDialogRef" />

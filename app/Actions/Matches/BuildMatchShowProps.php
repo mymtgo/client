@@ -2,10 +2,9 @@
 
 namespace App\Actions\Matches;
 
+use App\Actions\Archetypes\GetArchetypeOptions;
 use App\Actions\Import\ExtractCardsFromGameLog;
-use App\Data\Front\ArchetypeData;
 use App\Data\Front\MatchData;
-use App\Models\Archetype;
 use App\Models\Card;
 use App\Models\DeckVersion;
 use App\Models\MtgoMatch;
@@ -87,7 +86,7 @@ class BuildMatchShowProps
             'match' => MatchData::from($match),
             'games' => $games,
             'gameLogs' => $gameLogs,
-            'archetypes' => ArchetypeData::collect(Archetype::orderBy('name')->get()),
+            'archetypes' => GetArchetypeOptions::run(),
             'imported' => (bool) $match->imported,
         ];
     }

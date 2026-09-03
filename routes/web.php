@@ -143,6 +143,7 @@ Route::group([], function (Router $router) {
         $group->post('/', App\Http\Controllers\Leagues\StoreController::class)->name('leagues.store');
         $group->get('/', App\Http\Controllers\Leagues\IndexController::class)->name('leagues.index');
         $group->get('overlay', OverlayController::class)->name('leagues.overlay');
+        $group->get('{league}/screenshot-data', App\Http\Controllers\Leagues\ScreenshotDataController::class)->name('leagues.screenshot-data');
         $group->patch('{league}/notes', App\Http\Controllers\Leagues\UpdateNotesController::class)->name('leagues.update-notes');
         $group->patch('{league}/drop', DropController::class)->name('leagues.drop');
         $group->post('{league}/matches', LinkMatchController::class)->name('leagues.matches.link');

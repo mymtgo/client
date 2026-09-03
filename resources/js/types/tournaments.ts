@@ -25,7 +25,6 @@ export type TournamentRun = {
         name: string;
         colorIdentity?: string | null;
         coverArt?: string | null;
-        coverArtBase64?: string | null;
     } | null;
     versionLabel: string | null;
     results: Array<'W' | 'L'>;

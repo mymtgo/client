@@ -21,7 +21,7 @@ class ShowController
         $archetype->load(['decks' => fn ($q) => $q->orderByDesc('seen_count'), 'decks.cards']);
 
         if ($archetype->merged_into_id !== null) {
-            $archetype->load('mergedInto:id,name,color_identity,format,is_fallback,manual,merged_into_id');
+            $archetype->load(['mergedInto' => fn ($q) => $q->withExists('decks')]);
         }
 
         $winrates = GetArchetypeVariantFacingWinrates::run($archetype);

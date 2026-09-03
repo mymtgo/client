@@ -15,6 +15,7 @@ class MergeCandidatesController
             ->whereKeyNot($archetype->id)
             ->where('is_fallback', false)
             ->whereNull('merged_into_id')
+            ->withExists('decks')
             ->orderBy('name')
             ->get();
 

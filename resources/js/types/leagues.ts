@@ -35,7 +35,6 @@ export type LeagueDeck = {
     name: string;
     colorIdentity?: string | null;
     coverArt?: string | null;
-    coverArtBase64?: string | null;
 };
 
 export type LeagueRun = {
