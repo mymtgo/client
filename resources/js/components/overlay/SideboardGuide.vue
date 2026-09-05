@@ -4,6 +4,7 @@ import OverlayCardRow from '@/components/overlay/OverlayCardRow.vue';
 import { useCardHoverPreview } from '@/composables/useCardHoverPreview';
 import { groupByType } from '@/composables/useCardTypeGroups';
 import { useOfflineMode } from '@/composables/useOfflineMode';
+import type { GuideInCard as SidedInCard, GuideOutCard as SidedOutCard } from '@/types/sideboardGuides';
 import { computed } from 'vue';
 
 /**
@@ -13,34 +14,8 @@ import { computed } from 'vue';
  * anchored to the window's right edge.
  *
  * The generated types describe `sidedIn`/`sidedOut` as Array<any> (a Spatie
- * serialization artifact), so give them a local shape.
+ * serialization artifact), so the card shapes live in `types/sideboardGuides.ts`.
  */
-type SidedInCard = {
-    oracleId: string;
-    name: string;
-    type: string | null;
-    colorIdentity: string | null;
-    image: string | null;
-    quantity: number;
-    sidedInGames: number;
-    wins: number;
-    losses: number;
-    winrate: number | null;
-    communitySidedIn: number | null;
-    communityGames: number | null;
-    communityRate: number | null;
-};
-
-type SidedOutCard = {
-    oracleId: string;
-    name: string;
-    type: string | null;
-    image: string | null;
-    sidedOutGames: number;
-    communitySidedOut: number | null;
-    communityGames: number | null;
-    communityRate: number | null;
-};
 
 const props = defineProps<{
     sideboard: App.Data.Front.SideboardGuideData | null;
@@ -59,6 +34,11 @@ const emptyMessage = computed(() => {
 
 const sidedInCards = computed<SidedInCard[]>(() => (props.sideboard?.sidedIn ?? []) as SidedInCard[]);
 
+const sidedOutCards = computed<SidedOutCard[]>(() => (props.sideboard?.sidedOut ?? []) as SidedOutCard[]);
+
+/** With an authored plan the lists are the player's own; no field column, no badges, planned copies as the count. */
+const hasPlan = computed(() => props.sideboard?.hasPlan ?? false);
+
 /**
  * Type groups, ordered by the best community inclusion rate inside each.
  *
@@ -66,16 +46,19 @@ const sidedInCards = computed<SidedInCard[]>(() => (props.sideboard?.sidedIn ?? 
  * it answers is "what does the field bring in", so the group holding the 90%
  * card has to come before the group holding the 20% one. With no community
  * data at all every group scores -1 and groupByType's own order stands.
+ *
+ * With an authored plan the lists are already the player's own, so
+ * `groupByType`'s own order stands instead of being re-sorted by field rate.
  */
 const groupedSidedIn = computed<Record<string, SidedInCard[]>>(() => {
     const groups = groupByType(sidedInCards.value, (card) => card.type);
+
+    if (hasPlan.value) return groups;
 
     const best = (cards: SidedInCard[]): number => Math.max(-1, ...cards.map((card) => card.communityRate ?? -1));
 
     return Object.fromEntries(Object.entries(groups).sort(([, a], [, b]) => best(b) - best(a)));
 });
-
-const sidedOutCards = computed<SidedOutCard[]>(() => (props.sideboard?.sidedOut ?? []) as SidedOutCard[]);
 
 /**
  * The largest sample any community row is drawn from, used to caption the panel.
@@ -132,13 +115,14 @@ const offlineMode = useOfflineMode();
         <template v-else-if="props.sideboard">
             <!-- Sample-size baseline, styled like the draw odds panel's header strip. -->
             <div class="px-4 py-2 text-[0.625rem] font-semibold tracking-wider text-muted-foreground/60 uppercase">
+                <template v-if="hasPlan">Your guide · </template>
                 <template v-if="props.sideboard.postboardGames > 0">
                     {{ props.sideboard.postboardGames }} post-board {{ props.sideboard.postboardGames === 1 ? 'game' : 'games' }} ·
                     {{ props.sideboard.postboardRecord }} overall
                 </template>
                 <template v-else>No games vs this archetype yet</template>
-                <template v-if="communityGames"> · field = {{ communityGames }} shared games</template>
-                <template v-else-if="offlineMode"> · field data unavailable in offline mode</template>
+                <template v-if="!hasPlan && communityGames"> · field = {{ communityGames }} shared games</template>
+                <template v-else-if="!hasPlan && offlineMode"> · field data unavailable in offline mode</template>
             </div>
 
             <div v-for="(cards, type) in groupedSidedIn" :key="type">
@@ -147,8 +131,8 @@ const offlineMode = useOfflineMode();
                 >
                     <span class="min-w-0 truncate">{{ type }} ({{ groupQuantity(cards) }})</span>
                     <span class="flex shrink-0 items-center gap-2 px-2">
-                        <span class="w-8" aria-hidden="true"></span>
-                        <span class="w-10 text-right">Field</span>
+                        <span v-if="!hasPlan" class="w-8" aria-hidden="true"></span>
+                        <span v-if="!hasPlan" class="w-10 text-right">Field</span>
                         <span class="w-20 text-right">Your W–L</span>
                     </span>
                 </h3>
@@ -156,20 +140,21 @@ const offlineMode = useOfflineMode();
                     <OverlayCardRow
                         v-for="card in cards"
                         :key="card.oracleId"
-                        :name="card.name"
+                        :name="card.stale ? `${card.name} (not in sideboard)` : card.name"
                         :count="card.quantity"
                         :art-crop="card.artCrop"
-                        :class="{ 'opacity-40': card.sidedInGames === 0 && card.communityRate === null }"
+                        :class="{ 'opacity-40': card.stale || (!hasPlan && card.sidedInGames === 0 && card.communityRate === null) }"
                         @mouseenter="onCardEnter(card, $event)"
                         @mouseleave="onCardLeave"
                     >
                         <div class="flex shrink-0 items-center gap-2 px-2">
-                            <span class="w-8 text-right text-[10px] font-bold tracking-wider uppercase">
+                            <span v-if="!hasPlan" class="w-8 text-right text-[10px] font-bold tracking-wider uppercase">
                                 <span v-if="recommended(card.communityRate, card.sidedInGames)" class="text-emerald-400">In</span>
                             </span>
                             <!-- How often the wider player base brings this in. Leads the
                                  row because it has a sample from the first game onward. -->
                             <span
+                                v-if="!hasPlan"
                                 class="w-10 text-right font-semibold tabular-nums"
                                 :title="communityTitle(card.communitySidedIn, card.communityGames, 'in')"
                             >
@@ -189,10 +174,10 @@ const offlineMode = useOfflineMode();
                 <h3
                     class="flex items-baseline justify-between gap-2 border-y py-2 pl-4 text-[10px] font-semibold tracking-wider text-muted-foreground/60 uppercase"
                 >
-                    <span class="min-w-0 truncate">Usually cut ({{ sidedOutCards.length }})</span>
+                    <span class="min-w-0 truncate">{{ hasPlan ? 'Take out' : 'Usually cut' }} ({{ sidedOutCards.length }})</span>
                     <span class="flex shrink-0 items-center gap-2 px-2">
-                        <span class="w-8" aria-hidden="true"></span>
-                        <span class="w-10 text-right">Field</span>
+                        <span v-if="!hasPlan" class="w-8" aria-hidden="true"></span>
+                        <span v-if="!hasPlan" class="w-10 text-right">Field</span>
                         <span class="w-20 text-right">You cut</span>
                     </span>
                 </h3>
@@ -200,17 +185,19 @@ const offlineMode = useOfflineMode();
                     <OverlayCardRow
                         v-for="card in sidedOutCards"
                         :key="card.oracleId"
-                        :name="card.name"
-                        :count="null"
+                        :name="card.stale ? `${card.name} (not in maindeck)` : card.name"
+                        :count="hasPlan ? card.quantity : null"
                         :art-crop="card.artCrop"
+                        :class="{ 'opacity-40': card.stale }"
                         @mouseenter="onCardEnter(card, $event)"
                         @mouseleave="onCardLeave"
                     >
                         <div class="flex shrink-0 items-center gap-2 px-2">
-                            <span class="w-8 text-right text-[10px] font-bold tracking-wider uppercase">
+                            <span v-if="!hasPlan" class="w-8 text-right text-[10px] font-bold tracking-wider uppercase">
                                 <span v-if="recommended(card.communityRate, card.sidedOutGames)" class="text-red-400">Out</span>
                             </span>
                             <span
+                                v-if="!hasPlan"
                                 class="w-10 text-right font-semibold tabular-nums"
                                 :title="communityTitle(card.communitySidedOut, card.communityGames, 'out')"
                             >

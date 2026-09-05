@@ -25,5 +25,9 @@ class SideboardCardData extends Data
         public ?int $communityGames = null,
         /** communitySidedIn as a percentage, or null when the API has no row. */
         public ?int $communityRate = null,
+        /** Copies the player's guide says to bring in, or null when the guide does not name this card. */
+        public ?int $plannedQuantity = null,
+        /** True when the guide names this card but the current deck version no longer contains it. */
+        public bool $stale = false,
     ) {}
 }

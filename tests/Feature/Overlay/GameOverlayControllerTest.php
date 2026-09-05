@@ -12,6 +12,8 @@ use App\Models\Game;
 use App\Models\MatchArchetype;
 use App\Models\MtgoMatch;
 use App\Models\Player;
+use App\Models\SideboardGuide;
+use App\Models\SideboardGuideCard;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
@@ -462,4 +464,66 @@ it('omits reveals when the section is disabled', function () {
         ->assertSuccessful()
         ->assertJsonPath('props.sections.reveals', false)
         ->assertJsonPath('props.reveals', null);
+});
+
+it('shows the authored plan instead of history when a guide with cards exists for the matchup', function () {
+    [$match, $opponent, $deck, $version] = liveOverlayMatch();
+
+    // Add a sideboard card to the live deck.
+    Card::create(['mtgo_id' => '103', 'oracle_id' => 'o-rip', 'name' => 'Rest in Peace', 'type' => 'Enchantment']);
+    $version->update(['signature' => overlaySignature([['101', '20', '0'], ['102', '4', '0'], ['103', '2', '1']])]);
+
+    $archetype = Archetype::factory()->create(['name' => 'Esper Blink', 'format' => 'modern']);
+
+    MatchArchetype::create([
+        'mtgo_match_id' => $match->id,
+        'player_id' => $opponent->id,
+        'archetype_id' => $archetype->id,
+        'confidence' => 1.0,
+        'manual' => true,
+    ]);
+
+    $guide = SideboardGuide::factory()->create(['deck_id' => $deck->id, 'archetype_id' => $archetype->id]);
+    SideboardGuideCard::factory()->create(['sideboard_guide_id' => $guide->id, 'oracle_id' => 'o-rip', 'quantity' => 1]);
+    SideboardGuideCard::factory()->out()->create(['sideboard_guide_id' => $guide->id, 'oracle_id' => 'o-bolt', 'quantity' => 1]);
+
+    $this->get(route('overlay.game'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('sideboard.hasPlan', true)
+            ->has('sideboard.sidedIn', 1)
+            ->where('sideboard.sidedIn.0.oracleId', 'o-rip')
+            ->where('sideboard.sidedIn.0.quantity', 1)
+            ->has('sideboard.sidedOut', 1)
+            ->where('sideboard.sidedOut.0.oracleId', 'o-bolt')
+        );
+});
+
+it('falls back to history when the guide for the matchup has no cards', function () {
+    [$match, $opponent, $deck, $version] = liveOverlayMatch();
+
+    Card::create(['mtgo_id' => '103', 'oracle_id' => 'o-rip', 'name' => 'Rest in Peace', 'type' => 'Enchantment']);
+    $version->update(['signature' => overlaySignature([['101', '20', '0'], ['102', '4', '0'], ['103', '2', '1']])]);
+
+    $archetype = Archetype::factory()->create(['name' => 'Esper Blink', 'format' => 'modern']);
+
+    MatchArchetype::create([
+        'mtgo_match_id' => $match->id,
+        'player_id' => $opponent->id,
+        'archetype_id' => $archetype->id,
+        'confidence' => 1.0,
+        'manual' => true,
+    ]);
+
+    SideboardGuide::factory()->create(['deck_id' => $deck->id, 'archetype_id' => $archetype->id]);
+
+    $this->get(route('overlay.game'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('sideboard.hasPlan', false)
+            // History scope lists the whole sideboard.
+            ->has('sideboard.sidedIn', 1)
+            ->where('sideboard.sidedIn.0.oracleId', 'o-rip')
+            ->where('sideboard.sidedIn.0.quantity', 2)
+        );
 });

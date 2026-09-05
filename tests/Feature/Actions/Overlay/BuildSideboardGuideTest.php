@@ -2,6 +2,7 @@
 
 use App\Actions\Overlay\BuildSideboardGuide;
 use App\Enums\MatchState;
+use App\Enums\SideboardGuideScope;
 use App\Models\Archetype;
 use App\Models\Card;
 use App\Models\CardGameStat;
@@ -11,6 +12,8 @@ use App\Models\Game;
 use App\Models\MatchArchetype;
 use App\Models\MtgoMatch;
 use App\Models\Player;
+use App\Models\SideboardGuide;
+use App\Models\SideboardGuideCard;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -70,6 +73,7 @@ beforeEach(function () {
     Card::create(['mtgo_id' => '201', 'oracle_id' => 'o-rip', 'name' => 'Rest in Peace', 'type' => 'Enchantment', 'color_identity' => 'W']);
     Card::create(['mtgo_id' => '202', 'oracle_id' => 'o-bolt', 'name' => 'Lightning Bolt', 'type' => 'Instant', 'color_identity' => 'R']);
     Card::create(['mtgo_id' => '203', 'oracle_id' => 'o-cut', 'name' => 'Cut Down', 'type' => 'Instant', 'color_identity' => 'B']);
+    Card::create(['mtgo_id' => '302', 'oracle_id' => 'o-bolt', 'name' => 'Lightning Bolt', 'type' => 'Instant', 'color_identity' => 'R']);
 });
 
 it('reports sided-in W/L and the postboard baseline against the archetype', function () {
@@ -313,4 +317,157 @@ it('includes the art crop on sided-in and sided-out cards', function () {
 
     expect($rip->artCrop)->toBe('https://img/rip-art.jpg');
     expect($bolt->artCrop)->toBe('https://img/bolt-art.jpg');
+});
+
+it('lists only the planned cards in Plan scope with planned quantities and stats', function () {
+    $archetype = Archetype::factory()->create(['name' => 'Esper Blink', 'format' => 'modern']);
+    $deck = Deck::factory()->create();
+
+    // 201 sideboard x2, 202 maindeck x4, 203 sideboard x2.
+    $version = guideVersion($deck, [['201', '2', '1'], ['202', '4', '0'], ['203', '2', '1']]);
+
+    guideGame($version, $archetype, 'tok-p1', true, ['o-rip' => ['sided_in' => true]]);
+
+    $plan = SideboardGuide::factory()->create(['deck_id' => $deck->id, 'archetype_id' => $archetype->id]);
+    SideboardGuideCard::factory()->create(['sideboard_guide_id' => $plan->id, 'oracle_id' => 'o-rip', 'quantity' => 1]);
+    SideboardGuideCard::factory()->out()->create(['sideboard_guide_id' => $plan->id, 'oracle_id' => 'o-bolt', 'quantity' => 1]);
+
+    $guide = BuildSideboardGuide::run($version, $archetype, null, SideboardGuideScope::Plan, $plan->load('cards'));
+
+    expect($guide->hasPlan)->toBeTrue();
+
+    // o-cut is in the sideboard but not in the plan, so it is not listed.
+    expect(collect($guide->sidedIn)->pluck('oracleId')->all())->toBe(['o-rip']);
+    expect($guide->sidedIn[0]->quantity)->toBe(1);
+    expect($guide->sidedIn[0]->plannedQuantity)->toBe(1);
+    expect($guide->sidedIn[0]->sidedInGames)->toBe(1);
+    expect($guide->sidedIn[0]->wins)->toBe(1);
+
+    // o-bolt has never been cut in history but the plan says cut it, so it is listed.
+    expect(collect($guide->sidedOut)->pluck('oracleId')->all())->toBe(['o-bolt']);
+    expect($guide->sidedOut[0]->quantity)->toBe(1);
+    expect($guide->sidedOut[0]->plannedQuantity)->toBe(1);
+    expect($guide->sidedOut[0]->sidedOutGames)->toBe(0);
+});
+
+it('lists every sideboard and maindeck card in Editor scope with planned quantities attached', function () {
+    $archetype = Archetype::factory()->create(['name' => 'Esper Blink', 'format' => 'modern']);
+    $deck = Deck::factory()->create();
+
+    $version = guideVersion($deck, [['201', '2', '1'], ['202', '4', '0'], ['203', '2', '1']]);
+
+    $plan = SideboardGuide::factory()->create(['deck_id' => $deck->id, 'archetype_id' => $archetype->id]);
+    SideboardGuideCard::factory()->create(['sideboard_guide_id' => $plan->id, 'oracle_id' => 'o-rip', 'quantity' => 2]);
+
+    $guide = BuildSideboardGuide::run($version, $archetype, null, SideboardGuideScope::Editor, $plan->load('cards'));
+
+    expect(collect($guide->sidedIn)->pluck('oracleId')->sort()->values()->all())->toBe(['o-cut', 'o-rip']);
+
+    $rip = collect($guide->sidedIn)->firstWhere('oracleId', 'o-rip');
+    expect($rip->quantity)->toBe(2);
+    expect($rip->plannedQuantity)->toBe(2);
+
+    $cut = collect($guide->sidedIn)->firstWhere('oracleId', 'o-cut');
+    expect($cut->plannedQuantity)->toBeNull();
+
+    // Zero-history maindeck card is still listed in Editor scope.
+    expect(collect($guide->sidedOut)->pluck('oracleId')->all())->toBe(['o-bolt']);
+    expect($guide->sidedOut[0]->quantity)->toBe(4);
+    expect($guide->sidedOut[0]->plannedQuantity)->toBeNull();
+});
+
+it('flags planned cards missing from the current version as stale', function () {
+    $archetype = Archetype::factory()->create(['name' => 'Esper Blink', 'format' => 'modern']);
+    $deck = Deck::factory()->create();
+
+    // Rest in Peace (201) is no longer in the deck.
+    $version = guideVersion($deck, [['202', '4', '0'], ['203', '2', '1']]);
+
+    $plan = SideboardGuide::factory()->create(['deck_id' => $deck->id, 'archetype_id' => $archetype->id]);
+    SideboardGuideCard::factory()->create(['sideboard_guide_id' => $plan->id, 'oracle_id' => 'o-rip', 'quantity' => 2]);
+
+    $guide = BuildSideboardGuide::run($version, $archetype, null, SideboardGuideScope::Plan, $plan->load('cards'));
+
+    expect($guide->sidedIn)->toHaveCount(1);
+    expect($guide->sidedIn[0]->oracleId)->toBe('o-rip');
+    expect($guide->sidedIn[0]->name)->toBe('Rest in Peace');
+    expect($guide->sidedIn[0]->stale)->toBeTrue();
+    expect($guide->sidedIn[0]->plannedQuantity)->toBe(2);
+});
+
+it('reports hasPlan false in History scope and for an empty plan', function () {
+    $archetype = Archetype::factory()->create(['name' => 'Esper Blink', 'format' => 'modern']);
+    $deck = Deck::factory()->create();
+    $version = guideVersion($deck, [['201', '2', '1'], ['202', '4', '0']]);
+
+    expect(BuildSideboardGuide::run($version, $archetype)->hasPlan)->toBeFalse();
+
+    $empty = SideboardGuide::factory()->create(['deck_id' => $deck->id, 'archetype_id' => $archetype->id]);
+
+    expect(BuildSideboardGuide::run($version, $archetype, null, SideboardGuideScope::Editor, $empty->load('cards'))->hasPlan)->toBeFalse();
+});
+
+it('rejects Plan and Editor scopes without a plan', function () {
+    $archetype = Archetype::factory()->create(['format' => 'modern']);
+    $deck = Deck::factory()->create();
+    $version = guideVersion($deck, [['201', '2', '1']]);
+
+    BuildSideboardGuide::run($version, $archetype, null, SideboardGuideScope::Plan);
+})->throws(InvalidArgumentException::class);
+
+it('rejects Editor scope without a plan', function () {
+    $archetype = Archetype::factory()->create(['format' => 'modern']);
+    $deck = Deck::factory()->create();
+    $version = guideVersion($deck, [['201', '2', '1']]);
+
+    BuildSideboardGuide::run($version, $archetype, null, SideboardGuideScope::Editor);
+})->throws(InvalidArgumentException::class);
+
+it('marks a planned in-card that moved to the maindeck as stale while still listing it as a maindeck row', function () {
+    $archetype = Archetype::factory()->create(['name' => 'Esper Blink', 'format' => 'modern']);
+    $deck = Deck::factory()->create();
+
+    // Rest in Peace (201) used to be in the sideboard; it is now maindeck only.
+    $version = guideVersion($deck, [['201', '2', '0'], ['202', '4', '0'], ['203', '2', '1']]);
+
+    $plan = SideboardGuide::factory()->create(['deck_id' => $deck->id, 'archetype_id' => $archetype->id]);
+    SideboardGuideCard::factory()->create(['sideboard_guide_id' => $plan->id, 'oracle_id' => 'o-rip', 'quantity' => 2]);
+
+    $guide = BuildSideboardGuide::run($version, $archetype, null, SideboardGuideScope::Editor, $plan->load('cards'));
+
+    $staleIn = collect($guide->sidedIn)->firstWhere('oracleId', 'o-rip');
+    expect($staleIn)->not->toBeNull();
+    expect($staleIn->stale)->toBeTrue();
+    expect($staleIn->quantity)->toBe(0);
+    expect($staleIn->plannedQuantity)->toBe(2);
+
+    $maindeckRip = collect($guide->sidedOut)->firstWhere('oracleId', 'o-rip');
+    expect($maindeckRip)->not->toBeNull();
+    expect($maindeckRip->stale)->toBeFalse();
+    expect($maindeckRip->quantity)->toBe(2);
+    expect($maindeckRip->plannedQuantity)->toBeNull();
+});
+
+it('lists a card split across zones in both editor columns with per-zone copies and no stale flag', function () {
+    $archetype = Archetype::factory()->create(['name' => 'Esper Blink', 'format' => 'modern']);
+    $deck = Deck::factory()->create();
+
+    // 3 Bolt main + 1 Bolt board, plus a second Bolt printing in the main.
+    $version = guideVersion($deck, [['202', '2', '0'], ['302', '1', '0'], ['202', '1', '1'], ['201', '2', '1']]);
+
+    $plan = SideboardGuide::factory()->create(['deck_id' => $deck->id, 'archetype_id' => $archetype->id]);
+    SideboardGuideCard::factory()->out()->create(['sideboard_guide_id' => $plan->id, 'oracle_id' => 'o-bolt', 'quantity' => 3]);
+
+    $guide = BuildSideboardGuide::run($version, $archetype, null, SideboardGuideScope::Editor, $plan->load('cards'));
+
+    $boardBolt = collect($guide->sidedIn)->firstWhere('oracleId', 'o-bolt');
+    expect($boardBolt)->not->toBeNull();
+    expect($boardBolt->quantity)->toBe(1);
+    expect($boardBolt->stale)->toBeFalse();
+
+    $mainBolt = collect($guide->sidedOut)->firstWhere('oracleId', 'o-bolt');
+    expect($mainBolt)->not->toBeNull();
+    expect($mainBolt->quantity)->toBe(3);
+    expect($mainBolt->plannedQuantity)->toBe(3);
+    expect($mainBolt->stale)->toBeFalse();
 });

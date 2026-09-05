@@ -16,5 +16,7 @@ class SideboardGuideData extends Data
         public array $sidedOut,
         public int $postboardGames,
         public string $postboardRecord,
+        /** True when an authored plan with at least one card shaped this payload. */
+        public bool $hasPlan = false,
     ) {}
 }

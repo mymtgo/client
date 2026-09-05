@@ -9,6 +9,7 @@ use App\Models\Game;
 use App\Models\MatchArchetype;
 use App\Models\MtgoMatch;
 use App\Models\Player;
+use App\Models\SideboardGuide;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -96,4 +97,27 @@ it('deletes a note', function () {
     $this->delete(route('overlay.notes.destroy', ['note' => $note->id]))->assertRedirect();
 
     expect(DeckArchetypeNote::whereKey($note->id)->exists())->toBeFalse();
+});
+
+it('creates a sideboard guide in the background when noting an unguided matchup', function () {
+    [$deck, $archetype] = notableMatch();
+
+    $this->post(route('overlay.notes.store'), ['body' => 'Board in Rest in Peace'])
+        ->assertRedirect();
+
+    $guide = SideboardGuide::sole();
+
+    expect($guide->deck_id)->toBe($deck->id);
+    expect($guide->archetype_id)->toBe($archetype->id);
+});
+
+it('does not create a second guide when one already exists for the matchup', function () {
+    [$deck, $archetype] = notableMatch();
+
+    SideboardGuide::factory()->create(['deck_id' => $deck->id, 'archetype_id' => $archetype->id]);
+
+    $this->post(route('overlay.notes.store'), ['body' => 'Board in Rest in Peace'])
+        ->assertRedirect();
+
+    expect(SideboardGuide::count())->toBe(1);
 });

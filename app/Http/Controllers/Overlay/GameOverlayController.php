@@ -12,10 +12,12 @@ use App\Actions\Overlay\GetOpponentReveals;
 use App\Actions\Overlay\ResolveOverlayOpponent;
 use App\Data\Front\SideboardGuideData;
 use App\Enums\MatchState;
+use App\Enums\SideboardGuideScope;
 use App\Facades\AppSettings;
 use App\Http\Controllers\Controller;
 use App\Models\Archetype;
 use App\Models\MtgoMatch;
+use App\Models\SideboardGuide;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -80,17 +82,34 @@ class GameOverlayController extends Controller
         ]);
     }
 
+    /**
+     * The player's own plan when they have written one for this matchup, else
+     * the history/community view. A guide with no cards (one created in the
+     * background by a note) is not a plan, so it falls through to history.
+     */
     private function sideboardGuide(?MtgoMatch $match, ?Archetype $archetype): ?SideboardGuideData
     {
         if (! $match?->deckVersion || ! $archetype) {
             return null;
         }
 
-        return BuildSideboardGuide::run(
-            $match->deckVersion,
-            $archetype,
-            FetchCommunitySideboardRates::run($match->deckVersion, $archetype),
-        );
+        $version = $match->deckVersion;
+        $community = FetchCommunitySideboardRates::run($version, $archetype);
+
+        $plan = $version->deck
+            ? SideboardGuide::query()
+                ->where('deck_id', $version->deck->id)
+                ->where('archetype_id', $archetype->id)
+                ->whereHas('cards')
+                ->with('cards')
+                ->first()
+            : null;
+
+        if ($plan) {
+            return BuildSideboardGuide::run($version, $archetype, $community, SideboardGuideScope::Plan, $plan);
+        }
+
+        return BuildSideboardGuide::run($version, $archetype, $community);
     }
 
     /**

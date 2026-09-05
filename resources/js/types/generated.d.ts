@@ -314,12 +314,29 @@ winrate: number | null;
 communitySidedIn: number | null;
 communityGames: number | null;
 communityRate: number | null;
+plannedQuantity: number | null;
+stale: boolean;
 };
 export type SideboardGuideData = {
 sidedIn: Array<any>;
 sidedOut: Array<any>;
 postboardGames: number;
 postboardRecord: string;
+hasPlan: boolean;
+};
+export type SideboardGuideSummaryData = {
+id: number;
+archetypeId: number;
+archetypeName: string;
+archetypeColorIdentity: string | null;
+cardsIn: number;
+cardsOut: number;
+notesCount: number;
+updatedAt: string;
+matches: number;
+matchRecord: string | null;
+matchWinrate: number | null;
+gameWinrate: number | null;
 };
 export type SidedOutCardData = {
 oracleId: string;
@@ -327,9 +344,12 @@ name: string;
 type: string | null;
 image: string | null;
 artCrop: string | null;
+quantity: number;
 sidedOutGames: number;
 communitySidedOut: number | null;
 communityGames: number | null;
 communityRate: number | null;
+plannedQuantity: number | null;
+stale: boolean;
 };
 }

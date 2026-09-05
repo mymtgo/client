@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Overlay;
 
 use App\Actions\Overlay\ResolveOverlayOpponent;
+use App\Actions\SideboardGuides\EnsureSideboardGuide;
 use App\Enums\MatchState;
 use App\Http\Controllers\Controller;
+use App\Models\Archetype;
 use App\Models\DeckArchetypeNote;
 use App\Models\MtgoMatch;
 use Illuminate\Http\RedirectResponse;
@@ -29,14 +31,17 @@ class StoreNoteController extends Controller
 
         $deck = $match?->deckVersion?->deck;
         $archetypeId = $match ? ResolveOverlayOpponent::run($match)?->archetypeId : null;
+        $archetype = $archetypeId ? Archetype::query()->find($archetypeId) : null;
 
-        if (! $deck || ! $archetypeId) {
+        if (! $deck || ! $archetype) {
             return back();
         }
 
+        EnsureSideboardGuide::run($deck, $archetype);
+
         DeckArchetypeNote::create([
             'deck_id' => $deck->id,
-            'archetype_id' => $archetypeId,
+            'archetype_id' => $archetype->id,
             'body' => $validated['body'],
         ]);
 

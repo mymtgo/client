@@ -1,19 +1,20 @@
 <script setup lang="ts">
-import { Link, router } from '@inertiajs/vue3';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import CardStatsController from '@/actions/App/Http/Controllers/Decks/CardStatsController';
+import DashboardController from '@/actions/App/Http/Controllers/Decks/DashboardController';
+import DecklistController from '@/actions/App/Http/Controllers/Decks/DecklistController';
+import GameStatsController from '@/actions/App/Http/Controllers/Decks/GameStatsController';
+import LeaguesController from '@/actions/App/Http/Controllers/Decks/LeaguesController';
+import MatchesController from '@/actions/App/Http/Controllers/Decks/MatchesController';
+import MatchupsController from '@/actions/App/Http/Controllers/Decks/MatchupsController';
+import SettingsController from '@/actions/App/Http/Controllers/Decks/SettingsController';
+import SideboardGuidesController from '@/actions/App/Http/Controllers/Decks/SideboardGuidesController';
+import TournamentsController from '@/actions/App/Http/Controllers/Decks/TournamentsController';
 import ManaSymbols from '@/components/ManaSymbols.vue';
 import EditableDeckName from '@/components/decks/EditableDeckName.vue';
-import DashboardController from '@/actions/App/Http/Controllers/Decks/DashboardController';
-import CardStatsController from '@/actions/App/Http/Controllers/Decks/CardStatsController';
-import GameStatsController from '@/actions/App/Http/Controllers/Decks/GameStatsController';
-import MatchesController from '@/actions/App/Http/Controllers/Decks/MatchesController';
-import LeaguesController from '@/actions/App/Http/Controllers/Decks/LeaguesController';
-import TournamentsController from '@/actions/App/Http/Controllers/Decks/TournamentsController';
-import MatchupsController from '@/actions/App/Http/Controllers/Decks/MatchupsController';
-import DecklistController from '@/actions/App/Http/Controllers/Decks/DecklistController';
-import SettingsController from '@/actions/App/Http/Controllers/Decks/SettingsController';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { VersionStats } from '@/types/decks';
-import { LayoutDashboard, BarChart3, Boxes, Swords, Trophy as TrophyIcon, Award, ScrollText, List, SettingsIcon } from 'lucide-vue-next';
+import { Link, router } from '@inertiajs/vue3';
+import { Award, BarChart3, BookOpen, Boxes, LayoutDashboard, List, ScrollText, SettingsIcon, Swords, Trophy as TrophyIcon } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
 
 const props = defineProps<{
@@ -54,6 +55,7 @@ const navItems = computed(() => [
     { key: 'leagues', label: 'Leagues', icon: TrophyIcon, href: LeaguesController.url({ deck: props.deck.id }) + timeframeQuery.value },
     { key: 'tournaments', label: 'Tournaments', icon: Award, href: TournamentsController.url({ deck: props.deck.id }) + timeframeQuery.value },
     { key: 'matchups', label: 'Matchups', icon: ScrollText, href: MatchupsController.url({ deck: props.deck.id }) + timeframeQuery.value },
+    { key: 'sideboard-guides', label: 'Sideboard Guides', icon: BookOpen, href: SideboardGuidesController.url({ deck: props.deck.id }) },
     { key: 'decklist', label: 'Decklist', icon: List, href: DecklistController.url({ deck: props.deck.id }) },
     { key: 'settings', label: 'Settings', icon: SettingsIcon, href: SettingsController.url({ deck: props.deck.id }) },
 ]);
@@ -132,7 +134,6 @@ const navItems = computed(() => [
                 <span class="shadow-red-500 text-shadow-md">{{ item.label }}</span>
             </Link>
         </nav>
-
     </div>
 </template>
 

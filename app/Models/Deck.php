@@ -42,6 +42,12 @@ class Deck extends Model
         return $this->hasMany(DeckVersion::class);
     }
 
+    /** @return HasMany<SideboardGuide, $this> */
+    public function sideboardGuides(): HasMany
+    {
+        return $this->hasMany(SideboardGuide::class);
+    }
+
     /** @return HasOne<DeckVersion, $this> */
     public function latestVersion(): HasOne
     {
