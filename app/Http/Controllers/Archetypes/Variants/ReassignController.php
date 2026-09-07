@@ -18,7 +18,7 @@ class ReassignController extends Controller
     ): RedirectResponse {
         ReassignArchetypeVariant::run($deck, $request->target());
 
-        return to_route('archetypes.show', $request->target())
-            ->with('success', 'Variant reassigned.');
+        return to_route('archetypes.show', $archetype)
+            ->with('success', 'Variant reassigned to '.$request->target()->name.'.');
     }
 }

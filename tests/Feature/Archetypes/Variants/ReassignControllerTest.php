@@ -6,7 +6,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 
-it('reassigns variant and redirects to target show', function (): void {
+it('reassigns variant and stays on the source archetype', function (): void {
     $source = Archetype::factory()->create(['format' => 'modern']);
     $target = Archetype::factory()->create(['format' => 'modern']);
     ArchetypeDeck::factory()->for($source)->create();
@@ -17,8 +17,22 @@ it('reassigns variant and redirects to target show', function (): void {
         ['target_id' => $target->id],
     );
 
-    $response->assertRedirect(route('archetypes.show', $target));
+    $response->assertRedirect(route('archetypes.show', $source));
     expect($variant->fresh()->archetype_id)->toBe($target->id);
+});
+
+it('stays on the source archetype even when the source becomes merged', function (): void {
+    $source = Archetype::factory()->create(['format' => 'modern']);
+    $target = Archetype::factory()->create(['format' => 'modern']);
+    $variant = ArchetypeDeck::factory()->for($source)->create();
+
+    $response = $this->post(
+        route('archetypes.variants.reassign', ['archetype' => $source->id, 'deck' => $variant->id]),
+        ['target_id' => $target->id],
+    );
+
+    $response->assertRedirect(route('archetypes.show', $source));
+    expect($source->fresh()->merged_into_id)->toBe($target->id);
 });
 
 it('rejects when variant belongs to a different archetype', function (): void {
