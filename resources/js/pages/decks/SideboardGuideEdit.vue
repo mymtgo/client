@@ -2,7 +2,7 @@
 import UpdateCardsController from '@/actions/App/Http/Controllers/Decks/SideboardGuides/UpdateCardsController';
 import SideboardGuidesController from '@/actions/App/Http/Controllers/Decks/SideboardGuidesController';
 import AppLayout from '@/AppLayout.vue';
-import CardHoverPreview from '@/components/cards/CardHoverPreview.vue';
+import SideboardGuideBalance from '@/components/decks/sideboard-guides/SideboardGuideBalance.vue';
 import SideboardGuideCardRow from '@/components/decks/sideboard-guides/SideboardGuideCardRow.vue';
 import SideboardGuideNotes from '@/components/decks/sideboard-guides/SideboardGuideNotes.vue';
 import ManaSymbols from '@/components/ManaSymbols.vue';
@@ -65,7 +65,12 @@ const totalOut = computed(() =>
         .filter(([k]) => k.startsWith('out:'))
         .reduce((sum, [, q]) => sum + q, 0),
 );
-const balanced = computed(() => totalIn.value === totalOut.value);
+/**
+ * The board the plan has to come back to. In editor scope the Bring in column is
+ * the whole sideboard, so its copies are the board's size; stale rows count 0,
+ * which is right, since the card has already left the board.
+ */
+const sideboardSize = computed(() => inCards.value.reduce((sum, card) => sum + card.quantity, 0));
 
 /**
  * Card changes autosave: each stepper click restarts a short debounce, then the
@@ -189,13 +194,6 @@ const communityCaption = computed(() => {
             </div>
             <div class="flex items-center gap-3">
                 <span
-                    class="rounded-md border px-2 py-1 text-xs font-semibold tabular-nums"
-                    :class="balanced ? 'border-border text-muted-foreground' : 'border-amber-500/40 bg-amber-500/10 text-amber-300'"
-                    :title="balanced ? 'In and out are balanced' : 'Cards in and out do not match'"
-                >
-                    +{{ totalIn }} / -{{ totalOut }}
-                </span>
-                <span
                     v-if="saveLabel"
                     class="text-xs tabular-nums"
                     :class="saveState === 'error' ? 'text-red-300' : 'text-muted-foreground'"
@@ -213,6 +211,13 @@ const communityCaption = computed(() => {
         <SideboardGuideNotes :deck-id="deck.id" :guide-id="guide.id" :current="notes.current" :other="notes.other" />
 
         <h3 class="border-t border-border pt-4 text-sm font-semibold">Sideboarding</h3>
+
+        <!-- Pinned over the lists, centred on the seam between them. Sticky sits on the
+             row rather than on the chip, because a sticky box travels only within its
+             parent, and this row's parent is the whole scrolling page column. -->
+        <div v-if="hasVersion && sideboardSize > 0" class="sticky top-0 z-20 -mb-2 flex justify-center">
+            <SideboardGuideBalance :total-in="totalIn" :total-out="totalOut" :sideboard-size="sideboardSize" />
+        </div>
 
         <p v-if="!hasVersion" class="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
             This deck has no saved version yet, so there is nothing to plan with. Notes still work above.
@@ -233,28 +238,29 @@ const communityCaption = computed(() => {
                 <div v-for="(cards, type) in groupedIn" :key="type" class="px-3">
                     <p class="py-1 text-[10px] font-semibold tracking-wider text-muted-foreground/60 uppercase">{{ type }}</p>
                     <div class="divide-y divide-border/60">
-                        <CardHoverPreview v-for="card in cards" :key="card.oracleId" :image="card.image" :name="card.name">
-                            <SideboardGuideCardRow
-                                :name="card.name"
-                                :art-crop="card.artCrop"
-                                :owned="card.quantity"
-                                :planned="selection[`in:${card.oracleId}`] ?? 0"
-                                :stale="card.stale"
-                                direction="in"
-                                @change="(value) => setPlanned('in', card.oracleId, value)"
-                            >
-                                <span class="flex shrink-0 gap-2 text-xs tabular-nums">
-                                    <span class="w-10 text-right font-semibold">
-                                        <template v-if="card.communityRate !== null">{{ card.communityRate }}%</template>
-                                        <template v-else>—</template>
-                                    </span>
-                                    <span class="w-20 text-right text-muted-foreground">
-                                        <template v-if="card.sidedInGames > 0">{{ card.wins }}–{{ card.losses }} ({{ card.winrate }}%)</template>
-                                        <template v-else>—</template>
-                                    </span>
+                        <SideboardGuideCardRow
+                            v-for="card in cards"
+                            :key="card.oracleId"
+                            :name="card.name"
+                            :art-crop="card.artCrop"
+                            :image="card.image"
+                            :owned="card.quantity"
+                            :planned="selection[`in:${card.oracleId}`] ?? 0"
+                            :stale="card.stale"
+                            direction="in"
+                            @change="(value) => setPlanned('in', card.oracleId, value)"
+                        >
+                            <span class="flex shrink-0 gap-2 text-xs tabular-nums">
+                                <span class="w-10 text-right font-semibold">
+                                    <template v-if="card.communityRate !== null">{{ card.communityRate }}%</template>
+                                    <template v-else>—</template>
                                 </span>
-                            </SideboardGuideCardRow>
-                        </CardHoverPreview>
+                                <span class="w-20 text-right text-muted-foreground">
+                                    <template v-if="card.sidedInGames > 0">{{ card.wins }}–{{ card.losses }} ({{ card.winrate }}%)</template>
+                                    <template v-else>—</template>
+                                </span>
+                            </span>
+                        </SideboardGuideCardRow>
                     </div>
                 </div>
             </section>
@@ -272,28 +278,29 @@ const communityCaption = computed(() => {
                 <div v-for="(cards, type) in groupedOut" :key="type" class="px-3">
                     <p class="py-1 text-[10px] font-semibold tracking-wider text-muted-foreground/60 uppercase">{{ type }}</p>
                     <div class="divide-y divide-border/60">
-                        <CardHoverPreview v-for="card in cards" :key="card.oracleId" :image="card.image" :name="card.name">
-                            <SideboardGuideCardRow
-                                :name="card.name"
-                                :art-crop="card.artCrop"
-                                :owned="card.quantity"
-                                :planned="selection[`out:${card.oracleId}`] ?? 0"
-                                :stale="card.stale"
-                                direction="out"
-                                @change="(value) => setPlanned('out', card.oracleId, value)"
-                            >
-                                <span class="flex shrink-0 gap-2 text-xs tabular-nums">
-                                    <span class="w-10 text-right font-semibold">
-                                        <template v-if="card.communityRate !== null">{{ card.communityRate }}%</template>
-                                        <template v-else>—</template>
-                                    </span>
-                                    <span class="w-20 text-right text-muted-foreground">
-                                        <template v-if="card.sidedOutGames > 0">{{ card.sidedOutGames }}×</template>
-                                        <template v-else>—</template>
-                                    </span>
+                        <SideboardGuideCardRow
+                            v-for="card in cards"
+                            :key="card.oracleId"
+                            :name="card.name"
+                            :art-crop="card.artCrop"
+                            :image="card.image"
+                            :owned="card.quantity"
+                            :planned="selection[`out:${card.oracleId}`] ?? 0"
+                            :stale="card.stale"
+                            direction="out"
+                            @change="(value) => setPlanned('out', card.oracleId, value)"
+                        >
+                            <span class="flex shrink-0 gap-2 text-xs tabular-nums">
+                                <span class="w-10 text-right font-semibold">
+                                    <template v-if="card.communityRate !== null">{{ card.communityRate }}%</template>
+                                    <template v-else>—</template>
                                 </span>
-                            </SideboardGuideCardRow>
-                        </CardHoverPreview>
+                                <span class="w-20 text-right text-muted-foreground">
+                                    <template v-if="card.sidedOutGames > 0">{{ card.sidedOutGames }}×</template>
+                                    <template v-else>—</template>
+                                </span>
+                            </span>
+                        </SideboardGuideCardRow>
                     </div>
                 </div>
             </section>
