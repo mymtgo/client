@@ -87,11 +87,6 @@ export type MatchupHistoryEntry = {
     gameResults: (boolean | null)[];
 };
 
-export type VersionDecklist = {
-    maindeck: Record<string, App.Data.Front.CardData[]>;
-    sideboard: App.Data.Front.CardData[];
-};
-
 export interface DeckWinrate {
     readonly wins: number;
     readonly games: number;

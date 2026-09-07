@@ -9,7 +9,7 @@ import { useScreenshot } from '@/composables/useScreenshot';
 import { useToast } from '@/composables/useToast';
 import DeckList from '@/pages/decks/partials/DeckList.vue';
 import HypergeometricCalculator from '@/pages/decks/partials/HypergeometricCalculator.vue';
-import type { VersionDecklist, VersionStats } from '@/types/decks';
+import type { VersionStats } from '@/types/decks';
 import { Camera, Download, Loader2 } from 'lucide-vue-next';
 import { computed, nextTick, ref } from 'vue';
 
@@ -23,20 +23,12 @@ const props = defineProps<{
     currentPage: string;
     maindeck: Record<string, App.Data.Front.CardData[]>;
     sideboard: App.Data.Front.CardData[];
-    versionDecklists: Record<string, VersionDecklist>;
 }>();
-
-const selectedVersionKey = ref<string>(String(props.currentVersionId ?? ''));
-
-const activeDecklist = computed((): VersionDecklist => {
-    return props.versionDecklists?.[selectedVersionKey.value] ?? { maindeck: props.maindeck, sideboard: props.sideboard };
-});
 
 type ColorStat = { color: string; label: string; count: number; total: number; percentage: number };
 
 const colorDistribution = computed((): ColorStat[] => {
-    const dl = activeDecklist.value;
-    const nonLandCards = Object.entries(dl.maindeck)
+    const nonLandCards = Object.entries(props.maindeck)
         .filter(([type]) => !type.includes('Land'))
         .flatMap(([, cards]) => cards);
 
@@ -69,8 +61,7 @@ const visibleColorDistribution = computed(() => colorDistribution.value.filter((
 type CmcBucket = { cmc: string; count: number };
 
 const cmcDistribution = computed((): CmcBucket[] => {
-    const dl = activeDecklist.value;
-    const nonLandCards = Object.entries(dl.maindeck)
+    const nonLandCards = Object.entries(props.maindeck)
         .filter(([type]) => !type.includes('Land'))
         .flatMap(([, cards]) => cards);
 
@@ -95,12 +86,11 @@ const cmcDistribution = computed((): CmcBucket[] => {
 const cmcMax = computed(() => Math.max(...cmcDistribution.value.map((d) => d.count), 1));
 
 const decklistOrgUrl = computed(() => {
-    const dl = activeDecklist.value;
-    const mainCards = Object.values(dl.maindeck)
+    const mainCards = Object.values(props.maindeck)
         .flat()
         .map((c) => `${c.quantity} ${c.name}`)
         .join('\n');
-    const sideCards = dl.sideboard.map((c) => `${c.quantity} ${c.name}`).join('\n');
+    const sideCards = props.sideboard.map((c) => `${c.quantity} ${c.name}`).join('\n');
     const params = new URLSearchParams({
         deckmain: mainCards,
         deckside: sideCards,
@@ -207,7 +197,7 @@ async function copyDeckScreenshot() {
         </div>
         <div class="grid grid-cols-4 gap-4">
             <div class="col-span-3">
-                <DeckList :maindeck="activeDecklist.maindeck" :sideboard="activeDecklist.sideboard" />
+                <DeckList :maindeck="maindeck" :sideboard="sideboard" />
             </div>
             <div class="col-span-1 flex flex-col gap-4">
                 <!-- CMC Distribution -->
@@ -243,7 +233,7 @@ async function copyDeckScreenshot() {
                 </div>
 
                 <!-- Hypergeometric Draw Odds -->
-                <HypergeometricCalculator :maindeck="activeDecklist.maindeck" />
+                <HypergeometricCalculator :maindeck="maindeck" />
             </div>
         </div>
         <!-- Off-screen screenshot capture -->
