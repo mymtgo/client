@@ -196,3 +196,26 @@ it('returns empty card arrays', function () {
     expect($result['bestCards'])->toBe([])
         ->and($result['worstCards'])->toBe([]);
 });
+
+it('counts draws as matches played and shows them in the record', function () {
+    $deck = Deck::factory()->create();
+    $deckVersion = DeckVersion::factory()->create(['deck_id' => $deck->id]);
+    $archetype = Archetype::factory()->create();
+
+    createDetailMatch($deckVersion, $archetype, 'win', [
+        ['won' => true, 'on_play' => true, 'turn_count' => null, 'mulligan_count' => 0],
+    ]);
+    createDetailMatch($deckVersion, $archetype, 'loss', [
+        ['won' => false, 'on_play' => true, 'turn_count' => null, 'mulligan_count' => 0],
+    ]);
+    createDetailMatch($deckVersion, $archetype, 'draw', [
+        ['won' => true, 'on_play' => true, 'turn_count' => null, 'mulligan_count' => 0],
+        ['won' => false, 'on_play' => false, 'turn_count' => null, 'mulligan_count' => 0],
+    ]);
+
+    $result = GetArchetypeMatchupDetail::run($deck, $archetype, null, null);
+
+    expect($result['matchWinrate'])->toBe(33)
+        ->and($result['matchRecord'])->toBe('1 - 1 - 1')
+        ->and($result['matches'])->toBe(3);
+});

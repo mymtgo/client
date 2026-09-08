@@ -6,6 +6,7 @@ use App\Actions\Util\Winrate;
 use App\Models\Deck;
 use App\Models\DeckVersion;
 use App\Models\League;
+use App\Support\MatchRecord;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 
@@ -14,7 +15,7 @@ class GetDeckStats
     /**
      * Compute match, game, and OTP/OTD stats for a deck within a date range.
      *
-     * @return array{wins: int, losses: int, draws: int, total: int, gamesWon: int, gamesLost: int, matchWinrate: int, gameWinrate: int, otpWon: int, otpLost: int, otpRate: int, otdWon: int, otdLost: int, otdRate: int, trophies: int, allMatchIds: Collection}
+     * @return array{matchRecord: MatchRecord, gamesWon: int, gamesLost: int, gameWinrate: int, otpWon: int, otpLost: int, otpRate: int, otdWon: int, otdLost: int, otdRate: int, trophies: int, allMatchIds: Collection}
      */
     public static function run(Deck $deck, Carbon $from, Carbon $to, ?DeckVersion $deckVersion = null): array
     {
@@ -23,21 +24,8 @@ class GetDeckStats
             ->when($deckVersion, fn ($q) => $q->where('matches.deck_version_id', $deckVersion->id));
 
         // Query 1: Match-level outcome counts. Kept off the games table so
-        // gameless imported matches are still counted; draws/unknown outcomes
-        // fall out of wins/losses but remain in the total.
-        $matchCounts = $matchesQuery->clone()
-            ->toBase()
-            ->selectRaw("
-                COUNT(*) as total,
-                SUM(CASE WHEN matches.outcome = 'win' THEN 1 ELSE 0 END) as wins,
-                SUM(CASE WHEN matches.outcome = 'loss' THEN 1 ELSE 0 END) as losses
-            ")
-            ->first();
-
-        $total = (int) ($matchCounts->total ?? 0);
-        $wins = (int) ($matchCounts->wins ?? 0);
-        $losses = (int) ($matchCounts->losses ?? 0);
-        $draws = max(0, $total - $wins - $losses);
+        // gameless imported matches are still counted.
+        $matchRecord = MatchRecord::fromQuery($matchesQuery->getQuery());
 
         // Query 2: Game counts from real game rows.
         $gameRowCounts = $matchesQuery->clone()
@@ -98,13 +86,9 @@ class GetDeckStats
             ->count();
 
         return [
-            'wins' => $wins,
-            'losses' => $losses,
-            'draws' => $draws,
-            'total' => $total,
+            'matchRecord' => $matchRecord,
             'gamesWon' => $gamesWon,
             'gamesLost' => $gamesLost,
-            'matchWinrate' => Winrate::percentage($wins, $losses),
             'gameWinrate' => Winrate::percentage($gamesWon, $gamesLost),
             'otpWon' => $otpWon,
             'otpLost' => $otpLost,

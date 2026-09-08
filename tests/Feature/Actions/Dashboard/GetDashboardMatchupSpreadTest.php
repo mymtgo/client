@@ -1,6 +1,7 @@
 <?php
 
 use App\Actions\Dashboard\GetDashboardMatchupSpread;
+use App\Enums\MatchOutcome;
 use App\Models\Account;
 use App\Models\Archetype;
 use App\Models\Deck;
@@ -53,12 +54,35 @@ it('returns top 5 opponent archetypes by match count', function () {
         'confidence' => 1.0,
     ]);
 
+    // A drawn match against the same archetype counts as played.
+    $draw = MtgoMatch::factory()->create([
+        'deck_version_id' => $version->id,
+        'outcome' => MatchOutcome::Draw,
+        'started_at' => now()->subDay(),
+    ]);
+    $drawGame = Game::create([
+        'match_id' => $draw->id,
+        'mtgo_id' => fake()->unique()->randomNumber(8),
+        'started_at' => $draw->started_at,
+        'ended_at' => $draw->started_at->addMinutes(10),
+        'won' => null,
+    ]);
+    $drawGame->players()->attach($opponent, ['on_play' => false, 'is_local' => false, 'instance_id' => 2]);
+    MatchArchetype::create([
+        'mtgo_match_id' => $draw->id,
+        'archetype_id' => $archetype->id,
+        'player_id' => $opponent->id,
+        'confidence' => 1.0,
+    ]);
+
     $result = GetDashboardMatchupSpread::run($account->id, now()->subWeek(), now());
     expect($result)->toHaveCount(1);
     expect($result[0]['name'])->toBe('Burn');
-    expect($result[0]['winrate'])->toBe(100);
-    expect($result[0]['wins'])->toBe(1);
-    expect($result[0]['losses'])->toBe(0);
+    expect($result[0]['record']->winrate)->toBe(50);
+    expect($result[0]['record']->wins)->toBe(1);
+    expect($result[0]['record']->losses)->toBe(0);
+    expect($result[0]['record']->draws)->toBe(1);
+    expect($result[0]['record']->total)->toBe(2);
 });
 
 it('limits to top 5 results', function () {

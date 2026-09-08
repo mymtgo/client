@@ -8,14 +8,14 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import ManaSymbols from '@/components/ManaSymbols.vue';
+import MatchRecord from '@/components/MatchRecord.vue';
 import WinRateBar from '@/components/WinRateBar.vue';
 import { Skull, Swords } from 'lucide-vue-next';
 
 type Opponent = {
     playerId: number;
     username: string;
-    matchesWon: number;
-    matchesLost: number;
+    record: App.Data.Front.MatchRecordData;
     formats: string[];
     archetypes: { name: string; colorIdentity: string | null }[];
     lastPlayedAt: string;
@@ -39,17 +39,10 @@ const props = defineProps<{
 const VISIBLE_ARCHETYPES = 3;
 
 const getTag = (opp: Opponent): 'nemesis' | 'rival' | null => {
-    const total = opp.matchesWon + opp.matchesLost;
-    if (total < 2) return null;
-    const wr = Math.round((opp.matchesWon / total) * 100);
-    if (wr <= 39) return 'nemesis';
-    if (wr <= 60) return 'rival';
+    if (opp.record.total < 2) return null;
+    if (opp.record.winrate <= 39) return 'nemesis';
+    if (opp.record.winrate <= 60) return 'rival';
     return null;
-};
-
-const winrate = (opp: Opponent) => {
-    const total = opp.matchesWon + opp.matchesLost;
-    return total === 0 ? 0 : Math.round((opp.matchesWon / total) * 100);
 };
 
 const search = ref(props.filters.search);
@@ -194,8 +187,8 @@ watch([sortBy, selectedFormat], reload);
                         </TableCell>
                         <TableCell>
                             <div class="flex flex-col gap-1">
-                                <WinRateBar :winrate="winrate(opp)" size="sm" />
-                                <span class="text-xs text-muted-foreground tabular-nums"> {{ opp.matchesWon }}W - {{ opp.matchesLost }}L </span>
+                                <WinRateBar :winrate="opp.record.winrate" size="sm" />
+                                <MatchRecord :record="opp.record" />
                             </div>
                         </TableCell>
                         <TableCell class="text-sm whitespace-nowrap text-muted-foreground">

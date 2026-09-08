@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\MatchOutcome;
 use App\Facades\AppSettings;
 use App\Models\Archetype;
 use App\Models\Deck;
@@ -12,7 +13,7 @@ uses(RefreshDatabase::class);
 
 beforeEach(fn () => Storage::fake());
 
-function seedDeck(array $attributes = [], int $won = 0, int $lost = 0): Deck
+function seedDeck(array $attributes = [], int $won = 0, int $lost = 0, int $drawn = 0): Deck
 {
     $deck = Deck::factory()->create($attributes);
     $version = DeckVersion::factory()->create(['deck_id' => $deck->id]);
@@ -25,6 +26,12 @@ function seedDeck(array $attributes = [], int $won = 0, int $lost = 0): Deck
     if ($lost > 0) {
         MtgoMatch::factory()->lost()->count($lost)->create([
             'deck_version_id' => $version->id,
+        ]);
+    }
+    if ($drawn > 0) {
+        MtgoMatch::factory()->count($drawn)->create([
+            'deck_version_id' => $version->id,
+            'outcome' => MatchOutcome::Draw,
         ]);
     }
 
@@ -107,9 +114,9 @@ it('computes weighted winrate stats per archetype group', function () {
     $response = $this->get(route('decks.index'));
 
     $response->assertInertia(fn ($page) => $page
-        ->where('groups.0.stats.totalMatches', 30)
-        ->where('groups.0.stats.totalWins', 24)
-        ->where('groups.0.stats.winrate', 80)
+        ->where('groups.0.stats.record.total', 30)
+        ->where('groups.0.stats.record.wins', 24)
+        ->where('groups.0.stats.record.winrate', 80)
     );
 });
 
@@ -179,5 +186,20 @@ it('hides trashed decks when the hide-archived setting is enabled', function () 
         ->assertInertia(fn ($page) => $page
             ->has('decks.data', 2)
             ->where('filters.hide_deleted', true)
+        );
+});
+
+it('sorts decks by win rate over every match played, draws included', function () {
+    AppSettings::setDecksGroupedByArchetype(false);
+
+    // 6 / 10 = 60%
+    seedDeck(['name' => 'No Draws'], won: 6, lost: 4);
+    // 7 / 14 = 50%. Ignoring draws it would be 7 / 11 = 64% and wrongly sort first.
+    seedDeck(['name' => 'With Draws'], won: 7, lost: 4, drawn: 3);
+
+    $this->get(route('decks.index', ['sort' => 'winRate']))
+        ->assertInertia(fn ($page) => $page
+            ->where('decks.data.0.name', 'No Draws')
+            ->where('decks.data.1.name', 'With Draws')
         );
 });

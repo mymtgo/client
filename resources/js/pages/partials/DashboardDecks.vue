@@ -10,7 +10,7 @@ const props = defineProps<{
 }>();
 
 const sorted = computed(() =>
-    [...props.deckStats].filter((d) => d.matchesCount >= 3).sort((a, b) => b.winrate - a.winrate),
+    [...props.deckStats].filter((d) => d.record.total >= 3).sort((a, b) => b.record.winrate - a.record.winrate),
 );
 
 const bestDeck = computed(() => sorted.value[0] ?? null);
@@ -34,11 +34,11 @@ const worstDeck = computed(() => sorted.value[sorted.value.length - 1] ?? null);
                         <span class="text-base font-semibold leading-tight">{{ bestDeck.name }}</span>
                         <div class="flex items-center gap-2">
                             <Badge variant="outline">{{ bestDeck.format }}</Badge>
-                            <span class="text-xs text-muted-foreground">{{ bestDeck.matchesCount }} matches</span>
+                            <span class="text-xs text-muted-foreground">{{ bestDeck.record.total }} matches</span>
                         </div>
                     </div>
                     <div class="w-28 shrink-0">
-                        <WinRateBar :winrate="bestDeck.winrate" />
+                        <WinRateBar :winrate="bestDeck.record.winrate" />
                     </div>
                 </div>
             </div>
@@ -57,11 +57,11 @@ const worstDeck = computed(() => sorted.value[sorted.value.length - 1] ?? null);
                         <span class="text-base font-semibold leading-tight">{{ worstDeck.name }}</span>
                         <div class="flex items-center gap-2">
                             <Badge variant="outline">{{ worstDeck.format }}</Badge>
-                            <span class="text-xs text-muted-foreground">{{ worstDeck.matchesCount }} matches</span>
+                            <span class="text-xs text-muted-foreground">{{ worstDeck.record.total }} matches</span>
                         </div>
                     </div>
                     <div class="w-28 shrink-0">
-                        <WinRateBar :winrate="worstDeck.winrate" />
+                        <WinRateBar :winrate="worstDeck.record.winrate" />
                     </div>
                 </div>
             </div>

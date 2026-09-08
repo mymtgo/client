@@ -1,12 +1,10 @@
 <script setup lang="ts">
+import MatchRecord from '@/components/MatchRecord.vue';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 type MatchupEntry = {
     name: string;
-    winrate: number;
-    wins: number;
-    losses: number;
-    matches: number;
+    record: App.Data.Front.MatchRecordData;
 };
 
 defineProps<{
@@ -31,20 +29,18 @@ defineProps<{
                         <div class="flex items-center gap-2 shrink-0">
                             <span
                                 class="font-bold tabular-nums"
-                                :class="entry.winrate >= 50 ? 'text-success' : 'text-destructive'"
+                                :class="entry.record.winrate >= 50 ? 'text-success' : 'text-destructive'"
                             >
-                                {{ entry.winrate }}%
+                                {{ entry.record.winrate }}%
                             </span>
-                            <span class="text-xs text-muted-foreground tabular-nums">
-                                {{ entry.wins }}W–{{ entry.losses }}L
-                            </span>
+                            <MatchRecord :record="entry.record" />
                         </div>
                     </div>
                     <div class="h-1.5 w-full overflow-hidden rounded-full bg-muted">
                         <div
                             class="h-full rounded-full transition-all"
-                            :class="entry.winrate >= 50 ? 'bg-success' : 'bg-destructive'"
-                            :style="{ width: `${entry.winrate}%` }"
+                            :class="entry.record.winrate >= 50 ? 'bg-success' : 'bg-destructive'"
+                            :style="{ width: `${entry.record.winrate}%` }"
                         />
                     </div>
                 </div>

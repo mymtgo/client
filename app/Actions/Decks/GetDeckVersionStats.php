@@ -5,6 +5,7 @@ namespace App\Actions\Decks;
 use App\Actions\Util\Winrate;
 use App\Models\Deck;
 use App\Models\Game;
+use App\Support\MatchRecord;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -70,8 +71,11 @@ class GetDeckVersionStats
             ->groupBy('deck_version_id');
 
         // Compute aggregate across all versions
-        $totalWins = $versions->sum('won_matches_count');
-        $totalLosses = $versions->sum('lost_matches_count');
+        $totalRecord = MatchRecord::fromTotal(
+            wins: (int) $versions->sum('won_matches_count'),
+            losses: (int) $versions->sum('lost_matches_count'),
+            total: (int) $versions->sum('matches_count'),
+        );
         $totalGamesWon = (int) $versionGameCounts->sum('games_won') + (int) $versionGamelessCounts->sum('games_won');
         $totalGamesLost = (int) $versionGameCounts->sum('games_lost') + (int) $versionGamelessCounts->sum('games_lost');
         $allOtp = $otpStats->flatten(1)->where('on_play', 1);
@@ -86,8 +90,7 @@ class GetDeckVersionStats
             label: 'All versions',
             isCurrent: false,
             dateLabel: null,
-            wins: $totalWins,
-            losses: $totalLosses,
+            matchRecord: $totalRecord,
             gamesWon: $totalGamesWon,
             gamesLost: $totalGamesLost,
             otpWon: $aggOtpWon,
@@ -110,8 +113,11 @@ class GetDeckVersionStats
                 label: 'v'.($i + 1),
                 isCurrent: $version->id === $latestVersionId,
                 dateLabel: $dateLabel,
-                wins: (int) ($version->won_matches_count ?? 0),
-                losses: (int) ($version->lost_matches_count ?? 0),
+                matchRecord: MatchRecord::fromTotal(
+                    wins: (int) ($version->won_matches_count ?? 0),
+                    losses: (int) ($version->lost_matches_count ?? 0),
+                    total: (int) ($version->matches_count ?? 0),
+                ),
                 gamesWon: (int) ($versionGameCounts->get($version->id)->games_won ?? 0) + (int) ($versionGamelessCounts->get($version->id)->games_won ?? 0),
                 gamesLost: (int) ($versionGameCounts->get($version->id)->games_lost ?? 0) + (int) ($versionGamelessCounts->get($version->id)->games_lost ?? 0),
                 otpWon: (int) ($vOtp->won ?? 0),
@@ -126,7 +132,7 @@ class GetDeckVersionStats
 
     private static function buildRow(
         ?int $id, string $label, bool $isCurrent, ?string $dateLabel,
-        int $wins, int $losses, int $gamesWon, int $gamesLost,
+        MatchRecord $matchRecord, int $gamesWon, int $gamesLost,
         int $otpWon, int $otpLost, int $otdWon, int $otdLost,
     ): array {
         return [
@@ -134,11 +140,9 @@ class GetDeckVersionStats
             'label' => $label,
             'isCurrent' => $isCurrent,
             'dateLabel' => $dateLabel,
-            'matchesWon' => $wins,
-            'matchesLost' => $losses,
+            'matchRecord' => $matchRecord->toData(),
             'gamesWon' => $gamesWon,
             'gamesLost' => $gamesLost,
-            'matchWinrate' => Winrate::percentage($wins, $losses),
             'gameWinrate' => Winrate::percentage($gamesWon, $gamesLost),
             'gamesOtpWon' => $otpWon,
             'gamesOtpLost' => $otpLost,

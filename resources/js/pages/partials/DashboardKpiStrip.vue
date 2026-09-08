@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import MatchRecord from '@/components/MatchRecord.vue';
 import { computed } from 'vue';
 import { Card, CardContent } from '@/components/ui/card';
 import ResultBadge from '@/components/matches/ResultBadge.vue';
@@ -29,14 +30,12 @@ type PlayDrawSplit = {
 
 const props = defineProps<{
     streak?: Streak;
-    matchWinrate: number;
+    matchRecord: App.Data.Front.MatchRecordData;
     matchWinrateDelta?: number;
     gameWinrate: number;
     gameWinrateDelta?: number;
     playDrawSplit?: PlayDrawSplit;
     activeLeague: ActiveLeague | null;
-    matchesWon: number;
-    matchesLost: number;
     gamesWon: number;
     gamesLost: number;
 }>();
@@ -73,9 +72,9 @@ const gameDelta = computed(() => props.gameWinrateDelta ?? 0);
                 <div class="flex items-center gap-1">
                     <span
                         class="text-3xl font-bold tabular-nums"
-                        :class="matchWinrate < 50 ? 'text-destructive' : ''"
+                        :class="matchRecord.winrate < 50 ? 'text-destructive' : ''"
                     >
-                        {{ matchWinrate }}%
+                        {{ matchRecord.winrate }}%
                     </span>
                     <TrendingUp v-if="matchDelta > 0" class="size-4 text-success" />
                     <TrendingDown v-else-if="matchDelta < 0" class="size-4 text-destructive" />
@@ -83,7 +82,7 @@ const gameDelta = computed(() => props.gameWinrateDelta ?? 0);
                 </div>
                 <span class="text-xs text-muted-foreground">Match Win Rate</span>
                 <span class="text-xs tabular-nums text-muted-foreground/60">
-                    {{ matchesWon }}W – {{ matchesLost }}L
+                    <MatchRecord :record="matchRecord" :muted="false" class="text-muted-foreground/60" />
                     <span
                         v-if="matchDelta !== 0"
                         :class="matchDelta > 0 ? 'text-success' : 'text-destructive'"

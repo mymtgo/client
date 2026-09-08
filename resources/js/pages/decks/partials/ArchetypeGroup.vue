@@ -10,10 +10,10 @@ const props = defineProps<{
 }>();
 
 const title = computed(() => props.archetype?.name ?? 'Unassigned');
-const winrateDisplay = computed(() => (props.stats.winrate === null ? '—' : `${props.stats.winrate}%`));
+const winrateDisplay = computed(() => (props.stats.record.total === 0 ? '—' : `${props.stats.record.winrate}%`));
 const winrateColorClass = computed(() => {
-    if (props.stats.winrate === null) return 'text-muted-foreground';
-    return props.stats.winrate >= 50 ? 'text-success' : 'text-destructive';
+    if (props.stats.record.total === 0) return 'text-muted-foreground';
+    return props.stats.record.winrate >= 50 ? 'text-success' : 'text-destructive';
 });
 </script>
 
@@ -23,7 +23,7 @@ const winrateColorClass = computed(() => {
             <h3 class="text-sm font-semibold">{{ title }}</h3>
             <span class="text-xs tabular-nums">
                 <span :class="winrateColorClass">{{ winrateDisplay }}</span>
-                <span class="text-muted-foreground"> · {{ stats.totalMatches }} matches</span>
+                <span class="text-muted-foreground"> · {{ stats.record.total }} matches</span>
             </span>
         </header>
 

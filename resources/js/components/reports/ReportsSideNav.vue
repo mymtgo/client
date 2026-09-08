@@ -2,6 +2,7 @@
 import CardStatsController from '@/actions/App/Http/Controllers/Reports/CardStatsController';
 import MatchesController from '@/actions/App/Http/Controllers/Reports/MatchesController';
 import ManaSymbols from '@/components/ManaSymbols.vue';
+import MatchRecord from '@/components/MatchRecord.vue';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { ReportArchetypeOption, ReportArchetypeStats, ReportFormatOption, ReportsCurrentPage } from '@/types/reports';
 import { Link, router } from '@inertiajs/vue3';
@@ -43,7 +44,7 @@ const query = computed(() => {
 
 const winrateColor = computed(() => {
     if (props.archetypeStats === null) return 'text-white/70';
-    const wr = props.archetypeStats.matchWinrate;
+    const wr = props.archetypeStats.matchRecord.winrate;
     if (wr >= 55) return 'text-emerald-400';
     if (wr <= 50) return 'text-rose-400';
     return 'text-white/70';
@@ -85,12 +86,9 @@ function onFormatChange(raw: unknown) {
                 </div>
                 <div class="flex flex-col gap-0.5 px-0.5">
                     <span :class="['text-2xl leading-none font-bold tabular-nums', winrateColor]">
-                        {{ archetypeStats.matchWinrate.toFixed(1) }}%
+                        {{ archetypeStats.matchRecord.winrate }}%
                     </span>
-                    <span class="text-xs text-white/50">
-                        {{ archetypeStats.matchWins }}W – {{ archetypeStats.matchLosses }}L
-                        <template v-if="archetypeStats.matchDraws > 0"> – {{ archetypeStats.matchDraws }}D</template>
-                    </span>
+                    <MatchRecord :record="archetypeStats.matchRecord" :muted="false" class="text-white/50" />
                 </div>
             </template>
             <template v-else>

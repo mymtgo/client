@@ -2,9 +2,9 @@
 
 namespace App\Actions\Dashboard;
 
-use App\Actions\Util\Winrate;
 use App\Enums\MatchOutcome;
 use App\Models\MtgoMatch;
+use App\Support\MatchRecord;
 
 class GetRollingForm
 {
@@ -37,22 +37,17 @@ class GetRollingForm
             default => 'D',
         })->all();
 
-        $wins = $recent->filter(fn ($o) => $o === MatchOutcome::Win)->count();
-        $decisive = $recent->filter(fn ($o) => in_array($o, [MatchOutcome::Win, MatchOutcome::Loss]))->count();
-        $rollingWinrate = Winrate::percentage($wins, $decisive - $wins);
+        $rollingWinrate = MatchRecord::fromCounts(
+            wins: $recent->filter(fn ($o) => $o === MatchOutcome::Win)->count(),
+            losses: $recent->filter(fn ($o) => $o === MatchOutcome::Loss)->count(),
+            draws: $recent->filter(fn ($o) => ! in_array($o, [MatchOutcome::Win, MatchOutcome::Loss]))->count(),
+        )->winrate();
 
-        $allTime = MtgoMatch::complete()
-            ->forAccount($accountId)
-            ->when($format, fn ($q, $f) => $q->where('format', $f))
-            ->selectRaw("
-                SUM(CASE WHEN outcome = 'win' THEN 1 ELSE 0 END) as wins,
-                SUM(CASE WHEN outcome = 'loss' THEN 1 ELSE 0 END) as losses
-            ")
-            ->first();
-
-        $allWins = (int) $allTime->wins;
-        $allTotal = $allWins + (int) $allTime->losses;
-        $allTimeWinrate = Winrate::percentage($allWins, (int) $allTime->losses);
+        $allTimeWinrate = MatchRecord::fromQuery(
+            MtgoMatch::complete()
+                ->forAccount($accountId)
+                ->when($format, fn ($q, $f) => $q->where('format', $f)),
+        )->winrate();
 
         return [
             'results' => $results,

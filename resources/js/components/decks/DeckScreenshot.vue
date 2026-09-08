@@ -15,9 +15,7 @@ const props = defineProps<{
     name: string;
     format: string;
     colorIdentity: string | null;
-    winRate: number;
-    matchesWon: number;
-    matchesLost: number;
+    matchRecord: App.Data.Front.MatchRecordData;
     coverArtBase64: string | null;
     nonLandCards: ScreenshotCard[];
     landCards: ScreenshotCard[];
@@ -170,11 +168,11 @@ const sideboardCount = props.sideboardCards.reduce((s, c) => s + c.quantity, 0);
             <!-- Win Rate & Record -->
             <div :style="{ display: 'flex', alignItems: 'center', gap: '16px' }">
                 <div :style="{ textAlign: 'center' }">
-                    <div :style="{ fontSize: '20px', fontWeight: '700', color: colors.winRate }">{{ winRate }}%</div>
+                    <div :style="{ fontSize: '20px', fontWeight: '700', color: colors.winRate }">{{ matchRecord.winrate }}%</div>
                     <div :style="{ fontSize: '11px', color: colors.muted }">Win Rate</div>
                 </div>
                 <div :style="{ textAlign: 'center' }">
-                    <div :style="{ fontSize: '16px', fontWeight: '600' }">{{ matchesWon }}-{{ matchesLost }}</div>
+                    <div :style="{ fontSize: '16px', fontWeight: '600' }">{{ matchRecord.label }}</div>
                     <div :style="{ fontSize: '11px', color: colors.muted }">Record</div>
                 </div>
             </div>

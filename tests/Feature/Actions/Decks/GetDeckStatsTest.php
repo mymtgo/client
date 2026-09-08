@@ -49,8 +49,8 @@ it('computes deck stats with bounded query count', function () {
     $queryCount = count(DB::getQueryLog());
     DB::disableQueryLog();
 
-    expect($result['wins'])->toBe(5);
-    expect($result['losses'])->toBe(0);
+    expect($result['matchRecord']->wins)->toBe(5);
+    expect($result['matchRecord']->losses)->toBe(0);
     expect($result['gamesWon'])->toBe(5);
     expect($result['gamesLost'])->toBe(0);
     expect($result['otpWon'])->toBe(3); // i=0,2,4 are on_play=true, all won
@@ -92,11 +92,14 @@ it('counts draws and folds gameless imported games into totals', function () {
 
     $result = GetDeckStats::run($deck, now()->subWeek(), now());
 
-    expect($result['wins'])->toBe(1);
-    expect($result['losses'])->toBe(1);
-    expect($result['draws'])->toBe(1);
-    expect($result['total'])->toBe(3);
-    expect($result['wins'] + $result['losses'] + $result['draws'])->toBe($result['total']);
+    expect($result['matchRecord']->wins)->toBe(1);
+    expect($result['matchRecord']->losses)->toBe(1);
+    expect($result['matchRecord']->draws)->toBe(1);
+    expect($result['matchRecord']->total())->toBe(3);
+    expect($result['matchRecord']->wins + $result['matchRecord']->losses + $result['matchRecord']->draws)->toBe($result['matchRecord']->total());
+    // 1 / 3 matches played, draws included in the denominator.
+    expect($result['matchRecord']->winrate())->toBe(33);
+    expect($result['matchRecord']->label())->toBe('1 - 1 - 1');
     // 1 tracked game won + gameless match-level (1 won, 2 lost).
     expect($result['gamesWon'])->toBe(2);
     expect($result['gamesLost'])->toBe(2);
@@ -107,8 +110,8 @@ it('handles empty deck gracefully', function () {
 
     $result = GetDeckStats::run($deck, now()->subWeek(), now());
 
-    expect($result['wins'])->toBe(0);
-    expect($result['losses'])->toBe(0);
+    expect($result['matchRecord']->wins)->toBe(0);
+    expect($result['matchRecord']->losses)->toBe(0);
     expect($result['gamesWon'])->toBe(0);
     expect($result['gamesLost'])->toBe(0);
     expect($result['trophies'])->toBe(0);

@@ -3,6 +3,7 @@
 namespace App\Data\Front;
 
 use App\Models\Deck;
+use App\Support\MatchRecord;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Spatie\LaravelData\Data;
@@ -11,9 +12,7 @@ use Spatie\LaravelData\Data;
 class DeckGroupStatsData extends Data
 {
     public function __construct(
-        public int $totalMatches,
-        public int $totalWins,
-        public ?float $winrate,
+        public MatchRecordData $record,
         public ?Carbon $lastPlayedAt,
     ) {}
 
@@ -22,19 +21,19 @@ class DeckGroupStatsData extends Data
      */
     public static function fromDecks(Collection $decks): self
     {
-        $totalMatches = (int) $decks->sum('matches_count');
-        $totalWins = (int) $decks->sum('won_matches_count');
-
-        $winrate = $totalMatches > 0
-            ? round(($totalWins / $totalMatches) * 100, 1)
-            : null;
+        $record = $decks->reduce(
+            fn (MatchRecord $carry, Deck $deck) => $carry->add(MatchRecord::fromTotal(
+                wins: (int) ($deck->won_matches_count ?? 0),
+                losses: (int) ($deck->lost_matches_count ?? 0),
+                total: (int) ($deck->matches_count ?? 0),
+            )),
+            MatchRecord::empty(),
+        );
 
         $lastPlayedRaw = $decks->max('matches_max_started_at');
 
         return new self(
-            totalMatches: $totalMatches,
-            totalWins: $totalWins,
-            winrate: $winrate,
+            record: $record->toData(),
             lastPlayedAt: $lastPlayedRaw ? Carbon::parse($lastPlayedRaw) : null,
         );
     }

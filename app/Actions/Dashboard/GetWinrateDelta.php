@@ -6,6 +6,7 @@ use App\Actions\Util\Winrate;
 use App\Facades\AppSettings;
 use App\Models\Game;
 use App\Models\MtgoMatch;
+use App\Support\MatchRecord;
 use Carbon\Carbon;
 
 class GetWinrateDelta
@@ -37,17 +38,12 @@ class GetWinrateDelta
 
     private static function matchWinrate(int $accountId, Carbon $from, Carbon $to, ?string $format = null): int
     {
-        $query = MtgoMatch::complete()
-            ->forAccount($accountId)
-            ->when($format, fn ($q, $f) => $q->where('format', $f))
-            ->whereBetween('started_at', [$from, $to]);
-
-        $stats = $query->selectRaw("
-            SUM(CASE WHEN outcome = 'win' THEN 1 ELSE 0 END) as wins,
-            SUM(CASE WHEN outcome = 'loss' THEN 1 ELSE 0 END) as losses
-        ")->first();
-
-        return Winrate::percentage((int) $stats->wins, (int) $stats->losses);
+        return MatchRecord::fromQuery(
+            MtgoMatch::complete()
+                ->forAccount($accountId)
+                ->when($format, fn ($q, $f) => $q->where('format', $f))
+                ->whereBetween('started_at', [$from, $to]),
+        )->winrate();
     }
 
     private static function gameWinrate(int $accountId, Carbon $from, Carbon $to, ?string $format = null): int

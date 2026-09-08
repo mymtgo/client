@@ -1,6 +1,7 @@
 <?php
 
 use App\Actions\Decks\GetPeerArchetypeChartData;
+use App\Enums\MatchOutcome;
 use App\Facades\AppSettings;
 use App\Models\Account;
 use App\Models\Archetype;
@@ -64,6 +65,11 @@ it('aggregates daily wins/losses across peer decks excluding the current deck', 
         'deck_version_id' => $peerVersionB->id,
         'started_at' => $today,
     ]);
+    MtgoMatch::factory()->create([
+        'deck_version_id' => $peerVersionB->id,
+        'outcome' => MatchOutcome::Draw,
+        'started_at' => $today,
+    ]);
 
     $result = GetPeerArchetypeChartData::run($currentDeck, now()->subMonth(), now()->endOfDay());
 
@@ -73,6 +79,7 @@ it('aggregates daily wins/losses across peer decks excluding the current deck', 
     expect($result['data'])->toHaveCount(1);
     expect($result['data'][0]['wins'])->toBe(2);
     expect($result['data'][0]['losses'])->toBe(1);
+    expect($result['data'][0]['draws'])->toBe(1);
 });
 
 it('does not include the current deck in peer aggregation', function () {

@@ -33,5 +33,5 @@ it('reports drawn matches as total minus wins and losses', function () {
 
     $data = DeckData::fromModel($deck);
 
-    expect($data->matchesDrawn)->toBe(6);
+    expect($data->record->draws)->toBe(6);
 });

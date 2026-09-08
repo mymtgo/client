@@ -48,11 +48,7 @@ id: number;
 name: string;
 originalName: string | null;
 format: string;
-matchesCount: number;
-matchesWon: number;
-matchesLost: number;
-matchesDrawn: number;
-winrate: number;
+record: App.Data.Front.MatchRecordData;
 colorIdentity: string | null;
 coverArt: string | null;
 archetype: App.Data.Front.ArchetypeData | null;
@@ -69,9 +65,7 @@ stats: App.Data.Front.DeckGroupStatsData;
 decks: { [key: number]: App.Data.Front.DeckData };
 };
 export type DeckGroupStatsData = {
-totalMatches: number;
-totalWins: number;
-winrate: number | null;
+record: App.Data.Front.MatchRecordData;
 lastPlayedAt: string | null;
 };
 export type DeckWinrateData = {
@@ -270,6 +264,14 @@ opponentColors: string | null;
 };
 export type MatchDeckData = {
 deck: any | App.Data.Front.DeckData;
+};
+export type MatchRecordData = {
+wins: number;
+losses: number;
+draws: number;
+total: number;
+winrate: number;
+label: string;
 };
 export type OverlayOpponentData = {
 username: string;

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Opponents;
 use App\Http\Controllers\Controller;
 use App\Models\Account;
 use App\Models\MtgoMatch;
+use App\Support\MatchRecord;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -42,8 +43,8 @@ class IndexController extends Controller
             ");
 
         $query = match ($sort) {
-            'winrate_asc' => $query->orderByRaw('CAST(matches_won AS REAL) / NULLIF(matches_won + matches_lost, 0) ASC'),
-            'winrate_desc' => $query->orderByRaw('CAST(matches_won AS REAL) / NULLIF(matches_won + matches_lost, 0) DESC'),
+            'winrate_asc' => $query->orderByRaw('CAST(matches_won AS REAL) / NULLIF(total_matches, 0) ASC'),
+            'winrate_desc' => $query->orderByRaw('CAST(matches_won AS REAL) / NULLIF(total_matches, 0) DESC'),
             'most_recent' => $query->orderByDesc('last_played_at'),
             default => $query->orderByDesc('total_matches'),
         };
@@ -91,8 +92,7 @@ class IndexController extends Controller
             return [
                 'playerId' => (int) $row->player_id,
                 'username' => $row->username,
-                'matchesWon' => (int) $row->matches_won,
-                'matchesLost' => (int) $row->matches_lost,
+                'record' => MatchRecord::fromTotal((int) $row->matches_won, (int) $row->matches_lost, (int) $row->total_matches)->toData(),
                 'formats' => $formats,
                 'archetypes' => $archetypes,
                 'lastPlayedAt' => $row->last_played_at,

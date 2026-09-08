@@ -4,6 +4,7 @@ namespace App\Actions\Decks;
 
 use App\Models\Deck;
 use App\Models\DeckVersion;
+use App\Support\MatchRecord;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -81,10 +82,6 @@ class GetArchetypeMatchupSpread
                 SUM(CASE WHEN pairs.outcome = 'loss' THEN 1 ELSE 0 END) as match_losses,
                 COUNT(*) as match_count,
 
-                ROUND(
-                    100.0 * SUM(CASE WHEN pairs.outcome = 'win' THEN 1 ELSE 0 END)
-                    / NULLIF(COUNT(*), 0), 0
-                ) as match_winrate_pct,
 
                 ROUND(
                     100.0 * SUM(gs.games_won)
@@ -101,25 +98,30 @@ class GetArchetypeMatchupSpread
             ")
             ->orderByDesc('game_winrate_pct')
             ->get()
-            ->map(fn ($r) => [
-                'archetype_id' => (int) $r->archetype_id,
-                'name' => $r->archetype_name,
-                'color_identity' => $r->color_identity,
+            ->map(function ($r) {
+                $record = MatchRecord::fromTotal((int) $r->match_wins, (int) $r->match_losses, (int) $r->match_count);
 
-                'match_winrate' => (int) $r->match_winrate_pct,
-                'game_winrate' => (int) $r->game_winrate_pct,
-                'matches' => (int) $r->match_count,
-                'match_record' => ((int) $r->match_wins).' - '.((int) $r->match_losses),
-                'game_record' => ((int) $r->games_won).' - '.((int) $r->games_lost),
+                return [
+                    'archetype_id' => (int) $r->archetype_id,
+                    'name' => $r->archetype_name,
+                    'color_identity' => $r->color_identity,
 
-                'match_wins' => (int) $r->match_wins,
-                'match_losses' => (int) $r->match_losses,
-                'games_won' => (int) $r->games_won,
-                'games_lost' => (int) $r->games_lost,
-                'total_games' => (int) $r->total_games,
+                    'match_winrate' => $record->winrate(),
+                    'game_winrate' => (int) $r->game_winrate_pct,
+                    'matches' => $record->total(),
+                    'match_record' => $record->label(),
+                    'game_record' => ((int) $r->games_won).' - '.((int) $r->games_lost),
 
-                'otp_winrate' => (int) ($r->otp_winrate_pct ?? 0),
-                'avg_turns' => $r->avg_turns !== null ? round((float) $r->avg_turns, 1) : null,
-            ]);
+                    'match_wins' => $record->wins,
+                    'match_losses' => $record->losses,
+                    'match_draws' => $record->draws,
+                    'games_won' => (int) $r->games_won,
+                    'games_lost' => (int) $r->games_lost,
+                    'total_games' => (int) $r->total_games,
+
+                    'otp_winrate' => (int) ($r->otp_winrate_pct ?? 0),
+                    'avg_turns' => $r->avg_turns !== null ? round((float) $r->avg_turns, 1) : null,
+                ];
+            });
     }
 }

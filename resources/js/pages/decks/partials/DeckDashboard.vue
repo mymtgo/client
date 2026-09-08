@@ -3,6 +3,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Deferred } from '@inertiajs/vue3';
 import ManaSymbols from '@/components/ManaSymbols.vue';
+import MatchRecord from '@/components/MatchRecord.vue';
 import MatchHistoryChart from '@/pages/decks/partials/MatchHistoryChart.vue';
 import StandoutCards from '@/pages/decks/partials/StandoutCards.vue';
 import LatestLeague from '@/pages/decks/partials/LatestLeague.vue';
@@ -10,10 +11,7 @@ import type { LeagueRun } from '@/types/leagues';
 import { computed } from 'vue';
 
 const props = defineProps<{
-    matchesWon: number;
-    matchesLost: number;
-    matchesDrawn: number;
-    matchWinrate: number;
+    matchRecord: App.Data.Front.MatchRecordData;
     gamesWon: number;
     gamesLost: number;
     gameWinrate: number;
@@ -23,8 +21,8 @@ const props = defineProps<{
     gamesOtdWon: number;
     gamesOtdLost: number;
     otdRate: number;
-    chartData: { date: string; wins: number; losses: number; winrate: string | null }[];
-    peerChart?: { archetypeName: string; deckCount: number; data: { date: string; wins: number; losses: number }[] } | null;
+    chartData: { date: string; wins: number; losses: number; draws: number; winrate: string | null }[];
+    peerChart?: { archetypeName: string; deckCount: number; data: { date: string; wins: number; losses: number; draws: number }[] } | null;
     matchupSpread?: any[];
     leagueResults?: Record<string, number>;
     standoutCards?: Record<string, any>;
@@ -33,12 +31,6 @@ const props = defineProps<{
 
 const MIN_MATCHES_THRESHOLD = 3;
 
-const matchesPlayed = computed(() => props.matchesWon + props.matchesLost + props.matchesDrawn);
-const matchRecord = computed(() =>
-    props.matchesDrawn > 0
-        ? `${props.matchesWon}-${props.matchesLost}-${props.matchesDrawn}`
-        : `${props.matchesWon}-${props.matchesLost}`,
-);
 
 const bestArchetype = computed(() => {
     if (!props.matchupSpread?.length) return null;
@@ -74,11 +66,9 @@ const leagueResultsBuckets = ['5-0', '4-1', '3-2', '2-3', '1-4', '0-5'];
                     <span class="text-xs tracking-wide text-muted-foreground uppercase">Match Win Rate</span>
                     <span
                         class="text-3xl font-bold tabular-nums"
-                        :class="matchWinrate > 50 ? 'text-success' : matchWinrate < 50 ? 'text-destructive' : ''"
-                    >{{ matchWinrate }}%</span>
-                    <span class="text-sm text-muted-foreground">
-                        {{ matchRecord }}
-                    </span>
+                        :class="matchRecord.winrate > 50 ? 'text-success' : matchRecord.winrate < 50 ? 'text-destructive' : ''"
+                    >{{ matchRecord.winrate }}%</span>
+                    <MatchRecord :record="matchRecord" format="dashes" size="sm" />
                 </CardContent>
             </Card>
             <Card class="gap-0 py-0">
@@ -96,12 +86,8 @@ const leagueResultsBuckets = ['5-0', '4-1', '3-2', '2-3', '1-4', '0-5'];
             <Card class="gap-0 py-0">
                 <CardContent class="flex flex-col gap-0.5 p-3">
                     <span class="text-xs tracking-wide text-muted-foreground uppercase">Match Record</span>
-                    <span class="text-3xl font-bold tabular-nums">
-                        {{ matchRecord }}
-                    </span>
-                    <span class="text-sm text-muted-foreground">
-                        {{ matchesPlayed }} played
-                    </span>
+                    <span class="text-3xl font-bold tabular-nums">{{ matchRecord.label }}</span>
+                    <span class="text-sm text-muted-foreground">{{ matchRecord.total }} played</span>
                 </CardContent>
             </Card>
             <Card class="gap-0 py-0">

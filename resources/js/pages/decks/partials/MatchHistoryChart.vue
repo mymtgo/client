@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import type { ChartConfig } from '@/components/ui/chart';
 import { ChartContainer } from '@/components/ui/chart';
+import { formatMatchRecord } from '@/lib/matchRecord';
 import { parseLocalDate } from '@/lib/utils';
 import { VisAxis, VisCrosshair, VisLine, VisStackedBar, VisTooltip, VisXYContainer } from '@unovis/vue';
 import { computed, onMounted, ref, watch } from 'vue';
 
 const props = defineProps<{
-    data: { date: string; wins: number; losses: number; winrate: string | null }[];
-    peer?: { archetypeName: string; deckCount: number; data: { date: string; wins: number; losses: number }[] } | null;
+    data: { date: string; wins: number; losses: number; draws: number; winrate: string | null }[];
+    peer?: { archetypeName: string; deckCount: number; data: { date: string; wins: number; losses: number; draws: number }[] } | null;
 }>();
 
 type ChartMode = 'bars' | 'winrate';
@@ -15,13 +16,16 @@ type DataPoint = {
     date: Date;
     wins: number;
     losses: number;
+    draws: number;
     rate: number | null;
     cumRate: number | null;
     cumWins: number;
     cumLosses: number;
+    cumDraws: number;
     peerCumRate: number | null;
     peerCumWins: number;
     peerCumLosses: number;
+    peerCumDraws: number;
 };
 
 const STORAGE_KEY = 'deck:performance-chart-mode';
@@ -51,9 +55,9 @@ watch(mode, (value) => {
 });
 
 const peerByDate = computed(() => {
-    const map = new Map<string, { wins: number; losses: number }>();
+    const map = new Map<string, { wins: number; losses: number; draws: number }>();
     props.peer?.data.forEach((d) => {
-        map.set(d.date, { wins: d.wins, losses: d.losses });
+        map.set(d.date, { wins: d.wins, losses: d.losses, draws: d.draws });
     });
     return map;
 });
@@ -63,16 +67,20 @@ const hasPeer = computed(() => Boolean(props.peer && props.peer.data.length > 0)
 const chartData = computed<DataPoint[]>(() => {
     let cumWins = 0;
     let cumLosses = 0;
+    let cumDraws = 0;
     let lastRate: number | null = null;
 
     let peerCumWins = 0;
     let peerCumLosses = 0;
+    let peerCumDraws = 0;
     let lastPeerRate: number | null = null;
 
+    // Draws count as matches played, matching the record and every other winrate.
     return props.data.map((d) => {
         cumWins += d.wins;
         cumLosses += d.losses;
-        const total = cumWins + cumLosses;
+        cumDraws += d.draws;
+        const total = cumWins + cumLosses + cumDraws;
         const cumRate = total > 0 ? Math.round((cumWins / total) * 100) : lastRate;
         if (cumRate !== null) {
             lastRate = cumRate;
@@ -82,8 +90,9 @@ const chartData = computed<DataPoint[]>(() => {
         if (peerRow) {
             peerCumWins += peerRow.wins;
             peerCumLosses += peerRow.losses;
+            peerCumDraws += peerRow.draws;
         }
-        const peerTotal = peerCumWins + peerCumLosses;
+        const peerTotal = peerCumWins + peerCumLosses + peerCumDraws;
         const peerCumRate = peerTotal > 0 ? Math.round((peerCumWins / peerTotal) * 100) : lastPeerRate;
         if (peerCumRate !== null) {
             lastPeerRate = peerCumRate;
@@ -93,18 +102,21 @@ const chartData = computed<DataPoint[]>(() => {
             date: parseLocalDate(d.date),
             wins: d.wins,
             losses: d.losses,
+            draws: d.draws,
             rate: d.winrate !== null ? parseInt(d.winrate) : null,
             cumRate,
             cumWins,
             cumLosses,
+            cumDraws,
             peerCumRate,
             peerCumWins,
             peerCumLosses,
+            peerCumDraws,
         };
     });
 });
 
-const hasMatches = (d: DataPoint) => d.wins > 0 || d.losses > 0;
+const hasMatches = (d: DataPoint) => d.wins > 0 || d.losses > 0 || d.draws > 0;
 
 const chartConfig = {
     wins: { label: 'Wins', color: 'var(--color-success)' },
@@ -139,7 +151,7 @@ const barsTooltipTemplate = (d: DataPoint): string | null => {
     return `<div style="padding:8px 12px;line-height:1.5">
         <div style="font-size:11px;opacity:0.6">${label}</div>
         <div style="font-weight:600;font-size:14px">${d.rate !== null ? d.rate + '% win rate' : 'No data'}</div>
-        <div style="font-size:12px;opacity:0.8">${d.wins}W - ${d.losses}L</div>
+        <div style="font-size:12px;opacity:0.8">${formatMatchRecord(d.wins, d.losses, d.draws)}</div>
     </div>`;
 };
 
@@ -156,14 +168,14 @@ const winrateTooltipTemplate = (d: DataPoint): string | null => {
         <span style="display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:9999px;background:${winColor.value}"></span>This deck</span>
         <span style="font-weight:600">${d.cumRate}%</span>
     </div>
-    <div style="font-size:11px;opacity:0.7;margin-left:14px">${d.cumWins}W - ${d.cumLosses}L</div>`;
+    <div style="font-size:11px;opacity:0.7;margin-left:14px">${formatMatchRecord(d.cumWins, d.cumLosses, d.cumDraws)}</div>`;
 
     const peerRow = hasPeer.value && d.peerCumRate !== null
         ? `<div style="display:flex;justify-content:space-between;gap:16px;align-items:center;margin-top:6px">
             <span style="display:flex;align-items:center;gap:6px"><span style="width:8px;height:0;border-top:2px dashed ${peerColor.value}"></span>${peerLabel.value}</span>
             <span style="font-weight:600">${d.peerCumRate}%</span>
         </div>
-        <div style="font-size:11px;opacity:0.7;margin-left:14px">${d.peerCumWins}W - ${d.peerCumLosses}L</div>`
+        <div style="font-size:11px;opacity:0.7;margin-left:14px">${formatMatchRecord(d.peerCumWins, d.peerCumLosses, d.peerCumDraws)}</div>`
         : '';
 
     return `<div style="padding:8px 12px;line-height:1.4;min-width:200px">

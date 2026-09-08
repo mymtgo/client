@@ -43,7 +43,7 @@ class IndexController
 
         $sort = $request->input('sort', 'lastPlayed');
         $query = match ($sort) {
-            'winRate' => $query->orderByRaw('CASE WHEN won_matches_count + lost_matches_count > 0 THEN CAST(won_matches_count AS FLOAT) / (won_matches_count + lost_matches_count) ELSE 0 END DESC'),
+            'winRate' => $query->orderByRaw('CASE WHEN matches_count > 0 THEN CAST(won_matches_count AS FLOAT) / matches_count ELSE 0 END DESC'),
             'matchCount' => $query->orderByDesc('matches_count'),
             'name' => $query->orderBy('name'),
             default => $query->orderByDesc('matches_max_started_at'),
@@ -120,8 +120,8 @@ class IndexController
         $assigned = $groups->filter(fn (DeckGroupData $g) => $g->archetype !== null);
 
         $sortedAssigned = match ($sort) {
-            'winRate' => $assigned->sortByDesc(fn (DeckGroupData $g) => $g->stats->winrate ?? -1)->values(),
-            'matchCount' => $assigned->sortByDesc(fn (DeckGroupData $g) => $g->stats->totalMatches)->values(),
+            'winRate' => $assigned->sortByDesc(fn (DeckGroupData $g) => $g->stats->record->total > 0 ? $g->stats->record->winrate : -1)->values(),
+            'matchCount' => $assigned->sortByDesc(fn (DeckGroupData $g) => $g->stats->record->total)->values(),
             'name' => $assigned->sortBy(fn (DeckGroupData $g) => strtolower($g->archetype->name))->values(),
             default => $assigned->sortByDesc(fn (DeckGroupData $g) => $g->stats->lastPlayedAt)->values(),
         };

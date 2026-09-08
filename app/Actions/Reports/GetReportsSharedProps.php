@@ -2,6 +2,7 @@
 
 namespace App\Actions\Reports;
 
+use App\Data\Front\MatchRecordData;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 
@@ -25,10 +26,7 @@ class GetReportsSharedProps
      *     deckVersionIds: array<int, int>,
      *     archetypeStats: array{
      *         deckCount: int,
-     *         matchWins: int,
-     *         matchLosses: int,
-     *         matchDraws: int,
-     *         matchWinrate: int,
+     *         matchRecord: MatchRecordData,
      *         formatLabel: string,
      *         archetypeName: string,
      *         colorIdentity: string|null,

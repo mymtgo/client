@@ -58,8 +58,8 @@ it('returns correct match and game stats', function () {
     $response = $this->get('/')->assertOk();
     $props = $response->original->getData()['page']['props'];
 
-    expect($props['matchesWon'])->toBe(5);
-    expect($props['matchesLost'])->toBe(0);
+    expect($props['matchRecord']['wins'])->toBe(5);
+    expect($props['matchRecord']['losses'])->toBe(0);
     expect($props['gamesWon'])->toBe(5);
     expect($props['gamesLost'])->toBe(0);
 });

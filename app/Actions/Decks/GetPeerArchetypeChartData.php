@@ -4,6 +4,7 @@ namespace App\Actions\Decks;
 
 use App\Models\Deck;
 use App\Models\DeckVersion;
+use App\Support\MatchRecord;
 use Carbon\Carbon;
 
 class GetPeerArchetypeChartData
@@ -13,7 +14,7 @@ class GetPeerArchetypeChartData
      * scoped to the current account and timeframe. Returns null when no archetype
      * is set, no peer decks exist, or peers have no matches in range.
      *
-     * @return array{archetypeName: string, deckCount: int, data: array<int, array{date: string, wins: int, losses: int}>}|null
+     * @return array{archetypeName: string, deckCount: int, data: array<int, array{date: string, wins: int, losses: int, draws: int}>}|null
      */
     public static function run(Deck $deck, Carbon $from, Carbon $to): ?array
     {
@@ -48,12 +49,13 @@ class GetPeerArchetypeChartData
         $deck->loadMissing('archetype');
 
         return [
-            'archetypeName' => $deck->archetype?->name ?? 'Archetype',
+            'archetypeName' => $deck->archetype->name ?? 'Archetype',
             'deckCount' => $peerDeckIds->count(),
-            'data' => $rows->map(fn (array $row, string $date) => [
+            'data' => $rows->map(fn (MatchRecord $record, string $date) => [
                 'date' => $date,
-                'wins' => $row['wins'],
-                'losses' => $row['total'] - $row['wins'],
+                'wins' => $record->wins,
+                'losses' => $record->losses,
+                'draws' => $record->draws,
             ])->values()->all(),
         ];
     }

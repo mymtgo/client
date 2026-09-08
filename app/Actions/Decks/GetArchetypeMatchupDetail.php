@@ -7,6 +7,7 @@ use App\Models\Archetype;
 use App\Models\Deck;
 use App\Models\DeckVersion;
 use App\Models\MtgoMatch;
+use App\Support\MatchRecord;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -53,12 +54,14 @@ class GetArchetypeMatchupDetail
         $perGame = self::computePerGameWinrates($matchIds->toArray());
         $history = self::getMatchHistory($matchIds->toArray());
 
+        $matchRecord = MatchRecord::fromTotal((int) $stats->match_wins, (int) $stats->match_losses, (int) $stats->match_count);
+
         return [
-            'matchWinrate' => Winrate::percentage($stats->match_wins, $stats->match_losses),
+            'matchWinrate' => $matchRecord->winrate(),
             'gameWinrate' => Winrate::percentage($stats->games_won, $stats->games_lost),
-            'matchRecord' => $stats->match_wins.' - '.$stats->match_losses,
+            'matchRecord' => $matchRecord->label(),
             'gameRecord' => $stats->games_won.' - '.$stats->games_lost,
-            'matches' => (int) $stats->match_count,
+            'matches' => $matchRecord->total(),
             'perGameWinrates' => $perGame,
             'otpWinrate' => Winrate::percentage($playDraw['otp_wins'], $playDraw['otp_losses']),
             'otpRecord' => $playDraw['otp_wins'].' - '.$playDraw['otp_losses'],

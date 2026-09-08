@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\MatchOutcome;
 use App\Models\Account;
 use App\Models\Deck;
 use App\Models\DeckVersion;
@@ -67,4 +68,37 @@ it('returns format options', function () {
 
     expect($props['allFormats'])->toBeArray();
     expect($props['filters'])->toHaveKeys(['search', 'sort', 'format']);
+});
+
+it('reports each opponent record over every match played and sorts by it', function () {
+    $account = Account::create(['username' => 'testplayer', 'active' => true, 'tracked' => true]);
+    $deck = Deck::factory()->create(['account_id' => $account->id]);
+    $version = DeckVersion::factory()->create(['deck_id' => $deck->id]);
+
+    $attach = function (Player $opponent, MtgoMatch $match) {
+        $game = Game::factory()->create(['match_id' => $match->id]);
+        $game->players()->attach($opponent->id, ['instance_id' => 1, 'is_local' => false, 'on_play' => false]);
+    };
+
+    // 1W 1L 2D = 25%
+    $drawy = Player::create(['username' => 'drawy']);
+    $attach($drawy, MtgoMatch::factory()->won()->create(['deck_version_id' => $version->id]));
+    $attach($drawy, MtgoMatch::factory()->lost()->create(['deck_version_id' => $version->id]));
+    $attach($drawy, MtgoMatch::factory()->create(['deck_version_id' => $version->id, 'outcome' => MatchOutcome::Draw]));
+    $attach($drawy, MtgoMatch::factory()->create(['deck_version_id' => $version->id, 'outcome' => MatchOutcome::Draw]));
+
+    // 1W 1L = 50%
+    $even = Player::create(['username' => 'even']);
+    $attach($even, MtgoMatch::factory()->won()->create(['deck_version_id' => $version->id]));
+    $attach($even, MtgoMatch::factory()->lost()->create(['deck_version_id' => $version->id]));
+
+    $this->get('/opponents?sort=winrate_desc')
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('opponents.data.0.username', 'even')
+            ->where('opponents.data.0.record.winrate', 50)
+            ->where('opponents.data.1.username', 'drawy')
+            ->where('opponents.data.1.record.winrate', 25)
+            ->where('opponents.data.1.record.draws', 2)
+        );
 });

@@ -194,3 +194,27 @@ it('aggregates matchups across multiple deck versions via forVersionIds', functi
         ->and($row['games_won'])->toBe(1)
         ->and($row['games_lost'])->toBe(1);
 });
+
+it('shows draws in the match record so it matches the all-matches winrate', function () {
+    $deck = Deck::factory()->create();
+    $deckVersion = DeckVersion::factory()->create(['deck_id' => $deck->id]);
+    $archetype = Archetype::factory()->create();
+
+    createMatchWithGamesForSpread($deckVersion, $archetype, 'win', [
+        ['won' => true, 'on_play' => true, 'turn_count' => null],
+    ]);
+    createMatchWithGamesForSpread($deckVersion, $archetype, 'loss', [
+        ['won' => false, 'on_play' => true, 'turn_count' => null],
+    ]);
+    createMatchWithGamesForSpread($deckVersion, $archetype, 'draw', [
+        ['won' => true, 'on_play' => true, 'turn_count' => null],
+        ['won' => false, 'on_play' => false, 'turn_count' => null],
+    ]);
+
+    $matchup = GetArchetypeMatchupSpread::run($deck, null, null)->first();
+
+    expect($matchup['matches'])->toBe(3)
+        ->and($matchup['match_winrate'])->toBe(33)
+        ->and($matchup['match_draws'])->toBe(1)
+        ->and($matchup['match_record'])->toBe('1 - 1 - 1');
+});

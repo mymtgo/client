@@ -66,7 +66,7 @@ it('ignores complete matches with null outcome', function () {
     expect($result['winrate'])->toBe(50);
 });
 
-it('excludes draws from winrate denominator', function () {
+it('counts draws as matches played in the rolling winrate', function () {
     [$account, $version] = setupFormAccount();
     MtgoMatch::factory()->won()->create(['deck_version_id' => $version->id, 'started_at' => now()->subHours(3)]);
     MtgoMatch::factory()->create([
@@ -77,5 +77,5 @@ it('excludes draws from winrate denominator', function () {
     MtgoMatch::factory()->won()->create(['deck_version_id' => $version->id, 'started_at' => now()->subHour()]);
     $result = GetRollingForm::run($account->id);
     expect($result['results'])->toBe(['W', 'D', 'W']);
-    expect($result['winrate'])->toBe(100);
+    expect($result['winrate'])->toBe(67);
 });

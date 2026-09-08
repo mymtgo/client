@@ -17,6 +17,7 @@ use App\Data\Front\MatchData;
 use App\Models\Account;
 use App\Models\Deck;
 use App\Models\MtgoMatch;
+use App\Support\MatchRecord;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -47,18 +48,19 @@ class IndexController extends Controller
             ")
             ->first();
 
-        $wins = (int) ($stats->wins ?? 0);
-        $losses = (int) ($stats->losses ?? 0);
+        $matchRecord = MatchRecord::fromTotal(
+            wins: (int) ($stats->wins ?? 0),
+            losses: (int) ($stats->losses ?? 0),
+            total: (int) ($stats->total_matches ?? 0),
+        );
         $gamesWon = (int) ($stats->games_won ?? 0);
         $gamesLost = (int) ($stats->games_lost ?? 0);
 
         return Inertia::render('Index', [
             // Eager props — primary KPIs only
-            'matchesWon' => $wins,
-            'matchesLost' => $losses,
+            'matchRecord' => $matchRecord->toData(),
             'gamesWon' => $gamesWon,
             'gamesLost' => $gamesLost,
-            'matchWinrate' => Winrate::percentage($wins, $losses),
             'gameWinrate' => Winrate::percentage($gamesWon, $gamesLost),
             'timeframe' => $timeframe,
             'format' => $format,

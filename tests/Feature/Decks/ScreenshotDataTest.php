@@ -1,8 +1,10 @@
 <?php
 
+use App\Enums\MatchOutcome;
 use App\Models\Card;
 use App\Models\Deck;
 use App\Models\DeckVersion;
+use App\Models\MtgoMatch;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 
@@ -44,9 +46,7 @@ it('returns screenshot data with base64 card images', function () {
         'name',
         'format',
         'colorIdentity',
-        'winRate',
-        'matchesWon',
-        'matchesLost',
+        'matchRecord' => ['wins', 'losses', 'draws', 'total', 'winrate', 'label'],
         'coverArtBase64',
         'nonLandCards' => [['name', 'type', 'quantity', 'imageBase64']],
         'landCards',
@@ -74,4 +74,25 @@ it('returns empty arrays when deck has no version', function () {
         'landCards' => [],
         'sideboardCards' => [],
     ]);
+});
+
+it('counts draws as matches played in the screenshot winrate and exposes the draw count', function () {
+    Storage::fake('cards');
+
+    $deck = Deck::factory()->create(['name' => 'Burn', 'format' => 'Modern']);
+    $version = DeckVersion::factory()->create(['deck_id' => $deck->id, 'signature' => '']);
+
+    MtgoMatch::factory()->won()->create(['deck_version_id' => $version->id]);
+    MtgoMatch::factory()->lost()->create(['deck_version_id' => $version->id]);
+    MtgoMatch::factory()->create(['deck_version_id' => $version->id, 'outcome' => MatchOutcome::Draw]);
+    MtgoMatch::factory()->create(['deck_version_id' => $version->id, 'outcome' => MatchOutcome::Draw]);
+
+    $response = $this->get("/decks/{$deck->id}/screenshot-data");
+
+    $response->assertOk();
+    // 1 / 4 matches played.
+    expect($response->json('matchRecord.winrate'))->toBe(25);
+    expect($response->json('matchRecord.wins'))->toBe(1);
+    expect($response->json('matchRecord.losses'))->toBe(1);
+    expect($response->json('matchRecord.draws'))->toBe(2);
 });

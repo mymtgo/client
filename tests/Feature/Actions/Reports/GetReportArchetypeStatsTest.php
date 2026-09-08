@@ -40,10 +40,10 @@ it('computes deck count, match record, and winrate', function () {
 
     expect($stats)->not->toBeNull()
         ->and($stats['deckCount'])->toBe(2)
-        ->and($stats['matchWins'])->toBe(2)
-        ->and($stats['matchLosses'])->toBe(1)
-        ->and($stats['matchDraws'])->toBe(0)
-        ->and($stats['matchWinrate'])->toBe(67)
+        ->and($stats['matchRecord']->wins)->toBe(2)
+        ->and($stats['matchRecord']->losses)->toBe(1)
+        ->and($stats['matchRecord']->draws)->toBe(0)
+        ->and($stats['matchRecord']->winrate)->toBe(67)
         ->and($stats['formatLabel'])->toBe('Modern')
         ->and($stats['archetypeName'])->toBe('Test')
         ->and($stats['colorIdentity'])->toBe('UR');
@@ -60,6 +60,24 @@ it('returns zero winrate when no decisive matches', function () {
 
     $stats = GetReportArchetypeStats::run($archetype->id, 'CModern', [$version->id], null, null);
 
-    expect($stats['matchWinrate'])->toBe(0)
-        ->and($stats['matchDraws'])->toBe(1);
+    expect($stats['matchRecord']->winrate)->toBe(0)
+        ->and($stats['matchRecord']->draws)->toBe(1);
+});
+
+it('counts draws as matches played in the match winrate', function () {
+    $account = Account::create(['username' => 'main', 'active' => true]);
+    Account::flushCurrent();
+
+    $archetype = Archetype::factory()->create();
+    $deck = Deck::factory()->create(['account_id' => $account->id, 'archetype_id' => $archetype->id]);
+    $version = DeckVersion::factory()->create(['deck_id' => $deck->id]);
+    MtgoMatch::factory()->create(['deck_version_id' => $version->id, 'format' => 'CModern', 'state' => 'complete', 'outcome' => 'win']);
+    MtgoMatch::factory()->create(['deck_version_id' => $version->id, 'format' => 'CModern', 'state' => 'complete', 'outcome' => 'loss']);
+    MtgoMatch::factory()->create(['deck_version_id' => $version->id, 'format' => 'CModern', 'state' => 'complete', 'outcome' => 'draw']);
+
+    $stats = GetReportArchetypeStats::run($archetype->id, 'CModern', [$version->id], null, null);
+
+    // 1 / 3, not 1 / 2.
+    expect($stats['matchRecord']->winrate)->toBe(33)
+        ->and($stats['matchRecord']->draws)->toBe(1);
 });

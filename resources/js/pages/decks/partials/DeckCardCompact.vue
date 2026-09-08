@@ -3,6 +3,7 @@ import ShowController from '@/actions/App/Http/Controllers/Decks/DashboardContro
 import ManaSymbols from '@/components/ManaSymbols.vue';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
+import MatchRecord from '@/components/MatchRecord.vue';
 import WinRateBar from '@/components/WinRateBar.vue';
 import { Link } from '@inertiajs/vue3';
 
@@ -47,19 +48,11 @@ defineProps<{
                 <div class="flex items-end justify-between gap-4">
                     <div class="flex flex-1 flex-col gap-1">
                         <span class="text-xs text-muted-foreground">win rate</span>
-                        <WinRateBar :winrate="deck.winrate" :solid="!!deck.coverArt" />
+                        <WinRateBar :winrate="deck.record.winrate" :solid="!!deck.coverArt" />
                     </div>
                     <div class="text-right">
-                        <div class="text-sm font-medium tabular-nums">{{ deck.matchesCount }} matches</div>
-                        <div class="text-xs text-muted-foreground tabular-nums">
-                            <span>{{ deck.matchesWon }}W</span>
-                            <span class="mx-0.5">-</span>
-                            <span class="text-destructive">{{ deck.matchesLost }}L</span>
-                            <template v-if="deck.matchesDrawn > 0">
-                                <span class="mx-0.5">-</span>
-                                <span>{{ deck.matchesDrawn }}D</span>
-                            </template>
-                        </div>
+                        <div class="text-sm font-medium tabular-nums">{{ deck.record.total }} matches</div>
+                        <MatchRecord :record="deck.record" />
                     </div>
                 </div>
             </CardContent>

@@ -3,6 +3,7 @@ import ShowController from '@/actions/App/Http/Controllers/Decks/DashboardContro
 import ManaSymbols from '@/components/ManaSymbols.vue';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
+import MatchRecord from '@/components/MatchRecord.vue';
 import WinRateBar from '@/components/WinRateBar.vue';
 import { manaWash } from '@/lib/mana';
 import { Link } from '@inertiajs/vue3';
@@ -64,18 +65,10 @@ const fallbackArtStyle = computed(() => ({ backgroundImage: manaWash(props.deck.
                 </div>
 
                 <div class="flex flex-col gap-1.5">
-                    <WinRateBar :winrate="deck.winrate" solid />
+                    <WinRateBar :winrate="deck.record.winrate" solid />
                     <div class="flex items-baseline justify-between gap-2 text-xs tabular-nums">
-                        <span class="text-muted-foreground">{{ deck.matchesCount }} matches</span>
-                        <span class="text-muted-foreground">
-                            <span class="text-foreground">{{ deck.matchesWon }}W</span>
-                            <span class="mx-0.5">-</span>
-                            <span class="text-destructive">{{ deck.matchesLost }}L</span>
-                            <template v-if="deck.matchesDrawn > 0">
-                                <span class="mx-0.5">-</span>
-                                <span>{{ deck.matchesDrawn }}D</span>
-                            </template>
-                        </span>
+                        <span class="text-muted-foreground">{{ deck.record.total }} matches</span>
+                        <MatchRecord :record="deck.record" />
                     </div>
                 </div>
             </div>

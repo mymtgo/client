@@ -13,10 +13,7 @@ export type ReportFormatOption = {
 
 export type ReportArchetypeStats = {
     deckCount: number;
-    matchWins: number;
-    matchLosses: number;
-    matchDraws: number;
-    matchWinrate: number;
+    matchRecord: App.Data.Front.MatchRecordData;
     formatLabel: string;
     archetypeName: string;
     colorIdentity: string | null;

@@ -6,11 +6,9 @@ export type VersionStats = {
     label: string;
     isCurrent: boolean;
     dateLabel: string | null;
-    matchesWon: number;
-    matchesLost: number;
+    matchRecord: App.Data.Front.MatchRecordData;
     gamesWon: number;
     gamesLost: number;
-    matchWinrate: number;
     gameWinrate: number;
     gamesOtpWon: number;
     gamesOtpLost: number;

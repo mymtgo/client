@@ -53,10 +53,7 @@ type LastSession = {
 
 type MatchupEntry = {
     name: string;
-    winrate: number;
-    wins: number;
-    losses: number;
-    matches: number;
+    record: App.Data.Front.MatchRecordData;
 };
 
 type RollingForm = {
@@ -73,11 +70,9 @@ type LeagueDistribution = {
 };
 
 const props = defineProps<{
-    matchesWon: number;
-    matchesLost: number;
+    matchRecord: App.Data.Front.MatchRecordData;
     gamesWon: number;
     gamesLost: number;
-    matchWinrate: number;
     gameWinrate: number;
     timeframe: string;
     format: string | null;
@@ -96,7 +91,7 @@ const props = defineProps<{
     recentMatches?: App.Data.Front.MatchData[];
 }>();
 
-const hasData = computed(() => props.matchesWon + props.matchesLost > 0);
+const hasData = computed(() => props.matchRecord.total > 0);
 
 function navigate(params: Record<string, string | null>) {
     const query: Record<string, string> = { timeframe: props.timeframe };
@@ -123,14 +118,12 @@ function setFormat(value: string) {
         <!-- KPI Strip -->
         <DashboardKpiStrip
             :streak="streak"
-            :match-winrate="matchWinrate"
+            :match-record="matchRecord"
             :match-winrate-delta="matchWinrateDelta"
             :game-winrate="gameWinrate"
             :game-winrate-delta="gameWinrateDelta"
             :play-draw-split="playDrawSplit"
             :active-league="activeLeague"
-            :matches-won="matchesWon"
-            :matches-lost="matchesLost"
             :games-won="gamesWon"
             :games-lost="gamesLost"
         />

@@ -16,12 +16,9 @@ const props = defineProps<{
     trophies: number;
     currentPage: string;
     timeframe: string;
-    matchesWon: number;
-    matchesLost: number;
-    matchesDrawn: number;
+    matchRecord: App.Data.Front.MatchRecordData;
     gamesWon: number;
     gamesLost: number;
-    matchWinrate: number;
     gameWinrate: number;
     gamesOtpWon: number;
     gamesOtpLost: number;
@@ -29,8 +26,8 @@ const props = defineProps<{
     gamesOtdWon: number;
     gamesOtdLost: number;
     otdRate: number;
-    chartData: { date: string; wins: number; losses: number; winrate: string | null }[];
-    peerChart?: { archetypeName: string; deckCount: number; data: { date: string; wins: number; losses: number }[] } | null;
+    chartData: { date: string; wins: number; losses: number; draws: number; winrate: string | null }[];
+    peerChart?: { archetypeName: string; deckCount: number; data: { date: string; wins: number; losses: number; draws: number }[] } | null;
     matchupSpread?: any[];
     leagueResults?: Record<string, number>;
     standoutCards?: Record<string, any>;
@@ -48,10 +45,7 @@ function setTimeframe(value: string) {
     <div class="space-y-4 p-3 lg:p-4">
         <TimeframeFilter :model-value="timeframe" @update:model-value="setTimeframe" />
         <DeckDashboard
-            :matches-won="matchesWon"
-            :matches-lost="matchesLost"
-            :matches-drawn="matchesDrawn"
-            :match-winrate="matchWinrate"
+            :match-record="matchRecord"
             :games-won="gamesWon"
             :games-lost="gamesLost"
             :game-winrate="gameWinrate"

@@ -1,6 +1,7 @@
 <?php
 
 use App\Actions\Dashboard\GetWinrateDelta;
+use App\Enums\MatchOutcome;
 use App\Facades\AppSettings;
 use App\Models\Account;
 use App\Models\Deck;
@@ -84,4 +85,20 @@ it('bounds the previous period on local midnight in the system timezone', functi
 
     // Previous 1W 2L (33%), current 50%.
     expect($result['matchDelta'])->toBe(17);
+});
+
+it('counts draws as matches played in the match winrate', function () {
+    [$account, $version] = setupDeltaAccount();
+
+    // Current: 1W 1D = 50%, not 100%. Nothing in the previous period.
+    MtgoMatch::factory()->won()->create(['deck_version_id' => $version->id, 'started_at' => now()->subDay()]);
+    MtgoMatch::factory()->create([
+        'deck_version_id' => $version->id,
+        'outcome' => MatchOutcome::Draw,
+        'started_at' => now()->subDay(),
+    ]);
+
+    $result = GetWinrateDelta::run($account->id, now()->subDays(7)->startOfDay(), now()->endOfDay(), 'week');
+
+    expect($result['matchDelta'])->toBe(50);
 });

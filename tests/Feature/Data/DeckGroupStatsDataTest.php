@@ -7,12 +7,12 @@ use Illuminate\Support\Collection;
 
 uses(RefreshDatabase::class);
 
-function makeDeckWithCounts(int $won, int $lost): Deck
+function makeDeckWithCounts(int $won, int $lost, int $drawn = 0): Deck
 {
     $deck = Deck::factory()->create();
     $deck->setAttribute('won_matches_count', $won);
     $deck->setAttribute('lost_matches_count', $lost);
-    $deck->setAttribute('matches_count', $won + $lost);
+    $deck->setAttribute('matches_count', $won + $lost + $drawn);
 
     return $deck;
 }
@@ -36,10 +36,22 @@ it('computes weighted winrate across multiple decks', function () {
 
     $stats = DeckGroupStatsData::fromDecks($decks);
 
-    expect($stats->totalMatches)->toBe(30);
-    expect($stats->totalWins)->toBe(24);
-    expect($stats->winrate)->toBe(80.0);
+    expect($stats->record->total)->toBe(30);
+    expect($stats->record->wins)->toBe(24);
+    expect($stats->record->winrate)->toBe(80);
     expect($stats->lastPlayedAt)->toBeNull();
+});
+
+it('divides wins by every match played and rounds to a whole percent', function () {
+    $decks = new Collection([
+        makeDeckWithCounts(won: 6, lost: 4, drawn: 2),
+    ]);
+
+    $stats = DeckGroupStatsData::fromDecks($decks);
+
+    expect($stats->record->total)->toBe(12);
+    // 6 / 12 = 50%, not 6 / (6 + 4) = 60%.
+    expect($stats->record->winrate)->toBe(50);
 });
 
 it('returns null winrate when no matches played', function () {
@@ -50,18 +62,20 @@ it('returns null winrate when no matches played', function () {
 
     $stats = DeckGroupStatsData::fromDecks($decks);
 
-    expect($stats->totalMatches)->toBe(0);
-    expect($stats->totalWins)->toBe(0);
-    expect($stats->winrate)->toBeNull();
+    expect($stats->record->total)->toBe(0);
+    expect($stats->record->wins)->toBe(0);
+    expect($stats->record->total)->toBe(0);
+    expect($stats->record->winrate)->toBe(0);
     expect($stats->lastPlayedAt)->toBeNull();
 });
 
 it('handles an empty collection', function () {
     $stats = DeckGroupStatsData::fromDecks(new Collection);
 
-    expect($stats->totalMatches)->toBe(0);
-    expect($stats->totalWins)->toBe(0);
-    expect($stats->winrate)->toBeNull();
+    expect($stats->record->total)->toBe(0);
+    expect($stats->record->wins)->toBe(0);
+    expect($stats->record->total)->toBe(0);
+    expect($stats->record->winrate)->toBe(0);
     expect($stats->lastPlayedAt)->toBeNull();
 });
 

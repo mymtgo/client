@@ -43,12 +43,9 @@ class DashboardController extends Controller
             'timeframe' => $timeframe,
 
             // KPI stats — eager
-            'matchesWon' => $stats['wins'],
-            'matchesLost' => $stats['losses'],
-            'matchesDrawn' => $stats['draws'],
+            'matchRecord' => $stats['matchRecord']->toData(),
             'gamesWon' => $stats['gamesWon'],
             'gamesLost' => $stats['gamesLost'],
-            'matchWinrate' => $stats['matchWinrate'],
             'gameWinrate' => $stats['gameWinrate'],
             'gamesOtp' => $stats['otpWon'] + $stats['otpLost'],
             'gamesOtpWon' => $stats['otpWon'],
@@ -101,13 +98,14 @@ class DashboardController extends Controller
 
         return collect($carbonPeriod)->map(function (Carbon $point) use ($results) {
             $key = $point->format('Y-m-d');
-            $row = $results->get($key);
+            $record = $results->get($key);
 
             return [
                 'date' => $key,
-                'wins' => $row ? $row['wins'] : 0,
-                'losses' => $row ? $row['total'] - $row['wins'] : 0,
-                'winrate' => $row ? (string) round($row['wins'] / $row['total'] * 100) : null,
+                'wins' => $record ? $record->wins : 0,
+                'losses' => $record ? $record->losses : 0,
+                'draws' => $record ? $record->draws : 0,
+                'winrate' => $record ? (string) $record->winrate() : null,
             ];
         })->toArray();
     }

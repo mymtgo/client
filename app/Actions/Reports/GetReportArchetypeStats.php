@@ -2,11 +2,12 @@
 
 namespace App\Actions\Reports;
 
-use App\Enums\MatchOutcome;
+use App\Data\Front\MatchRecordData;
 use App\Enums\MatchState;
 use App\Models\Archetype;
 use App\Models\DeckVersion;
 use App\Models\MtgoMatch;
+use App\Support\MatchRecord;
 use Carbon\Carbon;
 
 class GetReportArchetypeStats
@@ -17,10 +18,7 @@ class GetReportArchetypeStats
      * @param  array<int, int>  $deckVersionIds
      * @return array{
      *     deckCount: int,
-     *     matchWins: int,
-     *     matchLosses: int,
-     *     matchDraws: int,
-     *     matchWinrate: int,
+     *     matchRecord: MatchRecordData,
      *     formatLabel: string,
      *     archetypeName: string,
      *     colorIdentity: string|null,
@@ -49,19 +47,11 @@ class GetReportArchetypeStats
             ->where('format', $format)
             ->when($from && $to, fn ($q) => $q->whereBetween('started_at', [$from, $to]));
 
-        $wins = (clone $matchQuery)->where('outcome', MatchOutcome::Win)->count();
-        $losses = (clone $matchQuery)->where('outcome', MatchOutcome::Loss)->count();
-        $draws = (clone $matchQuery)->where('outcome', MatchOutcome::Draw)->count();
-
-        $decisive = $wins + $losses;
-        $winrate = $decisive > 0 ? (int) round(($wins / $decisive) * 100) : 0;
+        $matchRecord = MatchRecord::fromQuery($matchQuery);
 
         return [
             'deckCount' => $deckCount,
-            'matchWins' => $wins,
-            'matchLosses' => $losses,
-            'matchDraws' => $draws,
-            'matchWinrate' => $winrate,
+            'matchRecord' => $matchRecord->toData(),
             'formatLabel' => MtgoMatch::displayFormat($format),
             'archetypeName' => $archetype->name,
             'colorIdentity' => $archetype->color_identity,
