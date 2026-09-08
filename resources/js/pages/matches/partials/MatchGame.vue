@@ -1,30 +1,54 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { router } from '@inertiajs/vue3';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import GameLogPanel from '@/components/matches/GameLogPanel.vue';
-import { Clock, Coins, Hand, Layers, Play, ScrollText, Undo2 } from 'lucide-vue-next';
+import CardTilePill from '@/components/matches/CardTilePill.vue';
+import EditKeptHandDialog from '@/components/matches/EditKeptHandDialog.vue';
+import EditSideboardDialog from '@/components/matches/EditSideboardDialog.vue';
+import { Clock, Coins, Hand, Layers, PencilLine, Play, ScrollText, Undo2 } from 'lucide-vue-next';
 import OpenReplayController from '@/actions/App/Http/Controllers/Games/OpenReplayController';
+import type { DeckCardOption, GameDetail, ManualEditingData } from '@/types/matches';
 
 const props = defineProps<{
-    game: {
-        id: number;
-        number: number;
-        won: boolean;
-        onThePlay: boolean;
-        duration: string | null;
-        turns: number | null;
-        localMulligans: number;
-        opponentMulligans: number;
-        mulliganedHands: { name: string; image: string | null }[][];
-        keptHand: { name: string; image: string | null; bottomed: boolean }[];
-        sideboardChanges: { name: string; image: string | null; quantity: number; type: 'in' | 'out' }[];
-    };
+    game: GameDetail;
     gameLog: Array<{ timestamp: string; message: string }>;
     opponentName: string;
     imported?: boolean;
+    manual?: boolean;
+    manualEditing?: ManualEditingData | null;
 }>();
+
+const handDialog = ref<InstanceType<typeof EditKeptHandDialog> | null>(null);
+const sideboardDialog = ref<InstanceType<typeof EditSideboardDialog> | null>(null);
+
+/** Registered mains with this game's recorded sideboard changes applied. */
+const effectiveMains = computed<DeckCardOption[]>(() => {
+    const deck = props.manualEditing?.deck;
+    if (!deck) return [];
+    const byId = new Map<number, DeckCardOption>(deck.mains.map((c) => [c.mtgoId, { ...c }]));
+    for (const change of props.game.sideboardChanges) {
+        if (change.type === 'out') {
+            const entry = byId.get(change.mtgoId);
+            if (entry) entry.quantity = Math.max(0, entry.quantity - change.quantity);
+        } else {
+            const existing = byId.get(change.mtgoId);
+            if (existing) {
+                existing.quantity += change.quantity;
+            } else {
+                const source = deck.sideboard.find((c) => c.mtgoId === change.mtgoId);
+                byId.set(change.mtgoId, {
+                    mtgoId: change.mtgoId,
+                    name: source?.name ?? change.name,
+                    image: source?.image ?? change.image,
+                    quantity: change.quantity,
+                });
+            }
+        }
+    }
+    return [...byId.values()].filter((c) => c.quantity > 0);
+});
 
 const sideboardCount = computed(() =>
     props.game.sideboardChanges.reduce((sum, c) => sum + c.quantity, 0),
@@ -99,7 +123,7 @@ const handGridClass = computed(() =>
                     </DialogContent>
                 </Dialog>
                 <Button
-                    v-if="!imported"
+                    v-if="!imported && !manual"
                     variant="ghost"
                     size="sm"
                     class="h-7 px-2 text-xs"
@@ -120,21 +144,16 @@ const handGridClass = computed(() =>
                         {{ game.localMulligans > 0 ? `Kept hand (mulligan to ${7 - game.localMulligans})` : 'Opening hand' }}
                     </h3>
                     <span class="font-mono text-[11px] text-muted-foreground">({{ game.keptHand.length }})</span>
+                    <Button v-if="manual" variant="ghost" size="sm" class="h-6 px-1.5 text-[11px]" @click="handDialog?.open()">
+                        <PencilLine :size="11" />
+                        {{ game.keptHand.length ? 'Edit' : 'Add' }}
+                    </Button>
                     <span class="ml-2 h-px flex-1 bg-border" />
                 </header>
 
-                <div class="grid gap-1.5" :class="handGridClass">
-                    <div v-for="(card, i) in game.keptHand" :key="`kept_${i}`" class="relative shrink-0">
-                        <div
-                            class="aspect-[63/88] overflow-hidden rounded-md border shadow-sm"
-                            :class="[
-                                card.bottomed
-                                    ? 'border-destructive'
-                                    : i === drawnIndex
-                                      ? 'border-sky-400/70 ring-1 ring-sky-400/40'
-                                      : 'border-transparent',
-                            ]"
-                        >
+                <div v-if="game.keptHand.length" class="grid gap-1.5" :class="handGridClass">
+                    <div v-for="(card, i) in game.keptHand" :key="`kept_${i}`" class="flex flex-col items-center gap-1">
+                        <div class="aspect-[63/88] w-full overflow-hidden rounded-md shadow-sm" :class="card.bottomed ? 'opacity-60' : ''">
                             <img
                                 v-if="card.image"
                                 :src="card.image"
@@ -145,20 +164,13 @@ const handGridClass = computed(() =>
                                 <span class="text-xs leading-tight text-muted-foreground">{{ card.name }}</span>
                             </div>
                         </div>
-                        <div
-                            v-if="card.bottomed"
-                            class="absolute right-0 bottom-0 left-0 rounded-b-md bg-destructive/85 py-0.5 text-center text-[10px] font-medium text-destructive-foreground"
-                        >
-                            Bottomed
-                        </div>
-                        <div
-                            v-else-if="i === drawnIndex"
-                            class="absolute right-0 bottom-0 left-0 rounded-b-md bg-sky-500/85 py-0.5 text-center font-mono text-[10px] font-semibold tracking-widest text-white uppercase"
-                        >
-                            T1 Draw
-                        </div>
+                        <CardTilePill v-if="card.bottomed" tone="bottomed">Bottomed</CardTilePill>
+                        <CardTilePill v-else-if="i === drawnIndex" tone="draw">T1 draw</CardTilePill>
                     </div>
                 </div>
+                <p v-else class="rounded-md border border-dashed px-4 py-5 text-center text-xs text-muted-foreground italic">
+                    {{ manual ? 'No hand recorded for this game.' : 'No opening hand captured.' }}
+                </p>
             </section>
 
             <!-- Mulliganed hands -->
@@ -176,7 +188,10 @@ const handGridClass = computed(() =>
                     <p v-if="game.mulliganedHands.length > 1" class="font-mono text-[11px] text-muted-foreground">
                         Hand {{ hi + 1 }}
                     </p>
-                    <div class="grid grid-cols-7 gap-1.5">
+                    <p v-if="hand.length === 0" class="rounded-md border border-dashed px-4 py-3 text-center text-xs text-muted-foreground italic">
+                        Not recorded.
+                    </p>
+                    <div v-else class="grid grid-cols-7 gap-1.5">
                         <div
                             v-for="(card, ci) in hand"
                             :key="`mull_${hi}_${ci}`"
@@ -204,6 +219,10 @@ const handGridClass = computed(() =>
                         Sideboard changes
                     </h3>
                     <span v-if="sideboardCount" class="font-mono text-[11px] text-muted-foreground">({{ sideboardCount }})</span>
+                    <Button v-if="manual" variant="ghost" size="sm" class="h-6 px-1.5 text-[11px]" @click="sideboardDialog?.open()">
+                        <PencilLine :size="11" />
+                        {{ game.sideboardChanges.length ? 'Edit' : 'Add' }}
+                    </Button>
                     <span class="ml-2 h-px flex-1 bg-border" />
                 </header>
 
@@ -211,33 +230,38 @@ const handGridClass = computed(() =>
                     <div
                         v-for="change in game.sideboardChanges"
                         :key="`${change.type}_${change.name}`"
-                        class="relative aspect-[63/88] overflow-hidden rounded-md border"
-                        :class="change.type === 'in' ? 'border-success ring-1 ring-success/30' : 'border-destructive ring-1 ring-destructive/30'"
+                        class="flex flex-col items-center gap-1"
                     >
-                        <img
-                            v-if="change.image"
-                            :src="change.image"
-                            :alt="change.name"
-                            class="h-full w-full object-cover"
-                        />
-                        <div v-else class="flex h-full w-full items-center justify-center bg-muted p-1.5 text-center">
-                            <span class="text-xs leading-tight text-muted-foreground">{{ change.name }}</span>
+                        <div class="aspect-[63/88] w-full overflow-hidden rounded-md shadow-sm" :class="change.type === 'out' ? 'opacity-60' : ''">
+                            <img
+                                v-if="change.image"
+                                :src="change.image"
+                                :alt="change.name"
+                                class="h-full w-full object-cover"
+                            />
+                            <div v-else class="flex h-full w-full items-center justify-center bg-muted p-1.5 text-center">
+                                <span class="text-xs leading-tight text-muted-foreground">{{ change.name }}</span>
+                            </div>
                         </div>
-                        <div
-                            class="absolute right-0 bottom-0 left-0 py-0.5 text-center font-mono text-[10px] font-bold"
-                            :class="change.type === 'in' ? 'bg-success/85 text-success-foreground' : 'bg-destructive/85 text-destructive-foreground'"
-                        >
-                            {{ change.type === 'in' ? '+' : '−' }}{{ change.quantity }}
-                        </div>
+                        <CardTilePill :tone="change.type">{{ change.type === 'in' ? '+' : '−' }}{{ change.quantity }}</CardTilePill>
                     </div>
                 </div>
                 <p
                     v-else
                     class="rounded-md border border-dashed px-4 py-5 text-center text-xs text-muted-foreground italic"
                 >
-                    Pre-sideboard game — no changes made yet.
+                    {{ manual ? 'No sideboard changes recorded for this game.' : 'Pre-sideboard game, no changes yet.' }}
                 </p>
             </section>
         </template>
+
+        <EditKeptHandDialog v-if="manual && manualEditing" ref="handDialog" :game="game" :mains="effectiveMains" />
+        <EditSideboardDialog
+            v-if="manual && manualEditing && game.number > 1"
+            ref="sideboardDialog"
+            :game="game"
+            :mains="manualEditing.deck.mains"
+            :sideboard="manualEditing.deck.sideboard"
+        />
     </div>
 </template>

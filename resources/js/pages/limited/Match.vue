@@ -3,7 +3,7 @@ import MatchesController from '@/actions/App/Http/Controllers/Limited/MatchesCon
 import AppLayout from '@/AppLayout.vue';
 import LimitedEventLayout from '@/Layouts/LimitedEventLayout.vue';
 import MatchDetail from '@/pages/matches/partials/MatchDetail.vue';
-import type { GameDetail } from '@/types/matches';
+import type { GameDetail, ManualEditingData } from '@/types/matches';
 import { Head } from '@inertiajs/vue3';
 
 defineOptions({ layout: [AppLayout, LimitedEventLayout] });
@@ -17,6 +17,7 @@ const props = defineProps<{
     archetypes: App.Data.Front.ArchetypeData[];
     imported: boolean;
     manual: boolean;
+    manualEditing: ManualEditingData | null;
 }>();
 </script>
 
@@ -29,7 +30,8 @@ const props = defineProps<{
             :game-logs="gameLogs"
             :archetypes="archetypes"
             :imported="imported"
-        :manual="manual"
+            :manual="manual"
+            :manual-editing="manualEditing"
             :fallback-url="MatchesController.url({ league: props.event.id })"
         />
     </div>

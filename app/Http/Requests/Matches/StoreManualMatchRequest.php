@@ -38,6 +38,7 @@ class StoreManualMatchRequest extends FormRequest
             'games' => ['required', 'array', 'min:1', 'max:3'],
             'games.*.won' => ['required', 'boolean'],
             'games.*.on_play' => ['required', 'boolean'],
+            'games.*.turns' => ['nullable', 'integer', 'min:1', 'max:99'],
         ];
     }
 

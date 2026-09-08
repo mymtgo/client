@@ -26,7 +26,7 @@ class ExtractGameHandData
         $keptHand = array_values($parsed['kept_hand']);
 
         return [
-            'mulligan_count' => count($parsed['mulliganed_hands']),
+            'mulligan_count' => $parsed['local_mulligans'],
             'starting_hand_size' => count($keptHand),
             'kept_hand' => $keptHand,
             'opponent_mulligan_count' => $parsed['opponent_mulligans'],

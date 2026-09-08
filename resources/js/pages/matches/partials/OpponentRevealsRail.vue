@@ -1,21 +1,10 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import ManaSymbols from '@/components/ManaSymbols.vue';
-import { Eye } from 'lucide-vue-next';
-
-type SeenCard = {
-    name: string;
-    image: string | null;
-    type: string | null;
-    identity: string | null;
-    quantity: number;
-};
-
-type GameInput = {
-    number: number;
-    won: boolean;
-    opponentCardsSeen: SeenCard[];
-};
+import EditRevealsDialog from '@/components/matches/EditRevealsDialog.vue';
+import { Button } from '@/components/ui/button';
+import { Eye, PencilLine } from 'lucide-vue-next';
+import type { GameDetail, ManualEditingData } from '@/types/matches';
 
 type AggregatedReveal = {
     name: string;
@@ -27,15 +16,29 @@ type AggregatedReveal = {
 };
 
 const props = defineProps<{
-    games: GameInput[];
+    games: GameDetail[];
     opponentName: string;
+    /** Manual matches: show per-game edit controls. */
+    editable?: boolean;
+    manualEditing?: ManualEditingData | null;
+    hasOpponentArchetype?: boolean;
 }>();
+
+const emit = defineEmits<{ 'set-archetype': [] }>();
+
+const revealsDialog = ref<InstanceType<typeof EditRevealsDialog> | null>(null);
 
 const filter = ref<'all' | number>('all');
 const hovered = ref<AggregatedReveal | null>(null);
 const previewTop = ref(0);
 
 const allGameNumbers = computed(() => props.games.map((g) => g.number));
+
+/** The game an edit applies to: the filtered game, or game 1 when showing all. */
+const editingGame = computed<GameDetail | null>(() => {
+    if (filter.value === 'all') return props.games[0] ?? null;
+    return props.games.find((g) => g.number === filter.value) ?? null;
+});
 
 const CANONICAL_TYPES = ['Creature', 'Planeswalker', 'Battle', 'Instant', 'Sorcery', 'Enchantment', 'Artifact', 'Land'] as const;
 const TYPE_ORDER = Object.fromEntries(CANONICAL_TYPES.map((t, i) => [t, i]));
@@ -146,9 +149,15 @@ function onCardLeave() {
                 <Eye :size="12" />
                 Opponent reveals
             </span>
-            <span class="rounded-full bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground tabular-nums">
-                {{ totalUnique }}
-            </span>
+            <div class="flex items-center gap-1">
+                <Button v-if="editable && editingGame" variant="ghost" size="sm" class="h-6 px-1.5 text-[11px]" @click="revealsDialog?.open()">
+                    <PencilLine :size="11" />
+                    {{ editingGame.opponentCardsSeen.length ? `Edit G${editingGame.number}` : `Add G${editingGame.number}` }}
+                </Button>
+                <span class="rounded-full bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground tabular-nums">
+                    {{ totalUnique }}
+                </span>
+            </div>
         </header>
 
         <div v-if="games.length > 1" class="flex gap-1 border-b px-2 py-1.5">
@@ -206,10 +215,26 @@ function onCardLeave() {
                 </div>
             </section>
 
-            <p v-if="aggregated.length === 0" class="px-3 py-6 text-center text-xs text-muted-foreground italic">
-                No cards revealed in this game.
-            </p>
+            <div v-if="aggregated.length === 0" class="flex flex-col items-center gap-2 px-3 py-6 text-center text-xs text-muted-foreground italic">
+                <span>{{ editable ? 'No revealed cards recorded.' : 'No cards revealed in this game.' }}</span>
+                <button
+                    v-if="editable && !hasOpponentArchetype"
+                    type="button"
+                    class="text-primary not-italic underline-offset-2 hover:underline"
+                    @click="emit('set-archetype')"
+                >
+                    Set opponent archetype for quick picks
+                </button>
+            </div>
         </div>
+
+        <EditRevealsDialog
+            v-if="editable && editingGame"
+            ref="revealsDialog"
+            :game="editingGame"
+            :games="games"
+            :archetype-decklist="manualEditing?.archetypeDecklist ?? null"
+        />
 
         <Transition name="fade">
             <div

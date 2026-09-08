@@ -11,7 +11,7 @@ import type { ManualLeagueDeckOption, ManualMatchLeagueOption } from '@/types/le
 import { useForm } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
 
-type GameRow = { result: 'W' | 'L' | ''; onPlay: 'play' | 'draw' };
+type GameRow = { result: 'W' | 'L' | ''; onPlay: 'play' | 'draw'; turns: string | number };
 
 const props = defineProps<{
     decks: ManualLeagueDeckOption[];
@@ -42,9 +42,9 @@ function plusMinutes(value: string, minutes: number): string {
 
 function emptyGames(): GameRow[] {
     return [
-        { result: '', onPlay: 'play' },
-        { result: '', onPlay: 'draw' },
-        { result: '', onPlay: 'play' },
+        { result: '', onPlay: 'play', turns: '' },
+        { result: '', onPlay: 'draw', turns: '' },
+        { result: '', onPlay: 'play', turns: '' },
     ];
 }
 
@@ -153,13 +153,22 @@ function onEndedAtInput(value: string | number): void {
     form.ended_at = String(value);
 }
 
+/** The Input component emits numbers for type="number" and strings when cleared. */
+function parseTurns(value: string | number): number | null {
+    const parsed = typeof value === 'number' ? value : Number.parseInt(value.trim(), 10);
+    return Number.isFinite(parsed) ? parsed : null;
+}
+
 const playedGames = computed(() => form.games.filter((g) => g.result !== ''));
+const turnsError = computed(() => Object.entries(form.errors).find(([key]) => /^games\.\d+\.turns$/.test(key))?.[1] ?? null);
 const canSubmit = computed(() => form.deck_id !== null && form.opponent_name.trim() !== '' && playedGames.value.length > 0 && !form.processing);
 
 function submit(): void {
     form.transform((data) => ({
         ...data,
-        games: data.games.filter((g) => g.result !== '').map((g) => ({ won: g.result === 'W', on_play: g.onPlay === 'play' })),
+        games: data.games
+            .filter((g) => g.result !== '')
+            .map((g) => ({ won: g.result === 'W', on_play: g.onPlay === 'play', turns: parseTurns(g.turns) })),
     })).submit(StoreController(), {
         preserveScroll: true,
         onSuccess: () => {
@@ -273,11 +282,24 @@ defineExpose({ open: openSheet });
                             :disabled="!isGameEnabled(index)"
                             @update:model-value="setOnPlay(index, $event)"
                         />
+                        <Input
+                            v-model="game.turns"
+                            type="number"
+                            inputmode="numeric"
+                            min="1"
+                            max="99"
+                            placeholder="Turns"
+                            :aria-label="`Game ${index + 1} turns`"
+                            :disabled="!isGameEnabled(index)"
+                            class="h-8 w-20 text-xs"
+                        />
                     </div>
                     <p class="text-xs text-muted-foreground">
-                        Games unlock in order and stop at two wins. A 1-1 after two games is saved as a draw. Click a result again to clear it.
+                        Games unlock in order and stop at two wins. A 1-1 after two games is saved as a draw. Click a result again to clear it. Turns
+                        are optional.
                     </p>
                     <p v-if="form.errors.games" class="text-xs text-destructive">{{ form.errors.games }}</p>
+                    <p v-if="turnsError" class="text-xs text-destructive">{{ turnsError }}</p>
                 </div>
 
                 <SheetFooter class="mt-auto flex-row justify-end gap-2 border-t border-border pt-4">

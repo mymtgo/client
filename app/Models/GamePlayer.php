@@ -10,5 +10,7 @@ class GamePlayer extends Pivot
         'is_local' => 'bool',
         'on_play' => 'bool',
         'deck_json' => 'array',
+        'opening_hand_json' => 'array',
+        'mulligan_count' => 'integer',
     ];
 }

@@ -36,7 +36,7 @@ class CreateManualMatch
      *     league_id?: int|null,
      *     started_at: string,
      *     ended_at: string,
-     *     games: list<array{won: bool|string|int, on_play: bool|string|int}>
+     *     games: list<array{won: bool|string|int, on_play: bool|string|int, turns?: int|string|null}>
      * }  $data
      */
     public static function run(array $data): MtgoMatch
@@ -50,6 +50,7 @@ class CreateManualMatch
         $games = collect($data['games'])->map(fn (array $game) => [
             'won' => filter_var($game['won'], FILTER_VALIDATE_BOOLEAN),
             'on_play' => filter_var($game['on_play'], FILTER_VALIDATE_BOOLEAN),
+            'turns' => isset($game['turns']) && $game['turns'] !== '' ? (int) $game['turns'] : null,
         ])->values();
 
         $wins = $games->where('won', true)->count();
@@ -122,7 +123,7 @@ class CreateManualMatch
      * Games get evenly spaced timestamps inside the match window so every
      * reader that orders by games.started_at sees them in entry order.
      *
-     * @param  Collection<int, array{won: bool, on_play: bool}>  $games
+     * @param  Collection<int, array{won: bool, on_play: bool, turns: int|null}>  $games
      */
     private static function createGames(MtgoMatch $match, Collection $games, Player $local, Player $opponent, Carbon $startedAt, Carbon $endedAt): void
     {
@@ -133,6 +134,7 @@ class CreateManualMatch
                 'match_id' => $match->id,
                 'mtgo_id' => Str::uuid()->toString(),
                 'won' => $gameData['won'],
+                'turn_count' => $gameData['turns'],
                 'started_at' => $startedAt->copy()->addSeconds($sliceSeconds * $index),
                 'ended_at' => $startedAt->copy()->addSeconds($sliceSeconds * ($index + 1)),
             ]);

@@ -19,10 +19,20 @@ class ParseOpeningHand
      *   bottomed_instance_ids: int[],
      *   hand_before_bottoming: array<int, int>,
      *   opponent_mulligans: int,
+     *   local_mulligans: int,
      * }
      */
     public static function run(Game $game, int $localInstanceId, int $opponentInstanceId): array
     {
+        $localPivot = $game->players->first(fn ($p) => $p->pivot->is_local)?->pivot;
+        $opponentPivot = $game->players->first(fn ($p) => ! $p->pivot->is_local)?->pivot;
+
+        // Hand-entered games (manual matches) store the opening hand directly
+        // on the pivot. There is no timeline to replay, so the pivot is the truth.
+        if ($localPivot && $localPivot->opening_hand_json !== null) {
+            return self::fromPivot($localPivot->opening_hand_json, (int) $localPivot->mulligan_count, (int) ($opponentPivot?->mulligan_count ?? 0));
+        }
+
         $snapshots = $game->timeline->sortBy('timestamp');
 
         $mulliganedHands = [];       // Each entry: [instanceId => catalogId]
@@ -137,6 +147,44 @@ class ParseOpeningHand
             'bottomed_instance_ids' => $bottomedInstanceIds,
             'hand_before_bottoming' => $handBeforeBottoming,
             'opponent_mulligans' => $opponentMulligans,
+            'local_mulligans' => count($mulliganedHands),
+        ];
+    }
+
+    /**
+     * Shape a stored manual opening hand like the timeline output. Bottomed
+     * cards follow the kept cards in hand_before_bottoming and their positions
+     * stand in for instance ids. Mulliganed hands the user skipped stay as
+     * empty entries so the hand numbering matches the mulligan count.
+     *
+     * @param  array{kept?: array<int, int>, bottomed?: array<int, int>, mulligans?: array<int, array<int, int>>}  $stored
+     * @return array{
+     *   mulliganed_hands: array<int, array<int, int>>,
+     *   kept_hand: array<int, int>,
+     *   bottomed_instance_ids: int[],
+     *   hand_before_bottoming: array<int, int>,
+     *   opponent_mulligans: int,
+     *   local_mulligans: int,
+     * }
+     */
+    private static function fromPivot(array $stored, int $localMulligans, int $opponentMulligans): array
+    {
+        $ints = fn (array $ids): array => array_values(array_map('intval', $ids));
+
+        $kept = $ints($stored['kept'] ?? []);
+        $bottomed = $ints($stored['bottomed'] ?? []);
+        $mulliganedHands = array_values(array_map($ints, $stored['mulligans'] ?? []));
+
+        $handBeforeBottoming = [...$kept, ...$bottomed];
+        $bottomedInstanceIds = $bottomed === [] ? [] : range(count($kept), count($handBeforeBottoming) - 1);
+
+        return [
+            'mulliganed_hands' => $mulliganedHands,
+            'kept_hand' => $kept,
+            'bottomed_instance_ids' => $bottomedInstanceIds,
+            'hand_before_bottoming' => $handBeforeBottoming,
+            'opponent_mulligans' => $opponentMulligans,
+            'local_mulligans' => $localMulligans,
         ];
     }
 }

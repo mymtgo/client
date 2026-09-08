@@ -4,12 +4,19 @@ use App\Actions\Logs\IngestLogInstance;
 use App\Actions\Overlay\SyncDraftNotesWindowVisibility;
 use App\Actions\Pipeline\RunPipeline;
 use App\Enums\LogEventType;
+use App\Enums\MatchState;
 use App\Facades\AppSettings;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Managers\MtgoManager;
 use App\Models\Account;
+use App\Models\Card;
+use App\Models\DeckVersion;
+use App\Models\Game;
 use App\Models\LogEvent;
+use App\Models\MtgoMatch;
+use App\Models\Player;
 use Database\Factories\DraftPickFactory;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Testing\TestResponse;
 use Native\Desktop\Facades\Settings;
@@ -229,4 +236,73 @@ function runPipelineUntilIdle(int $maxTicks = 20): int
     }
 
     return $maxTicks;
+}
+
+/*
+|--------------------------------------------------------------------------
+| Manual match fixture
+|--------------------------------------------------------------------------
+*/
+
+/**
+ * A complete manual (or tracked, when $manual is false) match with two games
+ * and a four-card deck version, for game-detail endpoint tests.
+ *
+ * @return array{match: MtgoMatch, version: DeckVersion, games: Collection<int, Game>, local: Player, opponent: Player, cards: array<string, Card>}
+ */
+function createManualMatchFixture(bool $manual = true): array
+{
+    $cards = [
+        'bolt' => Card::factory()->create(['mtgo_id' => 4001, 'oracle_id' => 'o-bolt', 'name' => 'Lightning Bolt', 'type' => 'Instant']),
+        'goyf' => Card::factory()->create(['mtgo_id' => 4002, 'oracle_id' => 'o-goyf', 'name' => 'Tarmogoyf', 'type' => 'Creature']),
+        'sb' => Card::factory()->create(['mtgo_id' => 4003, 'oracle_id' => 'o-sb', 'name' => 'Rest in Peace', 'type' => 'Enchantment']),
+        'land' => Card::factory()->create(['mtgo_id' => 4004, 'oracle_id' => 'o-land', 'name' => 'Mountain', 'type' => 'Basic Land']),
+    ];
+
+    $version = DeckVersion::factory()->create([
+        'signature' => base64_encode('4001:4:false|4002:4:false|4004:20:false|4003:3:true'),
+    ]);
+
+    $match = MtgoMatch::factory()->create([
+        'deck_version_id' => $version->id,
+        'state' => MatchState::Complete,
+        'manual' => $manual,
+        'started_at' => now()->subHour(),
+        'ended_at' => now()->subMinutes(15),
+    ]);
+
+    $local = Player::firstOrCreate(['username' => 'testplayer']);
+    $opponent = Player::firstOrCreate(['username' => 'opponent']);
+
+    $games = collect([
+        ['won' => true, 'on_play' => true, 'started_at' => now()->subHour()],
+        ['won' => false, 'on_play' => false, 'started_at' => now()->subMinutes(40)],
+    ])->map(function (array $data) use ($match, $local, $opponent) {
+        $game = Game::factory()->for($match, 'match')->create([
+            'won' => $data['won'],
+            'started_at' => $data['started_at'],
+            'ended_at' => $data['started_at']->copy()->addMinutes(15),
+        ]);
+
+        $game->players()->attach($local->id, [
+            'is_local' => true,
+            'on_play' => $data['on_play'],
+            'starting_hand_size' => 7,
+            'instance_id' => 0,
+            'deck_json' => [],
+            'mulligan_count' => 0,
+        ]);
+        $game->players()->attach($opponent->id, [
+            'is_local' => false,
+            'on_play' => ! $data['on_play'],
+            'starting_hand_size' => 7,
+            'instance_id' => 1,
+            'deck_json' => [],
+            'mulligan_count' => 0,
+        ]);
+
+        return $game;
+    });
+
+    return compact('match', 'version', 'games', 'local', 'opponent', 'cards');
 }

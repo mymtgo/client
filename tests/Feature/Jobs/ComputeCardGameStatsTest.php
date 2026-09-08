@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\Matches\RecomputeManualMatchStats;
 use App\Jobs\ComputeCardGameStats;
 use App\Models\Card;
 use App\Models\DeckVersion;
@@ -1371,4 +1372,65 @@ it('computes manual match stats from the deck version without any game-log looku
         ->and((bool) $g2Main->sided_in)->toBeFalse()
         ->and((bool) $g2Main->sided_out)->toBeFalse()
         ->and(GameLog::count())->toBe(0);
+});
+
+it('recomputes manual match stats even when stats already exist', function () {
+    $fx = createManualMatchFixture();
+    $game1 = $fx['games'][0];
+
+    (new ComputeCardGameStats($fx['match']->id))->handle();
+    expect(DB::table('card_game_stats')->where('game_id', $game1->id)->where('oracle_id', 'o-bolt')->value('kept'))->toBe(0);
+
+    $game1->players()->updateExistingPivot($fx['local']->id, [
+        'opening_hand_json' => ['kept' => [4001, 4001, 4004, 4004, 4004, 4002, 4004], 'bottomed' => [], 'mulligans' => []],
+        'mulligan_count' => 0,
+    ]);
+
+    (new ComputeCardGameStats($fx['match']->id))->handle();
+
+    expect(DB::table('card_game_stats')->where('game_id', $game1->id)->where('oracle_id', 'o-bolt')->value('kept'))->toBe(2)
+        ->and(DB::table('card_game_stats')->where('game_id', $game1->id)->where('opponent', false)->count())->toBe(3);
+});
+
+it('uses the manual postboard pivot deck over the version deck', function () {
+    $fx = createManualMatchFixture();
+    $game2 = $fx['games'][1];
+    $game2->players()->updateExistingPivot($fx['local']->id, [
+        'deck_json' => [
+            ['mtgo_id' => 4001, 'quantity' => 2, 'sideboard' => false],
+            ['mtgo_id' => 4002, 'quantity' => 4, 'sideboard' => false],
+            ['mtgo_id' => 4004, 'quantity' => 20, 'sideboard' => false],
+            ['mtgo_id' => 4003, 'quantity' => 2, 'sideboard' => false],
+            ['mtgo_id' => 4003, 'quantity' => 1, 'sideboard' => true],
+        ],
+    ]);
+
+    (new ComputeCardGameStats($fx['match']->id))->handle();
+
+    $rows = DB::table('card_game_stats')->where('game_id', $game2->id)->where('opponent', false)->get()->keyBy('oracle_id');
+
+    expect($rows['o-bolt']->quantity)->toBe(2)
+        ->and((bool) $rows['o-bolt']->sided_out)->toBeTrue()
+        ->and($rows['o-sb']->quantity)->toBe(2)
+        ->and((bool) $rows['o-sb']->sided_in)->toBeTrue()
+        ->and((bool) $rows['o-goyf']->sided_in)->toBeFalse();
+});
+
+it('writes opponent stats rows from manual reveals on the pivot', function () {
+    $fx = createManualMatchFixture();
+    $game = $fx['games'][0];
+    $game->players()->updateExistingPivot($fx['opponent']->id, ['deck_json' => [['mtgo_id' => 4002, 'quantity' => 3]]]);
+
+    (new ComputeCardGameStats($fx['match']->id))->handle();
+
+    $row = DB::table('card_game_stats')->where('game_id', $game->id)->where('opponent', true)->first();
+    expect($row->oracle_id)->toBe('o-goyf')->and($row->seen)->toBe(3);
+});
+
+it('RecomputeManualMatchStats ignores tracked matches', function () {
+    $fx = createManualMatchFixture(manual: false);
+
+    RecomputeManualMatchStats::run($fx['match']);
+
+    expect(DB::table('card_game_stats')->count())->toBe(0);
 });

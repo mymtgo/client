@@ -30,6 +30,7 @@ class BuildMatchGameData
                 $quantity = collect($items)->sum(fn ($i) => (int) ($i['quantity'] ?? 1));
 
                 return [
+                    'mtgoId' => (int) $mtgoId,
                     'name' => $card->name ?? "Unknown ({$mtgoId})",
                     'image' => $card->image_url ?? null,
                     'type' => $card->type ?? null,
@@ -65,7 +66,7 @@ class BuildMatchGameData
             'won' => (bool) $game->won,
             'onThePlay' => (bool) ($localPlayer?->pivot->on_play ?? false),
             'duration' => $duration,
-            'turns' => self::estimateTurns($game, $cardsByMtgoId),
+            'turns' => $game->turn_count ?? self::estimateTurns($game, $cardsByMtgoId),
             'localMulligans' => $handData['localMulligans'],
             'opponentMulligans' => $handData['opponentMulligans'],
             'mulliganedHands' => $handData['mulliganedHands'],
@@ -123,6 +124,7 @@ class BuildMatchGameData
             }
 
             $cardsSeen[] = [
+                'mtgoId' => (int) $logCard['mtgo_id'],
                 'name' => $name,
                 'image' => $card->image_url ?? null,
                 'type' => $card->type ?? null,
@@ -145,6 +147,7 @@ class BuildMatchGameData
             $card = $cardsByMtgoId->get($catalogId);
 
             return [
+                'mtgoId' => (int) $catalogId,
                 'name' => $card->name ?? "Unknown ({$catalogId})",
                 'image' => $card->image_url ?? null,
                 'bottomed' => $bottomed,
@@ -164,7 +167,7 @@ class BuildMatchGameData
         );
 
         return [
-            'localMulligans' => count($parsed['mulliganed_hands']),
+            'localMulligans' => $parsed['local_mulligans'],
             'opponentMulligans' => $parsed['opponent_mulligans'],
             'mulliganedHands' => $mulliganedHandsFormatted,
             'keptHand' => $keptHand,
@@ -205,6 +208,7 @@ class BuildMatchGameData
 
     /**
      * Estimate game length in turns by counting lands on the battlefield.
+     * Used when the game has no recorded turn_count (log-derived or hand-entered).
      */
     private static function estimateTurns(Game $game, Collection $cardsByMtgoId): ?int
     {
@@ -320,6 +324,7 @@ class BuildMatchGameData
         $card = $cardsByMtgoId->get($mtgoId);
 
         return [
+            'mtgoId' => $mtgoId,
             'name' => $card->name ?? 'Unknown',
             'image' => $card->image_url ?? null,
             'quantity' => $quantity,

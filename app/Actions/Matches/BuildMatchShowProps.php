@@ -17,7 +17,7 @@ class BuildMatchShowProps
      * wraps it: the deck-view match page and the limited event match page
      * render the same body from this payload.
      *
-     * @return array{match: MatchData, games: Collection<int, mixed>, gameLogs: Collection<int, mixed>, archetypes: mixed, imported: bool, manual: bool}
+     * @return array{match: MatchData, games: Collection<int, mixed>, gameLogs: Collection<int, mixed>, archetypes: mixed, imported: bool, manual: bool, manualEditing: array<string, mixed>|null}
      */
     public static function run(MtgoMatch $match): array
     {
@@ -61,7 +61,9 @@ class BuildMatchShowProps
             fn ($byPlayer) => collect($byPlayer)->flatMap(fn ($cards) => collect($cards)->pluck('mtgo_id'))
         );
 
-        $allMtgoIds = $deckMtgoIds->merge($timelineCatalogIds)->merge($logCardMtgoIds)->unique();
+        $registeredMtgoIds = collect($registeredCards)->pluck('mtgo_id')->filter()->map(fn ($id) => (int) $id);
+
+        $allMtgoIds = $deckMtgoIds->merge($timelineCatalogIds)->merge($logCardMtgoIds)->merge($registeredMtgoIds)->unique();
         $cardsByMtgoId = Card::whereIn('mtgo_id', $allMtgoIds)->get()->keyBy('mtgo_id');
 
         $registeredOracleIds = collect($registeredCards)->pluck('oracle_id')->filter()->unique();
@@ -89,6 +91,7 @@ class BuildMatchShowProps
             'archetypes' => GetArchetypeOptions::run(),
             'imported' => (bool) $match->imported,
             'manual' => (bool) $match->manual,
+            'manualEditing' => BuildManualEditingData::run($match, $deckVersion, $cardsByMtgoId),
         ];
     }
 }

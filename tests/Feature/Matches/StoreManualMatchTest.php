@@ -190,3 +190,23 @@ it('creates two matches for the same payload posted twice', function () {
 
     expect(MtgoMatch::where('manual', true)->count())->toBe(2);
 });
+
+it('stores optional turn counts per game', function () {
+    $this->post('/matches', manualMatchPayload([
+        'games' => [
+            ['won' => true, 'on_play' => true, 'turns' => 8],
+            ['won' => false, 'on_play' => false, 'turns' => null],
+            ['won' => true, 'on_play' => true],
+        ],
+    ]))->assertRedirect()->assertSessionHasNoErrors();
+
+    $turns = MtgoMatch::query()->latest('id')->first()->games()->orderBy('started_at')->pluck('turn_count')->all();
+
+    expect($turns)->toBe([8, null, null]);
+});
+
+it('rejects turn counts outside one to ninety nine', function () {
+    $this->post('/matches', manualMatchPayload(['games' => [['won' => true, 'on_play' => true, 'turns' => 0]]]))->assertSessionHasErrors('games.0.turns');
+    $this->post('/matches', manualMatchPayload(['games' => [['won' => true, 'on_play' => true, 'turns' => 100]]]))->assertSessionHasErrors('games.0.turns');
+    $this->post('/matches', manualMatchPayload(['games' => [['won' => true, 'on_play' => true, 'turns' => 'nine']]]))->assertSessionHasErrors('games.0.turns');
+});

@@ -51,8 +51,6 @@ class ComputeCardGameStats implements ShouldQueue
         // Both imported and manual matches lack a live log. Imported matches
         // may still have a .dat on disk; manual matches never do, and must not
         // be re-keyed onto someone else's log by the opponent + time heuristic.
-        $gameless = $imported || $manual;
-
         // Imported matches are created with a random token unrelated to their
         // .dat game log, so the decoded log stays orphaned. Re-key it to the
         // match here (idempotent) so any recompute can resolve the log below.
@@ -80,7 +78,9 @@ class ComputeCardGameStats implements ShouldQueue
         // played, ...) with zeros. Keep whatever an earlier run produced and
         // only compute fresh when the match has no stats at all — timeline
         // -derived kept/seen are still better than nothing.
+        // Manual matches never have a log, so a recompute there is always deliberate.
         if ($gameLogStats === null
+            && ! $manual
             && CardGameStat::whereIn('game_id', $games->pluck('id'))->exists()
         ) {
             Log::channel('pipeline')->info("ComputeCardGameStats: no game-log source for match {$match->id}, keeping existing stats");
@@ -104,9 +104,9 @@ class ComputeCardGameStats implements ShouldQueue
         // Imported matches build deck_json from cards "seen" in the game log only,
         // so per-game quantities under-report the real maindeck. Comparing those
         // against each other produces false sided_in/sided_out signals for any
-        // card that simply wasn't drawn in g1 — keep g1Quantities null so the
-        // comparison short-circuits.
-        $trackSideboarding = ! $gameless;
+        // card that simply wasn't drawn in g1, so keep g1Quantities null so the
+        // comparison short-circuits. Manual pivots are full lists and diff fine.
+        $trackSideboarding = ! $imported;
 
         $game1Quantities = null;
 
@@ -116,7 +116,7 @@ class ComputeCardGameStats implements ShouldQueue
             }
 
             $isPostboard = $index > 0;
-            $next = $this->processGame($game, $match->deck_version_id, $isPostboard, $game1Quantities, $gameLogStats, $index, $sideboardOracleIds, $gameless);
+            $next = $this->processGame($game, $match->deck_version_id, $isPostboard, $game1Quantities, $gameLogStats, $index, $sideboardOracleIds, $imported);
 
             if (! $isPostboard && $trackSideboarding) {
                 $game1Quantities = $next;
@@ -192,7 +192,7 @@ class ComputeCardGameStats implements ShouldQueue
      * @param  array<int, string>  $sideboardOracleIds
      * @return array<string, int>|null oracle_id => quantity for game 1 (forwarded for sideboard comparison)
      */
-    private function processGame(Game $game, int $deckVersionId, bool $isPostboard, ?array $game1Quantities, ?array $gameLogStats, int $gameIndex, array $sideboardOracleIds, bool $gameless): ?array
+    private function processGame(Game $game, int $deckVersionId, bool $isPostboard, ?array $game1Quantities, ?array $gameLogStats, int $gameIndex, array $sideboardOracleIds, bool $forceVersionDeck): ?array
     {
         if ($game->won === null) {
             return null;
@@ -204,7 +204,7 @@ class ComputeCardGameStats implements ShouldQueue
             return null;
         }
 
-        $nextGame1Quantities = $this->processLocalSide($game, $localPlayer, $deckVersionId, $isPostboard, $game1Quantities, $gameLogStats, $gameIndex, $sideboardOracleIds, $gameless);
+        $nextGame1Quantities = $this->processLocalSide($game, $localPlayer, $deckVersionId, $isPostboard, $game1Quantities, $gameLogStats, $gameIndex, $sideboardOracleIds, $forceVersionDeck);
 
         $this->processOpponentSide($game, $deckVersionId, $isPostboard, $gameLogStats, $gameIndex);
 
@@ -221,10 +221,10 @@ class ComputeCardGameStats implements ShouldQueue
      * @param  array<int, string>  $sideboardOracleIds
      * @return array<string, int>|null oracle_id => maindeck quantity (game-1 only)
      */
-    private function processLocalSide(Game $game, $localPlayer, int $deckVersionId, bool $isPostboard, ?array $game1Quantities, ?array $gameLogStats, int $gameIndex, array $sideboardOracleIds, bool $gameless): ?array
+    private function processLocalSide(Game $game, $localPlayer, int $deckVersionId, bool $isPostboard, ?array $game1Quantities, ?array $gameLogStats, int $gameIndex, array $sideboardOracleIds, bool $forceVersionDeck): ?array
     {
         $localInstanceId = (int) $localPlayer->pivot->instance_id;
-        $deckJson = $this->resolveDeckJson($localPlayer, $deckVersionId, $gameless);
+        $deckJson = $this->resolveDeckJson($localPlayer, $deckVersionId, $forceVersionDeck);
 
         if (empty($deckJson)) {
             return null;
@@ -394,6 +394,14 @@ class ComputeCardGameStats implements ShouldQueue
 
             $catalogToOracle = $this->buildSeenCatalogToOracle($game, $oppInstanceId, $gameLogStats, $gameIndex, $oppName);
 
+            // Hand-entered games have no timeline and no log. The opponent pivot
+            // deck_json is the only record of what they showed, so it stands in
+            // for both the catalog map and the seen counts.
+            $pivotSeen = [];
+            if ($game->timeline->isEmpty() && $gameLogStats === null) {
+                [$catalogToOracle, $pivotSeen] = $this->pivotRevealsByOracle($opponent->pivot->deck_json ?? [], $catalogToOracle);
+            }
+
             if (empty($catalogToOracle)) {
                 continue;
             }
@@ -403,6 +411,10 @@ class ComputeCardGameStats implements ShouldQueue
                 : $this->emptyLogStats();
 
             $seenByOracle = $this->resolveSeenByOracle($game, $oppInstanceId, $catalogToOracle, self::OPPONENT_VISIBLE_ZONES, $logStats);
+
+            foreach ($pivotSeen as $oracleId => $count) {
+                $seenByOracle[$oracleId] = max($seenByOracle[$oracleId] ?? 0, $count);
+            }
 
             $oracleIds = array_unique(array_values($catalogToOracle));
 
@@ -457,18 +469,53 @@ class ComputeCardGameStats implements ShouldQueue
     }
 
     /**
-     * Live games: pivot deck_json (captured at match start) is the truth.
+     * Catalog map and seen counts from a pivot deck_json (manual reveals).
+     *
+     * @param  list<array<string, mixed>>  $deckJson
+     * @param  array<string, string>  $catalogToOracle
+     * @return array{0: array<string, string>, 1: array<string, int>}
+     */
+    private function pivotRevealsByOracle(array $deckJson, array $catalogToOracle): array
+    {
+        $quantities = [];
+        foreach ($deckJson as $card) {
+            $mtgoId = (string) ($card['mtgo_id'] ?? '');
+            if ($mtgoId !== '') {
+                $quantities[$mtgoId] = ($quantities[$mtgoId] ?? 0) + (int) ($card['quantity'] ?? 1);
+            }
+        }
+
+        if ($quantities === []) {
+            return [$catalogToOracle, []];
+        }
+
+        $resolved = Card::whereIn('mtgo_id', array_keys($quantities))
+            ->whereNotNull('oracle_id')
+            ->pluck('oracle_id', 'mtgo_id')
+            ->mapWithKeys(fn ($oracleId, $mtgoId) => [(string) $mtgoId => $oracleId])
+            ->toArray();
+
+        $seen = [];
+        foreach ($resolved as $mtgoId => $oracleId) {
+            $seen[$oracleId] = ($seen[$oracleId] ?? 0) + $quantities[$mtgoId];
+        }
+
+        return [$catalogToOracle + $resolved, $seen];
+    }
+
+    /**
+     * Live and manual games: pivot deck_json is the truth when present.
      * Imported games: pivot is sparse (only cards "seen" in the log), so the
-     * deck-version snapshot is the truth — pivot would deflate denominators
-     * to "games where this card appeared" rather than "all games played".
+     * deck-version snapshot is the truth. Pivot would deflate denominators to
+     * "games where this card appeared" rather than "all games played".
      *
      * @return list<array<string, mixed>>
      */
-    private function resolveDeckJson($player, int $deckVersionId, bool $gameless): array
+    private function resolveDeckJson($player, int $deckVersionId, bool $forceVersionDeck): array
     {
         $versionDeck = $this->resolveVersionDeck($deckVersionId);
 
-        if ($gameless && ! empty($versionDeck)) {
+        if ($forceVersionDeck && ! empty($versionDeck)) {
             return $versionDeck;
         }
 

@@ -14,6 +14,7 @@ use App\Http\Controllers\Archetypes\UploadDekController;
 use App\Http\Controllers\Archetypes\Variants\ReassignController;
 use App\Http\Controllers\Cards\ArchetypesController;
 use App\Http\Controllers\Cards\ImageBase64Controller;
+use App\Http\Controllers\Cards\SearchController;
 use App\Http\Controllers\Debug\Cards\PopulateController;
 use App\Http\Controllers\Debug\Decks\SyncController;
 use App\Http\Controllers\Debug\LogEvents\IngestController;
@@ -54,6 +55,9 @@ use App\Http\Controllers\Decks\UpdateDeckArchetypeController;
 use App\Http\Controllers\Decks\UpdateNameController;
 use App\Http\Controllers\Decks\UpdatePerPageController;
 use App\Http\Controllers\Games\OpenReplayController;
+use App\Http\Controllers\Games\UpdateHandController;
+use App\Http\Controllers\Games\UpdateRevealsController;
+use App\Http\Controllers\Games\UpdateSideboardController;
 use App\Http\Controllers\Import\CancelScanController;
 use App\Http\Controllers\Import\DestroyController as ImportDestroyController;
 use App\Http\Controllers\Import\ImportAllController;
@@ -122,6 +126,7 @@ Route::group([], function (Router $router) {
         'prefix' => 'cards',
     ], function (Router $group) {
         $group->get('/', App\Http\Controllers\Cards\IndexController::class)->name('cards.index');
+        $group->get('search', SearchController::class)->name('cards.search');
         $group->post('populate', App\Http\Controllers\Cards\PopulateController::class)->name('cards.populate');
     });
 
@@ -142,6 +147,9 @@ Route::group([], function (Router $router) {
     ], function (Router $group) {
         $group->get('{id}', App\Http\Controllers\Games\ShowController::class)->name('games.show');
         $group->post('{id}/replay', OpenReplayController::class)->name('games.open-replay');
+        $group->put('{game}/hand', UpdateHandController::class)->name('games.hand.update');
+        $group->put('{game}/sideboard', UpdateSideboardController::class)->name('games.sideboard.update');
+        $group->put('{game}/reveals', UpdateRevealsController::class)->name('games.reveals.update');
     });
 
     $router->group([

@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import MatchGame from '@/pages/matches/partials/MatchGame.vue';
 import MatchHero from '@/pages/matches/partials/MatchHero.vue';
 import OpponentRevealsRail from '@/pages/matches/partials/OpponentRevealsRail.vue';
-import type { GameDetail } from '@/types/matches';
+import type { GameDetail, ManualEditingData } from '@/types/matches';
 import { router, useForm } from '@inertiajs/vue3';
 import { AlertTriangle, ChevronLeft, NotepadText, PencilLine } from 'lucide-vue-next';
 import { computed, nextTick, ref } from 'vue';
@@ -23,14 +23,13 @@ const props = defineProps<{
     archetypes: App.Data.Front.ArchetypeData[];
     imported: boolean;
     manual: boolean;
+    manualEditing: ManualEditingData | null;
     /** Where the back link goes when there is no history to step back through. */
     fallbackUrl: string;
 }>();
 
 const archetypeDialog = ref<InstanceType<typeof SetArchetypeDialog> | null>(null);
 
-/** Imported and manual matches both lack a live log, so the log-derived sections hide for either. */
-const logless = computed(() => props.imported || props.manual);
 const editingNotes = ref(false);
 const notesTextarea = ref<HTMLTextAreaElement | null>(null);
 const activeGame = ref<string>(String(props.games[0]?.number ?? 1));
@@ -90,7 +89,7 @@ const opponentName = computed(() => (props.match.opponentName as string | null) 
         <Card v-if="manual" class="border-sky-500/30 bg-sky-500/5 py-0">
             <CardContent class="flex items-center gap-2 p-3 text-sm text-sky-600 dark:text-sky-400">
                 <PencilLine class="size-4 shrink-0" />
-                Manual match. Entered by hand, so there is no game log, replay, opening hand or sideboard detail.
+                Manual match. Entered by hand, so there is no game log or replay. Hands, sideboard changes and revealed cards can be added per game.
             </CardContent>
         </Card>
         <Card v-else-if="imported" class="border-yellow-500/30 bg-yellow-500/5 py-0">
@@ -158,12 +157,28 @@ const opponentName = computed(() => (props.match.opponentName as string | null) 
                 </TabsList>
 
                 <TabsContent v-for="game in games" :key="game.id" :value="String(game.number)" class="mt-0">
-                    <MatchGame :game="game" :game-log="gameLogs[game.id] ?? []" :opponent-name="opponentName" :imported="logless" />
+                    <MatchGame
+                        :game="game"
+                        :game-log="gameLogs[game.id] ?? []"
+                        :opponent-name="opponentName"
+                        :imported="imported"
+                        :manual="manual"
+                        :manual-editing="manualEditing"
+                    />
                 </TabsContent>
             </Tabs>
 
             <!-- Right rail -->
-            <OpponentRevealsRail v-if="!logless" class="xl:sticky xl:top-4 xl:self-start" :games="games" :opponent-name="opponentName" />
+            <OpponentRevealsRail
+                v-if="!imported"
+                class="xl:sticky xl:top-4 xl:self-start"
+                :games="games"
+                :opponent-name="opponentName"
+                :editable="manual"
+                :manual-editing="manualEditing"
+                :has-opponent-archetype="opponentArchetype !== null"
+                @set-archetype="openArchetypeDialog"
+            />
         </div>
     </div>
 </template>

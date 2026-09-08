@@ -4,7 +4,7 @@ import DeckViewLayout from '@/Layouts/DeckViewLayout.vue';
 import MatchesController from '@/actions/App/Http/Controllers/Decks/MatchesController';
 import MatchDetail from '@/pages/matches/partials/MatchDetail.vue';
 import type { VersionStats } from '@/types/decks';
-import type { GameDetail } from '@/types/matches';
+import type { GameDetail, ManualEditingData } from '@/types/matches';
 
 defineOptions({ layout: [AppLayout, DeckViewLayout] });
 
@@ -20,6 +20,7 @@ const props = defineProps<{
     archetypes: App.Data.Front.ArchetypeData[];
     imported: boolean;
     manual: boolean;
+    manualEditing: ManualEditingData | null;
 }>();
 </script>
 
@@ -31,6 +32,7 @@ const props = defineProps<{
         :archetypes="archetypes"
         :imported="imported"
         :manual="manual"
+        :manual-editing="manualEditing"
         :fallback-url="MatchesController.url(props.deck)"
     />
 </template>
