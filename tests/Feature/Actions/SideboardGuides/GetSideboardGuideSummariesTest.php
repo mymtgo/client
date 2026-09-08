@@ -63,7 +63,7 @@ it('summarises each guide with card totals, note count and matchup record', func
     $summary = $summaries[0];
     expect($summary->id)->toBe($guide->id);
     expect($summary->archetypeName)->toBe('Esper Blink');
-    expect($summary->archetypeColorIdentity)->toBe('WUB');
+    expect($summary->archetypeColorIdentity)->toBe('W,U,B');
     expect($summary->cardsIn)->toBe(3);
     expect($summary->cardsOut)->toBe(3);
     expect($summary->notesCount)->toBe(2);

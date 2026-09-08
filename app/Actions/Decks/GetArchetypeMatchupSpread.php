@@ -4,6 +4,7 @@ namespace App\Actions\Decks;
 
 use App\Models\Deck;
 use App\Models\DeckVersion;
+use App\Support\ColorIdentity;
 use App\Support\MatchRecord;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
@@ -104,7 +105,7 @@ class GetArchetypeMatchupSpread
                 return [
                     'archetype_id' => (int) $r->archetype_id,
                     'name' => $r->archetype_name,
-                    'color_identity' => $r->color_identity,
+                    'color_identity' => ColorIdentity::normalize($r->color_identity),
 
                     'match_winrate' => $record->winrate(),
                     'game_winrate' => (int) $r->game_winrate_pct,

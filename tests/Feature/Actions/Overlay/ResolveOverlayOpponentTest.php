@@ -98,7 +98,7 @@ it('prefers a manual archetype over everything else', function () {
 
     expect($result->archetypeId)->toBe($picked->id);
     expect($result->archetypeName)->toBe('Esper Blink');
-    expect($result->archetypeColors)->toBe('WUB');
+    expect($result->archetypeColors)->toBe('W,U,B');
     expect($result->source)->toBe('manual');
     expect($result->manual)->toBeTrue();
 });

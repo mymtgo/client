@@ -218,3 +218,17 @@ it('shows draws in the match record so it matches the all-matches winrate', func
         ->and($matchup['match_draws'])->toBe(1)
         ->and($matchup['match_record'])->toBe('1 - 1 - 1');
 });
+
+it('normalises the archetype colour identity read straight from SQL', function () {
+    $deck = Deck::factory()->create();
+    $deckVersion = DeckVersion::factory()->create(['deck_id' => $deck->id]);
+    $archetype = Archetype::factory()->create(['color_identity' => 'WBR']);
+
+    createMatchWithGamesForSpread($deckVersion, $archetype, 'win', [
+        ['won' => true, 'on_play' => true, 'turn_count' => null],
+    ]);
+
+    $matchup = GetArchetypeMatchupSpread::run($deck, null, null)->first();
+
+    expect($matchup['color_identity'])->toBe('W,B,R');
+});

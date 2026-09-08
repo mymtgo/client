@@ -5,6 +5,7 @@ namespace App\Actions\Cards;
 use App\Models\Archetype;
 use App\Models\Deck;
 use App\Models\DeckVersion;
+use App\Support\ColorIdentity;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -155,7 +156,7 @@ class GetCardGameStats
             ->map(fn ($row) => [
                 'name' => $row->name,
                 'oracleId' => $row->oracle_id,
-                'colorIdentity' => $row->color_identity,
+                'colorIdentity' => ColorIdentity::normalize($row->color_identity),
                 'type' => $row->type,
                 'image' => $row->local_image ? Storage::disk('cards')->url($row->local_image) : $row->image,
                 'isSideboard' => $sideboardOracleIds->has($row->oracle_id),
@@ -248,7 +249,7 @@ class GetCardGameStats
             ->map(fn (Archetype $a) => [
                 'id' => $a->id,
                 'name' => $a->name,
-                'colorIdentity' => $a->color_identity,
+                'colorIdentity' => ColorIdentity::normalize($a->color_identity),
             ]);
     }
 

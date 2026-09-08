@@ -4,6 +4,7 @@ namespace App\Actions\Archetypes;
 
 use App\Models\Archetype;
 use App\Models\MatchArchetype;
+use App\Support\ColorIdentity;
 use Illuminate\Support\Facades\Http;
 
 class ComputeArchetypeRefreshPlan
@@ -54,7 +55,7 @@ class ComputeArchetypeRefreshPlan
 
             return $archetype->name !== $row['name']
                 || $archetype->format !== strtolower($row['format'])
-                || $archetype->color_identity !== ($row['colorIdentity'] ?? null);
+                || $archetype->color_identity !== ColorIdentity::normalize($row['colorIdentity'] ?? null);
         });
 
         $localUuids = $local->pluck('uuid');

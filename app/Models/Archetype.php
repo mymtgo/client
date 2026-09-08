@@ -2,7 +2,9 @@
 
 namespace App\Models;
 
+use App\Support\ColorIdentity;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -15,6 +17,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property bool $is_fallback
  * @property bool $manual
  * @property string|null $format
+ * @property string|null $color_identity
  * @property int|null $merged_into_id
  * @property-read Collection<int, Card> $cards
  * @property-read Archetype|null $mergedInto
@@ -36,6 +39,18 @@ class Archetype extends Model
         'is_fallback' => 'boolean',
         'incomplete' => 'boolean',
     ];
+
+    /**
+     * Colour identity is stored and read in canonical comma form regardless of
+     * how it arrived, so every consumer sees "U,B" for both "UB" and "U,B".
+     */
+    protected function colorIdentity(): Attribute
+    {
+        return Attribute::make(
+            get: fn (?string $value) => ColorIdentity::normalize($value),
+            set: fn (?string $value) => ColorIdentity::normalize($value),
+        );
+    }
 
     public function mergedInto(): BelongsTo
     {

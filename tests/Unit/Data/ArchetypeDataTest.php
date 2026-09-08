@@ -23,3 +23,17 @@ it('returns null mergedIntoId when archetype is standalone', function (): void {
 
     expect($data->mergedIntoId)->toBeNull();
 });
+
+it('exposes colour identity in canonical comma separated form', function (): void {
+    $concatenated = Archetype::factory()->create(['color_identity' => 'UB']);
+    $commaSeparated = Archetype::factory()->create(['color_identity' => 'U,B']);
+
+    expect(ArchetypeData::fromModel($concatenated)->colorIdentity)->toBe('U,B')
+        ->and(ArchetypeData::fromModel($commaSeparated)->colorIdentity)->toBe('U,B');
+});
+
+it('exposes a blank colour identity as null', function (): void {
+    $archetype = Archetype::factory()->create(['color_identity' => '']);
+
+    expect(ArchetypeData::fromModel($archetype)->colorIdentity)->toBeNull();
+});

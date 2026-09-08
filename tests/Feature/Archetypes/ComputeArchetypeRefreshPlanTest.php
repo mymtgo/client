@@ -175,3 +175,16 @@ it('lists incoming api archetypes as added rows', function () {
     expect($plan['added_rows'][0]['name'])->toBe('Fresh Deck');
     expect($plan['added_rows'][0]['format'])->toBe('modern');
 });
+
+it('does not count a colour identity that differs only by separator as an update', function () {
+    $archetype = Archetype::factory()->create(['format' => 'modern', 'color_identity' => 'U,B']);
+
+    fakeArchetypeApi([
+        [...apiRow($archetype), 'colorIdentity' => 'UB'],
+    ]);
+
+    $plan = ComputeArchetypeRefreshPlan::run();
+
+    expect($plan['updated'])->toBe(0)
+        ->and($plan['added'])->toBe(0);
+});

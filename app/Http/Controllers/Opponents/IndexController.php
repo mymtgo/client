@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Opponents;
 use App\Http\Controllers\Controller;
 use App\Models\Account;
 use App\Models\MtgoMatch;
+use App\Support\ColorIdentity;
 use App\Support\MatchRecord;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -81,7 +82,7 @@ class IndexController extends Controller
             $archetypes = ($archetypesByPlayer[$row->player_id] ?? collect())
                 ->map(fn ($a) => [
                     'name' => $a->name,
-                    'colorIdentity' => $a->color_identity,
+                    'colorIdentity' => ColorIdentity::normalize($a->color_identity),
                 ])->values()->all();
 
             $formats = ($formatsByPlayer[$row->player_id] ?? collect())

@@ -46,7 +46,7 @@ it('computes deck count, match record, and winrate', function () {
         ->and($stats['matchRecord']->winrate)->toBe(67)
         ->and($stats['formatLabel'])->toBe('Modern')
         ->and($stats['archetypeName'])->toBe('Test')
-        ->and($stats['colorIdentity'])->toBe('UR');
+        ->and($stats['colorIdentity'])->toBe('U,R');
 });
 
 it('returns zero winrate when no decisive matches', function () {

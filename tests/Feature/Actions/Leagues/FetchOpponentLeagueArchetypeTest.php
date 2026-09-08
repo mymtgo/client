@@ -47,7 +47,7 @@ it('returns archetype with colors from local archetype lookup on 200', function 
     expect($result)->toBe([
         'uuid' => 'arch-uuid-1',
         'name' => 'Izzet Phoenix',
-        'colors' => 'UR',
+        'colors' => 'U,R',
     ]);
 
     Http::assertSent(fn ($request) => $request->method() === 'POST'

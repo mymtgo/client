@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Archetype;
 use App\Models\Card;
 use App\Models\MtgoMatch;
+use App\Support\ColorIdentity;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -46,7 +47,7 @@ class ArchetypesController extends Controller
                 'name' => $a->name,
                 'format' => $a->format,
                 'formatLabel' => $a->format ? MtgoMatch::displayFormat($a->format) : null,
-                'colorIdentity' => $a->color_identity,
+                'colorIdentity' => ColorIdentity::normalize($a->color_identity),
                 'maindeck' => (bool) $a->in_maindeck,
                 'sideboard' => (bool) $a->in_sideboard,
                 'deckCount' => (int) $a->deck_count,

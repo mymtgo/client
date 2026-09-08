@@ -7,6 +7,7 @@ use App\Actions\Decks\GetDeckViewSharedProps;
 use App\Concerns\HasTimeframeFilter;
 use App\Http\Controllers\Controller;
 use App\Models\Deck;
+use App\Support\ColorIdentity;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -72,7 +73,7 @@ class GameStatsController extends Controller
             ->map(fn ($r) => [
                 'uuid' => (string) $r->uuid,
                 'name' => (string) $r->name,
-                'color_identity' => $r->color_identity,
+                'color_identity' => ColorIdentity::normalize($r->color_identity),
             ])
             ->all();
     }
