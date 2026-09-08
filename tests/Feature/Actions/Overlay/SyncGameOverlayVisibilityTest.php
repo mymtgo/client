@@ -164,3 +164,31 @@ it('falls back to the default route url when no server url is stored', function 
 
     expect($window->toArray()['url'])->toBe(route('overlay.game'));
 });
+
+it('does not open the overlay for a limited-format match in progress', function () {
+    AppSettings::setShowGameOverlay(true);
+    overlayMatch(['format' => 'DHOBHOBHOB', 'match_type' => 'Limited']);
+
+    SyncGameOverlayVisibility::run();
+
+    Window::assertOpenedCount(0);
+});
+
+it('closes an open overlay when the only match in progress is limited', function () {
+    AppSettings::setShowGameOverlay(true);
+    fakeOverlayWindowOpen();
+    overlayMatch(['format' => 'DHOBHOBHOB', 'match_type' => 'Limited']);
+
+    SyncGameOverlayVisibility::run();
+
+    Window::assertClosed('game-overlay');
+});
+
+it('still opens the overlay when the match format is unknown', function () {
+    AppSettings::setShowGameOverlay(true);
+    overlayMatch(['format' => 'Unknown']);
+
+    SyncGameOverlayVisibility::run();
+
+    Window::assertOpened('game-overlay');
+});

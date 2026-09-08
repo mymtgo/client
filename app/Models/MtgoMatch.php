@@ -167,6 +167,19 @@ class MtgoMatch extends Model
         return self::isLimitedFormatCode($this->format);
     }
 
+    /**
+     * Exclude limited-format matches. Mirrors isLimitedFormatCode() in SQL:
+     * GLOB is native SQLite and case-sensitive, so 'D[A-Z]*' matches the
+     * same codes as the regex. Null and unknown formats are kept.
+     */
+    public function scopeNotLimitedFormat(Builder $query): Builder
+    {
+        return $query->where(function (Builder $q) {
+            $q->whereNull('format')
+                ->orWhereRaw("format NOT GLOB 'D[A-Z]*'");
+        });
+    }
+
     public static function displayFormat(?string $format): string
     {
         if ($format === null || $format === '') {
