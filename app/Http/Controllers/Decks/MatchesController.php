@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Decks;
 
 use App\Actions\Decks\GetDeckStats;
 use App\Actions\Decks\GetDeckViewSharedProps;
+use App\Actions\Leagues\GetManualMatchLeagueOptions;
 use App\Concerns\HasTimeframeFilter;
 use App\Data\Front\ArchetypeData;
 use App\Data\Front\MatchData;
@@ -13,6 +14,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Archetype;
 use App\Models\Deck;
 use App\Models\DeckVersion;
+use App\Models\MtgoMatch;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -59,6 +61,8 @@ class MatchesController extends Controller
                 $query->whereNotNull('league_id');
             } elseif ($type === 'casual') {
                 $query->whereNull('league_id');
+            } elseif ($type === 'manual') {
+                $query->where('manual', true);
             }
         }
         if ($archetype = $request->input('filter_archetype')) {
@@ -137,6 +141,13 @@ class MatchesController extends Controller
             'matches' => $matches,
             'unknownArchetypeCount' => $unknownArchetypeCount,
             'pendingArchetypeCount' => $pendingArchetypeCount,
+            'manualMatchDeck' => [
+                'id' => $deck->id,
+                'name' => $deck->name,
+                'format' => MtgoMatch::displayFormat($deck->format),
+                'formatCode' => $deck->format,
+            ],
+            'manualMatchLeagues' => GetManualMatchLeagueOptions::run($deck->id),
 
             // Deferred — heavy filter dropdown data (per-archetype match counts)
             'archetypes' => Inertia::defer(fn () => Archetype::query()

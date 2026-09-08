@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\LeagueState;
+use App\Facades\AppSettings;
 use App\Models\Account;
 use App\Models\Deck;
 use App\Models\DeckVersion;
@@ -59,4 +60,16 @@ it('rejects decks not owned by the active account', function () {
     ])->assertSessionHasErrors('deck_id');
 
     expect(League::count())->toBe(0);
+});
+
+it('reads the zone-less started_at in the system timezone and stores UTC', function () {
+    AppSettings::setSystemTimezone('Europe/London');
+
+    $this->post('/leagues', [
+        'deck_id' => $this->deck->id,
+        'started_at' => '2026-09-01T20:00',
+        'name' => 'BST league',
+    ])->assertRedirect(route('leagues.index'));
+
+    expect(League::query()->latest('id')->first()->started_at->toDateTimeString())->toBe('2026-09-01 19:00:00');
 });

@@ -175,6 +175,14 @@
         @apply bg-background text-foreground font-sans;
     }
 
+    /* Native date and time pickers draw their own icon and popup. Without a
+       colour scheme they assume a light page, leaving a black icon on dark. */
+    .dark input[type='date'],
+    .dark input[type='time'],
+    .dark input[type='datetime-local'] {
+        color-scheme: dark;
+    }
+
     ::-webkit-scrollbar { width: 6px; height: 6px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb {

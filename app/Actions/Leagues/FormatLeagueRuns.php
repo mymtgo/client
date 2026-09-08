@@ -77,7 +77,7 @@ class FormatLeagueRuns
             ->where('m.state', 'complete')
             ->when($accountId, fn ($q, $id) => $q->where('d.account_id', $id))
             ->when($deckId, fn ($q, $id) => $q->where('d.id', $id))
-            ->select('m.id', 'm.league_id', 'm.outcome', 'm.started_at', 'm.ended_at', 'm.notes', 'd.id as deck_id', 'd.name as deck_name', 'd.color_identity as deck_color_identity', 'c.art_crop as deck_cover_art', 'c.local_art_crop as deck_local_cover_art')
+            ->select('m.id', 'm.league_id', 'm.outcome', 'm.started_at', 'm.ended_at', 'm.notes', 'm.manual', 'd.id as deck_id', 'd.name as deck_name', 'd.color_identity as deck_color_identity', 'c.art_crop as deck_cover_art', 'c.local_art_crop as deck_local_cover_art')
             ->orderBy('m.started_at')
             ->get();
     }
@@ -209,6 +209,7 @@ class FormatLeagueRuns
                 'startedAtHuman' => Carbon::parse($row->started_at)->toLocal()->diffForHumans(),
                 'durationSeconds' => $durationSeconds,
                 'notes' => $row->notes ?? null,
+                'manual' => (bool) $row->manual,
             ];
         })->values()->all();
 

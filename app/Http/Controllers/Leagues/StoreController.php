@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Leagues;
 
 use App\Enums\LeagueState;
+use App\Facades\AppSettings;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Leagues\StoreManualLeagueRequest;
 use App\Models\Deck;
@@ -18,7 +19,8 @@ class StoreController extends Controller
         $deck = Deck::query()->findOrFail($request->integer('deck_id'));
         $latestVersion = $deck->latestVersion()->firstOrFail();
 
-        $startedAt = Carbon::parse($request->input('started_at'));
+        // datetime-local input carries no zone: read it as system-local, store UTC.
+        $startedAt = Carbon::parse($request->input('started_at'), AppSettings::systemTimezone())->utc();
 
         League::query()->create([
             'manual' => true,

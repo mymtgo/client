@@ -31,6 +31,8 @@ const props = withDefaults(
     { hideDeckIdentity: false, defaultExpanded: false, archetypes: () => [] },
 );
 
+const emit = defineEmits<{ 'create-match': [leagueId: number] }>();
+
 const expanded = ref(props.defaultExpanded || props.league.classification === 'LIVE');
 
 const wins = computed(() => props.league.results.filter((r) => r === 'W').length);
@@ -87,6 +89,7 @@ function handleUnlinkMatch(matchId: number) {
 
 const isManual = computed(() => props.league.manual === true);
 const canAddMatch = computed(() => isManual.value && props.league.matches.length < 5);
+const canCreateManualMatch = computed(() => props.league.matches.length < 5);
 const isEmptyManual = computed(() => isManual.value && props.league.matches.length === 0);
 
 const canDrop = computed(() => props.league.state === 'active');
@@ -252,15 +255,26 @@ function toggle() {
                 <p class="text-xs text-muted-foreground">Pick existing matches played with this deck to build the league.</p>
             </div>
 
-            <button
-                v-if="canAddMatch"
-                type="button"
-                class="flex w-full items-center justify-center gap-2 rounded-md border border-dashed border-border p-3 text-sm text-muted-foreground hover:bg-muted/40 hover:text-foreground"
-                @click="handleAddMatch"
-            >
-                <Plus class="size-4" />
-                Add match
-            </button>
+            <div v-if="canAddMatch || canCreateManualMatch" class="flex gap-2">
+                <button
+                    v-if="canAddMatch"
+                    type="button"
+                    class="flex flex-1 items-center justify-center gap-2 rounded-md border border-dashed border-border p-3 text-sm text-muted-foreground hover:bg-muted/40 hover:text-foreground"
+                    @click="handleAddMatch"
+                >
+                    <Plus class="size-4" />
+                    Add match
+                </button>
+                <button
+                    v-if="canCreateManualMatch"
+                    type="button"
+                    class="flex flex-1 items-center justify-center gap-2 rounded-md border border-dashed border-border p-3 text-sm text-muted-foreground hover:bg-muted/40 hover:text-foreground"
+                    @click="emit('create-match', league.id)"
+                >
+                    <PencilLine class="size-4" />
+                    Add manual match
+                </button>
+            </div>
 
             <section>
                 <div class="mb-2 flex items-center gap-2">

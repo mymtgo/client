@@ -128,6 +128,7 @@ Route::group([], function (Router $router) {
     $router->group([
         'prefix' => 'matches',
     ], function (Router $group) {
+        $group->post('/', App\Http\Controllers\Matches\StoreController::class)->name('matches.store');
         $group->get('{id}', ShowController::class)->name('matches.show');
         $group->patch('{id}/archetype', UpdateArchetypeController::class)->name('matches.update-archetype');
         $group->patch('bulk-archetype', BulkUpdateArchetypeController::class)->name('matches.bulk-update-archetype');

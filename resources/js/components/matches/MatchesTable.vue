@@ -4,6 +4,7 @@ import DeleteController from '@/actions/App/Http/Controllers/Matches/DeleteContr
 import DetectArchetypeController from '@/actions/App/Http/Controllers/Matches/DetectArchetypeController';
 import ShowController from '@/actions/App/Http/Controllers/Matches/ShowController';
 import ManaSymbols from '@/components/ManaSymbols.vue';
+import ManualMatchBadge from '@/components/matches/ManualMatchBadge.vue';
 import MatchNotesDialog from '@/components/matches/MatchNotesDialog.vue';
 import MatchRowContextMenu from '@/components/matches/MatchRowContextMenu.vue';
 import ResultBadge from '@/components/matches/ResultBadge.vue';
@@ -222,7 +223,10 @@ const detectArchetype = (matchId: number) => {
                             <span v-else class="text-muted-foreground">Unknown</span>
                         </TableCell>
                         <TableCell class="font-medium">
-                            <span v-if="match.opponentName">{{ match.opponentName }}</span>
+                            <span v-if="match.opponentName" class="inline-flex items-center gap-1.5">
+                                {{ match.opponentName }}
+                                <ManualMatchBadge v-if="match.manual" />
+                            </span>
                             <span v-else class="text-xs text-muted-foreground">&mdash;</span>
                         </TableCell>
                         <template v-if="showArchetype">
@@ -257,7 +261,8 @@ const detectArchetype = (matchId: number) => {
                             <span v-else class="text-muted-foreground">&mdash;</span>
                         </TableCell>
                         <TableCell>
-                            {{ match.matchTime }}
+                            <span v-if="match.matchTime">{{ match.matchTime }}</span>
+                            <span v-else class="text-muted-foreground">&mdash;</span>
                         </TableCell>
                         <TableCell>
                             {{ match.startedAtFormatted }}

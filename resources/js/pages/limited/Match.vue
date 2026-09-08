@@ -16,6 +16,7 @@ const props = defineProps<{
     gameLogs: Record<number, Array<{ timestamp: string; message: string }>>;
     archetypes: App.Data.Front.ArchetypeData[];
     imported: boolean;
+    manual: boolean;
 }>();
 </script>
 
@@ -28,6 +29,7 @@ const props = defineProps<{
             :game-logs="gameLogs"
             :archetypes="archetypes"
             :imported="imported"
+        :manual="manual"
             :fallback-url="MatchesController.url({ league: props.event.id })"
         />
     </div>

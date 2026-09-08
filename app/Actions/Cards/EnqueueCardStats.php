@@ -25,6 +25,7 @@ class EnqueueCardStats
             ->whereHas('match', fn ($q) => $q
                 ->where('state', MatchState::Complete)
                 ->whereNotNull('deck_version_id')
+                ->where('manual', false)
                 ->whereHas('archetypes'))
             ->whereHas('cardGameStats', fn ($q) => $q->where('opponent', false))
             ->with([

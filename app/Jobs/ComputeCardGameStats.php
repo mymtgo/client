@@ -46,6 +46,12 @@ class ComputeCardGameStats implements ShouldQueue
         $games = $match->games->sortBy('started_at')->values();
 
         $imported = (bool) $match->imported;
+        $manual = (bool) $match->manual;
+
+        // Both imported and manual matches lack a live log. Imported matches
+        // may still have a .dat on disk; manual matches never do, and must not
+        // be re-keyed onto someone else's log by the opponent + time heuristic.
+        $gameless = $imported || $manual;
 
         // Imported matches are created with a random token unrelated to their
         // .dat game log, so the decoded log stays orphaned. Re-key it to the
@@ -57,11 +63,13 @@ class ComputeCardGameStats implements ShouldQueue
         // Regeneration sources from the durable decoded .dat (GameLog), since a
         // completed match's log_events get pruned. The live at-Complete path
         // reads log_events directly, which are still present at that moment.
-        // Imported matches never have log_events — their only game-log source is
-        // the decoded .dat — so they always read from the GameLog table.
-        $entries = ($this->fromGameLog || $imported)
-            ? EnsureGameLogForMatch::run($match->token)
-            : ExtractMetaMessageEntries::run($match->token);
+        // Imported matches never have log_events, so they read the GameLog
+        // table. Manual matches have no log of any kind.
+        $entries = match (true) {
+            $manual => [],
+            $this->fromGameLog || $imported => EnsureGameLogForMatch::run($match->token),
+            default => ExtractMetaMessageEntries::run($match->token),
+        };
 
         $gameLogStats = ! empty($entries)
             ? ExtractCardsFromGameLog::run($entries)
@@ -98,7 +106,7 @@ class ComputeCardGameStats implements ShouldQueue
         // against each other produces false sided_in/sided_out signals for any
         // card that simply wasn't drawn in g1 — keep g1Quantities null so the
         // comparison short-circuits.
-        $trackSideboarding = ! $imported;
+        $trackSideboarding = ! $gameless;
 
         $game1Quantities = null;
 
@@ -108,7 +116,7 @@ class ComputeCardGameStats implements ShouldQueue
             }
 
             $isPostboard = $index > 0;
-            $next = $this->processGame($game, $match->deck_version_id, $isPostboard, $game1Quantities, $gameLogStats, $index, $sideboardOracleIds, $imported);
+            $next = $this->processGame($game, $match->deck_version_id, $isPostboard, $game1Quantities, $gameLogStats, $index, $sideboardOracleIds, $gameless);
 
             if (! $isPostboard && $trackSideboarding) {
                 $game1Quantities = $next;
@@ -184,7 +192,7 @@ class ComputeCardGameStats implements ShouldQueue
      * @param  array<int, string>  $sideboardOracleIds
      * @return array<string, int>|null oracle_id => quantity for game 1 (forwarded for sideboard comparison)
      */
-    private function processGame(Game $game, int $deckVersionId, bool $isPostboard, ?array $game1Quantities, ?array $gameLogStats, int $gameIndex, array $sideboardOracleIds, bool $imported): ?array
+    private function processGame(Game $game, int $deckVersionId, bool $isPostboard, ?array $game1Quantities, ?array $gameLogStats, int $gameIndex, array $sideboardOracleIds, bool $gameless): ?array
     {
         if ($game->won === null) {
             return null;
@@ -196,7 +204,7 @@ class ComputeCardGameStats implements ShouldQueue
             return null;
         }
 
-        $nextGame1Quantities = $this->processLocalSide($game, $localPlayer, $deckVersionId, $isPostboard, $game1Quantities, $gameLogStats, $gameIndex, $sideboardOracleIds, $imported);
+        $nextGame1Quantities = $this->processLocalSide($game, $localPlayer, $deckVersionId, $isPostboard, $game1Quantities, $gameLogStats, $gameIndex, $sideboardOracleIds, $gameless);
 
         $this->processOpponentSide($game, $deckVersionId, $isPostboard, $gameLogStats, $gameIndex);
 
@@ -213,10 +221,10 @@ class ComputeCardGameStats implements ShouldQueue
      * @param  array<int, string>  $sideboardOracleIds
      * @return array<string, int>|null oracle_id => maindeck quantity (game-1 only)
      */
-    private function processLocalSide(Game $game, $localPlayer, int $deckVersionId, bool $isPostboard, ?array $game1Quantities, ?array $gameLogStats, int $gameIndex, array $sideboardOracleIds, bool $imported): ?array
+    private function processLocalSide(Game $game, $localPlayer, int $deckVersionId, bool $isPostboard, ?array $game1Quantities, ?array $gameLogStats, int $gameIndex, array $sideboardOracleIds, bool $gameless): ?array
     {
         $localInstanceId = (int) $localPlayer->pivot->instance_id;
-        $deckJson = $this->resolveDeckJson($localPlayer, $deckVersionId, $imported);
+        $deckJson = $this->resolveDeckJson($localPlayer, $deckVersionId, $gameless);
 
         if (empty($deckJson)) {
             return null;
@@ -456,11 +464,11 @@ class ComputeCardGameStats implements ShouldQueue
      *
      * @return list<array<string, mixed>>
      */
-    private function resolveDeckJson($player, int $deckVersionId, bool $imported): array
+    private function resolveDeckJson($player, int $deckVersionId, bool $gameless): array
     {
         $versionDeck = $this->resolveVersionDeck($deckVersionId);
 
-        if ($imported && ! empty($versionDeck)) {
+        if ($gameless && ! empty($versionDeck)) {
             return $versionDeck;
         }
 

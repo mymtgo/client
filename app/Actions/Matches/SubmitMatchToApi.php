@@ -42,6 +42,13 @@ class SubmitMatchToApi
             return;
         }
 
+        // Manual matches are typed in by the user with no log behind them.
+        // They stay local only; scopeSubmittable filters them too, this guard
+        // covers direct-dispatch callers.
+        if ($match->manual) {
+            return;
+        }
+
         $opponentArchetype = $match->opponentArchetypes()->with('archetype')->first();
         $opponentPlayerIds = $match->opponentArchetypes()->pluck('player_id')->toArray();
 

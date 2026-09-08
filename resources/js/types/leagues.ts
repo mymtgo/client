@@ -16,6 +16,7 @@ export type LeagueMatch = {
     startedAtHuman: string;
     durationSeconds: number | null;
     notes: string | null;
+    manual: boolean;
 };
 
 export type LeagueClassification = 'TROPHY' | 'CASH' | 'FINISH' | 'BRICK' | 'LIVE' | 'EMPTY';
@@ -89,6 +90,16 @@ export type ManualLeagueDeckOption = {
     id: number;
     name: string;
     format: string;
+    /** Raw MTGO format code (e.g. CMODERN), used for archetype filtering. */
+    formatCode: string;
+};
+
+export type ManualMatchLeagueOption = {
+    id: number;
+    name: string;
+    deckId: number | null;
+    matchCount: number;
+    roundCount: number;
 };
 
 export type AvailableMatch = {

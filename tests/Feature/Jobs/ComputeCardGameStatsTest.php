@@ -1341,3 +1341,34 @@ it('still updates existing stats when the log does cover the game', function () 
     expect(DB::table('card_game_stats')->where('game_id', $game->id)->value('cast'))->toBe(2);
     expect(DB::table('card_game_stats')->where('game_id', $game->id)->count())->toBe(1);
 });
+
+it('computes manual match stats from the deck version without any game-log lookup', function () {
+    Card::factory()->create(['oracle_id' => 'oracle-main', 'mtgo_id' => 4001, 'name' => 'Main Card']);
+    Card::factory()->create(['oracle_id' => 'oracle-sb', 'mtgo_id' => 4002, 'name' => 'SB Card']);
+
+    $deckVersion = DeckVersion::factory()->create([
+        'signature' => base64_encode('4001:4:false|4002:2:true'),
+    ]);
+    $match = MtgoMatch::factory()->create([
+        'deck_version_id' => $deckVersion->id,
+        'state' => 'complete',
+        'manual' => true,
+    ]);
+    $local = Player::create(['username' => 'testplayer']);
+    $opponent = Player::create(['username' => 'opponent']);
+
+    $game1 = Game::factory()->for($match, 'match')->create(['won' => true, 'started_at' => now()]);
+    attachPlayers($game1, $local, $opponent, deckJson: []);
+    $game2 = Game::factory()->for($match, 'match')->create(['won' => false, 'started_at' => now()->addMinutes(10)]);
+    attachPlayers($game2, $local, $opponent, deckJson: []);
+
+    (new ComputeCardGameStats($match->id))->handle();
+
+    $rows = DB::table('card_game_stats')->where('opponent', false)->get();
+    $g2Main = $rows->where('game_id', $game2->id)->where('oracle_id', 'oracle-main')->first();
+
+    expect($rows->where('oracle_id', 'oracle-main')->count())->toBe(2)
+        ->and((bool) $g2Main->sided_in)->toBeFalse()
+        ->and((bool) $g2Main->sided_out)->toBeFalse()
+        ->and(GameLog::count())->toBe(0);
+});

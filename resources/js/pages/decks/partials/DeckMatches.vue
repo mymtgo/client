@@ -4,6 +4,10 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { router } from '@inertiajs/vue3';
 import MatchesTable from '@/components/matches/MatchesTable.vue';
+import ManualMatchSheet from '@/components/matches/ManualMatchSheet.vue';
+import { Button } from '@/components/ui/button';
+import type { ManualLeagueDeckOption, ManualMatchLeagueOption } from '@/types/leagues';
+import { Plus } from 'lucide-vue-next';
 import ArchetypeDetectionBanner from '@/pages/decks/partials/ArchetypeDetectionBanner.vue';
 import { computed, ref, watch } from 'vue';
 
@@ -18,7 +22,11 @@ const props = defineProps<{
     unknownArchetypeCount: number;
     pendingArchetypeCount: number;
     deletedAt?: string | null;
+    manualMatchDeck: ManualLeagueDeckOption;
+    manualMatchLeagues: ManualMatchLeagueOption[];
 }>();
+
+const manualMatchSheet = ref<InstanceType<typeof ManualMatchSheet> | null>(null);
 
 const fallbackArchetypes = computed(() =>
     props.archetypes.filter((a) => a.isFallback).sort((a, b) => a.name.localeCompare(b.name)),
@@ -96,6 +104,10 @@ const updateSort = (column: string) => {
             </p>
             <div v-else />
             <div class="flex shrink-0 items-center gap-3">
+                <Button size="sm" variant="outline" class="h-8 text-xs" @click="manualMatchSheet?.open()">
+                    <Plus class="size-3.5" />
+                    Add manual match
+                </Button>
                 <Select v-model="filterResult">
                     <SelectTrigger class="h-8 w-28 text-xs">
                         <SelectValue placeholder="Result" />
@@ -114,6 +126,7 @@ const updateSort = (column: string) => {
                         <SelectItem value="all" class="text-xs">All Types</SelectItem>
                         <SelectItem value="league" class="text-xs">League</SelectItem>
                         <SelectItem value="casual" class="text-xs">Casual</SelectItem>
+                        <SelectItem value="manual" class="text-xs">Manual</SelectItem>
                     </SelectContent>
                 </Select>
                 <Select v-model="filterArchetype">
@@ -163,5 +176,13 @@ const updateSort = (column: string) => {
                 </Pagination>
             </div>
         </Card>
+
+        <ManualMatchSheet
+            ref="manualMatchSheet"
+            :decks="[manualMatchDeck]"
+            :archetypes="archetypes"
+            :leagues="manualMatchLeagues"
+            :deck-id="deckId"
+        />
     </div>
 </template>

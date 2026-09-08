@@ -254,6 +254,7 @@ since: string;
 startedAtFormatted: string;
 matchTime: string | null;
 notes: string | null;
+manual: boolean;
 deck: any | App.Data.Front.DeckData;
 opponentArchetypes: any;
 opponentName: any | string | null;

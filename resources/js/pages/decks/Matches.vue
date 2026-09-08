@@ -6,6 +6,7 @@ import TimeframeFilter from '@/components/TimeframeFilter.vue';
 import MatchesController from '@/actions/App/Http/Controllers/Decks/MatchesController';
 import { router } from '@inertiajs/vue3';
 import type { VersionStats } from '@/types/decks';
+import type { ManualLeagueDeckOption, ManualMatchLeagueOption } from '@/types/leagues';
 
 defineOptions({ layout: [AppLayout, DeckViewLayout] });
 
@@ -20,6 +21,8 @@ const props = defineProps<{
     archetypes?: any[];
     unknownArchetypeCount: number;
     pendingArchetypeCount: number;
+    manualMatchDeck: ManualLeagueDeckOption;
+    manualMatchLeagues: ManualMatchLeagueOption[];
 }>();
 
 function setTimeframe(value: string) {
@@ -39,6 +42,8 @@ function setTimeframe(value: string) {
             :unknown-archetype-count="unknownArchetypeCount"
             :pending-archetype-count="pendingArchetypeCount"
             :deleted-at="deck.deletedAt"
+            :manual-match-deck="manualMatchDeck"
+            :manual-match-leagues="manualMatchLeagues"
         />
     </div>
 </template>

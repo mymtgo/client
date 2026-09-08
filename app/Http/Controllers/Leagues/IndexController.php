@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Leagues;
 use App\Actions\Archetypes\GetArchetypeOptions;
 use App\Actions\Leagues\FormatLeagueRuns;
 use App\Actions\Leagues\GetLeagueKpis;
+use App\Actions\Leagues\GetManualMatchLeagueOptions;
 use App\Data\Front\ArchetypeData;
 use App\Enums\LeagueKind;
 use App\Http\Controllers\Controller;
@@ -92,6 +93,7 @@ class IndexController extends Controller
                 'id' => $d->id,
                 'name' => $d->name,
                 'format' => MtgoMatch::displayFormat($d->format),
+                'formatCode' => $d->format,
             ])
             ->values()
             ->all();
@@ -104,6 +106,7 @@ class IndexController extends Controller
             'allFormats' => $allFormats,
             'allDecks' => $allDecks,
             'manualDeckOptions' => $manualDeckOptions,
+            'manualMatchLeagues' => GetManualMatchLeagueOptions::run(),
             'filters' => [
                 'format' => $format ?? '',
                 'state' => $state ?? 'all',

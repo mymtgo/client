@@ -43,6 +43,7 @@ class MtgoMatch extends Model
         'state' => MatchState::class,
         'outcome' => MatchOutcome::class,
         'imported' => 'boolean',
+        'manual' => 'boolean',
     ];
 
     public function getTable()
@@ -120,6 +121,7 @@ class MtgoMatch extends Model
         return $query->where('state', MatchState::Complete)
             ->whereNull('submitted_at')
             ->whereNotNull('deck_version_id')
+            ->where('manual', false)
             ->where(fn (Builder $q) => $q->whereNull('format')->orWhere('format', 'not like', 'D%'))
             ->whereHas('archetypes');
     }

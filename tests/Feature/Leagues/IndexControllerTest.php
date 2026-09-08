@@ -4,6 +4,7 @@ use App\Enums\LeagueKind;
 use App\Enums\LeagueState;
 use App\Enums\MatchOutcome;
 use App\Enums\MatchState;
+use App\Models\Account;
 use App\Models\Archetype;
 use App\Models\Deck;
 use App\Models\DeckVersion;
@@ -228,4 +229,18 @@ it('excludes limited leagues, which have their own index', function () {
             ->where('kpis.runs.total', 1)
             ->etc()
         );
+});
+
+it('provides manual match form options', function () {
+    $account = Account::create(['username' => 'tester', 'active' => true, 'tracked' => true]);
+    Account::flushCurrent();
+    $deck = Deck::factory()->create(['account_id' => $account->id, 'format' => 'CMODERN']);
+    $version = DeckVersion::factory()->create(['deck_id' => $deck->id]);
+    $league = League::factory()->create(['deck_version_id' => $version->id]);
+
+    $this->get('/leagues')
+        ->assertInertia(fn ($page) => $page
+            ->where('manualDeckOptions.0.formatCode', 'CMODERN')
+            ->where('manualMatchLeagues.0.id', $league->id)
+            ->where('manualMatchLeagues.0.roundCount', 5));
 });

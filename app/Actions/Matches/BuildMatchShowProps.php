@@ -17,7 +17,7 @@ class BuildMatchShowProps
      * wraps it: the deck-view match page and the limited event match page
      * render the same body from this payload.
      *
-     * @return array{match: MatchData, games: Collection<int, mixed>, gameLogs: Collection<int, mixed>, archetypes: mixed, imported: bool}
+     * @return array{match: MatchData, games: Collection<int, mixed>, gameLogs: Collection<int, mixed>, archetypes: mixed, imported: bool, manual: bool}
      */
     public static function run(MtgoMatch $match): array
     {
@@ -88,6 +88,7 @@ class BuildMatchShowProps
             'gameLogs' => $gameLogs,
             'archetypes' => GetArchetypeOptions::run(),
             'imported' => (bool) $match->imported,
+            'manual' => (bool) $match->manual,
         ];
     }
 }

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import MatchShowController from '@/actions/App/Http/Controllers/Matches/ShowController';
+import ManualMatchBadge from '@/components/matches/ManualMatchBadge.vue';
 import MatchRowMenu from '@/components/matches/MatchRowMenu.vue';
 import ManaSymbols from '@/components/ManaSymbols.vue';
 import ResultBadge from '@/components/matches/ResultBadge.vue';
@@ -75,7 +76,10 @@ function formatDuration(seconds: number | null): string {
                             <ResultBadge :won="match.result === 'W'" :show-text="true" />
                         </TableCell>
                         <TableCell class="truncate font-medium">
-                            <span v-if="match.opponentName">{{ match.opponentName }}</span>
+                            <span v-if="match.opponentName" class="inline-flex max-w-full items-center gap-1.5">
+                                <span class="truncate">{{ match.opponentName }}</span>
+                                <ManualMatchBadge v-if="match.manual" />
+                            </span>
                             <span v-else class="text-muted-foreground">{{ NO_VALUE }}</span>
                         </TableCell>
                         <TableCell v-if="showArchetype" class="truncate">
