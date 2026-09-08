@@ -1,11 +1,13 @@
 <?php
 
 use App\Actions\Decks\GetPeerArchetypeChartData;
+use App\Facades\AppSettings;
 use App\Models\Account;
 use App\Models\Archetype;
 use App\Models\Deck;
 use App\Models\DeckVersion;
 use App\Models\MtgoMatch;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -107,4 +109,27 @@ it('returns null when peers exist but have no matches in range', function () {
     $result = GetPeerArchetypeChartData::run($currentDeck, now()->subMonth(), now());
 
     expect($result)->toBeNull();
+});
+
+it('buckets matches by day in the system timezone rather than UTC', function () {
+    AppSettings::setSystemTimezone('America/Los_Angeles');
+
+    $archetype = Archetype::factory()->create();
+    [$currentDeck] = makeArchetypeChartDeck($this->account, $archetype);
+    [, $peerVersion] = makeArchetypeChartDeck($this->account, $archetype);
+
+    // 03:00 UTC on the 8th is 20:00 PDT on the 7th.
+    MtgoMatch::factory()->won()->create([
+        'deck_version_id' => $peerVersion->id,
+        'started_at' => Carbon::parse('2026-09-08 03:00:00', 'UTC'),
+    ]);
+
+    $result = GetPeerArchetypeChartData::run(
+        $currentDeck,
+        Carbon::parse('2026-09-01', 'UTC'),
+        Carbon::parse('2026-09-30', 'UTC'),
+    );
+
+    expect($result['data'])->toHaveCount(1);
+    expect($result['data'][0]['date'])->toBe('2026-09-07');
 });

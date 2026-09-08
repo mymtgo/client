@@ -13,3 +13,12 @@ export function urlIsActive(urlToCheck: NonNullable<InertiaLinkProps['href']>, c
 export function toUrl(href: NonNullable<InertiaLinkProps['href']>) {
     return typeof href === 'string' ? href : href?.url;
 }
+
+/**
+ * Parse a `YYYY-MM-DD` day key as local midnight. `new Date('YYYY-MM-DD')`
+ * parses as UTC midnight, which renders as the previous day anywhere west of UTC.
+ */
+export function parseLocalDate(dayKey: string): Date {
+    const [year, month, day] = dayKey.split('-').map(Number);
+    return new Date(year, month - 1, day);
+}

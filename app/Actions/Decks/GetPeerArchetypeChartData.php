@@ -4,7 +4,6 @@ namespace App\Actions\Decks;
 
 use App\Models\Deck;
 use App\Models\DeckVersion;
-use App\Models\MtgoMatch;
 use Carbon\Carbon;
 
 class GetPeerArchetypeChartData
@@ -40,14 +39,7 @@ class GetPeerArchetypeChartData
             return null;
         }
 
-        $rows = MtgoMatch::complete()
-            ->selectRaw("strftime('%Y-%m-%d', started_at) as period, SUM(CASE WHEN outcome = 'win' THEN 1 ELSE 0 END) as wins, COUNT(*) as total")
-            ->whereIn('deck_version_id', $peerVersionIds)
-            ->where('state', 'complete')
-            ->whereBetween('started_at', [$from, $to])
-            ->groupBy('period')
-            ->orderBy('period')
-            ->get();
+        $rows = GetDailyMatchResults::run($peerVersionIds, $from, $to);
 
         if ($rows->isEmpty()) {
             return null;
@@ -58,11 +50,11 @@ class GetPeerArchetypeChartData
         return [
             'archetypeName' => $deck->archetype?->name ?? 'Archetype',
             'deckCount' => $peerDeckIds->count(),
-            'data' => $rows->map(fn ($row) => [
-                'date' => $row->period,
-                'wins' => (int) $row->wins,
-                'losses' => (int) ($row->total - $row->wins),
-            ])->all(),
+            'data' => $rows->map(fn (array $row, string $date) => [
+                'date' => $date,
+                'wins' => $row['wins'],
+                'losses' => $row['total'] - $row['wins'],
+            ])->values()->all(),
         ];
     }
 }

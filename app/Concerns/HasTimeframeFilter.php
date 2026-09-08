@@ -2,6 +2,7 @@
 
 namespace App\Concerns;
 
+use App\Actions\Util\TimeframeRange;
 use Carbon\Carbon;
 
 trait HasTimeframeFilter
@@ -11,16 +12,6 @@ trait HasTimeframeFilter
      */
     protected function getTimeRange(string $timeframe): array
     {
-        $end = now()->endOfDay();
-
-        $start = match ($timeframe) {
-            'week' => now()->subDays(7)->startOfDay(),
-            'biweekly' => now()->subWeeks(2)->startOfDay(),
-            'monthly' => now()->subDays(30)->startOfDay(),
-            'year' => now()->startOfYear()->startOfDay(),
-            default => now()->startOfCentury()->startOfDay(),
-        };
-
-        return [$start, $end];
+        return TimeframeRange::run($timeframe);
     }
 }

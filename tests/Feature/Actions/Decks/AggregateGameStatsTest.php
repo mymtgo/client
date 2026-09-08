@@ -2,6 +2,7 @@
 
 use App\Actions\Decks\AggregateGameStats;
 use App\Enums\MatchOutcome;
+use App\Facades\AppSettings;
 use App\Models\Archetype;
 use App\Models\Deck;
 use App\Models\DeckVersion;
@@ -9,6 +10,7 @@ use App\Models\Game;
 use App\Models\MatchArchetype;
 use App\Models\MtgoMatch;
 use App\Models\Player;
+use Carbon\Carbon;
 use Carbon\CarbonInterface;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Collection;
@@ -294,4 +296,22 @@ it('includes games beyond game 3 in all_games but not in the game_1/2/3 rows', f
 
     expect(findRow($rows, 'game_3', 'overall'))
         ->toMatchArray(['wins' => 1, 'losses' => 0]);
+});
+
+it('bounds the timeframe on local midnight in the system timezone', function () {
+    AppSettings::setSystemTimezone('America/Los_Angeles');
+    // 03:00 UTC on the 10th is 20:00 PDT on the 9th, so "week" starts 2 Sep 00:00 PDT (07:00 UTC).
+    Carbon::setTestNow(Carbon::parse('2026-09-10 03:00:00', 'UTC'));
+
+    $deck = Deck::factory()->create();
+    $deckVersion = DeckVersion::factory()->create(['deck_id' => $deck->id]);
+
+    // 08:00 UTC on 2 Sep is 01:00 PDT on 2 Sep: inside the local week, outside a UTC-midnight week.
+    createMatchForGameStats($deckVersion, null, MatchOutcome::Win, [
+        ['won' => true, 'on_play' => true],
+    ], Carbon::parse('2026-09-02 08:00:00', 'UTC'));
+
+    $rows = AggregateGameStats::run($deck, 'week', null);
+
+    expect(findRow($rows, 'all_games', 'overall'))->toMatchArray(['wins' => 1, 'losses' => 0]);
 });

@@ -1,10 +1,12 @@
 <?php
 
 use App\Actions\Dashboard\GetWinrateDelta;
+use App\Facades\AppSettings;
 use App\Models\Account;
 use App\Models\Deck;
 use App\Models\DeckVersion;
 use App\Models\MtgoMatch;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -57,4 +59,29 @@ it('returns negative delta when current period is worse', function () {
 
     $result = GetWinrateDelta::run($account->id, now()->subDays(7)->startOfDay(), now()->endOfDay(), 'week');
     expect($result['matchDelta'])->toBe(-50);
+});
+
+it('bounds the previous period on local midnight in the system timezone', function () {
+    AppSettings::setSystemTimezone('America/Los_Angeles');
+    [$account, $version] = setupDeltaAccount();
+
+    // Current window: 2 Sep 00:00 PDT to 9 Sep 23:59:59 PDT, as UTC.
+    $currentStart = Carbon::parse('2026-09-02 07:00:00', 'UTC');
+    $currentEnd = Carbon::parse('2026-09-10 06:59:59', 'UTC');
+
+    // Current: 1W 1L (50%).
+    MtgoMatch::factory()->won()->create(['deck_version_id' => $version->id, 'started_at' => Carbon::parse('2026-09-05 12:00:00', 'UTC')]);
+    MtgoMatch::factory()->lost()->create(['deck_version_id' => $version->id, 'started_at' => Carbon::parse('2026-09-06 12:00:00', 'UTC')]);
+
+    // Previous window mirrors the current one: 25 Aug 00:00 PDT to 1 Sep 23:59:59 PDT.
+    MtgoMatch::factory()->won()->create(['deck_version_id' => $version->id, 'started_at' => Carbon::parse('2026-08-27 12:00:00', 'UTC')]);
+    MtgoMatch::factory()->lost()->create(['deck_version_id' => $version->id, 'started_at' => Carbon::parse('2026-08-28 12:00:00', 'UTC')]);
+    // 12:00 UTC on 25 Aug is 05:00 PDT on 25 Aug: inside the local previous window,
+    // but before a UTC-midnight window that would start at 26 Aug 00:00 UTC.
+    MtgoMatch::factory()->lost()->create(['deck_version_id' => $version->id, 'started_at' => Carbon::parse('2026-08-25 12:00:00', 'UTC')]);
+
+    $result = GetWinrateDelta::run($account->id, $currentStart, $currentEnd, 'week');
+
+    // Previous 1W 2L (33%), current 50%.
+    expect($result['matchDelta'])->toBe(17);
 });

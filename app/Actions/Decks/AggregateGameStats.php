@@ -2,8 +2,8 @@
 
 namespace App\Actions\Decks;
 
+use App\Actions\Util\TimeframeRange;
 use App\Models\Deck;
-use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -28,7 +28,7 @@ class AggregateGameStats
             return self::emptyRows();
         }
 
-        [$from, $to] = self::getTimeRange($timeframe);
+        [$from, $to] = TimeframeRange::run($timeframe);
 
         $query = DB::table('games as g')
             ->join('matches as m', 'm.id', '=', 'g.match_id')
@@ -144,24 +144,6 @@ class AggregateGameStats
     protected static function emptyRows(): Collection
     {
         return self::buildRows(collect());
-    }
-
-    /**
-     * @return array{0: Carbon, 1: Carbon}
-     */
-    protected static function getTimeRange(string $timeframe): array
-    {
-        $end = now()->endOfDay();
-
-        $start = match ($timeframe) {
-            'week' => now()->subDays(7)->startOfDay(),
-            'biweekly' => now()->subWeeks(2)->startOfDay(),
-            'monthly' => now()->subDays(30)->startOfDay(),
-            'year' => now()->startOfYear()->startOfDay(),
-            default => now()->startOfCentury()->startOfDay(),
-        };
-
-        return [$start, $end];
     }
 
     /**

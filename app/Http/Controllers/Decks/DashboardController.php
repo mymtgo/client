@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Decks;
 
 use App\Actions\Decks\GetArchetypeMatchupSpread;
+use App\Actions\Decks\GetDailyMatchResults;
 use App\Actions\Decks\GetDeckStats;
 use App\Actions\Decks\GetDeckViewSharedProps;
 use App\Actions\Decks\GetPeerArchetypeChartData;
@@ -13,7 +14,6 @@ use App\Concerns\HasTimeframeFilter;
 use App\Http\Controllers\Controller;
 use App\Models\Deck;
 use App\Models\DeckVersion;
-use App\Models\MtgoMatch;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
 use Illuminate\Http\Request;
@@ -87,15 +87,7 @@ class DashboardController extends Controller
             ? collect([$deckVersion->id])
             : $deck->versions()->pluck('id');
 
-        $results = MtgoMatch::complete()
-            ->selectRaw("strftime('%Y-%m-%d', started_at) as period, SUM(CASE WHEN outcome = 'win' THEN 1 ELSE 0 END) as wins, COUNT(*) as total")
-            ->whereIn('deck_version_id', $versionIds)
-            ->where('state', 'complete')
-            ->whereBetween('started_at', [$from, $to])
-            ->groupBy('period')
-            ->orderBy('period')
-            ->get()
-            ->keyBy('period');
+        $results = GetDailyMatchResults::run($versionIds, $from, $to);
 
         if ($results->isEmpty()) {
             return [];
@@ -113,9 +105,9 @@ class DashboardController extends Controller
 
             return [
                 'date' => $key,
-                'wins' => $row ? (int) $row->wins : 0,
-                'losses' => $row ? (int) ($row->total - $row->wins) : 0,
-                'winrate' => $row ? (string) round($row->wins / $row->total * 100) : null,
+                'wins' => $row ? $row['wins'] : 0,
+                'losses' => $row ? $row['total'] - $row['wins'] : 0,
+                'winrate' => $row ? (string) round($row['wins'] / $row['total'] * 100) : null,
             ];
         })->toArray();
     }

@@ -3,6 +3,7 @@
 namespace App\Actions\Dashboard;
 
 use App\Actions\Util\Winrate;
+use App\Facades\AppSettings;
 use App\Models\Game;
 use App\Models\MtgoMatch;
 use Carbon\Carbon;
@@ -64,20 +65,23 @@ class GetWinrateDelta
     }
 
     /**
+     * The previous window ends one second before the current one starts, with
+     * its day boundaries taken in the system timezone and returned as UTC.
+     *
      * @return array{0: Carbon, 1: Carbon}
      */
     private static function getPreviousTimeRange(string $timeframe, Carbon $currentStart): array
     {
-        $end = $currentStart->copy()->subSecond();
+        $end = $currentStart->copy()->setTimezone(AppSettings::systemTimezone())->subSecond();
 
         $start = match ($timeframe) {
             'biweekly' => $end->copy()->subWeeks(2)->startOfDay(),
             'monthly' => $end->copy()->subDays(30)->startOfDay(),
             'year' => $end->copy()->startOfYear()->startOfDay(),
-            'alltime' => now()->startOfCentury()->startOfDay(),
+            'alltime' => $end->copy()->startOfCentury()->startOfDay(),
             default => $end->copy()->subDays(7)->startOfDay(),
         };
 
-        return [$start, $end];
+        return [$start->utc(), $end->utc()];
     }
 }

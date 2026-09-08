@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { ChartConfig } from '@/components/ui/chart';
 import { ChartContainer } from '@/components/ui/chart';
+import { parseLocalDate } from '@/lib/utils';
 import { VisAxis, VisCrosshair, VisLine, VisStackedBar, VisTooltip, VisXYContainer } from '@unovis/vue';
 import { computed, onMounted, ref, watch } from 'vue';
 
@@ -89,7 +90,7 @@ const chartData = computed<DataPoint[]>(() => {
         }
 
         return {
-            date: new Date(d.date),
+            date: parseLocalDate(d.date),
             wins: d.wins,
             losses: d.losses,
             rate: d.winrate !== null ? parseInt(d.winrate) : null,

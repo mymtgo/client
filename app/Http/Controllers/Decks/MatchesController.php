@@ -8,6 +8,7 @@ use App\Concerns\HasTimeframeFilter;
 use App\Data\Front\ArchetypeData;
 use App\Data\Front\MatchData;
 use App\Enums\MatchOutcome;
+use App\Facades\AppSettings;
 use App\Http\Controllers\Controller;
 use App\Models\Archetype;
 use App\Models\Deck;
@@ -39,11 +40,12 @@ class MatchesController extends Controller
             ->when($deckVersion, fn ($q) => $q->where('deck_version_id', $deckVersion->id))
             ->whereBetween('started_at', [$from, $to]);
 
+        $timezone = AppSettings::systemTimezone();
         if ($filterFrom = $request->input('filter_from')) {
-            $query->where('started_at', '>=', Carbon::parse($filterFrom)->startOfDay());
+            $query->where('started_at', '>=', Carbon::parse($filterFrom, $timezone)->startOfDay()->utc());
         }
         if ($filterTo = $request->input('filter_to')) {
-            $query->where('started_at', '<=', Carbon::parse($filterTo)->endOfDay());
+            $query->where('started_at', '<=', Carbon::parse($filterTo, $timezone)->endOfDay()->utc());
         }
         if ($result = $request->input('filter_result')) {
             if ($result === 'win') {
