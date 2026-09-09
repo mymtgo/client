@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Archetypes\Refresh;
 
 use App\Actions\Archetypes\ComputeArchetypeRefreshPlan;
+use App\Actions\Archetypes\RecordArchetypeVersion;
 use App\Exceptions\OfflineModeException;
 use App\Models\Archetype;
 use Illuminate\Http\RedirectResponse;
@@ -27,6 +28,17 @@ class ShowController
             return redirect()
                 ->route('archetypes.index')
                 ->with('error', 'Could not connect to the archetype server. Please check your internet connection and try again.');
+        }
+
+        // The server may bump its version for changes that do not touch this
+        // client (inactive archetypes, metadata). Nothing to review, so just
+        // mark the client current rather than showing an empty page.
+        if ($plan['added'] === 0 && $plan['updated'] === 0 && $plan['removed'] === []) {
+            RecordArchetypeVersion::synced($plan['version']);
+
+            return redirect()
+                ->route('archetypes.index')
+                ->with('success', 'Your archetypes are already up to date.');
         }
 
         $removed = collect($plan['removed']);

@@ -335,6 +335,20 @@ class AppSettings
         $this->set('league_window', $value);
     }
 
+    /**
+     * Version tag of the curated archetype list last synced from the API.
+     * Compared against the remote version to prompt the user to refresh.
+     */
+    public function archetypeVersion(): ?string
+    {
+        return $this->get('archetype_version');
+    }
+
+    public function setArchetypeVersion(?string $version): void
+    {
+        $this->set('archetype_version', $version);
+    }
+
     public function donationPromptSeen(): bool
     {
         return (bool) $this->get('donation_prompt_seen', false);

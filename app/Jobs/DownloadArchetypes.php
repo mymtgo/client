@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Actions\Archetypes\RecordArchetypeVersion;
 use App\Facades\AppSettings;
 use App\Models\Archetype;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -27,6 +28,8 @@ class DownloadArchetypes implements ShouldQueue
         $response = Http::mymtgoApi()->throw()->get('/api/archetypes');
 
         self::upsert($response->json());
+
+        RecordArchetypeVersion::synced($response->header('X-Archetypes-Version'));
     }
 
     /**

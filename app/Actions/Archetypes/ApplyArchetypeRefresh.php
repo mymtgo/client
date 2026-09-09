@@ -64,6 +64,8 @@ class ApplyArchetypeRefresh
             }
         }
 
+        RecordArchetypeVersion::synced($plan['version']);
+
         RefreshArchetypes::dispatch();
 
         return [

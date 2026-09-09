@@ -20,6 +20,7 @@ class ComputeArchetypeRefreshPlan
      *
      * @return array{
      *     api: array<int, array{uuid: string, name: string, format: string, colorIdentity: string|null}>,
+     *     version: string|null,
      *     added: int,
      *     added_rows: array<int, array{uuid: string, name: string, format: string, colorIdentity: string|null}>,
      *     updated: int,
@@ -32,7 +33,9 @@ class ComputeArchetypeRefreshPlan
     public static function run(): array
     {
         /** @var array<int, array{uuid: string, name: string, format: string, colorIdentity: string|null}> $apiRows */
-        $apiRows = Http::mymtgoApi()->throw()->get('/api/archetypes')->json();
+        $response = Http::mymtgoApi()->throw()->get('/api/archetypes');
+        $apiRows = $response->json();
+        $version = $response->header('X-Archetypes-Version');
 
         $apiByUuid = collect($apiRows)->keyBy('uuid');
 
@@ -94,6 +97,7 @@ class ComputeArchetypeRefreshPlan
 
         return [
             'api' => $apiRows,
+            'version' => $version !== '' ? $version : null,
             'added' => $added->count(),
             'added_rows' => $addedRows->all(),
             'updated' => $updated->count(),

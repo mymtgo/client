@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Actions\Archetypes\RecordArchetypeVersion;
 use App\Facades\AppSettings;
 use App\Models\Account;
 use App\Models\Game;
@@ -43,6 +44,10 @@ class HandleInertiaRequests extends Middleware
             'activeAccount' => fn () => Account::current()?->username,
             'accounts' => fn () => Account::tracked()->orderBy('username')->get(['id', 'username', 'active']),
             'availableUpdate' => fn () => Cache::get('available_update'),
+            'archetypeUpdate' => fn () => [
+                'available' => RecordArchetypeVersion::updateAvailable(),
+                'version' => RecordArchetypeVersion::remoteVersion(),
+            ],
             'support' => [
                 'discordInviteUrl' => config('support.discord_invite_url'),
             ],

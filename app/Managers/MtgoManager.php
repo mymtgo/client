@@ -10,6 +10,7 @@ use App\Actions\Logs\PruneProcessedLogEvents;
 use App\Actions\RegisterDevice;
 use App\Actions\Settings\ValidatePath;
 use App\Facades\AppSettings;
+use App\Jobs\CheckArchetypeVersion;
 use App\Jobs\DownloadArchetypes;
 use App\Jobs\PopulateMissingCardData;
 use App\Jobs\RunPipelineJob;
@@ -182,8 +183,10 @@ class MtgoManager
             RegisterDevice::run();
         }
 
-        if (! AppSettings::isOffline() && ! Archetype::query()->where('is_fallback', false)->exists()) {
-            $this->downloadArchetypes(sync: false);
+        if (! AppSettings::isOffline()) {
+            Archetype::query()->where('is_fallback', false)->exists()
+                ? CheckArchetypeVersion::dispatch()
+                : $this->downloadArchetypes(sync: false);
         }
 
         if (! Deck::count()) {
@@ -281,6 +284,13 @@ class MtgoManager
 
         $schedule->call(fn () => $this->populateMissingCardData())
             ->hourly();
+
+        // Read-only probe of the API archetype version. Drives the "archetypes
+        // out of date" banner; the refresh itself stays user-triggered.
+        $schedule->job(new CheckArchetypeVersion)
+            ->hourly()
+            ->name('check_archetype_version')
+            ->skip(fn () => AppSettings::isOffline());
 
         $schedule->call(fn () => PruneProcessedLogEvents::run())
             ->daily()

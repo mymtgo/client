@@ -15,6 +15,7 @@ use App\Models\Player;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Str;
 
 uses(RefreshDatabase::class);
 
@@ -67,7 +68,10 @@ it('does not tell an offline user to check their internet connection', function 
 it('renders the refresh preview normally when online', function () {
     AppSettings::setOffline(false);
     clearGlobalHttpFake();
-    Http::fake(['*/api/archetypes' => Http::response([], 200)]);
+    // One incoming archetype: an empty plan is short-circuited to "already up to date".
+    Http::fake(['*/api/archetypes' => Http::response([
+        ['uuid' => (string) Str::uuid(), 'name' => 'Incoming', 'format' => 'Modern', 'colorIdentity' => 'R'],
+    ], 200)]);
 
     $this->get(route('archetypes.refresh'))
         ->assertSuccessful()

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import AppHeader from '@/components/AppHeader.vue';
+import ArchetypeUpdateBanner from '@/components/ArchetypeUpdateBanner.vue';
 import DonationModal from '@/components/DonationModal.vue';
 import StatusBar from '@/components/StatusBar.vue';
 import ToastContainer from '@/components/ToastContainer.vue';
@@ -44,6 +45,7 @@ onMounted(() => {
     <div class="flex h-screen flex-col">
         <AppHeader />
         <UpdateBanner />
+        <ArchetypeUpdateBanner />
         <div class="flex min-h-0 flex-1 flex-col overflow-y-auto">
             <slot />
         </div>
