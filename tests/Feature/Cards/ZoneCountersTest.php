@@ -239,3 +239,44 @@ it('leaves the stack out of the zone split', function () {
     // A card on the stack is one being cast, and `cast` already records that.
     expect(CountZonesByOracle::ZONES)->toBe(['hand', 'graveyard', 'exile', 'battlefield']);
 });
+
+/**
+ * MTGO reports a display zone and a real one. A card exiled under Ugin's
+ * Labyrinth sits under the land, so Zone says Battlefield while ActualZone
+ * says Exile. Counting the display zone called it a battlefield arrival,
+ * which is exactly the reanimation signal it must not pollute.
+ */
+it('believes ActualZone over the display zone', function () {
+    [$match, $game] = zones_game([
+        [[
+            'Id' => 10, 'CatalogID' => 1001,
+            'Zone' => 'Battlefield', 'ActualZone' => 'Exile',
+            'Owner' => 0, 'Controller' => 0,
+        ]],
+    ]);
+
+    (new ComputeCardGameStats($match->id))->handle();
+
+    $stat = zones_stat($game);
+    expect($stat->exile_seen)->toBe(1);
+    expect($stat->battlefield_seen)->toBe(0);
+});
+
+it('counts a companion in the sideboard as no zone at all', function () {
+    // Zone "Companion", ActualZone "Sideboard": neither is one of ours, and
+    // a companion sitting outside the game has not been drawn or played.
+    [$match, $game] = zones_game([
+        [[
+            'Id' => 10, 'CatalogID' => 1001,
+            'Zone' => 'Companion', 'ActualZone' => 'Sideboard',
+            'Owner' => 0, 'Controller' => 0,
+        ]],
+    ]);
+
+    (new ComputeCardGameStats($match->id))->handle();
+
+    $stat = zones_stat($game);
+    expect($stat->hand_seen)->toBe(0);
+    expect($stat->battlefield_seen)->toBe(0);
+    expect($stat->exile_seen)->toBe(0);
+});

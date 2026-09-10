@@ -62,7 +62,14 @@ class CountZonesByOracle
                     continue;
                 }
 
-                $zone = strtolower((string) ($card['Zone'] ?? ''));
+                // MTGO reports a display zone and a real one, and they differ
+                // whenever a card sits somewhere it does not belong: a card
+                // exiled under Ugin's Labyrinth reads Zone "Battlefield" with
+                // ActualZone "Exile", a companion reads Zone "Companion" with
+                // ActualZone "Sideboard". The display zone would call the
+                // first a battlefield arrival, which is the reanimation
+                // signal, so the real zone wins wherever it is given.
+                $zone = strtolower((string) ($card['ActualZone'] ?? $card['Zone'] ?? ''));
 
                 if (! in_array($zone, self::ZONES, true)) {
                     continue;
