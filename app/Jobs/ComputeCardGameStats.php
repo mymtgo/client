@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Actions\Cards\AggregateGameLogCardStats;
 use App\Actions\Cards\CountSeenCardsByOracle;
+use App\Actions\Cards\CountZonesByOracle;
 use App\Actions\Cards\UpdateGameMetaFromLog;
 use App\Actions\Import\ExtractCardsFromGameLog;
 use App\Actions\Import\LinkImportedMatchGameLog;
@@ -286,6 +287,13 @@ class ComputeCardGameStats implements ShouldQueue
 
         $seenByOracle = $this->resolveSeenByOracle($game, $localInstanceId, $catalogToOracle, self::LOCAL_VISIBLE_ZONES, $logStats);
 
+        // Zone splits need a timeline. Imported matches have none, and a row
+        // saying every zone is zero would read as "never in hand" rather than
+        // "never measured", so the flag travels with the counts.
+        $zoneData = $game->timeline->isNotEmpty()
+            ? CountZonesByOracle::run($game, $localInstanceId, $catalogToOracle)
+            : null;
+
         $rows = [];
         $now = now();
 
@@ -312,6 +320,7 @@ class ComputeCardGameStats implements ShouldQueue
                 sidedIn: $sidedIn,
                 opponent: false,
                 now: $now,
+                zoneData: $zoneData,
             );
         }
 
@@ -720,6 +729,7 @@ class ComputeCardGameStats implements ShouldQueue
         bool $sidedIn,
         bool $opponent,
         $now,
+        ?array $zoneData = null,
     ): array {
         return [
             'oracle_id' => $oracleId,
@@ -728,6 +738,7 @@ class ComputeCardGameStats implements ShouldQueue
             'quantity' => $quantity,
             'kept' => $kept,
             'seen' => $seen,
+            ...self::zoneColumns($zoneData, $oracleId, $quantity, $logStats),
             ...self::counterColumns($logStats, $oracleId),
             'pregame_revealed' => isset($logStats['pregame_revealed'][$oracleId]),
             'pregame_played' => isset($logStats['pregame_played'][$oracleId]),
@@ -739,6 +750,52 @@ class ComputeCardGameStats implements ShouldQueue
             'created_at' => $now,
             'updated_at' => $now,
         ];
+    }
+
+    /**
+     * DB column => count for every zone, plus the discard count, the first
+     * cast turn and the flag saying whether any of it was measured.
+     *
+     * Every count is capped at the copies in the deck, matching how `seen` is
+     * capped: a card that changed instance id mid-game (a token copy, a
+     * transformed face) must not report five copies of a four-of.
+     *
+     * A discard is only counted for a card that was not cast. A cast spell
+     * passes from hand to the graveyard exactly like a discarded one, and the
+     * zone walk cannot tell them apart on its own.
+     *
+     * @param  array{zones: array<string, array<string, int>>, discarded: array<string, int>}|null  $zoneData
+     * @param  array<string, mixed>  $logStats
+     * @return array<string, int|bool|null>
+     */
+    private static function zoneColumns(?array $zoneData, string $oracleId, int $quantity, array $logStats): array
+    {
+        $castTurn = $logStats['cast_turn'][$oracleId] ?? null;
+
+        if ($zoneData === null) {
+            return [
+                ...array_fill_keys(
+                    array_map(fn (string $zone): string => "{$zone}_seen", CountZonesByOracle::ZONES),
+                    0
+                ),
+                'discarded' => 0,
+                'cast_turn' => $castTurn,
+                'has_zone_data' => false,
+            ];
+        }
+
+        $columns = [];
+        foreach (CountZonesByOracle::ZONES as $zone) {
+            $columns["{$zone}_seen"] = min($zoneData['zones'][$zone][$oracleId] ?? 0, $quantity);
+        }
+
+        $wasCast = ($logStats['cast'][$oracleId] ?? 0) > 0;
+
+        $columns['discarded'] = $wasCast ? 0 : min($zoneData['discarded'][$oracleId] ?? 0, $quantity);
+        $columns['cast_turn'] = $castTurn;
+        $columns['has_zone_data'] = true;
+
+        return $columns;
     }
 
     /**
@@ -764,6 +821,7 @@ class ComputeCardGameStats implements ShouldQueue
     {
         return [
             ...array_fill_keys(ExtractCardsFromGameLog::COUNTER_FIELDS, []),
+            'cast_turn' => [],
             'pregame_revealed' => [],
             'pregame_played' => [],
         ];

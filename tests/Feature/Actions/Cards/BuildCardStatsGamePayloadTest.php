@@ -120,3 +120,40 @@ it('serializes card field types correctly', function () {
     expect($card['sided_in'])->toBeTrue();
     expect($card['sided_out'])->toBeFalse();
 });
+
+it('sends the zone counters, the discard count and the cast turn', function () {
+    $scaffold = CardStatsTelemetryFactory::make();
+    $game = $scaffold['games'][0]->load(['match.games', 'match.archetypes.archetype', 'match.opponentArchetypes.archetype', 'players', 'cardGameStats']);
+
+    $game->cardGameStats()->where('opponent', false)->update([
+        'hand_seen' => 2,
+        'graveyard_seen' => 1,
+        'exile_seen' => 0,
+        'battlefield_seen' => 3,
+        'discarded' => 1,
+        'cast_turn' => 4,
+        'has_zone_data' => true,
+    ]);
+
+    $payload = BuildCardStatsGamePayload::run($game->fresh()->load('cardGameStats'));
+
+    expect($payload['cards'][0])->toMatchArray([
+        'hand_seen' => 2,
+        'graveyard_seen' => 1,
+        'exile_seen' => 0,
+        'battlefield_seen' => 3,
+        'discarded' => 1,
+        'cast_turn' => 4,
+        'has_zone_data' => true,
+    ]);
+});
+
+it('sends a false zone flag for a game the tracker never saw zones in', function () {
+    $scaffold = CardStatsTelemetryFactory::make();
+    $game = $scaffold['games'][0]->load(['match.games', 'match.archetypes.archetype', 'match.opponentArchetypes.archetype', 'players', 'cardGameStats']);
+
+    $payload = BuildCardStatsGamePayload::run($game);
+
+    expect($payload['cards'][0]['has_zone_data'])->toBeFalse();
+    expect($payload['cards'][0]['cast_turn'])->toBeNull();
+});

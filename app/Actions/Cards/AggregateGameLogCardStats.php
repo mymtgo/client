@@ -22,6 +22,10 @@ class AggregateGameLogCardStats
         $pregameRevealed = [];
         $pregamePlayed = [];
 
+        // Earliest cast across the copies of a card: the question is how soon
+        // the deck got one down, not what the fourth copy did on turn nine.
+        $castTurn = [];
+
         $gameCards = $gameLogStats['cards_by_game'][$gameIndex][$playerName] ?? [];
 
         foreach ($gameCards as $card) {
@@ -31,6 +35,12 @@ class AggregateGameLogCardStats
             }
             foreach (ExtractCardsFromGameLog::COUNTER_FIELDS as $field) {
                 $stats[$field][$oracleId] = ($stats[$field][$oracleId] ?? 0) + ($card[$field] ?? 0);
+            }
+
+            $turn = $card['cast_turn'] ?? null;
+
+            if ($turn !== null) {
+                $castTurn[$oracleId] = min($castTurn[$oracleId] ?? $turn, $turn);
             }
         }
 
@@ -51,6 +61,7 @@ class AggregateGameLogCardStats
 
         return [
             ...$stats,
+            'cast_turn' => $castTurn,
             'pregame_revealed' => $pregameRevealed,
             'pregame_played' => $pregamePlayed,
         ];

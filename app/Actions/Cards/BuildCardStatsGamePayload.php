@@ -63,6 +63,16 @@ class BuildCardStatsGamePayload
                 'quantity' => (int) $stat->quantity,
                 'kept' => (int) $stat->kept,
                 'seen' => (int) $stat->seen,
+                // Zone splits. The API reads hand_seen as the drawn measure
+                // and ignores all of it unless has_zone_data is true, since a
+                // game with no timeline reports zeroes it never measured.
+                'hand_seen' => (int) $stat->hand_seen,
+                'graveyard_seen' => (int) $stat->graveyard_seen,
+                'exile_seen' => (int) $stat->exile_seen,
+                'battlefield_seen' => (int) $stat->battlefield_seen,
+                'discarded' => (int) $stat->discarded,
+                'cast_turn' => $stat->cast_turn === null ? null : (int) $stat->cast_turn,
+                'has_zone_data' => (bool) $stat->has_zone_data,
                 'cast' => (int) $stat->cast,
                 'played' => (int) $stat->played,
                 'kicked' => (int) $stat->kicked,

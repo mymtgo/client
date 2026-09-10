@@ -131,13 +131,27 @@ class ExtractCardsFromGameLog
         $counterFields = self::COUNTER_FIELDS;
         $counts = [];
 
+        // The turn a card was first cast on, tracked by walking the log in
+        // order and watching the `Turn N:` markers go by. This needs no
+        // timeline and no timestamps: the marker and the cast line are the
+        // same stream. Turns spent in hand would need snapshots aligned to
+        // these markers, and a snapshot's date component is the date it was
+        // parsed, not the date it was played, so that is left alone.
+        $castTurns = [];
+        $turn = 0;
+
         foreach ($players as $player) {
             $cardsByPlayer[$player] = [];
             $counts[$player] = [];
+            $castTurns[$player] = [];
         }
 
         foreach ($entries as $entry) {
             $msg = $entry['message'];
+
+            if (preg_match('/^@PTurn (\d+):/', $msg, $turnMatch)) {
+                $turn = (int) $turnMatch[1];
+            }
 
             foreach ($players as $player) {
                 if (! str_contains($msg, '@P'.$player)) {
@@ -153,6 +167,12 @@ class ExtractCardsFromGameLog
                         }
                     }
 
+                    // First cast only. A card cast twice in a game answers
+                    // "how early did this come down", not "how many times".
+                    if ($card['cast'] && $turn > 0 && ! isset($castTurns[$player][$card['mtgo_id']])) {
+                        $castTurns[$player][$card['mtgo_id']] = $turn;
+                    }
+
                     if (isset($seen[$player][$card['mtgo_id']])) {
                         continue;
                     }
@@ -161,6 +181,7 @@ class ExtractCardsFromGameLog
                     $cardsByPlayer[$player][] = [
                         'mtgo_id' => $card['mtgo_id'],
                         'name' => $card['name'],
+                        'cast_turn' => null,
                         ...array_fill_keys(self::COUNTER_FIELDS, 0),
                     ];
                 }
@@ -173,6 +194,8 @@ class ExtractCardsFromGameLog
                 foreach ($counterFields as $field) {
                     $cardsByPlayer[$player][$idx][$field] = $counts[$player][$card['mtgo_id']][$field] ?? 0;
                 }
+
+                $cardsByPlayer[$player][$idx]['cast_turn'] = $castTurns[$player][$card['mtgo_id']] ?? null;
             }
         }
 
