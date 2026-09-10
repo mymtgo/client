@@ -93,7 +93,7 @@ class IndexController extends Controller
             'lastSession' => Inertia::defer(fn () => GetLastSession::run($accountId, $format)),
             'matchupSpread' => Inertia::defer(fn () => GetDashboardMatchupSpread::run($accountId, $start, $end, $format)),
             'rollingForm' => Inertia::defer(fn () => GetRollingForm::run($accountId, $format)),
-            'leagueDistribution' => Inertia::defer(fn () => GetDashboardLeagueDistribution::run($accountId, $format)),
+            'leagueDistribution' => Inertia::defer(fn () => GetDashboardLeagueDistribution::run($accountId, $start, $end, $format)),
             'recentMatches' => Inertia::defer(fn () => MatchData::collect(
                 MtgoMatch::complete()
                     ->when($accountId, fn ($q, $id) => $q->forAccount($id))
