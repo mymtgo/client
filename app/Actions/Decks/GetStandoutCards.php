@@ -5,6 +5,7 @@ namespace App\Actions\Decks;
 use App\Actions\Cards\GetCardGameStats;
 use App\Models\Deck;
 use App\Models\DeckVersion;
+use App\Support\SampleRate;
 
 class GetStandoutCards
 {
@@ -65,7 +66,7 @@ class GetStandoutCards
 
     private static function formatPct(array $card, string $description, int $numerator, int $denominator): array
     {
-        $pct = $denominator > 0 ? (int) round($numerator / $denominator * 100) : 0;
+        $pct = SampleRate::of($numerator, $denominator)->percentage() ?? 0;
 
         return [
             'name' => $card['name'],

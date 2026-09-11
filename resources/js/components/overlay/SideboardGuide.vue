@@ -45,7 +45,9 @@ const hasPlan = computed(() => props.sideboard?.hasPlan ?? false);
  * The panel groups by card type to mirror the draw odds pane, but the question
  * it answers is "what does the field bring in", so the group holding the 90%
  * card has to come before the group holding the 20% one. With no community
- * data at all every group scores -1 and groupByType's own order stands.
+ * data at all every group scores -1 and groupByType's own order stands; a rate
+ * drawn from too few games scores -1 for the same reason, so one thin card
+ * cannot hoist an entire type group.
  *
  * With an authored plan the lists are already the player's own, so
  * `groupByType`'s own order stands instead of being re-sorted by field rate.
@@ -55,7 +57,7 @@ const groupedSidedIn = computed<Record<string, SidedInCard[]>>(() => {
 
     if (hasPlan.value) return groups;
 
-    const best = (cards: SidedInCard[]): number => Math.max(-1, ...cards.map((card) => card.communityRate ?? -1));
+    const best = (cards: SidedInCard[]): number => Math.max(-1, ...cards.map((card) => (card.communityConfident ? (card.communityRate ?? -1) : -1)));
 
     return Object.fromEntries(Object.entries(groups).sort(([, a], [, b]) => best(b) - best(a)));
 });
@@ -72,31 +74,6 @@ const communityGames = computed<number | null>(() => {
 
     return samples.length ? Math.max(...samples) : null;
 });
-
-/**
- * The share of games that has to include a card before the panel calls it a
- * recommendation rather than just a number. Half the games is the honest floor:
- * below it, siding the card is the minority line.
- */
-const RECOMMEND_AT = 50;
-
-/**
- * Whether to flag this card as one to bring in / take out.
- *
- * The field rate decides it when the API knows the card. Otherwise it falls
- * back to how often the player themselves has done it in this matchup, so a
- * card the API has never heard of still gets a call once there is local history
- * to make one from.
- */
-const recommended = (communityRate: number | null, localGames: number): boolean => {
-    if (communityRate !== null) {
-        return communityRate >= RECOMMEND_AT;
-    }
-
-    const postboardGames = props.sideboard?.postboardGames ?? 0;
-
-    return postboardGames > 0 && (localGames / postboardGames) * 100 >= RECOMMEND_AT;
-};
 
 const groupQuantity = (cards: SidedInCard[]): number => cards.reduce((sum, card) => sum + card.quantity, 0);
 
@@ -149,7 +126,7 @@ const offlineMode = useOfflineMode();
                     >
                         <div class="flex shrink-0 items-center gap-2 px-2">
                             <span v-if="!hasPlan" class="w-8 text-right text-[10px] font-bold tracking-wider uppercase">
-                                <span v-if="recommended(card.communityRate, card.sidedInGames)" class="text-emerald-400">In</span>
+                                <span v-if="card.recommended" class="text-emerald-400">In</span>
                             </span>
                             <!-- How often the wider player base brings this in. Leads the
                                  row because it has a sample from the first game onward. -->
@@ -194,7 +171,7 @@ const offlineMode = useOfflineMode();
                     >
                         <div class="flex shrink-0 items-center gap-2 px-2">
                             <span v-if="!hasPlan" class="w-8 text-right text-[10px] font-bold tracking-wider uppercase">
-                                <span v-if="recommended(card.communityRate, card.sidedOutGames)" class="text-red-400">Out</span>
+                                <span v-if="card.recommended" class="text-red-400">Out</span>
                             </span>
                             <span
                                 v-if="!hasPlan"

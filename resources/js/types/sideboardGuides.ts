@@ -18,6 +18,8 @@ export type GuideInCard = {
     communitySidedIn: number | null;
     communityGames: number | null;
     communityRate: number | null;
+    communityConfident: boolean;
+    recommended: boolean;
     plannedQuantity: number | null;
     stale: boolean;
 };
@@ -33,6 +35,8 @@ export type GuideOutCard = {
     communitySidedOut: number | null;
     communityGames: number | null;
     communityRate: number | null;
+    communityConfident: boolean;
+    recommended: boolean;
     plannedQuantity: number | null;
     stale: boolean;
 };

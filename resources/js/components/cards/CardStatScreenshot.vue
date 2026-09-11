@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import ManaSymbols from '@/components/ManaSymbols.vue';
+import { pct } from '@/components/cards/cardStatFormat';
 import { type CardStatsVisibility } from '@/pages/decks/partials/cardStatsColumns';
 import { computed } from 'vue';
 
@@ -66,10 +67,6 @@ const colors = {
 
 type Tone = 'good' | 'bad' | 'neutral';
 type Block = { label: string; value: string; sub?: string; tone?: Tone };
-
-function pct(num: number, denom: number): number | null {
-    return denom > 0 ? Math.round((num / denom) * 100) : null;
-}
 
 function toneFor(p: number | null): Tone {
     if (p === null) return 'neutral';

@@ -25,6 +25,10 @@ class SideboardCardData extends Data
         public ?int $communityGames = null,
         /** communitySidedIn as a percentage, or null when the API has no row. */
         public ?int $communityRate = null,
+        /** True when the field sample is large enough for its rate to be ordered on. */
+        public bool $communityConfident = false,
+        /** True when the panel should call this card, from whichever sample backs it. */
+        public bool $recommended = false,
         /** Copies the player's guide says to bring in, or null when the guide does not name this card. */
         public ?int $plannedQuantity = null,
         /** True when the guide names this card but the current deck version no longer contains it. */

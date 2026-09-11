@@ -16,6 +16,7 @@ use App\Models\Card;
 use App\Models\DeckVersion;
 use App\Models\SideboardGuide;
 use App\Models\SideboardGuideCard;
+use App\Support\SampleRate;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -23,6 +24,15 @@ use InvalidArgumentException;
 
 class BuildSideboardGuide
 {
+    /** Field rates pool across the whole player base, so they can carry a real floor. */
+    private const COMMUNITY_MIN_GAMES = 10;
+
+    /** Your own matchup history is always thin; this matches GetStandoutCards. */
+    private const LOCAL_MIN_GAMES = 3;
+
+    /** Below half the games, siding the card is the minority line. */
+    private const RECOMMEND_SHARE = 50;
+
     /**
      * Sideboard lists for one deck against one opponent archetype.
      *
@@ -101,7 +111,7 @@ class BuildSideboardGuide
         $metadata = self::cardMetadata($cards->merge($sideboardCards->values())->merge($maindeckCards->values()));
 
         $sidedIn = $sideboardCards
-            ->map(function (array $card) use ($stats, $metadata, $community, $planned, $scope) {
+            ->map(function (array $card) use ($stats, $metadata, $community, $planned, $scope, $postboard) {
                 $row = $stats->get($card['oracle_id']);
                 // The version's own card row, falling back to the stats join's
                 // copy of the same columns.
@@ -110,6 +120,7 @@ class BuildSideboardGuide
                 $losses = (int) ($row->sided_in_lost ?? 0);
                 $games = (int) ($row->sided_in_games ?? 0);
                 $peers = $community->get($card['oracle_id']);
+                $call = self::call($peers, 'sidedIn', $games, $postboard['games']);
                 $plannedQuantity = $planned['in'][$card['oracle_id']] ?? null;
 
                 return new SideboardCardData(
@@ -126,7 +137,9 @@ class BuildSideboardGuide
                     winrate: $games > 0 ? Winrate::percentage($wins, $losses) : null,
                     communitySidedIn: $peers === null ? null : $peers['sidedIn'],
                     communityGames: $peers === null ? null : $peers['games'],
-                    communityRate: self::rate($peers, 'sidedIn'),
+                    communityRate: $call['rate'],
+                    communityConfident: $call['confident'],
+                    recommended: $call['recommended'],
                     plannedQuantity: $plannedQuantity,
                     stale: (bool) ($card['stale'] ?? false),
                 );
@@ -139,16 +152,18 @@ class BuildSideboardGuide
         // as 0%. With a plan, or in the editor, the list is the player's own
         // and reads best alphabetically.
         $sidedIn = ($scope === SideboardGuideScope::History
-            ? $sidedIn->sort(fn (SideboardCardData $a, SideboardCardData $b) => [$b->communityRate ?? -1, $b->sidedInGames, $a->name] <=> [$a->communityRate ?? -1, $a->sidedInGames, $b->name])
+            ? $sidedIn->sort(fn (SideboardCardData $a, SideboardCardData $b) => [$b->communityConfident, $b->communityRate ?? -1, $b->sidedInGames, $a->name] <=> [$a->communityConfident, $a->communityRate ?? -1, $a->sidedInGames, $b->name])
             : $sidedIn->sortBy(fn (SideboardCardData $card) => $card->name))
             ->values()
             ->all();
 
         $sidedOut = $maindeckCards
-            ->map(function (array $card) use ($stats, $metadata, $community, $planned, $scope) {
+            ->map(function (array $card) use ($stats, $metadata, $community, $planned, $scope, $postboard) {
                 $row = $stats->get($card['oracle_id']);
                 $meta = $metadata->get($card['oracle_id']) ?? $row;
                 $peers = $community->get($card['oracle_id']);
+                $sidedOutGames = (int) ($row->sided_out_games ?? 0);
+                $call = self::call($peers, 'sidedOut', $sidedOutGames, $postboard['games']);
                 $plannedQuantity = $planned['out'][$card['oracle_id']] ?? null;
 
                 return new SidedOutCardData(
@@ -158,10 +173,12 @@ class BuildSideboardGuide
                     image: self::imageUrl($meta),
                     artCrop: self::artCropUrl($meta),
                     quantity: $scope === SideboardGuideScope::Plan ? (int) $plannedQuantity : (int) $card['quantity'],
-                    sidedOutGames: (int) ($row->sided_out_games ?? 0),
+                    sidedOutGames: $sidedOutGames,
                     communitySidedOut: $peers === null ? null : $peers['sidedOut'],
                     communityGames: $peers === null ? null : $peers['games'],
-                    communityRate: self::rate($peers, 'sidedOut'),
+                    communityRate: $call['rate'],
+                    communityConfident: $call['confident'],
+                    recommended: $call['recommended'],
                     plannedQuantity: $plannedQuantity,
                     stale: (bool) ($card['stale'] ?? false),
                 );
@@ -172,7 +189,7 @@ class BuildSideboardGuide
             // all-zero row is dropped whichever side it came from.
             $sidedOut = $sidedOut
                 ->filter(fn (SidedOutCardData $card) => $card->sidedOutGames > 0 || ($card->communitySidedOut ?? 0) > 0)
-                ->sort(fn (SidedOutCardData $a, SidedOutCardData $b) => [$b->communityRate ?? -1, $b->sidedOutGames, $a->name] <=> [$a->communityRate ?? -1, $a->sidedOutGames, $b->name]);
+                ->sort(fn (SidedOutCardData $a, SidedOutCardData $b) => [$b->communityConfident, $b->communityRate ?? -1, $b->sidedOutGames, $a->name] <=> [$a->communityConfident, $a->communityRate ?? -1, $a->sidedOutGames, $b->name]);
         } else {
             $sidedOut = $sidedOut->sortBy(fn (SidedOutCardData $card) => $card->name);
         }
@@ -405,19 +422,36 @@ class BuildSideboardGuide
     }
 
     /**
-     * One community counter as a whole percentage of the games behind it, or
-     * null when the API has no row for the card at all — which is a different
-     * statement from "the field never does this", and must not read as 0%.
+     * The field rate for one direction, and whether it earns a call.
+     *
+     * The rate is null when the API has no row for the card at all — a
+     * different statement from "the field never does this", which must not
+     * read as 0%.
+     *
+     * The field decides the call while its sample is worth trusting.
+     * Otherwise the player's own history answers, so a card the API has never
+     * heard of, or knows from too few games to speak for, still gets a call
+     * once there is local history to make one from. A thin field sample is
+     * closer to "the field does not know" than to "the field says no".
      *
      * @param  array{sidedIn: int, sidedOut: int, games: int}|null  $peers
+     * @return array{rate: int|null, confident: bool, recommended: bool}
      */
-    private static function rate(?array $peers, string $counter): ?int
+    private static function call(?array $peers, string $counter, int $localGames, int $postboardGames): array
     {
-        if ($peers === null || $peers['games'] <= 0) {
-            return null;
-        }
+        $field = $peers === null
+            ? SampleRate::empty()
+            : SampleRate::of($peers[$counter], $peers['games']);
 
-        return (int) round($peers[$counter] / $peers['games'] * 100);
+        $confident = $field->isConfident(self::COMMUNITY_MIN_GAMES);
+
+        return [
+            'rate' => $field->percentage(),
+            'confident' => $confident,
+            'recommended' => $confident
+                ? $field->supports(self::RECOMMEND_SHARE, self::COMMUNITY_MIN_GAMES)
+                : SampleRate::of($localGames, $postboardGames)->supports(self::RECOMMEND_SHARE, self::LOCAL_MIN_GAMES),
+        ];
     }
 
     private static function imageUrl(?object $row): ?string

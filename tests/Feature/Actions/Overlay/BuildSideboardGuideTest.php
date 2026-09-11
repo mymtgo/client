@@ -471,3 +471,103 @@ it('lists a card split across zones in both editor columns with per-zone copies 
     expect($mainBolt->plannedQuantity)->toBe(3);
     expect($mainBolt->stale)->toBeFalse();
 });
+
+it('still reports a thin community rate but withholds the recommendation', function () {
+    $archetype = Archetype::factory()->create(['name' => 'Esper Blink', 'format' => 'modern']);
+    $deck = Deck::factory()->create();
+    $version = guideVersion($deck, [['201', '2', '1']]);
+
+    // One shared game is a rate, not a recommendation.
+    $community = collect([
+        'o-rip' => ['sidedIn' => 1, 'sidedOut' => 0, 'games' => 1],
+    ]);
+
+    $guide = BuildSideboardGuide::run($version, $archetype, $community);
+
+    expect($guide->sidedIn[0]->communityRate)->toBe(100)
+        ->and($guide->sidedIn[0]->communityConfident)->toBeFalse()
+        ->and($guide->sidedIn[0]->recommended)->toBeFalse();
+});
+
+it('recommends a card the field sides in on a sample worth trusting', function () {
+    $archetype = Archetype::factory()->create(['name' => 'Esper Blink', 'format' => 'modern']);
+    $deck = Deck::factory()->create();
+    $version = guideVersion($deck, [['201', '2', '1']]);
+
+    $community = collect([
+        'o-rip' => ['sidedIn' => 60, 'sidedOut' => 0, 'games' => 80],
+    ]);
+
+    $guide = BuildSideboardGuide::run($version, $archetype, $community);
+
+    expect($guide->sidedIn[0]->communityConfident)->toBeTrue()
+        ->and($guide->sidedIn[0]->recommended)->toBeTrue();
+});
+
+it('falls through to your own history when the field sample is too thin', function () {
+    $archetype = Archetype::factory()->create(['name' => 'Esper Blink', 'format' => 'modern']);
+    $deck = Deck::factory()->create();
+    $version = guideVersion($deck, [['201', '2', '1']]);
+
+    guideGame($version, $archetype, 't-1', true, ['o-rip' => ['sided_in' => true]]);
+    guideGame($version, $archetype, 't-2', false, ['o-rip' => ['sided_in' => true]]);
+    guideGame($version, $archetype, 't-3', true, ['o-rip' => ['sided_in' => false]]);
+
+    $community = collect([
+        'o-rip' => ['sidedIn' => 2, 'sidedOut' => 0, 'games' => 2],
+    ]);
+
+    $guide = BuildSideboardGuide::run($version, $archetype, $community);
+
+    expect($guide->sidedIn[0]->communityConfident)->toBeFalse()
+        ->and($guide->sidedIn[0]->recommended)->toBeTrue();
+});
+
+it('withholds the recommendation when neither sample is big enough', function () {
+    $archetype = Archetype::factory()->create(['name' => 'Esper Blink', 'format' => 'modern']);
+    $deck = Deck::factory()->create();
+    $version = guideVersion($deck, [['201', '2', '1']]);
+
+    guideGame($version, $archetype, 't-1', true, ['o-rip' => ['sided_in' => true]]);
+    guideGame($version, $archetype, 't-2', false, ['o-rip' => ['sided_in' => true]]);
+
+    $community = collect([
+        'o-rip' => ['sidedIn' => 1, 'sidedOut' => 0, 'games' => 1],
+    ]);
+
+    $guide = BuildSideboardGuide::run($version, $archetype, $community);
+
+    expect($guide->sidedIn[0]->recommended)->toBeFalse();
+});
+
+it('orders a trustworthy minority rate above a perfect rate drawn from one game', function () {
+    $archetype = Archetype::factory()->create(['name' => 'Esper Blink', 'format' => 'modern']);
+    $deck = Deck::factory()->create();
+    $version = guideVersion($deck, [['201', '2', '1'], ['203', '2', '1']]);
+
+    $community = collect([
+        'o-rip' => ['sidedIn' => 32, 'sidedOut' => 0, 'games' => 80],
+        'o-cut' => ['sidedIn' => 1, 'sidedOut' => 0, 'games' => 1],
+    ]);
+
+    $guide = BuildSideboardGuide::run($version, $archetype, $community);
+
+    expect(collect($guide->sidedIn)->pluck('oracleId')->all())->toBe(['o-rip', 'o-cut']);
+});
+
+it('withholds a cut recommendation drawn from one shared game', function () {
+    $archetype = Archetype::factory()->create(['name' => 'Esper Blink', 'format' => 'modern']);
+    $deck = Deck::factory()->create();
+    $version = guideVersion($deck, [['201', '2', '1'], ['202', '4', '0']]);
+
+    $community = collect([
+        'o-bolt' => ['sidedIn' => 0, 'sidedOut' => 1, 'games' => 1],
+    ]);
+
+    $guide = BuildSideboardGuide::run($version, $archetype, $community);
+
+    $bolt = collect($guide->sidedOut)->firstWhere('oracleId', 'o-bolt');
+
+    expect($bolt->communityRate)->toBe(100)
+        ->and($bolt->recommended)->toBeFalse();
+});
