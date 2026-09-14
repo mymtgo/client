@@ -12,6 +12,7 @@ use App\Models\Account;
 use App\Models\Card;
 use App\Models\DeckVersion;
 use App\Models\Game;
+use App\Models\LogCursor;
 use App\Models\LogEvent;
 use App\Models\MtgoMatch;
 use App\Models\Player;
@@ -185,9 +186,22 @@ function ingestFixtureLog(string $name, string $date = '2026-08-22'): string
     $mtime = Carbon\Carbon::parse("{$date} 13:00:00", 'UTC')->getTimestamp();
     touch($target, $mtime, $mtime);
 
-    IngestLogInstance::run($target);
+    drainLogFile($target);
 
     return $target;
+}
+
+/**
+ * Ingest a log file to EOF. Production reads at most MAX_BYTES_PER_TICK per
+ * tick and the fixtures are larger than one tick, so this stands in for the
+ * pipeline having caught up on the file.
+ */
+function drainLogFile(string $path): void
+{
+    do {
+        $before = LogCursor::query()->sum('byte_offset');
+        IngestLogInstance::run($path);
+    } while (LogCursor::query()->sum('byte_offset') > $before);
 }
 
 /**

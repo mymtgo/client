@@ -132,7 +132,7 @@ it('separates two entries of the same league into two runs', function () {
     file_put_contents($second, $text);
     $mtime = Carbon::parse('2026-08-23 13:00:00', 'UTC')->getTimestamp();
     touch($second, $mtime, $mtime);
-    IngestLogInstance::run($second);
+    drainLogFile($second);
 
     runPipelineUntilIdle();
 

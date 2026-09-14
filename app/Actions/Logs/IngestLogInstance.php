@@ -15,6 +15,15 @@ class IngestLogInstance
 {
     public const STUCK_THRESHOLD = 60;
 
+    /**
+     * Upper bound on bytes parsed per tick. A cursor at offset 0 on a large
+     * log (fresh install, reseal, a second MTGO instance's file) otherwise
+     * reads the whole file into memory in one pass before inserting a row.
+     * The read always stops on an event boundary, so the next tick resumes
+     * exactly where this one left off.
+     */
+    public const MAX_BYTES_PER_TICK = 8 * 1024 * 1024;
+
     protected static array $ignoredCategories = [
         // Mirror IngestLog::$ignoredCategories — empty in the source file.
     ];
@@ -163,6 +172,10 @@ class IngestLogInstance
                 'anchor_offset' => null,
                 'anchor_hash' => null,
                 'tail_hash' => null,
+                // Carried from the sealed predecessor: MTGO's daily rotation
+                // opens a new file without re-logging the Login line, so a
+                // fresh instance would otherwise stamp null on every event.
+                'local_username' => LogInstance::query()->where('file_path', $path)->orderByDesc('id')->value('local_username'),
                 'first_seen_at' => now(),
                 'last_seen_at' => now(),
             ]);
@@ -191,6 +204,7 @@ class IngestLogInstance
         $safeOffset = $cursor->byte_offset;
         $currentUsername = $instance->local_username;
         $localUsernameChanged = false;
+        $budgetSpent = false;
 
         try {
             fseek($fh, $cursor->byte_offset);
@@ -214,6 +228,14 @@ class IngestLogInstance
                         }
                         $safeOffset = $lineStartOffset;
                     }
+
+                    // Stop on the boundary; $safeOffset already sits on this
+                    // unread event, so nothing is skipped or half-committed.
+                    if ($lineStartOffset - $cursor->byte_offset >= self::MAX_BYTES_PER_TICK) {
+                        $budgetSpent = true;
+                        break;
+                    }
+
                     $currentEvent = $line;
                     $eventStartOffset = $lineStartOffset;
                 } elseif ($currentEvent !== null) {
@@ -223,7 +245,9 @@ class IngestLogInstance
 
             $eofOffset = ftell($fh);
 
-            if ($currentEvent !== null && str_ends_with($currentEvent, "\n")) {
+            if ($budgetSpent) {
+                // Nothing to flush: the pending event was committed above.
+            } elseif ($currentEvent !== null && str_ends_with($currentEvent, "\n")) {
                 $row = static::buildEventRow($currentEvent, $eventStartOffset, $eofOffset, $logPath, $logDate, $instance->id);
                 if ($row) {
                     if (static::detectLoginInRow($row, $currentUsername)) {

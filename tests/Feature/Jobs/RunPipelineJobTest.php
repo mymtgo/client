@@ -24,3 +24,14 @@ it('skips duplicate dispatches while a pipeline tick is already in flight', func
 
     Bus::assertDispatchedTimes(RunPipelineJob::class, 1);
 });
+
+it('never holds the unique lock longer than a healthy tick could take', function () {
+    // A worker killed mid-tick never releases the lock, so uniqueFor is the
+    // longest the pipeline can go silent. It must outlive the job timeout
+    // (so a hung tick cannot double-run) but stay far below the old 300s.
+    $job = new RunPipelineJob;
+
+    expect($job->uniqueFor)->toBeGreaterThanOrEqual($job->timeout)
+        ->and($job->uniqueFor)->toBeLessThanOrEqual(60)
+        ->and((int) config('queue.connections.database.retry_after'))->toBeGreaterThan($job->timeout);
+});

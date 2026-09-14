@@ -4,12 +4,17 @@ use App\Actions\Matches\AdvanceMatchState;
 use App\Enums\LogEventType;
 use App\Enums\MatchState;
 use App\Events\GameCardsSnapshotChanged;
+use App\Jobs\SyncDecks;
+use App\Managers\MtgoManager;
+use App\Models\Account;
 use App\Models\LogEvent;
 use App\Models\LogInstance;
 use App\Models\MtgoMatch;
 use App\Models\Player;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Queue;
 
 uses(RefreshDatabase::class);
 
@@ -401,4 +406,85 @@ it('dispatches GameCardsSnapshotChanged on a live InProgress tick', function () 
         GameCardsSnapshotChanged::class,
         fn (GameCardsSnapshotChanged $event) => $event->matchId === $result->id,
     );
+});
+
+it('creates a match for a known account even when a different account is active', function () {
+    // Two MTGO instances on two accounts: the second login flipped the active
+    // flag, and this stream's events carry no username. The players in the
+    // game state are the authority, not the global active account.
+    Account::create(['username' => 'PlayerB', 'active' => true, 'tracked' => true]);
+    Account::create(['username' => 'PlayerA', 'active' => false, 'tracked' => true]);
+
+    $matchId = '10020';
+    $matchToken = 'token-second-instance';
+
+    createLogEvent([
+        'match_id' => $matchId,
+        'match_token' => $matchToken,
+        'event_type' => LogEventType::MATCH_STATE_CHANGED->value,
+        'context' => 'MatchJoinedEventUnderwayState',
+        'raw_text' => buildJoinRawText(),
+    ]);
+
+    $stateJson = json_encode(['Players' => [
+        ['Id' => 1, 'Name' => 'PlayerA'],
+        ['Id' => 2, 'Name' => 'Opponent'],
+    ], 'Cards' => []]);
+
+    createLogEvent([
+        'match_id' => $matchId,
+        'match_token' => $matchToken,
+        'event_type' => LogEventType::GAME_STATE_UPDATE->value,
+        'game_id' => 50020,
+        'username' => null,
+        'raw_text' => "12:00:01 [INF] (GameState|Update) Game ID: 50020, Match ID: {$matchId}\n{$stateJson}",
+    ]);
+
+    $result = AdvanceMatchState::run($matchToken, $matchId);
+
+    expect($result)->not->toBeNull()
+        ->and(MtgoMatch::where('mtgo_id', $matchId)->exists())->toBeTrue();
+});
+
+it('requests a deck sync once when a match reaches InProgress without a deck', function () {
+    // The list was saved minutes ago and SyncDecks runs every five: without a
+    // nudge, challenge round 1 sits unlinked until the schedule catches up.
+    Queue::fake();
+    Cache::flush();
+
+    $mtgo = Mockery::mock(MtgoManager::class)->makePartial();
+    $mtgo->shouldReceive('canRun')->andReturn(true);
+    app()->instance('mtgo', $mtgo);
+
+    foreach (['10030' => 'token-orphan-a', '10031' => 'token-orphan-b'] as $matchId => $matchToken) {
+        createLogEvent([
+            'match_id' => $matchId,
+            'match_token' => $matchToken,
+            'event_type' => LogEventType::MATCH_STATE_CHANGED->value,
+            'context' => 'MatchJoinedEventUnderwayState',
+            'raw_text' => buildJoinRawText(),
+        ]);
+
+        $stateJson = json_encode(['Players' => [
+            ['Id' => 1, 'Name' => 'LocalPlayer'],
+            ['Id' => 2, 'Name' => 'Opponent'],
+        ], 'Cards' => []]);
+
+        createLogEvent([
+            'match_id' => $matchId,
+            'match_token' => $matchToken,
+            'event_type' => LogEventType::GAME_STATE_UPDATE->value,
+            'game_id' => (int) $matchId + 40000,
+            'username' => 'LocalPlayer',
+            'raw_text' => '12:00:01 [INF] (GameState|Update) Game ID: '.((int) $matchId + 40000).", Match ID: {$matchId}\n{$stateJson}",
+        ]);
+
+        $match = AdvanceMatchState::run($matchToken, $matchId);
+
+        expect($match->state)->toBe(MatchState::InProgress)
+            ->and($match->deck_version_id)->toBeNull();
+    }
+
+    // Two orphans inside the debounce window, one sync.
+    Queue::assertPushed(SyncDecks::class, 1);
 });

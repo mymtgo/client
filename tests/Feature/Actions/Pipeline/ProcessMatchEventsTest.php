@@ -121,20 +121,21 @@ it('does not create match when sole account is untracked', function () {
     expect(MtgoMatch::where('token', 'tok-4')->exists())->toBeFalse();
 });
 
-it('drops match as phantom when fallback attributes to wrong multi-account user', function () {
+it('attributes a match to the known account in its game state even when another account is active', function () {
     // Two tracked accounts; 'accountA' is the currently-active one
     Account::create(['username' => 'accountA', 'active' => true, 'tracked' => true]);
     Account::create(['username' => 'accountB', 'active' => false, 'tracked' => true]);
 
-    // But the match actually belongs to accountB — the game-state Players[]
-    // only contains accountB and an opponent, so the phantom filter in
-    // AdvanceMatchState will reject it once we fall back to accountA.
+    // The match belongs to accountB: the game-state Players[] holds accountB
+    // and an opponent, and no event row carries a username. Two MTGO
+    // instances on two accounts produce exactly this. The players in the
+    // match's own game state outrank the global active flag, so this must
+    // not be rejected as a phantom.
     createMatchEvents(token: 'tok-phantom', matchId: '500', localUsername: 'accountB', rowUsername: null);
 
     ProcessMatchEvents::run();
 
-    // Documented trade-off: better to drop than to mis-attribute.
-    expect(MtgoMatch::where('token', 'tok-phantom')->exists())->toBeFalse();
+    expect(MtgoMatch::where('token', 'tok-phantom')->exists())->toBeTrue();
 });
 
 it('reprocesses an in_progress match whose only unprocessed events are trailing match_state_changed end signals', function () {

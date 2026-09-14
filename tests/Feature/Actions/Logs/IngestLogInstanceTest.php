@@ -288,3 +288,39 @@ it('persists events across multiple 500-row insert chunks', function () {
     expect(LogEvent::count())->toBe(650)
         ->and(LogCursor::first()->byte_offset)->toBe(filesize($this->logPath));
 });
+
+it('stops reading at an event boundary once the per-tick byte budget is spent, then resumes', function () {
+    // Sixty ~200KB events (~12MB) against an 8MB budget. Every line is the
+    // same length, so a cursor resting on an event boundary is a multiple of it.
+    $line = '12:00:01 [INF] (Game Management|Match State Changed for aaaa-1111 from X to Y) '.str_repeat('x', 200 * 1024)."\n";
+    writeLog($this->logPath, str_repeat($line, 60));
+
+    IngestLogInstance::run($this->logPath);
+
+    $cursor = LogCursor::first();
+    expect($cursor->byte_offset)->toBeGreaterThan(0)
+        ->toBeLessThan(filesize($this->logPath))
+        ->and($cursor->byte_offset % strlen($line))->toBe(0)
+        ->and($cursor->stuck_ticks)->toBe(0)
+        ->and(LogEvent::count())->toBeLessThan(60);
+
+    IngestLogInstance::run($this->logPath);
+
+    expect(LogCursor::first()->byte_offset)->toBe(filesize($this->logPath))
+        ->and(LogEvent::count())->toBe(60);
+});
+
+it('carries local_username onto the replacement instance when a file is resealed', function () {
+    // MTGO rotates daily without re-logging the Login line. The new file's
+    // events must still be attributed to the player from the previous one.
+    writeLog($this->logPath, loginLine().classifyableLine());
+    IngestLogInstance::run($this->logPath);
+
+    writeLog($this->logPath, classifyableLine()); // truncated: no Login line
+    IngestLogInstance::run($this->logPath);
+
+    $replacement = LogInstance::query()->whereNull('sealed_at')->first();
+
+    expect($replacement->local_username)->toBe('SomeUser')
+        ->and(LogEvent::where('log_instance_id', $replacement->id)->value('username'))->toBe('SomeUser');
+});

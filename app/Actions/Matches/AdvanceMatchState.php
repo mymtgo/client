@@ -18,6 +18,7 @@ use App\Models\LogEvent;
 use App\Models\MtgoMatch;
 use App\Support\TimedTransaction;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 class AdvanceMatchState
@@ -240,15 +241,21 @@ class AdvanceMatchState
         // ── Link deck (if not already linked) ──
         // If the matching DeckVersion doesn't exist yet (deck XML not synced),
         // RelinkOrphanMatches will re-attempt on a later pipeline tick once
-        // SyncDecks creates it. We intentionally do NOT dispatch SyncDecks
-        // synchronously here — it holds the SQLite write lock across XML I/O
-        // and caused the queue worker to thrash on "database is locked".
+        // SyncDecks creates it. Nudge that sync now rather than waiting up to
+        // five minutes for the schedule: a list finished just before joining
+        // (challenge round 1, typically) otherwise sits unlinked until then.
+        // Queued, never dispatchSync — SyncDecks holds the SQLite write lock
+        // across XML I/O and inline it made the worker thrash on "database
+        // is locked". Debounced so a backlog drain asks once a minute, not
+        // once per match.
         if (! $match->deck_version_id) {
             DetermineMatchDeck::run($match);
             $match->refresh();
 
             if ($match->deck_version_id) {
                 DeckLinkedToMatch::dispatch($match);
+            } elseif (Cache::add('sync_decks:orphan_nudge', true, now()->addMinute())) {
+                Mtgo::syncDecks();
             }
         }
 

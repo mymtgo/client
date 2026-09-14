@@ -23,6 +23,7 @@ use App\Models\Archetype;
 use App\Models\Deck;
 use App\Models\MtgoMatch;
 use Illuminate\Console\Scheduling\Schedule;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class MtgoManager
@@ -97,28 +98,31 @@ class MtgoManager
     }
 
     /**
-     * Resolve the local player's username with fallback chain.
+     * Resolve the local player's username.
      *
-     * 1. In-memory username (set during active session)
-     * 2. Active account from database
-     * 3. Match candidate names against any known account (active or not)
+     * 1. The one known account among the candidates, when given
+     * 2. In-memory username (set during active session)
+     * 3. Active account from database
+     *
+     * Candidates come from the match's own game state, so they outrank both
+     * global guesses: with two MTGO instances open the active account can
+     * belong to the other one, and the in-memory username is pinned on a
+     * singleton that outlives the match that set it. Two known accounts in
+     * one candidate list is ambiguous and falls through.
      *
      * @param  array<int, string>  $candidates  Player names to match against known accounts
      */
     public function resolveUsername(array $candidates = []): ?string
     {
-        // Fast path: in-memory or active account
-        $username = $this->getUsername();
-        if ($username) {
-            return $username;
-        }
-
-        // Fallback: match candidates against any known account
         if (! empty($candidates)) {
-            return Account::whereIn('username', $candidates)->value('username');
+            $known = Account::whereIn('username', $candidates)->pluck('username');
+
+            if ($known->count() === 1) {
+                return $known->first();
+            }
         }
 
-        return null;
+        return $this->getUsername();
     }
 
     public function retryUnsubmittedMatches(): void
@@ -228,7 +232,25 @@ class MtgoManager
             return;
         }
 
-        FindMtgoLogPath::all()->each(fn (string $path) => IngestLogInstance::run($path));
+        FindMtgoLogPath::all()->each(function (string $path): void {
+            try {
+                $this->ingestLogInstance($path);
+            } catch (\Throwable $e) {
+                Log::channel('pipeline')->error('IngestLogs: skipping log file after error', [
+                    'file' => $path,
+                    'message' => $e->getMessage(),
+                ]);
+            }
+        });
+    }
+
+    /**
+     * One file per call, so a failure on one log (locked, malformed, a
+     * transient DB error) never starves the others or the rest of the tick.
+     */
+    protected function ingestLogInstance(string $path): void
+    {
+        IngestLogInstance::run($path);
     }
 
     public function populateMissingCardData(bool $sync = false): void
