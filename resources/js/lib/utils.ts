@@ -22,3 +22,15 @@ export function parseLocalDate(dayKey: string): Date {
     const [year, month, day] = dayKey.split('-').map(Number);
     return new Date(year, month - 1, day);
 }
+
+/**
+ * Escape text for interpolation into an HTML string (e.g. chart tooltip templates).
+ */
+export function escapeHtml(value: string): string {
+    return value
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}

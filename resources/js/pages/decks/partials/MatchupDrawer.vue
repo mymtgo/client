@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import ManaSymbols from '@/components/ManaSymbols.vue';
+import MatchupTrendChart from '@/pages/decks/partials/MatchupTrendChart.vue';
 import MatchupDetailController from '@/actions/App/Http/Controllers/Decks/MatchupDetailController';
 import { ref, watch } from 'vue';
 import type { MatchupDetail, MatchupSpread } from '@/types/decks';
@@ -96,6 +97,12 @@ function barColor(rate: number): string {
 
             <!-- Content -->
             <div v-else-if="detail" class="flex flex-col gap-0">
+                <!-- Trend -->
+                <div class="border-b border-border px-6 py-3">
+                    <h3 class="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Win Rate Trend</h3>
+                    <MatchupTrendChart :history="detail.matchHistory" />
+                </div>
+
                 <!-- Per-Game Win Rates -->
                 <div class="border-b border-border px-6 py-3">
                     <h3 class="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Win Rate by Game</h3>
