@@ -10,7 +10,8 @@ const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
 // The bundled Laravel server is briefly unreachable during startup/shutdown/restart.
 // Swallow those XHR exceptions so polling pages don't flood Sentry or hang the renderer.
-router.on('exception', (event) => {
+// Inertia 3 renamed this event from `exception` to `networkError`.
+router.on('networkError', (event) => {
     event.preventDefault();
 });
 
@@ -33,9 +34,12 @@ createInertiaApp({
                 app: app,
                 dsn: 'https://013633bd183642005b90b1b6ddba00a4@o4510380004802560.ingest.de.sentry.io/4511202597666896',
                 integrations: [],
+                // Inertia 3 ships its own XHR client (axios is gone) and rejects
+                // transport failures as HttpNetworkError("Network error"). Those are
+                // swallowed by the `networkError` handler above; this is a backstop.
                 ignoreErrors: [
-                    'Network Error',
-                    'AxiosError: Network Error',
+                    /Network error/i,
+                    'HttpNetworkError',
                     /Failed to fetch dynamically imported module/,
                 ],
             });

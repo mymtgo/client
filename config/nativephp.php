@@ -180,6 +180,15 @@ return [
     ],
 
     /**
+     * Windows NSIS installer options.
+     *
+     * @see https://www.electron.build/generated/nsisoptions
+     */
+    'nsis' => [
+        'delete_app_data_on_uninstall' => env('NATIVEPHP_NSIS_DELETE_APP_DATA', false),
+    ],
+
+    /**
      * Define your own scripts to run before and after the build process.
      */
     'prebuild' => [

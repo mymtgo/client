@@ -214,4 +214,16 @@ return [
 
     'partitioned' => env('SESSION_PARTITIONED_COOKIE', false),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Session Serialization
+    |--------------------------------------------------------------------------
+    |
+    | Session payloads are serialized as JSON rather than PHP, which keeps
+    | arbitrary PHP objects out of the session store.
+    |
+    */
+
+    'serialization' => 'json',
+
 ];

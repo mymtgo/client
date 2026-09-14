@@ -16,9 +16,11 @@ class FindMtgoLogPath
      */
     public static function all(): Collection
     {
-        return Cache::remember('mtgo.all_log_paths', now()->addSeconds(5), function () {
-            return static::scanAll();
+        $paths = Cache::remember('mtgo.all_log_paths', now()->addSeconds(5), function () {
+            return static::scanAll()->all();
         });
+
+        return collect($paths);
     }
 
     /**
