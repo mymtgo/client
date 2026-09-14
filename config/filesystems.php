@@ -38,10 +38,19 @@ return [
             'report' => false,
         ],
 
+        /*
+         * Laravel serves every `serve => true` local disk from `/storage` unless
+         * the disk declares its own `url`. Two disks resolving to the same path
+         * is a fatal error as of Laravel 13, and silently registered colliding
+         * routes before that, so each served disk gets a distinct prefix here.
+         * The prefixes are relative on purpose: the bundled server picks a fresh
+         * port on every launch, so an absolute APP_URL would go stale.
+         */
         'cards' => [
             'driver' => 'local',
             'root' => storage_path('app/cards'),
             'serve' => true,
+            'url' => '/media/cards',
             'visibility' => 'public',
             'throw' => false,
             'report' => false,
@@ -51,6 +60,7 @@ return [
             'driver' => 'local',
             'root' => storage_path('app/overlay'),
             'serve' => true,
+            'url' => '/media/overlay',
             'visibility' => 'public',
             'throw' => false,
             'report' => false,

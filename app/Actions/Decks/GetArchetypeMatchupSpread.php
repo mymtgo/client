@@ -6,6 +6,7 @@ use App\Models\Deck;
 use App\Models\DeckVersion;
 use App\Support\ColorIdentity;
 use App\Support\MatchRecord;
+use App\Support\OpponentMatchPairs;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -33,16 +34,9 @@ class GetArchetypeMatchupSpread
         $pairsQuery = DB::table('matches as m')
             ->join('match_archetypes as ma', 'ma.mtgo_match_id', '=', 'm.id')
             ->join('archetypes as a', 'a.id', '=', 'ma.archetype_id')
+            ->joinSub(OpponentMatchPairs::query(), 'opp', OpponentMatchPairs::on())
             ->whereIn('m.deck_version_id', $deckVersionIds)
             ->where('m.state', 'complete')
-            ->whereExists(function ($q) {
-                $q->selectRaw('1')
-                    ->from('game_player as gp')
-                    ->join('games as g', 'g.id', '=', 'gp.game_id')
-                    ->whereColumn('g.match_id', 'm.id')
-                    ->whereColumn('gp.player_id', 'ma.player_id')
-                    ->where('gp.is_local', 0);
-            })
             ->selectRaw('DISTINCT a.id as archetype_id, a.name as archetype_name, a.color_identity, m.id as match_id, m.outcome');
 
         if ($from && $to) {

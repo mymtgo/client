@@ -4,6 +4,7 @@ namespace App\Actions\Dashboard;
 
 use App\Data\Front\MatchRecordData;
 use App\Support\MatchRecord;
+use App\Support\OpponentMatchPairs;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -25,18 +26,11 @@ class GetDashboardMatchupSpread
             ->join('decks as d', 'd.id', '=', 'dv.deck_id')
             ->join('match_archetypes as ma', 'ma.mtgo_match_id', '=', 'm.id')
             ->join('archetypes as a', 'a.id', '=', 'ma.archetype_id')
+            ->joinSub(OpponentMatchPairs::query(), 'opp', OpponentMatchPairs::on())
             ->where('d.account_id', $accountId)
             ->where('m.state', 'complete')
             ->when($format, fn ($q, $f) => $q->where('m.format', $f))
             ->whereBetween('m.started_at', [$from, $to])
-            ->whereExists(function ($q) {
-                $q->selectRaw('1')
-                    ->from('game_player as gp')
-                    ->join('games as g', 'g.id', '=', 'gp.game_id')
-                    ->whereColumn('g.match_id', 'm.id')
-                    ->whereColumn('gp.player_id', 'ma.player_id')
-                    ->where('gp.is_local', 0);
-            })
             ->groupBy('a.id', 'a.name')
             ->selectRaw("
                 a.name as name,
