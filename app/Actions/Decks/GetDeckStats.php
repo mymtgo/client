@@ -15,7 +15,7 @@ class GetDeckStats
     /**
      * Compute match, game, and OTP/OTD stats for a deck within a date range.
      *
-     * @return array{matchRecord: MatchRecord, gamesWon: int, gamesLost: int, gameWinrate: int, otpWon: int, otpLost: int, otpRate: int, otdWon: int, otdLost: int, otdRate: int, trophies: int, allMatchIds: Collection}
+     * @return array{matchRecord: MatchRecord, gamesWon: int, gamesLost: int, gameWinrate: int, otpWon: int, otpLost: int, otpRate: int, otdWon: int, otdLost: int, otdRate: int, playDrawGames: int, trophies: int, allMatchIds: Collection}
      */
     public static function run(Deck $deck, Carbon $from, Carbon $to, ?DeckVersion $deckVersion = null): array
     {
@@ -49,7 +49,9 @@ class GetDeckStats
         $gamesWon = (int) ($gameRowCounts->games_won ?? 0) + (int) ($gamelessCounts->games_won ?? 0);
         $gamesLost = (int) ($gameRowCounts->games_lost ?? 0) + (int) ($gamelessCounts->games_lost ?? 0);
 
-        // Query 3: OTP/OTD stats
+        // Query 3: OTP/OTD stats. The row count doubles as the play/draw
+        // scope: who was on the play is only known from a game log, so an
+        // imported game has no local player row and cannot be counted.
         $otpStats = $matchesQuery->clone()
             ->toBase()
             ->join('games', 'games.match_id', '=', 'matches.id')
@@ -61,7 +63,8 @@ class GetDeckStats
                 SUM(CASE WHEN game_player.on_play = 1 AND games.won = 1 THEN 1 ELSE 0 END) as otp_won,
                 SUM(CASE WHEN game_player.on_play = 1 AND games.won = 0 THEN 1 ELSE 0 END) as otp_lost,
                 SUM(CASE WHEN game_player.on_play = 0 AND games.won = 1 THEN 1 ELSE 0 END) as otd_won,
-                SUM(CASE WHEN game_player.on_play = 0 AND games.won = 0 THEN 1 ELSE 0 END) as otd_lost
+                SUM(CASE WHEN game_player.on_play = 0 AND games.won = 0 THEN 1 ELSE 0 END) as otd_lost,
+                COUNT(*) as play_draw_games
             ')
             ->first();
 
@@ -96,6 +99,7 @@ class GetDeckStats
             'otdWon' => $otdWon,
             'otdLost' => $otdLost,
             'otdRate' => Winrate::percentage($otdWon, $otdLost),
+            'playDrawGames' => (int) ($otpStats->play_draw_games ?? 0),
             'trophies' => $trophies,
             'allMatchIds' => $allMatchIds,
         ];

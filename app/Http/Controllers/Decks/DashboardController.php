@@ -3,12 +3,15 @@
 namespace App\Http\Controllers\Decks;
 
 use App\Actions\Decks\GetArchetypeMatchupSpread;
+use App\Actions\Decks\GetBoardingSplit;
 use App\Actions\Decks\GetDailyMatchResults;
 use App\Actions\Decks\GetDeckStats;
 use App\Actions\Decks\GetDeckViewSharedProps;
+use App\Actions\Decks\GetDeckWinrateDelta;
 use App\Actions\Decks\GetPeerArchetypeChartData;
 use App\Actions\Decks\GetStandoutCards;
 use App\Actions\Leagues\GetLatestLeague;
+use App\Actions\Leagues\GetLeagueInProgress;
 use App\Actions\Leagues\GetLeagueResultDistribution;
 use App\Concerns\HasTimeframeFilter;
 use App\Http\Controllers\Controller;
@@ -55,6 +58,12 @@ class DashboardController extends Controller
             'gamesOtdWon' => $stats['otdWon'],
             'gamesOtdLost' => $stats['otdLost'],
             'otdRate' => $stats['otdRate'],
+            'playDrawGames' => $stats['playDrawGames'],
+
+            // Period-over-period comparison for the win rate card. Two counts
+            // over an indexed range, so it stays on the eager payload rather
+            // than making the headline figure arrive without its delta.
+            'winrateDelta' => GetDeckWinrateDelta::run($deck, $from, $timeframe, $deckVersion),
 
             // Lazy closure
             'chartData' => fn () => $this->buildDeckChartData($deck, $from, $to, $deckVersion),
@@ -74,6 +83,12 @@ class DashboardController extends Controller
             ),
             'latestLeague' => Inertia::defer(
                 fn () => GetLatestLeague::run($deck, $stats['allMatchIds']),
+            ),
+            'boardingSplit' => Inertia::defer(
+                fn () => GetBoardingSplit::run($deck, $from, $to, $deckVersion),
+            ),
+            'leagueInProgress' => Inertia::defer(
+                fn () => GetLeagueInProgress::run($deck, $deckVersion),
             ),
         ]);
     }

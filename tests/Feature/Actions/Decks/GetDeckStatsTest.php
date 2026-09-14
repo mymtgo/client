@@ -116,3 +116,40 @@ it('handles empty deck gracefully', function () {
     expect($result['gamesLost'])->toBe(0);
     expect($result['trophies'])->toBe(0);
 });
+
+it('counts only the games that know who was on the play', function () {
+    [$deck, $version, $player] = setupDeckStatsData();
+
+    // Two games with a local player row: who was on the play is known.
+    $tracked = MtgoMatch::factory()->won()->create([
+        'deck_version_id' => $version->id,
+        'started_at' => now()->subHour(),
+    ]);
+
+    foreach ([true, false] as $index => $onPlay) {
+        $game = Game::create([
+            'match_id' => $tracked->id,
+            'mtgo_id' => fake()->unique()->randomNumber(8),
+            'started_at' => now()->subHour()->addMinutes($index),
+            'won' => true,
+        ]);
+        $game->players()->attach($player, ['on_play' => $onPlay, 'is_local' => true, 'instance_id' => 1]);
+    }
+
+    // A game with no local player row at all, as an import produces.
+    $imported = MtgoMatch::factory()->won()->create([
+        'deck_version_id' => $version->id,
+        'started_at' => now()->subHour(),
+    ]);
+    Game::create([
+        'match_id' => $imported->id,
+        'mtgo_id' => fake()->unique()->randomNumber(8),
+        'started_at' => now()->subHour(),
+        'won' => true,
+    ]);
+
+    $stats = GetDeckStats::run($deck, now()->subDay(), now());
+
+    expect($stats['playDrawGames'])->toBe(2)
+        ->and($stats['gamesWon'])->toBe(3);
+});

@@ -391,27 +391,12 @@ class FormatLeagueRuns
 
     private static function tixDelta(League $league, Collection $matches): ?float
     {
-        $wins = $matches->where('outcome', 'win')->count();
-        $losses = $matches->where('outcome', 'loss')->count();
-        $state = $league->state->value;
-
-        $format = MtgoMatch::displayFormat($league->format);
-
-        if ($state === 'complete') {
-            if ($matches->isEmpty()) {
-                return null;
-            }
-
-            return LeagueEvTable::netTix($format, $wins, $losses);
-        }
-
-        if ($state === 'dropped') {
-            $paddedLosses = max($losses, 5 - $wins);
-
-            return LeagueEvTable::netTix($format, $wins, $paddedLosses);
-        }
-
-        return null;
+        return LeagueEvTable::netTixForRun(
+            MtgoMatch::displayFormat($league->format),
+            $league->state->value,
+            $matches->where('outcome', 'win')->count(),
+            $matches->where('outcome', 'loss')->count(),
+        );
     }
 
     private static function resolveArtCrop(?string $artCrop, ?string $localArtCrop): ?string

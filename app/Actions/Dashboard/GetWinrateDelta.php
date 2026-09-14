@@ -2,8 +2,8 @@
 
 namespace App\Actions\Dashboard;
 
+use App\Actions\Util\TimeframeRange;
 use App\Actions\Util\Winrate;
-use App\Facades\AppSettings;
 use App\Models\Game;
 use App\Models\MtgoMatch;
 use App\Support\MatchRecord;
@@ -21,7 +21,7 @@ class GetWinrateDelta
                 return ['matchDelta' => 0, 'gameDelta' => 0];
             }
 
-            [$previousStart, $previousEnd] = self::getPreviousTimeRange($timeframe, $currentStart);
+            [$previousStart, $previousEnd] = TimeframeRange::previous($timeframe, $currentStart);
 
             $currentMatchWinrate = self::matchWinrate($accountId, $currentStart, $currentEnd, $format);
             $previousMatchWinrate = self::matchWinrate($accountId, $previousStart, $previousEnd, $format);
@@ -66,18 +66,4 @@ class GetWinrateDelta
      *
      * @return array{0: Carbon, 1: Carbon}
      */
-    private static function getPreviousTimeRange(string $timeframe, Carbon $currentStart): array
-    {
-        $end = $currentStart->copy()->setTimezone(AppSettings::systemTimezone())->subSecond();
-
-        $start = match ($timeframe) {
-            'biweekly' => $end->copy()->subWeeks(2)->startOfDay(),
-            'monthly' => $end->copy()->subDays(30)->startOfDay(),
-            'year' => $end->copy()->startOfYear()->startOfDay(),
-            'alltime' => $end->copy()->startOfCentury()->startOfDay(),
-            default => $end->copy()->subDays(7)->startOfDay(),
-        };
-
-        return [$start->utc(), $end->utc()];
-    }
 }

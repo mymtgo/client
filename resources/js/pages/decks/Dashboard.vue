@@ -26,12 +26,16 @@ const props = defineProps<{
     gamesOtdWon: number;
     gamesOtdLost: number;
     otdRate: number;
+    playDrawGames: number;
+    winrateDelta: { previousRate: number | null; previousTotal: number; delta: number | null };
     chartData: { date: string; wins: number; losses: number; draws: number; winrate: string | null }[];
     peerChart?: { archetypeName: string; deckCount: number; data: { date: string; wins: number; losses: number; draws: number }[] } | null;
     matchupSpread?: any[];
     leagueResults?: Record<string, number>;
     standoutCards?: Record<string, any>;
     latestLeague?: any;
+    boardingSplit?: any;
+    leagueInProgress?: any;
 }>();
 
 function setTimeframe(value: string) {
@@ -55,12 +59,17 @@ function setTimeframe(value: string) {
             :games-otd-won="gamesOtdWon"
             :games-otd-lost="gamesOtdLost"
             :otd-rate="otdRate"
+            :play-draw-games="playDrawGames"
+            :timeframe="timeframe"
+            :winrate-delta="winrateDelta"
             :chart-data="chartData"
             :peer-chart="peerChart ?? null"
             :matchup-spread="matchupSpread"
             :league-results="leagueResults"
             :standout-cards="standoutCards"
             :latest-league="latestLeague"
+            :boarding-split="boardingSplit"
+            :league-in-progress="leagueInProgress"
         />
     </div>
 </template>

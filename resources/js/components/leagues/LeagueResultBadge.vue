@@ -19,22 +19,30 @@ const label = computed(() => {
     return props.classification;
 });
 
+/**
+ * The ring around the score, drawn as a gradient behind a 2px inset.
+ *
+ * Every tone but the trophy is a theme token rather than a raw palette
+ * colour, so the badge tracks the rest of the app. The trophy keeps its
+ * gradient on purpose: it is the one result worth making loud.
+ */
 const tone = computed(() => {
     switch (props.classification) {
         case 'TROPHY':
             return 'from-pink-400 via-sky-300 to-blue-400';
         case 'CASH':
-            return 'from-emerald-500 to-emerald-600';
+            return 'from-success/60 to-success text-success';
         case 'FINISH':
-            return 'from-neutral-800 to-neutral-800';
+            return 'from-border to-border';
         case 'BRICK':
-            return 'from-red-900 to-red-900';
+            return 'from-destructive/50 to-destructive/80 text-destructive';
         case 'LIVE':
-            return 'border-sky-500/40 from-sky-100 to-sky-200 text-sky-400';
+            return 'from-primary/50 to-primary text-primary';
         default:
-            return '';
+            return 'from-border to-border text-muted-foreground';
     }
 });
+
 </script>
 
 <template>

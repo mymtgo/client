@@ -2,11 +2,13 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Deferred } from '@inertiajs/vue3';
-import ManaSymbols from '@/components/ManaSymbols.vue';
-import MatchRecord from '@/components/MatchRecord.vue';
 import MatchHistoryChart from '@/pages/decks/partials/MatchHistoryChart.vue';
 import StandoutCards from '@/pages/decks/partials/StandoutCards.vue';
-import LatestLeague from '@/pages/decks/partials/LatestLeague.vue';
+import KpiMatchWinRate from '@/pages/decks/partials/KpiMatchWinRate.vue';
+import KpiBoardingSplit from '@/pages/decks/partials/KpiBoardingSplit.vue';
+import KpiPlayDrawGap from '@/pages/decks/partials/KpiPlayDrawGap.vue';
+import KpiBestWorstMatchups from '@/pages/decks/partials/KpiBestWorstMatchups.vue';
+import LeagueRunCard from '@/pages/decks/partials/LeagueRunCard.vue';
 import type { LeagueRun } from '@/types/leagues';
 import { computed } from 'vue';
 
@@ -21,31 +23,33 @@ const props = defineProps<{
     gamesOtdWon: number;
     gamesOtdLost: number;
     otdRate: number;
+    playDrawGames: number;
+    timeframe: string;
+    winrateDelta: { previousRate: number | null; previousTotal: number; delta: number | null };
     chartData: { date: string; wins: number; losses: number; draws: number; winrate: string | null }[];
     peerChart?: { archetypeName: string; deckCount: number; data: { date: string; wins: number; losses: number; draws: number }[] } | null;
     matchupSpread?: any[];
     leagueResults?: Record<string, number>;
     standoutCards?: Record<string, any>;
     latestLeague?: LeagueRun;
+    boardingSplit?: any;
+    leagueInProgress?: any;
 }>();
 
-const MIN_MATCHES_THRESHOLD = 3;
+const TIMEFRAME_LABELS: Record<string, string> = {
+    week: '7d',
+    biweekly: '2w',
+    monthly: '30d',
+    year: 'This year',
+    alltime: 'All time',
+};
 
+const timeframeLabel = computed(() => TIMEFRAME_LABELS[props.timeframe] ?? 'All time');
 
-const bestArchetype = computed(() => {
-    if (!props.matchupSpread?.length) return null;
-    const eligible = props.matchupSpread.filter((m: any) => m.matches >= MIN_MATCHES_THRESHOLD);
-    if (!eligible.length) return null;
-    return eligible.reduce((best: any, m: any) => m.match_winrate > best.match_winrate ? m : best);
-});
+const totalGames = computed(() => props.gamesWon + props.gamesLost);
 
-const worstArchetype = computed(() => {
-    if (!props.matchupSpread?.length) return null;
-    const eligible = props.matchupSpread.filter((m: any) => m.matches >= MIN_MATCHES_THRESHOLD);
-    if (!eligible.length) return null;
-    const worst = eligible.reduce((worst: any, m: any) => m.match_winrate < worst.match_winrate ? m : worst);
-    return worst === bestArchetype.value ? null : worst;
-});
+/** A run still being played outranks a finished one; only one is ever shown. */
+const currentLeagueRun = computed(() => props.leagueInProgress ?? props.latestLeague ?? null);
 
 const activeLeagueResults = computed(() => props.leagueResults ?? { '5-0': 0, '4-1': 0, '3-2': 0, '2-3': 0, '1-4': 0, '0-5': 0 });
 
@@ -60,97 +64,37 @@ const leagueResultsBuckets = ['5-0', '4-1', '3-2', '2-3', '1-4', '0-5'];
 <template>
     <div class="space-y-4">
         <!-- KPI Cards -->
-        <div class="grid grid-cols-7 gap-4">
-            <Card class="gap-0 py-0">
-                <CardContent class="flex flex-col gap-0.5 p-3">
-                    <span class="text-xs tracking-wide text-muted-foreground uppercase">Match Win Rate</span>
-                    <span
-                        class="text-3xl font-bold tabular-nums"
-                        :class="matchRecord.winrate > 50 ? 'text-success' : matchRecord.winrate < 50 ? 'text-destructive' : ''"
-                    >{{ matchRecord.winrate }}%</span>
-                    <MatchRecord :record="matchRecord" format="dashes" size="sm" />
-                </CardContent>
-            </Card>
-            <Card class="gap-0 py-0">
-                <CardContent class="flex flex-col gap-0.5 p-3">
-                    <span class="text-xs tracking-wide text-muted-foreground uppercase">Game Win Rate</span>
-                    <span
-                        class="text-3xl font-bold tabular-nums"
-                        :class="gameWinrate > 50 ? 'text-success' : gameWinrate < 50 ? 'text-destructive' : ''"
-                    >{{ gameWinrate }}%</span>
-                    <span class="text-sm text-muted-foreground">
-                        {{ gamesWon }}-{{ gamesLost }}
-                    </span>
-                </CardContent>
-            </Card>
-            <Card class="gap-0 py-0">
-                <CardContent class="flex flex-col gap-0.5 p-3">
-                    <span class="text-xs tracking-wide text-muted-foreground uppercase">Match Record</span>
-                    <span class="text-3xl font-bold tabular-nums">{{ matchRecord.label }}</span>
-                    <span class="text-sm text-muted-foreground">{{ matchRecord.total }} played</span>
-                </CardContent>
-            </Card>
-            <Card class="gap-0 py-0">
-                <CardContent class="flex flex-col gap-0.5 p-3">
-                    <span class="text-xs tracking-wide text-muted-foreground uppercase">Win % on the Play</span>
-                    <span
-                        class="text-3xl font-bold tabular-nums"
-                        :class="otpRate > 50 ? 'text-success' : otpRate < 50 ? 'text-destructive' : ''"
-                    >{{ otpRate }}%</span>
-                    <span class="text-sm text-muted-foreground">
-                        {{ gamesOtpWon }}-{{ gamesOtpLost }} games
-                    </span>
-                </CardContent>
-            </Card>
-            <Card class="gap-0 py-0">
-                <CardContent class="flex flex-col gap-0.5 p-3">
-                    <span class="text-xs tracking-wide text-muted-foreground uppercase">Win % on the Draw</span>
-                    <span
-                        class="text-3xl font-bold tabular-nums"
-                        :class="otdRate > 50 ? 'text-success' : otdRate < 50 ? 'text-destructive' : ''"
-                    >{{ otdRate }}%</span>
-                    <span class="text-sm text-muted-foreground">
-                        {{ gamesOtdWon }}-{{ gamesOtdLost }} games
-                    </span>
-                </CardContent>
-            </Card>
-            <Deferred data="matchupSpread">
+        <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <KpiMatchWinRate
+                :match-record="matchRecord"
+                :winrate-delta="winrateDelta"
+                :chart-data="chartData"
+                :timeframe-label="timeframeLabel"
+            />
+
+            <Deferred data="boardingSplit">
                 <template #fallback>
-                    <Card class="gap-0 py-0"><CardContent class="p-3"><Skeleton class="h-16 w-full" /></CardContent></Card>
+                    <Card class="gap-0 py-0"><CardContent class="p-4"><Skeleton class="h-28 w-full" /></CardContent></Card>
                 </template>
-                <Card class="gap-0 py-0">
-                    <CardContent class="flex flex-col gap-0.5 p-3">
-                        <span class="text-xs tracking-wide text-muted-foreground uppercase">Best Matchup</span>
-                        <template v-if="bestArchetype">
-                            <span class="text-3xl font-bold tabular-nums text-success">{{ bestArchetype.match_winrate }}%</span>
-                            <span class="flex items-center gap-1.5 text-sm text-muted-foreground">
-                                <ManaSymbols :symbols="bestArchetype.color_identity" class="shrink-0" />
-                                <span class="truncate">{{ bestArchetype.name }}</span>
-                                <span class="tabular-nums">({{ bestArchetype.match_record }})</span>
-                            </span>
-                        </template>
-                        <span v-else class="text-sm text-muted-foreground">Not enough data</span>
-                    </CardContent>
-                </Card>
+                <KpiBoardingSplit v-if="boardingSplit" :split="boardingSplit" />
             </Deferred>
+
+            <KpiPlayDrawGap
+                :otp-rate="otpRate"
+                :games-otp-won="gamesOtpWon"
+                :games-otp-lost="gamesOtpLost"
+                :otd-rate="otdRate"
+                :games-otd-won="gamesOtdWon"
+                :games-otd-lost="gamesOtdLost"
+                :play-draw-games="playDrawGames"
+                :total-games="totalGames"
+            />
+
             <Deferred data="matchupSpread">
                 <template #fallback>
-                    <Card class="gap-0 py-0"><CardContent class="p-3"><Skeleton class="h-16 w-full" /></CardContent></Card>
+                    <Card class="gap-0 py-0"><CardContent class="p-4"><Skeleton class="h-28 w-full" /></CardContent></Card>
                 </template>
-                <Card class="gap-0 py-0">
-                    <CardContent class="flex flex-col gap-0.5 p-3">
-                        <span class="text-xs tracking-wide text-muted-foreground uppercase">Worst Matchup</span>
-                        <template v-if="worstArchetype">
-                            <span class="text-3xl font-bold tabular-nums text-destructive">{{ worstArchetype.match_winrate }}%</span>
-                            <span class="flex items-center gap-1.5 text-sm text-muted-foreground">
-                                <ManaSymbols :symbols="worstArchetype.color_identity" class="shrink-0" />
-                                <span class="truncate">{{ worstArchetype.name }}</span>
-                                <span class="tabular-nums">({{ worstArchetype.match_record }})</span>
-                            </span>
-                        </template>
-                        <span v-else class="text-sm text-muted-foreground">Not enough data</span>
-                    </CardContent>
-                </Card>
+                <KpiBestWorstMatchups :spread="matchupSpread" />
             </Deferred>
         </div>
 
@@ -162,6 +106,7 @@ const leagueResultsBuckets = ['5-0', '4-1', '3-2', '2-3', '1-4', '0-5'];
                         v-if="chartData.length"
                         :data="chartData"
                         :peer="peerChart ?? null"
+                        :timeframe="timeframe"
                     />
                     <p v-else class="py-12 text-center text-sm text-muted-foreground">
                         No match data for this period.
@@ -170,6 +115,7 @@ const leagueResultsBuckets = ['5-0', '4-1', '3-2', '2-3', '1-4', '0-5'];
             </Card>
 
             <div class="flex flex-col gap-4">
+
                 <!-- League Finishes -->
                 <Deferred data="leagueResults">
                     <template #fallback>
@@ -201,18 +147,12 @@ const leagueResultsBuckets = ['5-0', '4-1', '3-2', '2-3', '1-4', '0-5'];
                     </Card>
                 </Deferred>
 
-                <!-- Latest League -->
-                <Deferred data="latestLeague">
+                                <!-- The run being played, or the last one finished -->
+                <Deferred :data="['leagueInProgress', 'latestLeague']">
                     <template #fallback>
-                        <Card class="gap-0 p-0">
-                            <CardContent class="flex flex-col gap-2 p-4">
-                                <Skeleton class="h-6 w-full" />
-                                <Skeleton class="h-6 w-full" />
-                                <Skeleton class="h-6 w-3/4" />
-                            </CardContent>
-                        </Card>
+                        <Card class="gap-0 py-0"><CardContent class="p-4"><Skeleton class="h-40 w-full" /></CardContent></Card>
                     </template>
-                    <LatestLeague v-if="latestLeague" :league="latestLeague" />
+                    <LeagueRunCard v-if="currentLeagueRun" :run="currentLeagueRun" />
                 </Deferred>
 
             </div>

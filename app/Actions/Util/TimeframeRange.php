@@ -32,4 +32,28 @@ class TimeframeRange
 
         return [$start->utc(), $end->utc()];
     }
+
+    /**
+     * The window immediately before the one starting at `$currentStart`.
+     *
+     * Used for period-over-period comparisons, so it ends one second before
+     * the current window opens and spans the same length. Keyed off the same
+     * timeframe list as `run()` to keep the two from drifting apart.
+     *
+     * @return array{0: Carbon, 1: Carbon}
+     */
+    public static function previous(string $timeframe, Carbon $currentStart): array
+    {
+        $end = $currentStart->copy()->setTimezone(AppSettings::systemTimezone())->subSecond();
+
+        $start = match ($timeframe) {
+            'week' => $end->copy()->subDays(7)->startOfDay(),
+            'biweekly' => $end->copy()->subWeeks(2)->startOfDay(),
+            'monthly' => $end->copy()->subDays(30)->startOfDay(),
+            'year' => $end->copy()->startOfYear()->startOfDay(),
+            default => $end->copy()->startOfCentury()->startOfDay(),
+        };
+
+        return [$start->utc(), $end->utc()];
+    }
 }

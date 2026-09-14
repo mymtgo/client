@@ -3,17 +3,19 @@ import type { ChartConfig } from '@/components/ui/chart';
 import { ChartContainer } from '@/components/ui/chart';
 import { formatMatchRecord } from '@/lib/matchRecord';
 import { parseLocalDate } from '@/lib/utils';
-import { VisAxis, VisCrosshair, VisLine, VisStackedBar, VisTooltip, VisXYContainer } from '@unovis/vue';
+import { VisAxis, VisCrosshair, VisLine, VisTooltip, VisXYContainer } from '@unovis/vue';
 import { computed, onMounted, ref, watch } from 'vue';
 
 const props = defineProps<{
     data: { date: string; wins: number; losses: number; draws: number; winrate: string | null }[];
     peer?: { archetypeName: string; deckCount: number; data: { date: string; wins: number; losses: number; draws: number }[] } | null;
+    timeframe: string;
 }>();
 
-type ChartMode = 'bars' | 'winrate';
+type ChartMode = 'counts' | 'winrate';
 type DataPoint = {
     date: Date;
+    endDate: Date;
     wins: number;
     losses: number;
     draws: number;
@@ -34,7 +36,7 @@ const chartEl = ref<HTMLElement>();
 const winColor = ref('oklch(0.696 0.17 162.48)');
 const lossColor = ref('oklch(0.645 0.246 16.439)');
 const peerColor = ref('oklch(0.708 0 0)');
-const mode = ref<ChartMode>('bars');
+const mode = ref<ChartMode>('counts');
 
 onMounted(() => {
     if (chartEl.value) {
@@ -44,9 +46,13 @@ onMounted(() => {
         peerColor.value = styles.getPropertyValue('--color-muted-foreground').trim() || peerColor.value;
     }
 
+    // 'bars' is what this mode was called when it drew stacked bars; existing
+    // preferences still carry it.
     const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored === 'bars' || stored === 'winrate') {
-        mode.value = stored;
+    if (stored === 'bars' || stored === 'counts') {
+        mode.value = 'counts';
+    } else if (stored === 'winrate') {
+        mode.value = 'winrate';
     }
 });
 
@@ -64,6 +70,73 @@ const peerByDate = computed(() => {
 
 const hasPeer = computed(() => Boolean(props.peer && props.peer.data.length > 0));
 
+/**
+ * Days per plotted point.
+ *
+ * The range picker at the top of the page already says how much history is on
+ * screen, so the chart follows it rather than adding a second control. Lines
+ * need far fewer points than bars did: a day with no matches is an invisible
+ * bar but a visible spike to the floor, and an all-time view is mostly empty
+ * days, because the series carries a row for every date between the first
+ * match and the last.
+ */
+const bucketDays = computed(() => {
+    if (['week', 'biweekly', 'monthly'].includes(props.timeframe)) {
+        return 1;
+    }
+
+    if (props.timeframe === 'year') {
+        return 7;
+    }
+
+    // All time covers anything from a week-old deck to several years, so the
+    // span of the data decides rather than the label.
+    if (props.data.length <= 60) return 1;
+    if (props.data.length <= 400) return 7;
+
+    return 30;
+});
+
+type DailyRow = { date: string; wins: number; losses: number; draws: number; peer: { wins: number; losses: number; draws: number } | null };
+
+/** Deck rows with the matching peer row attached, before any bucketing. */
+const dailyRows = computed<DailyRow[]>(() =>
+    props.data.map((d) => ({
+        date: d.date,
+        wins: d.wins,
+        losses: d.losses,
+        draws: d.draws,
+        peer: peerByDate.value.get(d.date) ?? null,
+    })),
+);
+
+const bucketedRows = computed(() => {
+    const size = bucketDays.value;
+    const buckets: { date: string; endDate: string; wins: number; losses: number; draws: number; peer: { wins: number; losses: number; draws: number } | null }[] = [];
+
+    for (let i = 0; i < dailyRows.value.length; i += size) {
+        const slice = dailyRows.value.slice(i, i + size);
+        const peerRows = slice.filter((row) => row.peer !== null);
+
+        buckets.push({
+            date: slice[0].date,
+            endDate: slice[slice.length - 1].date,
+            wins: slice.reduce((sum, row) => sum + row.wins, 0),
+            losses: slice.reduce((sum, row) => sum + row.losses, 0),
+            draws: slice.reduce((sum, row) => sum + row.draws, 0),
+            peer: peerRows.length
+                ? {
+                    wins: peerRows.reduce((sum, row) => sum + (row.peer?.wins ?? 0), 0),
+                    losses: peerRows.reduce((sum, row) => sum + (row.peer?.losses ?? 0), 0),
+                    draws: peerRows.reduce((sum, row) => sum + (row.peer?.draws ?? 0), 0),
+                }
+                : null,
+        });
+    }
+
+    return buckets;
+});
+
 const chartData = computed<DataPoint[]>(() => {
     let cumWins = 0;
     let cumLosses = 0;
@@ -76,7 +149,7 @@ const chartData = computed<DataPoint[]>(() => {
     let lastPeerRate: number | null = null;
 
     // Draws count as matches played, matching the record and every other winrate.
-    return props.data.map((d) => {
+    return bucketedRows.value.map((d) => {
         cumWins += d.wins;
         cumLosses += d.losses;
         cumDraws += d.draws;
@@ -86,7 +159,7 @@ const chartData = computed<DataPoint[]>(() => {
             lastRate = cumRate;
         }
 
-        const peerRow = peerByDate.value.get(d.date);
+        const peerRow = d.peer;
         if (peerRow) {
             peerCumWins += peerRow.wins;
             peerCumLosses += peerRow.losses;
@@ -98,12 +171,15 @@ const chartData = computed<DataPoint[]>(() => {
             lastPeerRate = peerCumRate;
         }
 
+        const bucketTotal = d.wins + d.losses + d.draws;
+
         return {
             date: parseLocalDate(d.date),
+            endDate: parseLocalDate(d.endDate),
             wins: d.wins,
             losses: d.losses,
             draws: d.draws,
-            rate: d.winrate !== null ? parseInt(d.winrate) : null,
+            rate: bucketTotal > 0 ? Math.round((d.wins / bucketTotal) * 100) : null,
             cumRate,
             cumWins,
             cumLosses,
@@ -123,13 +199,6 @@ const chartConfig = {
     losses: { label: 'Losses', color: 'var(--color-destructive)' },
 } satisfies ChartConfig;
 
-const GAP = 0.1;
-
-const barColorAccessor = (_d: DataPoint, i: number) => {
-    if (i === 1) return 'transparent';
-    return i === 0 ? winColor.value : lossColor.value;
-};
-
 const crosshairColorAccessor = (_d: DataPoint, i: number) => {
     return [winColor.value, lossColor.value][i] ?? winColor.value;
 };
@@ -145,9 +214,21 @@ const formatTick = (ms: number) => {
 
 const formatPercentTick = (value: number) => `${value}%`;
 
-const barsTooltipTemplate = (d: DataPoint): string | null => {
+const formatBucketLabel = (d: DataPoint): string => {
+    const start = d.date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+
+    if (d.endDate.getTime() === d.date.getTime()) {
+        return start;
+    }
+
+    const end = d.endDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+
+    return `${start} \u2013 ${end}`;
+};
+
+const countsTooltipTemplate = (d: DataPoint): string | null => {
     if (!hasMatches(d)) return null;
-    const label = d.date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+    const label = formatBucketLabel(d);
     return `<div style="padding:8px 12px;line-height:1.5">
         <div style="font-size:11px;opacity:0.6">${label}</div>
         <div style="font-weight:600;font-size:14px">${d.rate !== null ? d.rate + '% win rate' : 'No data'}</div>
@@ -186,7 +267,7 @@ const winrateTooltipTemplate = (d: DataPoint): string | null => {
 };
 
 const maxTotal = computed(() => {
-    const max = Math.max(...chartData.value.map((d) => d.wins + d.losses + ((d.wins > 0 && d.losses > 0) ? GAP : 0)), 1);
+    const max = Math.max(...chartData.value.flatMap((d) => [d.wins, d.losses]), 1);
     return Math.ceil(max);
 });
 </script>
@@ -200,8 +281,8 @@ const maxTotal = computed(() => {
                     <button
                         type="button"
                         class="rounded px-2 py-0.5 transition-colors"
-                        :class="mode === 'bars' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
-                        @click="mode = 'bars'"
+                        :class="mode === 'counts' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
+                        @click="mode = 'counts'"
                     >
                         Wins/Losses
                     </button>
@@ -215,13 +296,13 @@ const maxTotal = computed(() => {
                     </button>
                 </div>
             </div>
-            <div v-if="mode === 'bars'" class="flex items-center gap-4">
+            <div v-if="mode === 'counts'" class="flex items-center gap-4">
                 <span class="flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <span class="inline-block h-2.5 w-2.5 rounded-sm bg-success" />
+                    <span class="inline-block h-0.5 w-3 bg-success" />
                     Wins
                 </span>
                 <span class="flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <span class="inline-block h-2.5 w-2.5 rounded-sm bg-destructive" />
+                    <span class="inline-block h-0.5 w-3 bg-destructive" />
                     Losses
                 </span>
             </div>
@@ -241,23 +322,24 @@ const maxTotal = computed(() => {
             class="mt-4 h-[400px] w-full"
         >
             <VisXYContainer
-                v-if="mode === 'bars'"
+                v-if="mode === 'counts'"
                 :data="chartData"
                 :y-domain="[0, maxTotal]"
             >
-                <VisStackedBar
+                <VisLine
                     :x="(d: DataPoint) => d.date"
-                    :y="[
-                        (d: DataPoint) => d.wins,
-                        (d: DataPoint) => (d.wins > 0 && d.losses > 0) ? GAP : 0,
-                        (d: DataPoint) => d.losses,
-                    ]"
-                    :color="barColorAccessor"
-                    :bar-padding="0.35"
-                    :rounded-corners="0"
+                    :y="(d: DataPoint) => d.wins"
+                    :color="winColor"
+                    :line-width="2"
+                />
+                <VisLine
+                    :x="(d: DataPoint) => d.date"
+                    :y="(d: DataPoint) => d.losses"
+                    :color="lossColor"
+                    :line-width="2"
                 />
 
-                <VisCrosshair :template="barsTooltipTemplate" :color="crosshairColorAccessor" />
+                <VisCrosshair :template="countsTooltipTemplate" :color="crosshairColorAccessor" />
                 <VisTooltip />
                 <VisAxis type="x" :tick-format="formatTick" />
                 <VisAxis type="y" :grid-line="true" />
