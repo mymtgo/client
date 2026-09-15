@@ -114,7 +114,25 @@ function fitWindow(): void {
     if (measured === lastSentFixedHeight) return;
     lastSentFixedHeight = measured;
 
-    router.post(FitGameOverlayWindowController.url(), { fixed_height: measured }, { preserveScroll: true, preserveState: true, only: ['sections'] });
+    // A plain fetch, deliberately outside the Inertia router: an Inertia visit
+    // to this URL (a different URL to the page's) cancels the page's in-flight
+    // async requests — including the deferred `archetypes`/`drawOdds` fetch at
+    // mount, which is never retried. Resizing the window is a native command,
+    // not page state, so nothing needs to flow back into the page either.
+    const xsrf = document.cookie.match(/XSRF-TOKEN=([^;]+)/)?.[1] ?? '';
+    fetch(FitGameOverlayWindowController.url(), {
+        method: 'POST',
+        headers: {
+            'X-XSRF-TOKEN': decodeURIComponent(xsrf),
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ fixed_height: measured }),
+    }).catch(() => {
+        // The bundled server can be briefly unreachable at boot; let the next
+        // measurement (ResizeObserver / section change) retry this height.
+        lastSentFixedHeight = null;
+    });
 }
 
 function scheduleFit(): void {

@@ -14,14 +14,15 @@ it('fits the overlay window to the height the page measured', function () {
     Window::shouldReceive('all')->andReturn([$open]);
     Window::shouldReceive('resize')->once()->with(320, 142, 'game-overlay');
 
-    $this->from(route('overlay.game'))
-        ->post(route('overlay.fit'), ['fixed_height' => 142])
-        ->assertRedirect(route('overlay.game'));
+    // The page posts this outside the Inertia router (a plain fetch), so the
+    // response must not be a redirect an Inertia visit would follow.
+    $this->postJson(route('overlay.fit'), ['fixed_height' => 142])
+        ->assertNoContent();
 });
 
 it('rejects a missing or absurd height', function () {
     Window::shouldReceive('resize')->never();
 
-    $this->post(route('overlay.fit'), [])->assertSessionHasErrors('fixed_height');
-    $this->post(route('overlay.fit'), ['fixed_height' => 5000])->assertSessionHasErrors('fixed_height');
+    $this->postJson(route('overlay.fit'), [])->assertUnprocessable();
+    $this->postJson(route('overlay.fit'), ['fixed_height' => 5000])->assertUnprocessable();
 });
