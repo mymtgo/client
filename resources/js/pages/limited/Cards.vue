@@ -4,7 +4,7 @@ import SegmentedControl from '@/components/SegmentedControl.vue';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import LimitedEventLayout from '@/Layouts/LimitedEventLayout.vue';
+import LimitedEventLayout from '@/layouts/LimitedEventLayout.vue';
 import { ASCENDING_BY_DEFAULT, COLUMNS, compareRows, type SortKey } from '@/pages/limited/partials/limitedCardColumns';
 import {
     cardFor,

@@ -96,6 +96,11 @@ use App\Http\Controllers\Reports\MatchesController as ReportsMatchesController;
 use App\Http\Controllers\Settings\BrowseFolderController;
 use App\Http\Controllers\Settings\CheckApiStatusController;
 use App\Http\Controllers\Settings\DeleteOverlayBackgroundController;
+use App\Http\Controllers\Settings\Pages\AdvancedController;
+use App\Http\Controllers\Settings\Pages\GeneralController;
+use App\Http\Controllers\Settings\Pages\OverlaysController;
+use App\Http\Controllers\Settings\Pages\PrivacyController;
+use App\Http\Controllers\Settings\Pages\StorageController;
 use App\Http\Controllers\Settings\ReauthenticateController;
 use App\Http\Controllers\Settings\RunIngestController;
 use App\Http\Controllers\Settings\RunPopulateCardsController;
@@ -296,6 +301,11 @@ Route::group([], function (Router $router) {
         'prefix' => 'settings',
     ], function (Router $group) {
         $group->get('/', App\Http\Controllers\Settings\IndexController::class)->name('settings.index');
+        $group->get('general', GeneralController::class)->name('settings.general');
+        $group->get('overlays', OverlaysController::class)->name('settings.overlays');
+        $group->get('storage', StorageController::class)->name('settings.storage');
+        $group->get('privacy', PrivacyController::class)->name('settings.privacy');
+        $group->get('advanced', AdvancedController::class)->name('settings.advanced');
         $group->get('browse-folder', BrowseFolderController::class)->name('settings.browse-folder');
         $group->patch('log-path', UpdateLogPathController::class)->name('settings.log-path');
         $group->patch('data-path', UpdateDataPathController::class)->name('settings.data-path');

@@ -5,7 +5,7 @@ import { Link } from '@inertiajs/vue3';
 import { AlertTriangle } from 'lucide-vue-next';
 import type { VersionStats } from '@/types/decks';
 
-defineProps<{
+const props = defineProps<{
     deck?: App.Data.Front.DeckData;
     versions?: VersionStats[];
     currentVersionId: number | null;

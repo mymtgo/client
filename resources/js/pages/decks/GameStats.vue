@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import AppLayout from '@/AppLayout.vue';
-import DeckViewLayout from '@/Layouts/DeckViewLayout.vue';
+import DeckViewLayout from '@/layouts/DeckViewLayout.vue';
 import GameStatsTable from '@/pages/decks/partials/GameStatsTable.vue';
 import TimeframeFilter from '@/components/TimeframeFilter.vue';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';

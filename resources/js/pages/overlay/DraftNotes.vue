@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useDraftNoteAutosave, type DraftNoteTarget } from '@/composables/useDraftNoteAutosave';
-import OverlayLayout from '@/Layouts/OverlayLayout.vue';
+import OverlayLayout from '@/layouts/OverlayLayout.vue';
 import DraftNotesHeader from '@/pages/overlay/partials/DraftNotesHeader.vue';
 import { router, usePoll } from '@inertiajs/vue3';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';

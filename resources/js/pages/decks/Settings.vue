@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import AppLayout from '@/AppLayout.vue';
-import DeckViewLayout from '@/Layouts/DeckViewLayout.vue';
+import DeckViewLayout from '@/layouts/DeckViewLayout.vue';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';

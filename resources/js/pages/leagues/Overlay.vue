@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import OverlayLayout from '@/Layouts/OverlayLayout.vue';
+import OverlayLayout from '@/layouts/OverlayLayout.vue';
 import type { LeagueData } from '@/components/leagues/LeagueTracker.vue';
 import LeagueTracker from '@/components/leagues/LeagueTracker.vue';
 import { usePoll } from '@inertiajs/vue3';

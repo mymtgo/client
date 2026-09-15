@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import OverlayLayout from '@/Layouts/OverlayLayout.vue';
+import OverlayLayout from '@/layouts/OverlayLayout.vue';
 import GameReplay from './partials/GameReplay.vue';
 
 defineOptions({ layout: OverlayLayout });

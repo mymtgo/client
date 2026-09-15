@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import AppLayout from '@/AppLayout.vue';
-import DeckViewLayout from '@/Layouts/DeckViewLayout.vue';
+import DeckViewLayout from '@/layouts/DeckViewLayout.vue';
 import MatchesController from '@/actions/App/Http/Controllers/Decks/MatchesController';
 import MatchDetail from '@/pages/matches/partials/MatchDetail.vue';
 import type { VersionStats } from '@/types/decks';

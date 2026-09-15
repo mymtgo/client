@@ -6,7 +6,7 @@ import OpponentHeader from '@/components/overlay/OpponentHeader.vue';
 import OverlayTabs from '@/components/overlay/OverlayTabs.vue';
 import RevealedCards from '@/components/overlay/RevealedCards.vue';
 import SideboardGuide from '@/components/overlay/SideboardGuide.vue';
-import OverlayLayout from '@/Layouts/OverlayLayout.vue';
+import OverlayLayout from '@/layouts/OverlayLayout.vue';
 import { router, usePoll } from '@inertiajs/vue3';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 

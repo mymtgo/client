@@ -3,7 +3,7 @@ import DraftController from '@/actions/App/Http/Controllers/Limited/DraftControl
 import AppLayout from '@/AppLayout.vue';
 import ManaPips from '@/components/limited/ManaPips.vue';
 import Card from '@/components/ui/card/Card.vue';
-import LimitedEventLayout from '@/Layouts/LimitedEventLayout.vue';
+import LimitedEventLayout from '@/layouts/LimitedEventLayout.vue';
 import CrossDraftCard from '@/pages/limited/partials/CrossDraftCard.vue';
 import PickDetail from '@/pages/limited/partials/PickDetail.vue';
 import PickNoteEditor from '@/pages/limited/partials/PickNoteEditor.vue';

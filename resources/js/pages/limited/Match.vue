@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import MatchesController from '@/actions/App/Http/Controllers/Limited/MatchesController';
 import AppLayout from '@/AppLayout.vue';
-import LimitedEventLayout from '@/Layouts/LimitedEventLayout.vue';
+import LimitedEventLayout from '@/layouts/LimitedEventLayout.vue';
 import MatchDetail from '@/pages/matches/partials/MatchDetail.vue';
 import type { GameDetail, ManualEditingData } from '@/types/matches';
 import { Head } from '@inertiajs/vue3';

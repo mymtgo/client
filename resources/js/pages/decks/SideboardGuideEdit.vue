@@ -8,7 +8,7 @@ import SideboardGuideNotes from '@/components/decks/sideboard-guides/SideboardGu
 import ManaSymbols from '@/components/ManaSymbols.vue';
 import { Button } from '@/components/ui/button';
 import { groupByType } from '@/composables/useCardTypeGroups';
-import DeckViewLayout from '@/Layouts/DeckViewLayout.vue';
+import DeckViewLayout from '@/layouts/DeckViewLayout.vue';
 import type { VersionStats } from '@/types/decks';
 import type { GuideCardInput, GuideInCard, GuideOutCard } from '@/types/sideboardGuides';
 import { Link, router } from '@inertiajs/vue3';

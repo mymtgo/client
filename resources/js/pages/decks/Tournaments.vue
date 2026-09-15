@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import AppLayout from '@/AppLayout.vue';
-import DeckViewLayout from '@/Layouts/DeckViewLayout.vue';
+import DeckViewLayout from '@/layouts/DeckViewLayout.vue';
 import DeckTournaments from '@/pages/decks/partials/DeckTournaments.vue';
 import TimeframeFilter from '@/components/TimeframeFilter.vue';
 import TournamentsController from '@/actions/App/Http/Controllers/Decks/TournamentsController';

@@ -8,14 +8,7 @@
  * confirming.
  */
 import { Button } from '@/components/ui/button';
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 interface Props {
     open: boolean;
@@ -36,22 +29,15 @@ const emit = defineEmits<{
             <DialogHeader>
                 <DialogTitle>Come back online?</DialogTitle>
                 <DialogDescription>
-                    Your matches will start being shared again, and community card stats,
-                    opponent scouting and archetype updates come back with them.
+                    Your matches will start being shared again, and community card stats, opponent scouting and archetype updates come back with them.
                 </DialogDescription>
             </DialogHeader>
 
-            <p class="text-sm text-warning">
-                You won't be able to turn offline mode back on until tomorrow.
-            </p>
+            <p class="text-sm text-warning">You won't be able to turn offline mode back on until tomorrow.</p>
 
             <DialogFooter>
-                <Button variant="outline" :disabled="props.submitting" @click="emit('update:open', false)">
-                    Stay offline
-                </Button>
-                <Button :disabled="props.submitting" @click="emit('confirm')">
-                    Come back online
-                </Button>
+                <Button variant="outline" :disabled="props.submitting" @click="emit('update:open', false)"> Stay offline </Button>
+                <Button :disabled="props.submitting" @click="emit('confirm')"> Come back online </Button>
             </DialogFooter>
         </DialogContent>
     </Dialog>

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import AppLayout from '@/AppLayout.vue';
 import { Skeleton } from '@/components/ui/skeleton';
-import LimitedEventLayout from '@/Layouts/LimitedEventLayout.vue';
+import LimitedEventLayout from '@/layouts/LimitedEventLayout.vue';
 import DeckChanges from '@/pages/limited/partials/DeckChanges.vue';
 import LimitedDecklist from '@/pages/limited/partials/LimitedDecklist.vue';
 import VersionStrip from '@/pages/limited/partials/VersionStrip.vue';

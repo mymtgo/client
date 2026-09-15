@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import AppLayout from '@/AppLayout.vue';
-import LimitedEventLayout from '@/Layouts/LimitedEventLayout.vue';
+import LimitedEventLayout from '@/layouts/LimitedEventLayout.vue';
 import MatchController from '@/actions/App/Http/Controllers/Limited/MatchController';
 import MatchesTable from '@/components/matches/MatchesTable.vue';
 import { Card, CardContent } from '@/components/ui/card';

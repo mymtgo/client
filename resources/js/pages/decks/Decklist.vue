@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import AppLayout from '@/AppLayout.vue';
-import DeckViewLayout from '@/Layouts/DeckViewLayout.vue';
+import DeckViewLayout from '@/layouts/DeckViewLayout.vue';
 import ExportDekController from '@/actions/App/Http/Controllers/Decks/ExportDekController';
 import ScreenshotDataController from '@/actions/App/Http/Controllers/Decks/ScreenshotDataController';
 import ManaSymbols from '@/components/ManaSymbols.vue';

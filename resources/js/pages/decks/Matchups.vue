@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import AppLayout from '@/AppLayout.vue';
-import DeckViewLayout from '@/Layouts/DeckViewLayout.vue';
+import DeckViewLayout from '@/layouts/DeckViewLayout.vue';
 import DeckMatchups from '@/pages/decks/partials/DeckMatchups.vue';
 import TimeframeFilter from '@/components/TimeframeFilter.vue';
 import MatchupsController from '@/actions/App/Http/Controllers/Decks/MatchupsController';

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import AppLayout from '@/AppLayout.vue';
-import DeckViewLayout from '@/Layouts/DeckViewLayout.vue';
+import DeckViewLayout from '@/layouts/DeckViewLayout.vue';
 import DeckDashboard from '@/pages/decks/partials/DeckDashboard.vue';
 import TimeframeFilter from '@/components/TimeframeFilter.vue';
 import DashboardController from '@/actions/App/Http/Controllers/Decks/DashboardController';
