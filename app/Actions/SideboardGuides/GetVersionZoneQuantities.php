@@ -2,7 +2,7 @@
 
 namespace App\Actions\SideboardGuides;
 
-use App\Actions\Reports\GetReportSideboardOracles;
+use App\Actions\Cards\GetSideboardOracles;
 use App\Models\DeckVersion;
 
 class GetVersionZoneQuantities
@@ -26,7 +26,7 @@ class GetVersionZoneQuantities
                 continue;
             }
 
-            $zone = GetReportSideboardOracles::isSideboard($card['sideboard'] ?? false) ? 'in' : 'out';
+            $zone = GetSideboardOracles::isSideboard($card['sideboard'] ?? false) ? 'in' : 'out';
             $zones[$zone][$card['oracle_id']] = ($zones[$zone][$card['oracle_id']] ?? 0) + (int) $card['quantity'];
         }
 

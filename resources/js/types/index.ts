@@ -1,12 +1,7 @@
 export type Appearance = 'light' | 'dark' | 'system';
 export type ResolvedAppearance = 'light' | 'dark';
 
-export type {
-    ReportsCurrentPage,
-    ReportArchetypeOption,
-    ReportFormatOption,
-    ReportsSharedProps,
-} from './reports';
+export type { ReportArchetypeOption } from './reports';
 
 declare global {
     interface Window {

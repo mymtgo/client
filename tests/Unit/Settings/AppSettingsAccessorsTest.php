@@ -99,13 +99,6 @@ it('round-trips apiKeyExpiresAt as string', function () {
     expect(AppSettings::apiKeyExpiresAt())->toBe('2026-05-01T00:00:00Z');
 });
 
-it('round-trips decksGroupedByArchetype', function () {
-    expect(AppSettings::decksGroupedByArchetype())->toBeFalse();
-
-    AppSettings::setDecksGroupedByArchetype(true);
-    expect(AppSettings::decksGroupedByArchetype())->toBeTrue();
-});
-
 it('defaults the draft notes window on', function () {
     expect(AppSettings::showDraftNotesWindow())->toBeTrue();
 });

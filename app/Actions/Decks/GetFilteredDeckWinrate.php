@@ -20,6 +20,18 @@ class GetFilteredDeckWinrate
             ? [$deckVersion->id]
             : $deck->versions()->pluck('id')->all();
 
+        return self::forVersionIds($versionIds, $opponentArchetypeId, $onPlay, $isPostboard);
+    }
+
+    /**
+     * @param  array<int, int>  $versionIds
+     */
+    public static function forVersionIds(
+        array $versionIds,
+        ?int $opponentArchetypeId = null,
+        ?bool $onPlay = null,
+        ?bool $isPostboard = null,
+    ): DeckWinrateData {
         if (empty($versionIds)) {
             return new DeckWinrateData(wins: 0, games: 0, rate: 0.5);
         }

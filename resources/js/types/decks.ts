@@ -158,3 +158,27 @@ export type DeckCardStat = {
     pregameWon: number;
     pregameLost: number;
 };
+
+// ── Deck listing shell ───────────────────────────────────────────────────────
+
+export type DeckIndexTab = 'decks' | 'matches' | 'matchups' | 'card-stats';
+
+export type DeckIndexFilters = {
+    format: string;
+    archetype: string;
+    search: string;
+    sort: string;
+    hide_deleted: boolean;
+    per_page: number;
+    card_size: 'large' | 'compact';
+};
+
+/** Props every deck-listing page shares: sidebar, archetype header, filter echo. */
+export type DeckIndexSharedProps = {
+    formatOptions: App.Data.Front.DeckFormatOptionData[];
+    archetypeOptions: App.Data.Front.DeckArchetypeOptionData[];
+    unclassifiedCount: number;
+    archetypeHeader: App.Data.Front.DeckArchetypeHeaderData | null;
+    archetypes?: App.Data.Front.ArchetypeData[];
+    filters: DeckIndexFilters;
+};

@@ -24,6 +24,7 @@ use App\Http\Controllers\Debug\Matches\ReprocessController;
 use App\Http\Controllers\Debug\Matches\RestoreController;
 use App\Http\Controllers\Debug\Matches\UpdateController;
 use App\Http\Controllers\Debug\Overlay\PhaseController;
+use App\Http\Controllers\Decks\BulkUpdateDeckArchetypeController;
 use App\Http\Controllers\Decks\CardStatsController;
 use App\Http\Controllers\Decks\CoverArtOptionsController;
 use App\Http\Controllers\Decks\DashboardController;
@@ -44,7 +45,6 @@ use App\Http\Controllers\Decks\SideboardGuides\StoreController as SideboardGuide
 use App\Http\Controllers\Decks\SideboardGuides\StoreNoteController as SideboardGuideStoreNoteController;
 use App\Http\Controllers\Decks\SideboardGuides\UpdateCardsController as SideboardGuideUpdateCardsController;
 use App\Http\Controllers\Decks\SideboardGuidesController;
-use App\Http\Controllers\Decks\ToggleGroupingController;
 use App\Http\Controllers\Decks\ToggleHideArchivedController;
 use App\Http\Controllers\Decks\TournamentsController;
 use App\Http\Controllers\Decks\TriggerArchetypeDetectionController;
@@ -90,9 +90,6 @@ use App\Http\Controllers\Overlay\FitGameOverlayWindowController;
 use App\Http\Controllers\Overlay\GameOverlayController;
 use App\Http\Controllers\Overlay\StoreNoteController;
 use App\Http\Controllers\Overlay\UpdateOpponentArchetypeController;
-use App\Http\Controllers\Reports\CardStatsController as ReportsCardStatsController;
-use App\Http\Controllers\Reports\IndexController as ReportsIndexController;
-use App\Http\Controllers\Reports\MatchesController as ReportsMatchesController;
 use App\Http\Controllers\Settings\BrowseFolderController;
 use App\Http\Controllers\Settings\CheckApiStatusController;
 use App\Http\Controllers\Settings\DeleteOverlayBackgroundController;
@@ -198,12 +195,6 @@ Route::group([], function (Router $router) {
         $group->get('/', App\Http\Controllers\Opponents\IndexController::class)->name('opponents.index');
     });
 
-    $router->group(['prefix' => 'reports'], function (Router $group) {
-        $group->get('/', ReportsIndexController::class)->name('reports.index');
-        $group->get('matches', ReportsMatchesController::class)->name('reports.matches');
-        $group->get('card-stats', ReportsCardStatsController::class)->name('reports.card-stats');
-    });
-
     $router->group([
         'prefix' => 'cards',
     ], function (Router $group) {
@@ -215,7 +206,11 @@ Route::group([], function (Router $router) {
     $router->group([
         'prefix' => 'decks',
     ], function (Router $group) {
+        $group->patch('bulk-archetype', BulkUpdateDeckArchetypeController::class)->name('decks.bulk-update-archetype');
         $group->get('/', App\Http\Controllers\Decks\IndexController::class)->name('decks.index');
+        $group->get('archetypes/{archetype}/matches', App\Http\Controllers\Decks\Archetypes\MatchesController::class)->name('decks.archetypes.matches');
+        $group->get('archetypes/{archetype}/matchups', App\Http\Controllers\Decks\Archetypes\MatchupsController::class)->name('decks.archetypes.matchups');
+        $group->get('archetypes/{archetype}/card-stats', App\Http\Controllers\Decks\Archetypes\CardStatsController::class)->name('decks.archetypes.card-stats');
         $group->get('{deck:id}', DashboardController::class)->name('decks.show')->withTrashed();
         $group->get('{deck:id}/card-stats', CardStatsController::class)->name('decks.card-stats')->withTrashed();
         $group->post('{deck:id}/card-stats/regenerate', RegenerateCardStatsController::class)->name('decks.card-stats.regenerate')->withTrashed();
@@ -245,7 +240,6 @@ Route::group([], function (Router $router) {
         $group->post('{deck:id}/export-dek', App\Http\Controllers\Decks\ExportDekController::class)
             ->name('decks.export-dek')
             ->withTrashed();
-        $group->post('grouping', ToggleGroupingController::class)->name('decks.toggle-grouping');
         $group->post('hide-archived', ToggleHideArchivedController::class)->name('decks.toggle-hide-archived');
         $group->post('per-page', UpdatePerPageController::class)->name('decks.update-per-page');
         $group->post('card-size', UpdateCardSizeController::class)->name('decks.update-card-size');

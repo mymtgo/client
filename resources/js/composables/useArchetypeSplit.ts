@@ -14,11 +14,12 @@ const formatMap: Record<string, string> = {
     CPREMODERN: 'premodern',
 };
 
-export function useArchetypeSplit(
-    archetypes: Ref<App.Data.Front.ArchetypeData[]>,
-    format: Ref<string | null>,
-    search: Ref<string>,
-) {
+/** The `archetypes.format` key for a deck's format, raw code or display label. */
+export function archetypeFormatKey(format: string): string {
+    return formatMap[format.toUpperCase()] ?? format.toLowerCase();
+}
+
+export function useArchetypeSplit(archetypes: Ref<App.Data.Front.ArchetypeData[]>, format: Ref<string | null>, search: Ref<string>) {
     const matchesFormat = (a: App.Data.Front.ArchetypeData): boolean => {
         if (a.isFallback) {
             return true;
@@ -26,8 +27,7 @@ export function useArchetypeSplit(
         if (!format.value) {
             return true;
         }
-        const mapped = formatMap[format.value.toUpperCase()] ?? format.value.toLowerCase();
-        return a.format === mapped;
+        return a.format === archetypeFormatKey(format.value);
     };
 
     const matchesSearch = (a: App.Data.Front.ArchetypeData): boolean => {

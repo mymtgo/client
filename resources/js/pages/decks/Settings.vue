@@ -13,10 +13,11 @@ import DeckDestroyController from '@/actions/App/Http/Controllers/Decks/DestroyC
 import DeckRestoreController from '@/actions/App/Http/Controllers/Decks/RestoreController';
 import UpdateNameController from '@/actions/App/Http/Controllers/Decks/UpdateNameController';
 import ManaSymbols from '@/components/ManaSymbols.vue';
+import ArchetypePicker from '@/components/archetypes/ArchetypePicker.vue';
 import { Input } from '@/components/ui/input';
 import { RotateCcw, TriangleAlert, Undo2 } from 'lucide-vue-next';
 import type { VersionStats } from '@/types/decks';
-import { computed, nextTick, ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { router } from '@inertiajs/vue3';
 
 defineOptions({ layout: [AppLayout, DeckViewLayout] });
@@ -124,22 +125,8 @@ function clear() {
 
 const selectedArt = computed(() => artOptions.value.find(o => o.id === selectedCoverId.value));
 
-const archetypeSearch = ref('');
 const showArchetypeSelect = ref(false);
 const savingArchetype = ref(false);
-const archetypeSearchInput = ref<{ $el: HTMLInputElement } | null>(null);
-
-watch(showArchetypeSelect, (visible) => {
-    if (visible) {
-        nextTick(() => archetypeSearchInput.value?.$el?.focus());
-    }
-});
-
-const filteredArchetypes = computed(() => {
-    if (!archetypeSearch.value) return props.archetypes;
-    const q = archetypeSearch.value.toLowerCase();
-    return props.archetypes.filter((a) => a.name.toLowerCase().includes(q));
-});
 
 function selectArchetype(archetypeId: number) {
     savingArchetype.value = true;
@@ -151,7 +138,6 @@ function selectArchetype(archetypeId: number) {
             onFinish: () => {
                 savingArchetype.value = false;
                 showArchetypeSelect.value = false;
-                archetypeSearch.value = '';
             },
         },
     );
@@ -481,32 +467,13 @@ function restoreDeck() {
                         </Button>
                     </div>
 
-                    <div v-if="showArchetypeSelect" class="flex flex-col gap-2">
-                        <Input
-                            ref="archetypeSearchInput"
-                            v-model="archetypeSearch"
-                            placeholder="Search archetypes..."
-                            :disabled="isReadonly"
-                            :title="isReadonly ? readonlyTitle : undefined"
-                        />
-                        <div class="max-h-60 overflow-y-auto space-y-0.5 rounded-md border border-border p-1">
-                            <Button
-                                v-for="archetype in filteredArchetypes"
-                                :key="archetype.id"
-                                variant="ghost"
-                                class="w-full justify-between"
-                                :disabled="savingArchetype || isReadonly"
-                                :title="isReadonly ? readonlyTitle : undefined"
-                                @click="selectArchetype(archetype.id)"
-                            >
-                                <span class="flex-1 text-left">{{ archetype.name }}</span>
-                                <ManaSymbols v-if="archetype.colorIdentity" :symbols="archetype.colorIdentity" />
-                            </Button>
-                            <p v-if="filteredArchetypes.length === 0" class="py-4 text-center text-sm text-muted-foreground">
-                                No archetypes found.
-                            </p>
-                        </div>
-                    </div>
+                    <ArchetypePicker
+                        v-if="showArchetypeSelect"
+                        :archetypes="archetypes"
+                        :disabled="savingArchetype || isReadonly"
+                        autofocus
+                        @select="selectArchetype"
+                    />
                 </CardContent>
             </Card>
             <Card>

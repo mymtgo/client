@@ -43,6 +43,21 @@ cmc: number | null;
 quantity: number;
 sideboard: boolean;
 };
+export type DeckArchetypeHeaderData = {
+archetype: App.Data.Front.ArchetypeData | null;
+deckCount: number;
+record: App.Data.Front.MatchRecordData;
+bestMatchup: App.Data.Front.MatchupSummaryData | null;
+worstMatchup: App.Data.Front.MatchupSummaryData | null;
+};
+export type DeckArchetypeOptionData = {
+id: number;
+name: string;
+colorIdentity: string | null;
+format: string | null;
+deckCount: number;
+record: App.Data.Front.MatchRecordData;
+};
 export type DeckData = {
 id: number;
 name: string;
@@ -59,14 +74,10 @@ matches: any;
 identity: any;
 cards: any;
 };
-export type DeckGroupData = {
-archetype: App.Data.Front.ArchetypeData | null;
-stats: App.Data.Front.DeckGroupStatsData;
-decks: { [key: number]: App.Data.Front.DeckData };
-};
-export type DeckGroupStatsData = {
-record: App.Data.Front.MatchRecordData;
-lastPlayedAt: string | null;
+export type DeckFormatOptionData = {
+value: string;
+label: string;
+count: number;
 };
 export type DeckWinrateData = {
 wins: number;
@@ -274,6 +285,13 @@ total: number;
 winrate: number;
 label: string;
 };
+export type MatchupSummaryData = {
+archetypeId: number;
+name: string;
+colorIdentity: string | null;
+winrate: number;
+matches: number;
+};
 export type OverlayOpponentData = {
 username: string;
 previousMatches: number;
@@ -317,6 +335,8 @@ winrate: number | null;
 communitySidedIn: number | null;
 communityGames: number | null;
 communityRate: number | null;
+communityConfident: boolean;
+recommended: boolean;
 plannedQuantity: number | null;
 stale: boolean;
 };
@@ -352,6 +372,8 @@ sidedOutGames: number;
 communitySidedOut: number | null;
 communityGames: number | null;
 communityRate: number | null;
+communityConfident: boolean;
+recommended: boolean;
 plannedQuantity: number | null;
 stale: boolean;
 };

@@ -1,44 +1,43 @@
 <script setup lang="ts">
-import { Pagination, PaginationContent, PaginationItem, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
-import { Card, CardContent } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { router } from '@inertiajs/vue3';
-import MatchesTable from '@/components/matches/MatchesTable.vue';
 import ManualMatchSheet from '@/components/matches/ManualMatchSheet.vue';
+import MatchesTable from '@/components/matches/MatchesTable.vue';
 import { Button } from '@/components/ui/button';
-import type { ManualLeagueDeckOption, ManualMatchLeagueOption } from '@/types/leagues';
-import { Plus } from 'lucide-vue-next';
+import { Card, CardContent } from '@/components/ui/card';
+import { Pagination, PaginationContent, PaginationItem, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
+import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from '@/components/ui/select';
 import ArchetypeDetectionBanner from '@/pages/decks/partials/ArchetypeDetectionBanner.vue';
+import type { ManualLeagueDeckOption, ManualMatchLeagueOption } from '@/types/leagues';
+import { router } from '@inertiajs/vue3';
+import { Plus } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
 
 type Paginator<T> = { data: T[]; total: number; per_page: number; current_page: number };
 
 type ArchetypeWithCount = App.Data.Front.ArchetypeData & { matchCount: number };
 
-const props = defineProps<{
-    deckId: number;
-    matches: Paginator<App.Data.Front.MatchData>;
-    archetypes: ArchetypeWithCount[];
-    unknownArchetypeCount: number;
-    pendingArchetypeCount: number;
-    deletedAt?: string | null;
-    manualMatchDeck: ManualLeagueDeckOption;
-    manualMatchLeagues: ManualMatchLeagueOption[];
-}>();
+const props = withDefaults(
+    defineProps<{
+        /** Omitted on the archetype tab, where the list spans decks and has no manual-match or detection affordances. */
+        deckId?: number | null;
+        matches: Paginator<App.Data.Front.MatchData>;
+        archetypes: ArchetypeWithCount[];
+        unknownArchetypeCount: number;
+        pendingArchetypeCount: number;
+        deletedAt?: string | null;
+        manualMatchDeck?: ManualLeagueDeckOption | null;
+        manualMatchLeagues?: ManualMatchLeagueOption[];
+        showDeck?: boolean;
+    }>(),
+    { deckId: null, deletedAt: null, manualMatchDeck: null, manualMatchLeagues: () => [], showDeck: false },
+);
 
 const manualMatchSheet = ref<InstanceType<typeof ManualMatchSheet> | null>(null);
 
-const fallbackArchetypes = computed(() =>
-    props.archetypes.filter((a) => a.isFallback).sort((a, b) => a.name.localeCompare(b.name)),
-);
+const fallbackArchetypes = computed(() => props.archetypes.filter((a) => a.isFallback).sort((a, b) => a.name.localeCompare(b.name)));
 
-const regularArchetypes = computed(() =>
-    props.archetypes.filter((a) => !a.isFallback && a.matchCount > 0),
-);
+const regularArchetypes = computed(() => props.archetypes.filter((a) => !a.isFallback && a.matchCount > 0));
 
-const showSeparator = computed(
-    () => (props.unknownArchetypeCount > 0 || fallbackArchetypes.value.length > 0) && regularArchetypes.value.length > 0,
-);
+const showSeparator = computed(() => (props.unknownArchetypeCount > 0 || fallbackArchetypes.value.length > 0) && regularArchetypes.value.length > 0);
 
 const filterResult = ref('all');
 const filterType = ref('all');
@@ -90,7 +89,7 @@ const updateSort = (column: string) => {
 <template>
     <div class="flex flex-col gap-4">
         <ArchetypeDetectionBanner
-            v-if="filterArchetype !== 'all'"
+            v-if="deckId && filterArchetype !== 'all'"
             :deck-id="deckId"
             :filter-archetype="filterArchetype"
             :pending-count="pendingArchetypeCount"
@@ -99,12 +98,15 @@ const updateSort = (column: string) => {
 
         <!-- Filters -->
         <div class="flex flex-wrap items-center justify-between gap-3">
-            <p v-if="matches.total" class="text-muted-foreground text-xs">
-                Showing {{ (matches.current_page - 1) * matches.per_page + 1 }}–{{ Math.min(matches.current_page * matches.per_page, matches.total) }} of {{ matches.total }} matches
+            <p v-if="matches.total" class="text-xs text-muted-foreground">
+                Showing {{ (matches.current_page - 1) * matches.per_page + 1 }}–{{
+                    Math.min(matches.current_page * matches.per_page, matches.total)
+                }}
+                of {{ matches.total }} matches
             </p>
             <div v-else />
             <div class="flex shrink-0 items-center gap-3">
-                <Button size="sm" variant="outline" class="h-8 text-xs" @click="manualMatchSheet?.open()">
+                <Button v-if="manualMatchDeck" size="sm" variant="outline" class="h-8 text-xs" @click="manualMatchSheet?.open()">
                     <Plus class="size-3.5" />
                     Add manual match
                 </Button>
@@ -151,19 +153,21 @@ const updateSort = (column: string) => {
         <!-- Table -->
         <Card class="gap-0 overflow-hidden p-0">
             <CardContent class="px-0">
-                <p v-if="!matches.total" class="text-muted-foreground py-8 text-center text-sm">No matches recorded</p>
+                <p v-if="!matches.total" class="py-8 text-center text-sm text-muted-foreground">No matches recorded</p>
 
-                <MatchesTable :matches="matches.data" :archetypes="archetypes" :sort-by="sortBy" :sort-dir="sortDir" @sort="updateSort" v-if="matches.total" />
+                <MatchesTable
+                    v-if="matches.total"
+                    :matches="matches.data"
+                    :archetypes="archetypes"
+                    :sort-by="sortBy"
+                    :sort-dir="sortDir"
+                    :show-deck="showDeck"
+                    @sort="updateSort"
+                />
             </CardContent>
 
             <div class="justify-end py-2 text-right" v-if="matches.total > matches.per_page">
-                <Pagination
-                    @update:page="updatePage"
-                    v-slot="{ page }"
-                    :items-per-page="matches.per_page"
-                    :total="matches.total"
-                    :default-page="1"
-                >
+                <Pagination @update:page="updatePage" v-slot="{ page }" :items-per-page="matches.per_page" :total="matches.total" :default-page="1">
                     <PaginationContent v-slot="{ items }">
                         <PaginationPrevious />
                         <template v-for="(item, index) in items" :key="index">
@@ -178,6 +182,7 @@ const updateSort = (column: string) => {
         </Card>
 
         <ManualMatchSheet
+            v-if="deckId && manualMatchDeck"
             ref="manualMatchSheet"
             :decks="[manualMatchDeck]"
             :archetypes="archetypes"

@@ -2,40 +2,62 @@
 
 namespace App\Http\Controllers\Decks;
 
+use App\Actions\Decks\BuildDeckSidebarOptions;
+use App\Actions\Decks\GetDeckIndexSharedProps;
+use App\Actions\Decks\RememberDeckIndexFilters;
 use App\Actions\Limited\EnsureLimitedDeckVersion;
-use App\Data\Front\ArchetypeData;
 use App\Data\Front\DeckData;
-use App\Data\Front\DeckGroupData;
-use App\Data\Front\DeckGroupStatsData;
 use App\Facades\AppSettings;
 use App\Models\Deck;
-use App\Models\MtgoMatch;
-use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
-use Spatie\LaravelData\DataCollection;
 
 class IndexController
 {
     public function __invoke(Request $request): Response|RedirectResponse
     {
+        $hideDeleted = AppSettings::hideArchivedDecks();
+        ['format' => $format, 'archetype' => $archetype] = RememberDeckIndexFilters::resolve(
+            $request,
+            $this->archetypeFilter($request->input('archetype')),
+        );
+
+        // A stale `archetype` query param (e.g. switching format, or archiving
+        // the last deck of that archetype) must not strand the user on an
+        // empty grid with no visible filter. `none` is left alone: an empty
+        // Unclassified scope is a legitimate empty result, not a stale one.
+        if ($archetype !== '' && $archetype !== 'none') {
+            $inScope = BuildDeckSidebarOptions::scopedDecks($format, $hideDeleted)
+                ->where('archetype_id', (int) $archetype)
+                ->exists();
+
+            if (! $inScope) {
+                $archetype = '';
+                RememberDeckIndexFilters::forgetArchetype($request);
+            }
+        }
+
         $query = Deck::forActiveAccount()
             ->where('format', '!=', EnsureLimitedDeckVersion::FORMAT)
             ->with(['cover', 'archetype' => fn ($q) => $q->withExists('decks')])
             ->withCount(['wonMatches', 'lostMatches', 'matches'])
             ->withMax('matches', 'started_at');
 
-        if ($request->filled('format')) {
-            $query->where('format', $request->input('format'));
+        if ($format !== null) {
+            $query->where('format', $format);
+        }
+
+        if ($archetype === 'none') {
+            $query->whereNull('archetype_id');
+        } elseif ($archetype !== '') {
+            $query->where('archetype_id', (int) $archetype);
         }
 
         if ($request->filled('search')) {
             $query->where('name', 'like', '%'.$request->input('search').'%');
         }
-
-        $hideDeleted = AppSettings::hideArchivedDecks();
 
         if ($hideDeleted) {
             $query->whereNull('deleted_at');
@@ -49,89 +71,41 @@ class IndexController
             default => $query->orderByDesc('matches_max_started_at'),
         };
 
-        $formats = Deck::forActiveAccount()
-            ->where('format', '!=', EnsureLimitedDeckVersion::FORMAT)
-            ->distinct()
-            ->pluck('format')
-            ->mapWithKeys(fn ($f) => [$f => MtgoMatch::displayFormat($f)])
-            ->sortBy(fn ($label) => $label);
-
-        $filters = [
-            'format' => $request->input('format', ''),
-            'search' => $request->input('search', ''),
-            'sort' => $sort,
-            'hide_deleted' => $hideDeleted,
-            'per_page' => AppSettings::decksPerPage(),
-            'card_size' => AppSettings::deckCardSize(),
-        ];
-
-        $grouped = AppSettings::decksGroupedByArchetype();
-
-        if ($grouped) {
-            $decks = $query->get();
-
-            return Inertia::render('decks/Index', [
-                'mode' => 'grouped',
-                'groups' => $this->buildGroups($decks, $sort),
-                'formats' => $formats,
-                'filters' => $filters,
-            ]);
-        }
-
         $paginated = $query->paginate(AppSettings::decksPerPage())->withQueryString();
 
         // Filters and page size are toggled from the listing itself, and those
         // toggles redirect back to whatever page the user was on. Shrink the
         // result set from page 3 and that page no longer exists, which renders
-        // as an empty grid rather than an obviously wrong page number — so walk
+        // as an empty grid rather than an obviously wrong page number, so walk
         // back to the last page that does.
         if ($paginated->isEmpty() && $paginated->currentPage() > 1) {
             return redirect()->to($paginated->url($paginated->lastPage()));
         }
 
         return Inertia::render('decks/Index', [
-            'mode' => 'flat',
             'decks' => $paginated->through(fn ($deck) => DeckData::from($deck)),
-            'formats' => $formats,
-            'filters' => $filters,
+            ...GetDeckIndexSharedProps::run($format, $archetype, (string) $request->input('search', ''), (string) $sort),
         ]);
     }
 
     /**
-     * @param  EloquentCollection<int, Deck>  $decks
-     * @return array<int, DeckGroupData>
+     * `none` selects unclassified decks, digits select one archetype, anything
+     * else is treated as no filter rather than a query for archetype "abc".
      */
-    protected function buildGroups(EloquentCollection $decks, string $sort): array
+    protected function archetypeFilter(mixed $raw): string
     {
-        $grouped = $decks->groupBy(fn (Deck $deck) => $deck->archetype_id ?? '__unassigned__');
-
-        $groups = $grouped->map(function ($groupDecks, $key) {
-            $first = $groupDecks->first();
-            $archetype = $key === '__unassigned__' ? null : $first->archetype;
-
-            return new DeckGroupData(
-                archetype: $archetype ? ArchetypeData::fromModel($archetype) : null,
-                stats: DeckGroupStatsData::fromDecks($groupDecks),
-                decks: DeckData::collect($groupDecks, DataCollection::class),
-            );
-        })->values();
-
-        $unassigned = $groups->firstWhere(fn (DeckGroupData $g) => $g->archetype === null);
-        $assigned = $groups->filter(fn (DeckGroupData $g) => $g->archetype !== null);
-
-        $sortedAssigned = match ($sort) {
-            'winRate' => $assigned->sortByDesc(fn (DeckGroupData $g) => $g->stats->record->total > 0 ? $g->stats->record->winrate : -1)->values(),
-            'matchCount' => $assigned->sortByDesc(fn (DeckGroupData $g) => $g->stats->record->total)->values(),
-            'name' => $assigned->sortBy(fn (DeckGroupData $g) => strtolower($g->archetype->name))->values(),
-            default => $assigned->sortByDesc(fn (DeckGroupData $g) => $g->stats->lastPlayedAt)->values(),
-        };
-
-        $result = $sortedAssigned->all();
-
-        if ($unassigned !== null) {
-            $result[] = $unassigned;
+        if ($raw === 'none') {
+            return 'none';
         }
 
-        return $result;
+        if (is_string($raw) && ctype_digit($raw)) {
+            return $raw;
+        }
+
+        if (is_int($raw)) {
+            return (string) $raw;
+        }
+
+        return '';
     }
 }

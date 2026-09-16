@@ -3,7 +3,7 @@
 namespace App\Actions\Overlay;
 
 use App\Actions\Cards\ApplyOpponentArchetypeFilter;
-use App\Actions\Reports\GetReportSideboardOracles;
+use App\Actions\Cards\GetSideboardOracles;
 use App\Actions\SideboardGuides\GetVersionZoneQuantities;
 use App\Actions\Util\Winrate;
 use App\Data\Front\SideboardCardData;
@@ -78,7 +78,7 @@ class BuildSideboardGuide
         $postboard = self::postboardTotals($versionIds, $archetype->id);
 
         $cards = collect($version->cards);
-        $sideboardOracles = GetReportSideboardOracles::run([$version->id]);
+        $sideboardOracles = GetSideboardOracles::run([$version->id]);
 
         if ($scope === SideboardGuideScope::History) {
             $sideboardCards = self::byOracle(
@@ -303,7 +303,7 @@ class BuildSideboardGuide
                 }
 
                 return $group->first(
-                    fn (array $card) => GetReportSideboardOracles::isSideboard($card['sideboard'] ?? false)
+                    fn (array $card) => GetSideboardOracles::isSideboard($card['sideboard'] ?? false)
                 ) ?? $group->first();
             });
     }

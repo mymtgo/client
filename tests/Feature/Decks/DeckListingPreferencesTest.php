@@ -29,7 +29,6 @@ it('rejects a page size that is not offered', function (mixed $perPage) {
 ]);
 
 it('paginates the deck listing at the stored page size', function () {
-    AppSettings::setDecksGroupedByArchetype(false);
     AppSettings::setDecksPerPage(24);
     Deck::factory()->count(15)->create();
 
@@ -41,7 +40,6 @@ it('paginates the deck listing at the stored page size', function () {
 });
 
 it('defaults the deck listing to 12 per page', function () {
-    AppSettings::setDecksGroupedByArchetype(false);
     Deck::factory()->count(15)->create();
 
     $this->get(route('decks.index'))->assertInertia(fn ($page) => $page
@@ -66,7 +64,6 @@ it('rejects an unknown deck card size', function () {
 });
 
 it('exposes the card size to the listing, defaulting to large', function () {
-    AppSettings::setDecksGroupedByArchetype(false);
     Deck::factory()->create();
 
     $this->get(route('decks.index'))->assertInertia(fn ($page) => $page->where('filters.card_size', 'large'));
@@ -77,7 +74,6 @@ it('exposes the card size to the listing, defaulting to large', function () {
 });
 
 it('walks back to the last page when the current page no longer exists', function () {
-    AppSettings::setDecksGroupedByArchetype(false);
     AppSettings::setHideArchivedDecks(false);
     AppSettings::setDecksPerPage(12);
 
@@ -95,7 +91,6 @@ it('walks back to the last page when the current page no longer exists', functio
 });
 
 it('leaves an in-range page alone', function () {
-    AppSettings::setDecksGroupedByArchetype(false);
     Deck::factory()->count(20)->create();
 
     $this->get(route('decks.index', ['page' => 2]))->assertInertia(fn ($page) => $page->has('decks.data', 8));

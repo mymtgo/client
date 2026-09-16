@@ -38,128 +38,19 @@ function seedDeck(array $attributes = [], int $won = 0, int $lost = 0, int $draw
     return $deck;
 }
 
-it('returns flat mode when grouping setting is off', function () {
-    AppSettings::setDecksGroupedByArchetype(false);
+it('lists decks as a paginator', function () {
     Deck::factory()->count(3)->create();
 
-    $response = $this->get(route('decks.index'));
-
-    $response->assertInertia(fn ($page) => $page
-        ->component('decks/Index')
-        ->where('mode', 'flat')
-        ->has('decks.data', 3)
-        ->missing('groups')
-    );
+    $this->get(route('decks.index'))
+        ->assertInertia(fn ($page) => $page
+            ->component('decks/Index')
+            ->has('decks.data', 3)
+            ->missing('mode')
+            ->missing('groups')
+        );
 });
 
-it('returns grouped mode with archetype groups when setting is on', function () {
-    AppSettings::setDecksGroupedByArchetype(true);
-
-    $tron = Archetype::factory()->create(['name' => 'Eldrazi Tron', 'format' => 'CMODERN']);
-    $burn = Archetype::factory()->create(['name' => 'Burn', 'format' => 'CMODERN']);
-
-    Deck::factory()->count(2)->create(['archetype_id' => $tron->id]);
-    Deck::factory()->create(['archetype_id' => $burn->id]);
-
-    $response = $this->get(route('decks.index'));
-
-    $response->assertInertia(fn ($page) => $page
-        ->component('decks/Index')
-        ->where('mode', 'grouped')
-        ->has('groups', 2)
-        ->missing('decks')
-    );
-});
-
-it('places decks with no archetype into an Unassigned group at the end', function () {
-    AppSettings::setDecksGroupedByArchetype(true);
-
-    $tron = Archetype::factory()->create(['name' => 'Eldrazi Tron']);
-    Deck::factory()->create(['archetype_id' => $tron->id]);
-    Deck::factory()->create(['archetype_id' => null]);
-
-    $response = $this->get(route('decks.index'));
-
-    $response->assertInertia(fn ($page) => $page
-        ->has('groups', 2)
-        ->where('groups.0.archetype.name', 'Eldrazi Tron')
-        ->where('groups.1.archetype', null)
-    );
-});
-
-it('omits archetype groups whose decks do not match the format filter', function () {
-    AppSettings::setDecksGroupedByArchetype(true);
-
-    $modern = Archetype::factory()->create(['name' => 'Modern Tron']);
-    $legacy = Archetype::factory()->create(['name' => 'Legacy Tron']);
-
-    Deck::factory()->create(['archetype_id' => $modern->id, 'format' => 'CMODERN']);
-    Deck::factory()->create(['archetype_id' => $legacy->id, 'format' => 'CLEGACY']);
-
-    $response = $this->get(route('decks.index', ['format' => 'CMODERN']));
-
-    $response->assertInertia(fn ($page) => $page
-        ->has('groups', 1)
-        ->where('groups.0.archetype.name', 'Modern Tron')
-    );
-});
-
-it('computes weighted winrate stats per archetype group', function () {
-    AppSettings::setDecksGroupedByArchetype(true);
-
-    $tron = Archetype::factory()->create(['name' => 'Eldrazi Tron']);
-    seedDeck(['archetype_id' => $tron->id], won: 6, lost: 4);
-    seedDeck(['archetype_id' => $tron->id], won: 18, lost: 2);
-
-    $response = $this->get(route('decks.index'));
-
-    $response->assertInertia(fn ($page) => $page
-        ->where('groups.0.stats.record.total', 30)
-        ->where('groups.0.stats.record.wins', 24)
-        ->where('groups.0.stats.record.winrate', 80)
-    );
-});
-
-it('orders groups by winrate descending when sort is winRate, unassigned last', function () {
-    AppSettings::setDecksGroupedByArchetype(true);
-
-    $weak = Archetype::factory()->create(['name' => 'Weak']);
-    $strong = Archetype::factory()->create(['name' => 'Strong']);
-
-    seedDeck(['archetype_id' => $weak->id], won: 2, lost: 8);
-    seedDeck(['archetype_id' => $strong->id], won: 8, lost: 2);
-    seedDeck(['archetype_id' => null], won: 5, lost: 5);
-
-    $response = $this->get(route('decks.index', ['sort' => 'winRate']));
-
-    $response->assertInertia(fn ($page) => $page
-        ->where('groups.0.archetype.name', 'Strong')
-        ->where('groups.1.archetype.name', 'Weak')
-        ->where('groups.2.archetype', null)
-    );
-});
-
-it('orders groups by name alphabetically when sort is name, unassigned last', function () {
-    AppSettings::setDecksGroupedByArchetype(true);
-
-    $z = Archetype::factory()->create(['name' => 'Zoo']);
-    $a = Archetype::factory()->create(['name' => 'Affinity']);
-
-    Deck::factory()->create(['archetype_id' => $z->id]);
-    Deck::factory()->create(['archetype_id' => $a->id]);
-    Deck::factory()->create(['archetype_id' => null]);
-
-    $response = $this->get(route('decks.index', ['sort' => 'name']));
-
-    $response->assertInertia(fn ($page) => $page
-        ->where('groups.0.archetype.name', 'Affinity')
-        ->where('groups.1.archetype.name', 'Zoo')
-        ->where('groups.2.archetype', null)
-    );
-});
-
-it('mixes trashed decks into the flat listing when hide-archived is disabled', function () {
-    AppSettings::setDecksGroupedByArchetype(false);
+it('mixes trashed decks into the listing when hide-archived is disabled', function () {
     AppSettings::setHideArchivedDecks(false);
 
     Deck::factory()->count(2)->create();
@@ -175,7 +66,6 @@ it('mixes trashed decks into the flat listing when hide-archived is disabled', f
 });
 
 it('hides trashed decks when the hide-archived setting is enabled', function () {
-    AppSettings::setDecksGroupedByArchetype(false);
     AppSettings::setHideArchivedDecks(true);
 
     Deck::factory()->count(2)->create();
@@ -190,8 +80,6 @@ it('hides trashed decks when the hide-archived setting is enabled', function () 
 });
 
 it('sorts decks by win rate over every match played, draws included', function () {
-    AppSettings::setDecksGroupedByArchetype(false);
-
     // 6 / 10 = 60%
     seedDeck(['name' => 'No Draws'], won: 6, lost: 4);
     // 7 / 14 = 50%. Ignoring draws it would be 7 / 11 = 64% and wrongly sort first.
@@ -201,5 +89,154 @@ it('sorts decks by win rate over every match played, draws included', function (
         ->assertInertia(fn ($page) => $page
             ->where('decks.data.0.name', 'No Draws')
             ->where('decks.data.1.name', 'With Draws')
+        );
+});
+
+it('exposes sidebar option props and drops the legacy formats prop', function () {
+    $tron = Archetype::factory()->create(['name' => 'Tron']);
+    Deck::factory()->create(['archetype_id' => $tron->id, 'format' => 'CModern']);
+    Deck::factory()->create(['archetype_id' => null, 'format' => 'CModern']);
+
+    $this->get(route('decks.index'))
+        ->assertInertia(fn ($page) => $page
+            ->has('formatOptions', 1)
+            ->where('formatOptions.0.value', 'CModern')
+            ->where('formatOptions.0.count', 2)
+            ->has('archetypeOptions', 1)
+            ->where('archetypeOptions.0.name', 'Tron')
+            ->where('archetypeOptions.0.deckCount', 1)
+            ->where('unclassifiedCount', 1)
+            ->where('filters.archetype', '')
+            ->missing('formats')
+        );
+});
+
+it('filters decks by archetype id', function () {
+    $tron = Archetype::factory()->create();
+    $burn = Archetype::factory()->create();
+    Deck::factory()->create(['name' => 'T', 'archetype_id' => $tron->id]);
+    Deck::factory()->create(['name' => 'B', 'archetype_id' => $burn->id]);
+
+    $this->get(route('decks.index', ['archetype' => $tron->id]))
+        ->assertInertia(fn ($page) => $page
+            ->has('decks.data', 1)
+            ->where('decks.data.0.name', 'T')
+            ->where('filters.archetype', (string) $tron->id)
+        );
+});
+
+it('filters to unclassified decks with archetype=none', function () {
+    Deck::factory()->create(['name' => 'Classified', 'archetype_id' => Archetype::factory()->create()->id]);
+    Deck::factory()->create(['name' => 'Loose', 'archetype_id' => null]);
+
+    $this->get(route('decks.index', ['archetype' => 'none']))
+        ->assertInertia(fn ($page) => $page
+            ->has('decks.data', 1)
+            ->where('decks.data.0.name', 'Loose')
+            ->where('filters.archetype', 'none')
+        );
+});
+
+it('treats a garbage archetype value as unset', function () {
+    Deck::factory()->count(2)->create();
+
+    $this->get(route('decks.index', ['archetype' => 'abc']))
+        ->assertInertia(fn ($page) => $page
+            ->has('decks.data', 2)
+            ->where('filters.archetype', '')
+        );
+});
+
+it('does not narrow sidebar counts by search or archetype filter', function () {
+    $tron = Archetype::factory()->create(['name' => 'Tron']);
+    $burn = Archetype::factory()->create(['name' => 'Burn']);
+    Deck::factory()->create(['name' => 'Alpha', 'archetype_id' => $tron->id]);
+    Deck::factory()->create(['name' => 'Beta', 'archetype_id' => $burn->id]);
+    Deck::factory()->create(['name' => 'Gamma', 'archetype_id' => null]);
+
+    $this->get(route('decks.index', ['search' => 'Alpha', 'archetype' => $tron->id]))
+        ->assertInertia(fn ($page) => $page
+            ->has('decks.data', 1)
+            ->has('archetypeOptions', 2)
+            ->where('unclassifiedCount', 1)
+        );
+});
+
+it('narrows archetype options and unclassified count by format', function () {
+    $modern = Archetype::factory()->create(['name' => 'Modern Tron']);
+    $legacy = Archetype::factory()->create(['name' => 'Legacy Tron']);
+    Deck::factory()->create(['archetype_id' => $modern->id, 'format' => 'CModern']);
+    Deck::factory()->create(['archetype_id' => $legacy->id, 'format' => 'CLegacy']);
+    Deck::factory()->create(['archetype_id' => null, 'format' => 'CLegacy']);
+
+    $this->get(route('decks.index', ['format' => 'CModern']))
+        ->assertInertia(fn ($page) => $page
+            ->has('archetypeOptions', 1)
+            ->where('archetypeOptions.0.name', 'Modern Tron')
+            ->where('unclassifiedCount', 0)
+        );
+});
+
+it('reports archetype records with draws in the total', function () {
+    $tron = Archetype::factory()->create(['name' => 'Tron']);
+    seedDeck(['archetype_id' => $tron->id], won: 6, lost: 4);
+    seedDeck(['archetype_id' => $tron->id], won: 1, lost: 1, drawn: 2);
+
+    $this->get(route('decks.index'))
+        ->assertInertia(fn ($page) => $page
+            ->where('archetypeOptions.0.record.total', 14)
+            ->where('archetypeOptions.0.record.wins', 7)
+            ->where('archetypeOptions.0.record.winrate', 50)
+        );
+});
+
+it('defers the archetype list for the picker without system fallbacks', function () {
+    Archetype::factory()->count(3)->create();
+
+    $this->get(route('decks.index'))
+        ->assertInertia(fn ($page) => $page->missing('archetypes'));
+
+    // assertInertia() reads the embedded page payload of a full page load,
+    // which a partial (X-Inertia) reload does not have; it returns raw JSON
+    // instead, so check the JSON body directly (same pattern as
+    // StickyFiltersTest). Migrations seed two fallback archetypes (Homebrew,
+    // Rogue); the picker never offers those, so exactly the three created
+    // here come back.
+    inertiaPartial(route('decks.index'), 'decks/Index', ['archetypes'])
+        ->assertOk()
+        ->assertJsonCount(3, 'props.archetypes');
+});
+
+it('omits the archetype header without a filter and builds it with one', function () {
+    $tron = Archetype::factory()->create(['name' => 'Tron']);
+    Deck::factory()->create(['archetype_id' => $tron->id]);
+    Deck::factory()->create(['archetype_id' => null]);
+
+    $this->get(route('decks.index'))
+        ->assertInertia(fn ($page) => $page->where('archetypeHeader', null));
+
+    $this->get(route('decks.index', ['archetype' => $tron->id]))
+        ->assertInertia(fn ($page) => $page
+            ->where('archetypeHeader.archetype.name', 'Tron')
+            ->where('archetypeHeader.deckCount', 1)
+        );
+
+    $this->get(route('decks.index', ['archetype' => 'none']))
+        ->assertInertia(fn ($page) => $page
+            ->where('archetypeHeader.archetype', null)
+            ->where('archetypeHeader.deckCount', 1)
+        );
+});
+
+it('treats an archetype filter with no decks in the current format as unset', function () {
+    $legacy = Archetype::factory()->create(['name' => 'Legacy Tron']);
+    Deck::factory()->create(['archetype_id' => $legacy->id, 'format' => 'CLegacy']);
+    Deck::factory()->count(2)->create(['archetype_id' => null, 'format' => 'CModern']);
+
+    $this->get(route('decks.index', ['format' => 'CModern', 'archetype' => $legacy->id]))
+        ->assertInertia(fn ($page) => $page
+            ->has('decks.data', 2)
+            ->where('filters.archetype', '')
+            ->where('archetypeHeader', null)
         );
 });

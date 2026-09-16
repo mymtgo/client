@@ -30,15 +30,33 @@ class OpponentMatchPairs
     }
 
     /**
+     * Ids of every match with at least one archetype row for a player who
+     * actually sat across the table. Non-correlated, so it is computed once
+     * and can be fed to `whereIn` / `whereNotIn` where a `whereHas` on the
+     * `opponentArchetypes` relation would be re-run per candidate match.
+     */
+    public static function identifiedMatchIds(): QueryBuilder
+    {
+        return DB::table('match_archetypes as ma')
+            ->joinSub(self::query(), 'opp', self::on('ma', 'ma', 'opp'))
+            ->distinct()
+            ->select('ma.mtgo_match_id');
+    }
+
+    /**
      * Join condition pairing the subquery to a match and its archetype row.
      *
      * The pair is unique per match and player, so the join cannot duplicate
-     * rows the way a non-distinct join would.
+     * rows the way a non-distinct join would. Pass the archetype alias for
+     * both `$matches` and `$archetypes` to pair straight off
+     * `match_archetypes.mtgo_match_id` when no matches table is in the query.
      */
     public static function on(string $matches = 'm', string $archetypes = 'ma', string $as = 'opp'): Closure
     {
-        return function (JoinClause $join) use ($matches, $archetypes, $as) {
-            $join->on("{$as}.match_id", '=', "{$matches}.id")
+        $matchColumn = $matches === $archetypes ? "{$archetypes}.mtgo_match_id" : "{$matches}.id";
+
+        return function (JoinClause $join) use ($matchColumn, $archetypes, $as) {
+            $join->on("{$as}.match_id", '=', $matchColumn)
                 ->on("{$as}.player_id", '=', "{$archetypes}.player_id");
         };
     }

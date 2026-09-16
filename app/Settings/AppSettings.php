@@ -484,16 +484,6 @@ class AppSettings
         $this->set('overlay_background_path', $path);
     }
 
-    public function decksGroupedByArchetype(): bool
-    {
-        return (bool) $this->get('decks_grouped_by_archetype', false);
-    }
-
-    public function setDecksGroupedByArchetype(bool $value): void
-    {
-        $this->set('decks_grouped_by_archetype', $value);
-    }
-
     public function hideArchivedDecks(): bool
     {
         return (bool) $this->get('hide_archived_decks', true);

@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOneThrough;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 /**
@@ -90,14 +91,16 @@ class MtgoMatch extends Model
     /** @return HasMany<MatchArchetype, $this> */
     public function opponentArchetypes(): HasMany
     {
+        // EXISTS on the (game_id, is_local) index rather than a DISTINCT ... IN
+        // list: SQLite materialises the latter once per archetype row.
         return $this->hasMany(MatchArchetype::class)
-            ->whereIn('player_id', function ($q) {
-                $q->select('gp.player_id')
+            ->whereExists(function ($q) {
+                $q->select(DB::raw(1))
                     ->from('game_player as gp')
                     ->join('games as g', 'g.id', '=', 'gp.game_id')
                     ->whereColumn('g.match_id', 'match_archetypes.mtgo_match_id')
-                    ->where('gp.is_local', false)
-                    ->distinct();
+                    ->whereColumn('gp.player_id', 'match_archetypes.player_id')
+                    ->where('gp.is_local', false);
             });
     }
 
@@ -192,6 +195,15 @@ class MtgoMatch extends Model
         $raw = preg_match('/^C[A-Z]/', $format) ? substr($format, 1) : $format;
 
         return Str::title(strtolower($raw));
+    }
+
+    /**
+     * The `archetypes.format` key for a deck or match format code: `CModern`
+     * and `Modern` both give `modern`.
+     */
+    public static function archetypeFormat(?string $format): string
+    {
+        return strtolower(self::displayFormat($format));
     }
 
     public function isCompleted(): bool
