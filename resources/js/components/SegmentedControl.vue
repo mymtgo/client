@@ -25,7 +25,7 @@ const emit = defineEmits<{
             class="relative py-2 cursor-pointer rounded border border-black px-4 text-xs font-medium transition-all disabled:cursor-not-allowed disabled:opacity-40"
             :class="
                 modelValue === opt.value
-                    ? 'border border-black/50 bg-black/20 text-foreground shadow-inner shadow-black/60 outline-[1px] outline-none'
+                    ? 'nav-item-active'
                     : 'bevel border text-muted-foreground hover:text-foreground bg-background hover:brightness-125'
             "
             @click="emit('update:modelValue', opt.value)"

@@ -44,8 +44,8 @@ const items: NavItem[] = [
                 class="flex items-center gap-3 rounded px-3 py-2 text-sm font-medium transition-colors"
                 :class="
                     currentPage === item.key
-                        ? 'border border-black/50 bg-black/10 text-foreground shadow-inner shadow-black/50 outline outline-white/5'
-                        : 'border border-transparent text-muted-foreground hover:bg-muted/50 hover:text-foreground'
+                        ? 'nav-item-active'
+                        : 'nav-item-inactive'
                 "
             >
                 <component
@@ -58,10 +58,3 @@ const items: NavItem[] = [
         </nav>
     </div>
 </template>
-
-<style scoped>
-.nav-icon-active {
-    color: #38bdf8;
-    filter: drop-shadow(0 0 4px rgba(56, 189, 248, 0.7)) drop-shadow(0 0 8px rgba(56, 189, 248, 0.35));
-}
-</style>

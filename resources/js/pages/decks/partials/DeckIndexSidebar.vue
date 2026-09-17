@@ -41,8 +41,8 @@ const totalDecks = computed(() => props.formatOptions.reduce((sum, option) => su
 const selectedCount = computed(() => props.selectedIds.length);
 
 const rowClass = 'flex w-full cursor-pointer items-center gap-2 rounded px-2.5 py-1.5 text-left text-sm transition-colors';
-const activeClass = 'border border-black/50 bg-black/10 text-foreground shadow-inner shadow-black/50 outline outline-white/5';
-const inactiveClass = 'border border-transparent text-muted-foreground hover:bg-muted/50 hover:text-foreground';
+const activeClass = 'nav-item-active';
+const inactiveClass = 'nav-item-inactive';
 const dropClass = 'border-primary/60 bg-primary/10 text-foreground';
 
 function toggleArchetype(value: string) {
@@ -215,16 +215,19 @@ const otherFormat = computed(() => {
                 <span class="flex min-w-0 flex-1 flex-col gap-0.5">
                     <span class="flex items-center gap-2">
                         <span class="min-w-0 flex-1 truncate">{{ option.name }}</span>
-                        <span class="shrink-0 text-xs text-muted-foreground tabular-nums">{{ option.deckCount }}</span>
+                        <span :class="cn('shrink-0 tabular-nums', winrateClass(option.record))">
+                            {{ option.record.total === 0 ? '—' : `${option.record.winrate}%` }}
+                        </span>
                     </span>
                     <span class="flex items-center gap-2 text-xs">
                         <ManaSymbols v-if="option.colorIdentity" :symbols="option.colorIdentity" class="shrink-0" />
-                        <!-- Same-named archetypes exist per format; only ambiguous when no format filter is active. -->
-                        <span v-if="format === '' && option.format" class="shrink-0 text-[10px] tracking-wide text-muted-foreground uppercase">{{
-                            option.format
-                        }}</span>
-                        <span :class="cn('ml-auto shrink-0 tabular-nums', winrateClass(option.record))">
-                            {{ option.record.total === 0 ? '—' : `${option.record.winrate}%` }}
+                        <span class="min-w-0 truncate text-[10px] tracking-wide text-muted-foreground uppercase">
+                            <!-- Same-named archetypes exist per format; only ambiguous when no format filter is active. -->
+                            <template v-if="format === '' && option.format">{{ option.format }} &middot; </template>
+                            {{ option.deckCount }} {{ option.deckCount === 1 ? 'deck' : 'decks' }}
+                        </span>
+                        <span v-if="option.record.total > 0" class="ml-auto shrink-0 text-muted-foreground tabular-nums">
+                            {{ option.record.label }}
                         </span>
                     </span>
                 </span>
