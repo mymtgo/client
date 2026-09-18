@@ -9,7 +9,7 @@ use App\Concerns\HasTimeframeFilter;
 use App\Http\Controllers\Controller;
 use App\Models\Deck;
 use App\Models\DeckVersion;
-use App\Models\MtgoMatch;
+use App\Support\MtgoFormat;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -32,7 +32,7 @@ class MatchesController extends Controller
             ->when($deckVersion, fn ($q) => $q->where('deck_version_id', $deckVersion->id))
             ->whereBetween('started_at', [$from, $to]);
 
-        $archetypeFormat = MtgoMatch::archetypeFormat($deck->format);
+        $archetypeFormat = MtgoFormat::key($deck->format);
 
         $pendingArchetypeCount = $deck->matches()
             ->whereNotNull('archetype_detection_queued_at')
@@ -48,7 +48,7 @@ class MatchesController extends Controller
             'manualMatchDeck' => [
                 'id' => $deck->id,
                 'name' => $deck->name,
-                'format' => MtgoMatch::displayFormat($deck->format),
+                'format' => MtgoFormat::display($deck->format),
                 'formatCode' => $deck->format,
             ],
             'manualMatchLeagues' => GetManualMatchLeagueOptions::run($deck->id),

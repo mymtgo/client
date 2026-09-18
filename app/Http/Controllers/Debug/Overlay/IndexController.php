@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Archetype;
 use App\Models\Deck;
 use App\Models\MtgoMatch;
+use App\Support\MtgoFormat;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -38,7 +39,7 @@ class IndexController extends Controller
                     'value' => (string) $deck->id,
                     // Normalised to the archetypes table's convention
                     // ('CMODERN' → 'modern') so the page can pair them up.
-                    'format' => strtolower(MtgoMatch::displayFormat((string) $deck->format)),
+                    'format' => MtgoFormat::key((string) $deck->format),
                 ]),
             'archetypeOptions' => Archetype::query()
                 ->where('is_fallback', false)

@@ -18,6 +18,7 @@ use App\Models\Account;
 use App\Models\Deck;
 use App\Models\MtgoMatch;
 use App\Support\MatchRecord;
+use App\Support\MtgoFormat;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -75,7 +76,7 @@ class IndexController extends Controller
                 ->values()
                 ->map(fn (string $f) => [
                     'value' => $f,
-                    'label' => MtgoMatch::displayFormat($f),
+                    'label' => MtgoFormat::display($f),
                 ])
                 ->all()),
             'deckStats' => Inertia::defer(fn () => Deck::forActiveAccount()->with(['cover', 'archetype'])->withCount([

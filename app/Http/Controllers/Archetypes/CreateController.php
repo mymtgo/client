@@ -6,20 +6,13 @@ use App\Actions\Archetypes\GetFilteredArchetypes;
 use App\Actions\Archetypes\ScanMatchOpponentCards;
 use App\Http\Controllers\Controller;
 use App\Models\MtgoMatch;
+use App\Support\MtgoFormat;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class CreateController extends Controller
 {
-    private const FORMAT_MAP = [
-        'CMODERN' => 'modern',
-        'CPAUPER' => 'pauper',
-        'CLEGACY' => 'legacy',
-        'CVINTAGE' => 'vintage',
-        'CPREMODERN' => 'premodern',
-    ];
-
     public function __invoke(Request $request): Response
     {
         $data = GetFilteredArchetypes::run($request);
@@ -93,7 +86,7 @@ class CreateController extends Controller
 
         return [
             'source_match_id' => $match->id,
-            'format' => self::FORMAT_MAP[$match->format] ?? strtolower($match->format),
+            'format' => MtgoFormat::key($match->format),
             'color_identity' => $result['color_identity'],
             'cards' => $result['cards'],
         ];

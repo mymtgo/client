@@ -4,8 +4,8 @@ namespace App\Actions\Leagues;
 
 use App\Actions\Matches\ResolveOpponentColorIdentities;
 use App\Models\League;
-use App\Models\MtgoMatch;
 use App\Support\Leagues\LeagueEvTable;
+use App\Support\MtgoFormat;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -241,7 +241,7 @@ class FormatLeagueRuns
         return [
             'id' => $league->id,
             'name' => $league->name,
-            'format' => MtgoMatch::displayFormat($league->format),
+            'format' => MtgoFormat::display($league->format),
             'state' => $league->state->value,
             'manual' => (bool) $league->manual,
             'startedAt' => $league->started_at,
@@ -392,7 +392,7 @@ class FormatLeagueRuns
     private static function tixDelta(League $league, Collection $matches): ?float
     {
         return LeagueEvTable::netTixForRun(
-            MtgoMatch::displayFormat($league->format),
+            MtgoFormat::display($league->format),
             $league->state->value,
             $matches->where('outcome', 'win')->count(),
             $matches->where('outcome', 'loss')->count(),

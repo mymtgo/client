@@ -2,7 +2,7 @@ import { computed, type Ref } from 'vue';
 
 /**
  * The `archetypes.format` key for a deck's format, raw code or display label.
- * Mirrors `MtgoMatch::archetypeFormat()`: MTGO prefixes its format codes with
+ * Mirrors `MtgoFormat::key()`: MTGO prefixes its format codes with
  * a `C` (`CModern`, `CSTANDARD`), so the prefix is stripped and the rest
  * lowercased. A generic rule rather than a lookup, so a format the lookup
  * forgot cannot silently filter every archetype out.

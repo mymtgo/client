@@ -6,6 +6,7 @@ use App\Enums\MatchState;
 use App\Models\Account;
 use App\Models\League;
 use App\Models\MtgoMatch;
+use App\Support\MtgoFormat;
 
 class GetActiveLeague
 {
@@ -54,7 +55,7 @@ class GetActiveLeague
 
         return [
             'name' => $league->name,
-            'format' => MtgoMatch::displayFormat($league->format),
+            'format' => MtgoFormat::display($league->format),
             'isActive' => $matches->count() < $rounds,
             'isTrophy' => $wins === $rounds,
             'deckName' => $league->deckVersion?->deck->name ?? $matches->last()?->deck?->name,

@@ -1,0 +1,4 @@
+<Grouping Name="Caps Test" NetDeckId="caab1001-0000-0000-0000-000000002001" GroupingType="Deck" Timestamp="2026-04-29T10:00:00" FormatCode="Standard">
+  <Item CatId="1001" Quantity="4" IsSideboard="False" />
+  <Item CatId="2001" Quantity="3" IsSideboard="True" />
+</Grouping>

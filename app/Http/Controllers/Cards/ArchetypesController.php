@@ -5,8 +5,8 @@ namespace App\Http\Controllers\Cards;
 use App\Http\Controllers\Controller;
 use App\Models\Archetype;
 use App\Models\Card;
-use App\Models\MtgoMatch;
 use App\Support\ColorIdentity;
+use App\Support\MtgoFormat;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -46,7 +46,7 @@ class ArchetypesController extends Controller
                 'id' => $a->id,
                 'name' => $a->name,
                 'format' => $a->format,
-                'formatLabel' => $a->format ? MtgoMatch::displayFormat($a->format) : null,
+                'formatLabel' => $a->format ? MtgoFormat::display($a->format) : null,
                 'colorIdentity' => ColorIdentity::normalize($a->color_identity),
                 'maindeck' => (bool) $a->in_maindeck,
                 'sideboard' => (bool) $a->in_sideboard,

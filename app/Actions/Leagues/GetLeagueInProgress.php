@@ -6,9 +6,9 @@ use App\Enums\LeagueState;
 use App\Models\Deck;
 use App\Models\DeckVersion;
 use App\Models\League;
-use App\Models\MtgoMatch;
 use App\Support\Leagues\LeagueFinishOdds;
 use App\Support\MatchRecord;
+use App\Support\MtgoFormat;
 
 class GetLeagueInProgress
 {
@@ -65,7 +65,7 @@ class GetLeagueInProgress
             'winProbability' => (int) round($winProbability * 100),
             'oddsSource' => $oddsSource,
             'odds' => LeagueFinishOdds::run(
-                MtgoMatch::displayFormat($league->format),
+                MtgoFormat::display($league->format),
                 $wins,
                 $losses,
                 $league->kind->roundCount(),

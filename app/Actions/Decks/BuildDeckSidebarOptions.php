@@ -7,9 +7,9 @@ use App\Data\Front\DeckArchetypeOptionData;
 use App\Data\Front\DeckFormatOptionData;
 use App\Enums\MatchState;
 use App\Models\Deck;
-use App\Models\MtgoMatch;
 use App\Support\ColorIdentity;
 use App\Support\MatchRecord;
+use App\Support\MtgoFormat;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Spatie\LaravelData\DataCollection;
@@ -34,7 +34,7 @@ class BuildDeckSidebarOptions
         $options = $rows
             ->map(fn ($row) => new DeckFormatOptionData(
                 value: $row->format,
-                label: MtgoMatch::displayFormat($row->format),
+                label: MtgoFormat::display($row->format),
                 count: (int) $row->deck_count,
             ))
             ->sortBy(fn (DeckFormatOptionData $option) => $option->label)

@@ -10,6 +10,7 @@ use App\Models\GameLog;
 use App\Models\ImportScan;
 use App\Models\ImportScanMatch;
 use App\Models\MtgoMatch;
+use App\Support\MtgoFormat;
 use Carbon\Carbon;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -94,7 +95,7 @@ class MatchAndScoreJob implements ShouldQueue
                     'started_at' => $record['StartTime'],
                     'opponent' => $record['Opponents'][0] ?? 'Unknown',
                     'format' => $record['Format'] ?? '',
-                    'format_display' => MtgoMatch::displayFormat($record['Format'] ?? ''),
+                    'format_display' => MtgoFormat::display($record['Format'] ?? ''),
                     'games_won' => $wins,
                     'games_lost' => $losses,
                     'outcome' => $wins > $losses ? 'win' : ($wins < $losses ? 'loss' : 'draw'),

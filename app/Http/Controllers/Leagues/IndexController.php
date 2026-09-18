@@ -12,7 +12,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Account;
 use App\Models\Deck;
 use App\Models\League;
-use App\Models\MtgoMatch;
+use App\Support\MtgoFormat;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -92,7 +92,7 @@ class IndexController extends Controller
             ->map(fn (Deck $d) => [
                 'id' => $d->id,
                 'name' => $d->name,
-                'format' => MtgoMatch::displayFormat($d->format),
+                'format' => MtgoFormat::display($d->format),
                 'formatCode' => $d->format,
             ])
             ->values()

@@ -4,9 +4,9 @@ namespace App\Http\Controllers\Opponents;
 
 use App\Http\Controllers\Controller;
 use App\Models\Account;
-use App\Models\MtgoMatch;
 use App\Support\ColorIdentity;
 use App\Support\MatchRecord;
+use App\Support\MtgoFormat;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -87,7 +87,7 @@ class IndexController extends Controller
 
             $formats = ($formatsByPlayer[$row->player_id] ?? collect())
                 ->pluck('format')->unique()
-                ->map(fn ($f) => MtgoMatch::displayFormat($f))
+                ->map(fn ($f) => MtgoFormat::display($f))
                 ->sort()->values()->all();
 
             return [

@@ -15,7 +15,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOneThrough;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 
 /**
  * @property int|null $wins
@@ -183,27 +182,6 @@ class MtgoMatch extends Model
             $q->whereNull('format')
                 ->orWhereRaw("format NOT GLOB 'D[A-Z]*'");
         });
-    }
-
-    public static function displayFormat(?string $format): string
-    {
-        if ($format === null || $format === '') {
-            return '';
-        }
-
-        // MTGO format codes are prefixed with 'C' (e.g. CModern, CStandard)
-        $raw = preg_match('/^C[A-Z]/', $format) ? substr($format, 1) : $format;
-
-        return Str::title(strtolower($raw));
-    }
-
-    /**
-     * The `archetypes.format` key for a deck or match format code: `CModern`
-     * and `Modern` both give `modern`.
-     */
-    public static function archetypeFormat(?string $format): string
-    {
-        return strtolower(self::displayFormat($format));
     }
 
     public function isCompleted(): bool

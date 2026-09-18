@@ -10,7 +10,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Archetype;
 use App\Models\Card;
 use App\Models\Deck;
-use App\Models\MtgoMatch;
+use App\Support\MtgoFormat;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -22,7 +22,7 @@ class SettingsController extends Controller
 
         $deck->load('archetype');
 
-        $archetypes = Archetype::where('format', MtgoMatch::archetypeFormat($deck->format))
+        $archetypes = Archetype::where('format', MtgoFormat::key($deck->format))
             ->orderBy('name')
             ->withExists('decks')
             ->get()

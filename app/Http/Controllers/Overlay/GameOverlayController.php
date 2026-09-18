@@ -18,6 +18,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Archetype;
 use App\Models\MtgoMatch;
 use App\Models\SideboardGuide;
+use App\Support\MtgoFormat;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -52,7 +53,7 @@ class GameOverlayController extends Controller
         return Inertia::render('overlay/GameOverlay', [
             'sections' => $sections,
             'opponent' => $sections['opponent'] ? $opponent : null,
-            'format' => $match ? MtgoMatch::displayFormat($match->format) : null,
+            'format' => $match ? MtgoFormat::display($match->format) : null,
             'archetypes' => Inertia::defer(fn () => GetArchetypeOptions::run()),
             // Deferred, not a plain value: the 5s poll excludes `drawOdds`, but
             // a plain prop is still evaluated while the props array is built —

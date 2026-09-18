@@ -3,8 +3,8 @@
 namespace App\Data\Front;
 
 use App\Models\Deck;
-use App\Models\MtgoMatch;
 use App\Support\MatchRecord;
+use App\Support\MtgoFormat;
 use Carbon\Carbon;
 use Spatie\LaravelData\Data;
 use Spatie\LaravelData\Lazy;
@@ -41,7 +41,7 @@ class DeckData extends Data
             id: $deck->id,
             name: $deck->name,
             originalName: $deck->original_name,
-            format: MtgoMatch::displayFormat($deck->format),
+            format: MtgoFormat::display($deck->format),
             record: $record->toData(),
             colorIdentity: $deck->color_identity,
             coverArt: $deck->cover?->art_crop_url,

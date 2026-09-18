@@ -3,7 +3,7 @@
 namespace App\Data\Front;
 
 use App\Models\League;
-use App\Models\MtgoMatch;
+use App\Support\MtgoFormat;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Spatie\LaravelData\Data;
@@ -24,7 +24,7 @@ class LeagueData extends Data
         return new self(
             name: $league->name,
             startedAt: $league->started_at,
-            format: MtgoMatch::displayFormat($league->format),
+            format: MtgoFormat::display($league->format),
             manual: (bool) $league->manual,
             matches: MatchData::collect($league->matches),
         );

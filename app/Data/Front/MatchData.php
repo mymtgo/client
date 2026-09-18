@@ -3,6 +3,7 @@
 namespace App\Data\Front;
 
 use App\Models\MtgoMatch;
+use App\Support\MtgoFormat;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Spatie\LaravelData\Data;
@@ -47,7 +48,7 @@ class MatchData extends Data
     {
         return new self(
             id: $match->id,
-            format: MtgoMatch::displayFormat($match->format),
+            format: MtgoFormat::display($match->format),
             matchType: $match->match_type,
             leagueGame: $match->league_id !== null,
             gamesWon: $match->gamesWon(),

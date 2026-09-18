@@ -4,6 +4,7 @@ namespace App\Actions\Archetypes;
 
 use App\Models\ArchetypeDeck;
 use App\Models\Card;
+use App\Support\MtgoFormat;
 use Illuminate\Support\Collection;
 
 class EstimateArchetypeLocally
@@ -32,16 +33,6 @@ class EstimateArchetypeLocally
      * match on weak evidence. Full coverage of a small deck bypasses this.
      */
     private const MIN_CONFIDENT_MATCHES = 8;
-
-    private const FORMAT_MAP = [
-        'cmodern' => 'modern',
-        'cpauper' => 'pauper',
-        'clegacy' => 'legacy',
-        'cvintage' => 'vintage',
-        'cpremodern' => 'premodern',
-        'cpioneer' => 'pioneer',
-        'cstandard' => 'standard',
-    ];
 
     /**
      * Attempt to match a deck against locally-downloaded archetype decklists.
@@ -106,7 +97,7 @@ class EstimateArchetypeLocally
             return null;
         }
 
-        $normalizedFormat = self::normalizeFormat($format);
+        $normalizedFormat = MtgoFormat::key($format);
 
         $candidateDecks = ArchetypeDeck::query()
             ->whereHas('archetype', fn ($q) => $q->where('format', $normalizedFormat))
@@ -205,12 +196,5 @@ class EstimateArchetypeLocally
     private static function isBasicLand(string $type): bool
     {
         return str_contains($type, 'Basic') && str_contains($type, 'Land');
-    }
-
-    private static function normalizeFormat(string $format): string
-    {
-        $lower = strtolower($format);
-
-        return self::FORMAT_MAP[$lower] ?? $lower;
     }
 }

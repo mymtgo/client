@@ -5,8 +5,8 @@ namespace App\Actions\Leagues;
 use App\Models\Deck;
 use App\Models\DeckVersion;
 use App\Models\League;
-use App\Models\MtgoMatch;
 use App\Support\Leagues\LeagueEvTable;
+use App\Support\MtgoFormat;
 use Carbon\Carbon;
 
 class GetDeckLeaguePnl
@@ -27,7 +27,7 @@ class GetDeckLeaguePnl
      */
     public static function run(Deck $deck, Carbon $from, Carbon $to, ?DeckVersion $deckVersion = null): array
     {
-        $format = MtgoMatch::displayFormat($deck->format);
+        $format = MtgoFormat::display($deck->format);
         $entryCost = LeagueEvTable::entryCost($format);
 
         if ($entryCost === null) {
@@ -63,7 +63,7 @@ class GetDeckLeaguePnl
 
         foreach ($leagues as $league) {
             $delta = LeagueEvTable::netTixForRun(
-                MtgoMatch::displayFormat($league->format),
+                MtgoFormat::display($league->format),
                 $league->state->value,
                 $league->wins_count,
                 $league->losses_count,

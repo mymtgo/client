@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Cards;
 use App\Http\Controllers\Controller;
 use App\Models\Archetype;
 use App\Models\Card;
-use App\Models\MtgoMatch;
+use App\Support\MtgoFormat;
 use Illuminate\Contracts\Database\Query\Builder;
 use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
 use Illuminate\Http\Request;
@@ -67,7 +67,7 @@ class IndexController extends Controller
                 ->whereNotNull('format')
                 ->distinct()
                 ->pluck('format')
-                ->mapWithKeys(fn (string $f) => [$f => MtgoMatch::displayFormat($f)])
+                ->mapWithKeys(fn (string $f) => [$f => MtgoFormat::display($f)])
                 ->sortBy(fn (string $label) => $label),
             'filters' => [
                 'search' => $search,

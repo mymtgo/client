@@ -4,7 +4,7 @@ namespace App\Actions\Leagues;
 
 use App\Exceptions\OfflineModeException;
 use App\Models\Archetype;
-use App\Models\MtgoMatch;
+use App\Support\MtgoFormat;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -19,7 +19,7 @@ class FetchOpponentLeagueArchetype
      */
     public static function run(string $username, string $rawFormat): ?array
     {
-        $format = strtolower(MtgoMatch::displayFormat($rawFormat));
+        $format = MtgoFormat::key($rawFormat);
 
         try {
             $response = Http::mymtgoApi()

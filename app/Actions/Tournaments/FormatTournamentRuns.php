@@ -4,8 +4,8 @@ namespace App\Actions\Tournaments;
 
 use App\Enums\MatchState;
 use App\Models\Deck;
-use App\Models\MtgoMatch;
 use App\Models\Tournament;
+use App\Support\MtgoFormat;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -204,7 +204,7 @@ class FormatTournamentRuns
         return [
             'id' => $tournament->id,
             'name' => $tournament->name,
-            'format' => MtgoMatch::displayFormat($tournament->format),
+            'format' => MtgoFormat::display($tournament->format),
             'mtgo_event_id' => $tournament->mtgo_event_id,
             'startedAt' => $tournament->started_at,
             'startedAtHuman' => $tournament->started_at ? Carbon::parse($tournament->started_at)->toLocal()->diffForHumans() : null,

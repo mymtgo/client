@@ -8,7 +8,7 @@ use App\Facades\AppSettings;
 use App\Http\Controllers\Controller;
 use App\Models\Deck;
 use App\Models\League;
-use App\Models\MtgoMatch;
+use App\Support\MtgoFormat;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
@@ -86,7 +86,7 @@ class OverlayController extends Controller
             'league' => [
                 'id' => $league->id,
                 'name' => $league->name,
-                'format' => MtgoMatch::displayFormat($league->format),
+                'format' => MtgoFormat::display($league->format),
                 'wins' => $league->wins_count,
                 'losses' => $league->losses_count,
                 'totalMatches' => $league->total_matches_count,

@@ -8,6 +8,7 @@ use App\Actions\RegisterDevice;
 use App\Facades\AppSettings;
 use App\Models\Card;
 use App\Models\MtgoMatch;
+use App\Support\MtgoFormat;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -136,7 +137,7 @@ class ParseImportableMatches
                 'history_id' => $record['Id'],
                 'started_at' => $record['StartTime'],
                 'opponent' => $record['Opponents'][0] ?? 'Unknown',
-                'format' => MtgoMatch::displayFormat($record['Format'] ?? ''),
+                'format' => MtgoFormat::display($record['Format'] ?? ''),
                 'format_raw' => $record['Format'] ?? '',
                 'games_won' => $wins,
                 'games_lost' => $losses,

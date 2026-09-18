@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Decks;
 use App\Http\Controllers\Controller;
 use App\Models\Archetype;
 use App\Models\Deck;
-use App\Models\MtgoMatch;
+use App\Support\MtgoFormat;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -46,7 +46,7 @@ class BulkUpdateDeckArchetypeController extends Controller
      */
     private function guardFormats($deckFormats, Archetype $archetype): void
     {
-        $formats = $deckFormats->map(fn (string $format) => MtgoMatch::archetypeFormat($format))->unique();
+        $formats = $deckFormats->map(fn (string $format) => MtgoFormat::key($format))->unique();
 
         if ($formats->count() > 1) {
             throw ValidationException::withMessages([

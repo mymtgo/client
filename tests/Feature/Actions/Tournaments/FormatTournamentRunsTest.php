@@ -11,6 +11,7 @@ use App\Models\Game;
 use App\Models\MtgoMatch;
 use App\Models\Player;
 use App\Models\Tournament;
+use App\Support\MtgoFormat;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 
@@ -54,7 +55,7 @@ it('formats a tournament with derived W-L and per-match data', function () {
     $row = $rows[0];
     expect($row['id'])->toBe($tournament->id);
     expect($row['name'])->toBe('Modern Challenge 32');
-    expect($row['format'])->toBe(MtgoMatch::displayFormat('CMODERN'));
+    expect($row['format'])->toBe(MtgoFormat::display('CMODERN'));
     expect($row['results'])->toBe(['W', 'L']);
     expect($row['matches'])->toHaveCount(2);
     expect($row['matches'][0])->toHaveKeys([
