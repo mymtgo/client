@@ -1,0 +1,97 @@
+MyMTGO Source-Available Licence, Version 1.0
+
+Copyright (c) 2026 Alec Ritson. All rights reserved.
+
+This software is source-available, not open source. The source is published
+so that anyone can read it, audit what the app does with their data, and
+build it for themselves. It is not published so that it can be redistributed,
+rebranded, or built into a competing product.
+
+1. DEFINITIONS
+
+   "Software" means the source code, build scripts, assets, and documentation
+   in this repository, excluding Third-Party Components (section 7).
+
+   "Licensor" means Alec Ritson.
+
+   "You" means the individual or entity exercising the rights in this Licence.
+
+   "Derivative" means any work based on, adapted from, or containing any part
+   of the Software, including a fork, a port, or a modified build.
+
+2. GRANT
+
+   Subject to sections 3 to 6, the Licensor grants You a worldwide,
+   royalty-free, non-exclusive, non-transferable, revocable licence to:
+
+   a. read, study, and privately discuss the Software;
+   b. reproduce the Software for the purposes in (a), (c), and (d);
+   c. compile, install, and run the Software on hardware You own or control,
+      for Your own personal, non-commercial use;
+   d. modify the Software for the purposes in (c), and submit those
+      modifications to the Licensor as a Contribution.
+
+3. RESTRICTIONS
+
+   You may not:
+
+   a. distribute, publish, sell, sublicense, host, or otherwise make
+      available the Software or any Derivative, in source or binary form, to
+      any third party;
+   b. use the Software or any Derivative for any commercial purpose, or in
+      the operation of any service offered to third parties, whether or not
+      for a fee;
+   c. operate, publish, or distribute a client, bot, or service that
+      interoperates with the MyMTGO API using credentials, protocol details,
+      or endpoints derived from the Software, other than an unmodified build
+      of the Software run under section 2(c);
+   d. remove, obscure, or alter any copyright, licence, or attribution notice
+      in the Software;
+   e. use the Software to circumvent any access control, entitlement check,
+      rate limit, or paid tier enforced by the MyMTGO API or website.
+
+4. CONTRIBUTIONS
+
+   If You submit a Contribution to the Licensor, You grant the Licensor a
+   perpetual, worldwide, royalty-free, irrevocable licence to use, reproduce,
+   modify, distribute, sublicense, and relicense that Contribution, in whole
+   or in part, under any terms, including terms different from this Licence.
+   You confirm You have the right to grant that licence. You retain copyright
+   in Your Contribution.
+
+5. TRADE MARKS
+
+   This Licence grants no rights in the names "MyMTGO" or "mymtgo", the
+   MyMTGO logo, or any other Licensor mark, domain, or branding. Those may
+   not be used in any Derivative, or in any way likely to suggest affiliation
+   with or endorsement by the Licensor.
+
+6. TERMINATION
+
+   This Licence terminates automatically if You breach any of its terms. On
+   termination You must cease all use of the Software and destroy all copies
+   in Your possession. Sections 4, 8, and 9 survive termination.
+
+7. THIRD-PARTY COMPONENTS
+
+   The Software depends on and includes third-party components distributed
+   under their own licences. Nothing in this Licence alters those licences,
+   and nothing in them grants rights in the Software beyond this Licence.
+
+8. NO WARRANTY
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT.
+
+9. LIMITATION OF LIABILITY
+
+   TO THE MAXIMUM EXTENT PERMITTED BY LAW, THE LICENSOR SHALL NOT BE LIABLE
+   FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY, WHETHER IN CONTRACT, TORT, OR
+   OTHERWISE, ARISING FROM, OUT OF, OR IN CONNECTION WITH THE SOFTWARE OR THE
+   USE OF OR OTHER DEALINGS IN THE SOFTWARE.
+
+10. PERMISSIONS BEYOND THIS LICENCE
+
+   For any use not granted here, including commercial use or redistribution,
+   contact the Licensor at alec@neondigital.com.

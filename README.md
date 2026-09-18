@@ -54,9 +54,17 @@ php artisan native:serve
 - Tailwind CSS v4
 - SQLite
 
-## License
+## Licence
 
-MIT
+Source-available, not open source. See [LICENSE](LICENSE) and [NOTICE](NOTICE).
+
+You may read the source, audit what the app does with your data, and build it
+for your own personal use. You may not redistribute it, publish a fork or
+modified build, or use it commercially. The mymtgo name and logo are not
+licensed.
+
+Contributions are welcome: opening a pull request licenses that contribution
+to the project (LICENSE, section 4).
 
 ## Disclaimer
 

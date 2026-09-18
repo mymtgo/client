@@ -1,0 +1,29 @@
+MyMTGO
+Copyright (c) 2026 Alec Ritson. All rights reserved.
+
+This product is source-available under the MyMTGO Source-Available Licence,
+Version 1.0. See LICENSE. It is not open source: you may read, audit, and
+build it for your own use, but you may not redistribute it or any derivative
+of it, and you may not use it commercially.
+
+TRADE MARKS
+
+"MyMTGO", "mymtgo", the MyMTGO logo, the mymtgo.com domain, and all other
+MyMTGO branding are trade marks of Alec Ritson and are not licensed by the
+MyMTGO Source-Available Licence. No fork, derivative, or related project may
+use them, or any confusingly similar name or mark, in its name, branding,
+domain, app listing, or promotion.
+
+THIRD-PARTY COMPONENTS
+
+This product includes software from third parties, each distributed under its
+own licence, including but not limited to the Laravel framework, NativePHP,
+Electron, Vue, Inertia.js, and Tailwind CSS. Their licences are unaffected by
+the MyMTGO Source-Available Licence and are reproduced in the dependency
+directories of a built application (vendor/ and node_modules/).
+
+THIRD-PARTY TRADE MARKS
+
+Magic: The Gathering and Magic: The Gathering Online (MTGO) are trade marks of
+Wizards of the Coast LLC. MyMTGO is not affiliated with, endorsed by, or
+sponsored by Wizards of the Coast.
