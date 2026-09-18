@@ -1,22 +1,15 @@
 import { computed, type Ref } from 'vue';
 
 /**
- * Raw MTGO format codes (`CModern`) mapped to the lowercased `archetypes.format`
- * values `DownloadArchetypes` stores. Keys are uppercased and matched
- * case-insensitively, so both a raw code and an already-humanised `Modern`
- * resolve to the same value.
+ * The `archetypes.format` key for a deck's format, raw code or display label.
+ * Mirrors `MtgoMatch::archetypeFormat()`: MTGO prefixes its format codes with
+ * a `C` (`CModern`, `CSTANDARD`), so the prefix is stripped and the rest
+ * lowercased. A generic rule rather than a lookup, so a format the lookup
+ * forgot cannot silently filter every archetype out.
  */
-const formatMap: Record<string, string> = {
-    CMODERN: 'modern',
-    CPAUPER: 'pauper',
-    CLEGACY: 'legacy',
-    CVINTAGE: 'vintage',
-    CPREMODERN: 'premodern',
-};
-
-/** The `archetypes.format` key for a deck's format, raw code or display label. */
 export function archetypeFormatKey(format: string): string {
-    return formatMap[format.toUpperCase()] ?? format.toLowerCase();
+    const raw = /^C[A-Z]/.test(format) ? format.slice(1) : format;
+    return raw.toLowerCase();
 }
 
 export function useArchetypeSplit(archetypes: Ref<App.Data.Front.ArchetypeData[]>, format: Ref<string | null>, search: Ref<string>) {

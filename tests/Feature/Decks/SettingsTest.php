@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Archetype;
 use App\Models\Card;
 use App\Models\Deck;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -32,4 +33,17 @@ it('passes null cover art when not set', function () {
     $this->get(route('decks.settings', $deck))
         ->assertOk()
         ->assertInertia(fn ($page) => $page->where('coverArt', null));
+});
+
+it('lists archetypes for a deck whose format is a raw MTGO code', function () {
+    $deck = Deck::factory()->create(['format' => 'CSTANDARD']);
+    Archetype::factory()->create(['name' => 'Boros Aggro', 'format' => 'standard']);
+    Archetype::factory()->create(['name' => 'Boros Energy', 'format' => 'modern']);
+
+    $this->get(route('decks.settings', $deck))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('archetypes', 1)
+            ->where('archetypes.0.name', 'Boros Aggro')
+        );
 });
