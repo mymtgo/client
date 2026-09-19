@@ -2453,12 +2453,12 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/alecritson/desktop.git",
-                "reference": "a939988b10fd6dd71619ef497e0d9c3ddaa6a437"
+                "reference": "604ec2d9bc9178747fb8fd7f8458870a7371e59d"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/alecritson/desktop/zipball/a939988b10fd6dd71619ef497e0d9c3ddaa6a437",
-                "reference": "a939988b10fd6dd71619ef497e0d9c3ddaa6a437",
+                "url": "https://api.github.com/repos/alecritson/desktop/zipball/604ec2d9bc9178747fb8fd7f8458870a7371e59d",
+                "reference": "604ec2d9bc9178747fb8fd7f8458870a7371e59d",
                 "shasum": ""
             },
             "require": {
@@ -2584,7 +2584,7 @@
                     "url": "https://opencollective.com/nativephp"
                 }
             ],
-            "time": "2026-09-14T06:45:24+00:00"
+            "time": "2026-09-17T09:04:13+00:00"
         },
         {
             "name": "nativephp/php-bin",

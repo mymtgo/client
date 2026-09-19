@@ -127,6 +127,13 @@ return [
             'path' => storage_path('logs/laravel.log'),
         ],
 
+        'sync' => [
+            'driver' => 'single',
+            'path' => storage_path('logs/sync.log'),
+            'level' => 'debug',
+            'replace_placeholders' => true,
+        ],
+
         'pipeline' => [
             'driver' => 'daily',
             'path' => storage_path('logs/pipeline.log'),

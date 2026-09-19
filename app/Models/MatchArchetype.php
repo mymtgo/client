@@ -16,6 +16,9 @@ class MatchArchetype extends Model
 {
     protected $guarded = [];
 
+    // Sync dirtiness: editing this row must bump the parent's updated_at.
+    protected $touches = ['match'];
+
     /** @return array<string, string> */
     protected function casts(): array
     {

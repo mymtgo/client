@@ -9,6 +9,7 @@ const props = defineProps<{
 
 const headings: Record<SettingsCurrentPage, { title: string; description: string }> = {
     general: { title: 'General', description: 'Accounts and how mymtgo runs on your machine.' },
+    account: { title: 'Account', description: 'Back your matches up to MyMTGO and keep them in sync across your devices.' },
     overlays: { title: 'Overlays', description: 'Always-on-top windows shown during leagues, matches and drafts.' },
     storage: { title: 'Storage', description: 'Where MTGO files live and what mymtgo keeps on disk.' },
     privacy: { title: 'Data & Privacy', description: 'What leaves this device and what comes back in.' },

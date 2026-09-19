@@ -28,6 +28,14 @@ class Draft extends Model
 
     protected $guarded = [];
 
+    /**
+     * Sync dirtiness: draft content is carried by the league bundle, so a
+     * draft change must bubble up to leagues.updated_at.
+     *
+     * @var list<string>
+     */
+    protected $touches = ['league'];
+
     /** @return array<string, string> */
     protected function casts(): array
     {

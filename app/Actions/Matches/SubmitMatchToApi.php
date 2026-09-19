@@ -2,9 +2,10 @@
 
 namespace App\Actions\Matches;
 
-use App\Actions\RegisterDevice;
+use App\Actions\RecoverFromUnauthorized;
 use App\Exceptions\OfflineModeException;
 use App\Facades\AppSettings;
+use App\Models\Account;
 use App\Models\Archetype;
 use App\Models\Card;
 use App\Models\DeckVersion;
@@ -79,9 +80,15 @@ class SubmitMatchToApi
             ])
             ->toArray();
 
+        $username = $match->games->first()->localPlayers->first()->username;
+
         $payload = [
             'match_token' => $match->token,
-            'username' => $match->games->first()->localPlayers->first()->username,
+            'username' => $username,
+            // The MTGO account id for the reporting seat, when this client
+            // has seen that account log in. The API keys players on it;
+            // null falls back to matching by username on the server.
+            'login_id' => Account::where('username', $username)->value('login_id'),
             'player_archetype_uuid' => self::reportableUuid($playerArchetype->archetype),
             'opponent_archetype_uuid' => self::reportableUuid($opponentArchetype?->archetype),
             'result' => $match->isWin() ? 'win' : 'loss',
@@ -102,7 +109,7 @@ class SubmitMatchToApi
             $response = Http::mymtgoApi()->post('/api/matches/report', $payload);
 
             if ($response->status() === 401) {
-                RegisterDevice::run();
+                RecoverFromUnauthorized::run();
                 $response = Http::mymtgoApi()->post('/api/matches/report', $payload);
             }
 

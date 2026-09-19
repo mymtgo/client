@@ -1,6 +1,7 @@
 <?php
 
 use App\Actions\Matches\SubmitMatchToApi;
+use App\Models\Account;
 use App\Models\Archetype;
 use App\Models\DeckVersion;
 use App\Models\Game;
@@ -366,4 +367,29 @@ it('sends a null opponent archetype uuid for the fallback archetypes', function 
 
         return true;
     });
+});
+
+it('sends the login id of the reporting account when the client knows it', function (): void {
+    Http::fake(['*/api/matches/report' => Http::response([], 200), '*' => Http::response([])]);
+
+    $match = makeSubmittableMatch([[['mtgo_id' => 1001, 'quantity' => 1]]]);
+    $username = $match->games->first()->localPlayers->first()->username;
+    Account::factory()->create(['username' => $username, 'login_id' => 3022021]);
+
+    SubmitMatchToApi::run($match->id);
+
+    Http::assertSent(fn ($request) => str_contains($request->url(), '/api/matches/report')
+        && $request['login_id'] === 3022021);
+});
+
+it('sends a null login id when the reporting account has none', function (): void {
+    Http::fake(['*/api/matches/report' => Http::response([], 200), '*' => Http::response([])]);
+
+    $match = makeSubmittableMatch([[['mtgo_id' => 1001, 'quantity' => 1]]]);
+
+    SubmitMatchToApi::run($match->id);
+
+    Http::assertSent(fn ($request) => str_contains($request->url(), '/api/matches/report')
+        && array_key_exists('login_id', $request->data())
+        && $request['login_id'] === null);
 });

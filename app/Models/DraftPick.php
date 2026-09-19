@@ -24,6 +24,14 @@ class DraftPick extends Model
 
     protected $guarded = [];
 
+    /**
+     * Sync dirtiness: picks ride the league bundle via their draft, so a
+     * recorded pick must bubble draft-then-league.
+     *
+     * @var list<string>
+     */
+    protected $touches = ['draft'];
+
     protected $attributes = [
         'reservations' => '[]',
     ];

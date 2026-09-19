@@ -9,6 +9,9 @@ class CardGameStat extends Model
 {
     protected $guarded = [];
 
+    // Sync dirtiness: editing this row must bump the parent's updated_at.
+    protected $touches = ['game'];
+
     protected $casts = [
         'quantity' => 'integer',
         'kept' => 'integer',

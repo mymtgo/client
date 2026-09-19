@@ -2,19 +2,24 @@
 
 namespace App\Providers;
 
+use App\Actions\Database\ConfigureNativephpConnection;
 use App\Actions\RegisterDevice;
+use App\Actions\Sync\Auth\EnsureAccessToken;
 use App\Exceptions\OfflineModeException;
+use App\Exceptions\Sync\NotLinkedException;
 use App\Facades\AppSettings;
+use App\Listeners\Sync\HandleSyncAuthCallback;
 use App\Listeners\Tray\HandleTrayClick;
 use App\Managers\MtgoManager;
+use App\Services\Sync\SyncTokens;
 use App\Settings\AppSettings as ConcreteAppSettings;
 use App\Settings\MigrateSettingsToJson;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\ServiceProvider;
+use Native\Desktop\Events\App\OpenedFromURL;
 use Native\Desktop\Events\MenuBar\MenuBarClicked;
 
 class AppServiceProvider extends ServiceProvider
@@ -43,6 +48,11 @@ class AppServiceProvider extends ServiceProvider
             HandleTrayClick::class,
         );
 
+        Event::listen(
+            OpenedFromURL::class,
+            HandleSyncAuthCallback::class,
+        );
+
         if (! Storage::disk()->exists('settings.json')) {
             (new MigrateSettingsToJson)->run();
         }
@@ -53,7 +63,28 @@ class AppServiceProvider extends ServiceProvider
             ]);
         }
 
+        // One gate, two credentials. A linked client speaks for its user
+        // and sends the Passport bearer; nothing else, so the device key is
+        // never minted or rotated for it. An unlinked client sends the
+        // device key as before. Offline, the stored token is used as is:
+        // a refresh is a network round trip this macro must not make.
         Http::macro('mymtgoReference', function () {
+            $tokens = app(SyncTokens::class);
+
+            if ($tokens->linked()) {
+                try {
+                    $bearer = AppSettings::isOffline()
+                        ? $tokens->accessToken()
+                        : app(EnsureAccessToken::class)->run();
+
+                    if ($bearer !== null) {
+                        return Http::withToken($bearer)->baseUrl(config('mymtgo_api.url'));
+                    }
+                } catch (NotLinkedException) {
+                    // Unlinked between the check and the read: device mode below.
+                }
+            }
+
             RegisterDevice::ensureFresh();
 
             return Http::withHeaders([
@@ -70,6 +101,19 @@ class AppServiceProvider extends ServiceProvider
             return Http::mymtgoReference();
         });
 
+        // A bare base URL for the token endpoints and the sync API, which
+        // attach their own bearer. They must not ride mymtgoReference: that
+        // macro asks EnsureAccessToken for a token, and a refresh routed
+        // back through it would recurse. This macro still honours offline
+        // mode.
+        Http::macro('mymtgoSync', function () {
+            if (AppSettings::isOffline()) {
+                throw new OfflineModeException;
+            }
+
+            return Http::baseUrl(config('mymtgo_api.url'));
+        });
+
         Carbon::macro('toLocal', function () {
             /** @var Carbon $this */
             return $this->copy()->setTimezone(AppSettings::systemTimezone());
@@ -77,33 +121,13 @@ class AppServiceProvider extends ServiceProvider
     }
 
     /**
-     * Augment NativePHP's dynamic SQLite connection with proper settings.
+     * Augment NativePHP's dynamic SQLite connection with this app's settings.
      *
-     * NativePHP creates the 'nativephp' connection at runtime without busy_timeout,
-     * journal_mode, or synchronous config keys. Without these, Laravel's SQLite
-     * connector defaults to 0ms busy_timeout — causing "database is locked" errors
-     * when 5+ queue workers and the pipeline contend for writes.
+     * Deferred to booted() because NativePHP writes the connection during its
+     * own provider boot; anything earlier is simply overwritten.
      */
     private function configureNativephpDatabase(): void
     {
-        $this->app->booted(function () {
-            if (! config('database.connections.nativephp')) {
-                return;
-            }
-
-            config([
-                'database.connections.nativephp.busy_timeout' => 30000,
-                'database.connections.nativephp.journal_mode' => 'WAL',
-                'database.connections.nativephp.synchronous' => 'NORMAL',
-            ]);
-
-            // The connection may already be resolved by NativePHP's boot.
-            // Override its 5000ms PRAGMA with our 30000ms value.
-            try {
-                DB::connection('nativephp')->statement('PRAGMA busy_timeout=30000;');
-            } catch (\Throwable) {
-                // Connection not yet available — config keys will apply on creation.
-            }
-        });
+        $this->app->booted(fn () => ConfigureNativephpConnection::run());
     }
 }

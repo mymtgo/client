@@ -323,9 +323,9 @@ class IngestLogInstance
             return false;
         }
 
-        if (preg_match('/Username:\s*(\S+)/', $row['raw_text'], $m)) {
+        if (preg_match('/Username:\s*(\S+)(?:\s*\((\d+)\))?/', $row['raw_text'], $m)) {
             $currentUsername = $m[1];
-            Account::registerAndActivate($currentUsername);
+            Account::registerAndActivate($currentUsername, isset($m[2]) ? (int) $m[2] : null);
 
             return true;
         }

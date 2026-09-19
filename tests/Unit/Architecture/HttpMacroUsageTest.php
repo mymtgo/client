@@ -14,6 +14,10 @@ it('routes every mymtgo request through a macro', function () {
     $exempt = [
         'Providers/AppServiceProvider.php',
         'Actions/RegisterDevice.php',
+        // Composes a URL for the system browser and performs no HTTP
+        // request of its own, so there is no macro call site for it to
+        // route through.
+        'Actions/Sync/Auth/BuildAuthorizationRequest.php',
     ];
 
     // Four ways a call site can bypass the macros and talk to mymtgo.com

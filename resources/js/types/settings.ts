@@ -1,4 +1,4 @@
-export type SettingsCurrentPage = 'general' | 'overlays' | 'storage' | 'privacy' | 'advanced';
+export type SettingsCurrentPage = 'general' | 'account' | 'overlays' | 'storage' | 'privacy' | 'advanced';
 
 export type PathStatus = {
     valid: boolean;

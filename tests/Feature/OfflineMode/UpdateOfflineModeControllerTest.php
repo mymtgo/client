@@ -1,8 +1,14 @@
 <?php
 
 use App\Facades\AppSettings;
+use App\Jobs\AttestAccount;
 use App\Jobs\DownloadArchetypes;
+use App\Models\Account;
+use App\Services\Sync\SyncTokens;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
+
+uses(RefreshDatabase::class);
 
 it('enables offline mode without contacting the api', function () {
     AppSettings::setOffline(false);
@@ -26,6 +32,31 @@ it('resyncs the archetype catalog when rejoining', function () {
     expect(AppSettings::isOffline())->toBeFalse();
 
     Queue::assertPushed(DownloadArchetypes::class);
+});
+
+it('re-attests known accounts when a linked client rejoins', function () {
+    AppSettings::setOffline(true);
+    app(SyncTokens::class)->store('access-token', 'refresh-token', 2592000);
+    Queue::fake();
+    $keyed = Account::factory()->create(['username' => 'anticloser', 'login_id' => 3022021]);
+    Account::factory()->create(['username' => 'unknown', 'login_id' => null]);
+
+    $this->patch(route('settings.offline-mode'), ['enabled' => false])
+        ->assertRedirect();
+
+    Queue::assertPushed(AttestAccount::class, fn (AttestAccount $job) => $job->accountId === $keyed->id);
+    Queue::assertPushed(AttestAccount::class, 1);
+});
+
+it('does not attest when rejoining unlinked', function () {
+    AppSettings::setOffline(true);
+    app(SyncTokens::class)->clear();
+    Queue::fake();
+    Account::factory()->create(['username' => 'anticloser', 'login_id' => 3022021]);
+
+    $this->patch(route('settings.offline-mode'), ['enabled' => false]);
+
+    Queue::assertNotPushed(AttestAccount::class);
 });
 
 it('does not resync when already online', function () {

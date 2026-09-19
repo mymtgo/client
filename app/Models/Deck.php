@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Actions\Limited\EnsureLimitedDeckVersion;
 use App\Enums\MatchState;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
@@ -26,6 +27,8 @@ class Deck extends Model
 {
     use HasFactory, SoftDeletes;
 
+    public const LOCAL_LIMITED_PREFIX = 'limited:league-';
+
     protected $guarded = [];
 
     /** @return array<string, string> */
@@ -46,6 +49,12 @@ class Deck extends Model
     public function sideboardGuides(): HasMany
     {
         return $this->hasMany(SideboardGuide::class);
+    }
+
+    /** @return HasMany<DeckArchetypeNote, $this> */
+    public function archetypeNotes(): HasMany
+    {
+        return $this->hasMany(DeckArchetypeNote::class);
     }
 
     /** @return HasOne<DeckVersion, $this> */
@@ -98,5 +107,35 @@ class Deck extends Model
         }
 
         return $query;
+    }
+
+    public function isLimited(): bool
+    {
+        return $this->format === EnsureLimitedDeckVersion::FORMAT
+            || str_starts_with((string) $this->mtgo_id, 'limited:');
+    }
+
+    /**
+     * Constructed decks only. Limited decks sync on the supporter tier alone.
+     *
+     * @param  Builder<Deck>  $query
+     * @return Builder<Deck>
+     */
+    public function scopeWithoutLimited(Builder $query): Builder
+    {
+        return $query->where('mtgo_id', 'not like', 'limited:%');
+    }
+
+    /**
+     * Decks whose cross-device identity is stable enough to sync. The local-only
+     * limited shape is keyed on an autoincrement, so it would collide across
+     * devices.
+     *
+     * @param  Builder<Deck>  $query
+     * @return Builder<Deck>
+     */
+    public function scopeSyncableIdentity(Builder $query): Builder
+    {
+        return $query->where('mtgo_id', 'not like', self::LOCAL_LIMITED_PREFIX.'%');
     }
 }

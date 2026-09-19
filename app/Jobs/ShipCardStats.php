@@ -2,7 +2,7 @@
 
 namespace App\Jobs;
 
-use App\Actions\RegisterDevice;
+use App\Actions\RecoverFromUnauthorized;
 use App\Exceptions\OfflineModeException;
 use App\Facades\AppSettings;
 use App\Models\CardStatShipQueue;
@@ -82,7 +82,7 @@ class ShipCardStats implements ShouldQueue
             }
 
             if ($status === 401) {
-                RegisterDevice::run();
+                RecoverFromUnauthorized::run();
             }
 
             $this->markFailure($chunk, "HTTP {$status}");

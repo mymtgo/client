@@ -177,6 +177,12 @@ return [
             'timeout' => 60,
             'sleep' => 3,
         ],
+        'sync' => [
+            'queues' => ['sync'],
+            'memory_limit' => 1024,
+            'timeout' => 3600,
+            'sleep' => 3,
+        ],
     ],
 
     /**

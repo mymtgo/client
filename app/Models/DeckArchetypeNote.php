@@ -18,6 +18,9 @@ class DeckArchetypeNote extends Model
 
     protected $guarded = [];
 
+    /** Notes ride the deck's sync bundle, so a note change must mark the deck dirty. */
+    protected $touches = ['deck'];
+
     /** @return BelongsTo<Deck, $this> */
     public function deck(): BelongsTo
     {

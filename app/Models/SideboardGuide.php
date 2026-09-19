@@ -28,6 +28,9 @@ class SideboardGuide extends Model
 
     protected $guarded = [];
 
+    /** Guides ride the deck's sync bundle, so a guide change must mark the deck dirty. */
+    protected $touches = ['deck'];
+
     /** @return BelongsTo<Deck, $this> */
     public function deck(): BelongsTo
     {

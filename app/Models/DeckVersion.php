@@ -18,6 +18,9 @@ class DeckVersion extends Model
 
     protected $guarded = [];
 
+    // Sync dirtiness: editing this row must bump the parent's updated_at.
+    protected $touches = ['deck'];
+
     protected $casts = [
         'modified_at' => 'datetime',
     ];

@@ -1,24 +1,27 @@
 <script setup lang="ts">
 import AppLayout from '@/AppLayout.vue';
-import DeckViewLayout from '@/layouts/DeckViewLayout.vue';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Button } from '@/components/ui/button';
-import { Spinner } from '@/components/ui/spinner';
 import CoverArtOptionsController from '@/actions/App/Http/Controllers/Decks/CoverArtOptionsController';
+import DeckDestroyController from '@/actions/App/Http/Controllers/Decks/DestroyController';
+import DeckRestoreController from '@/actions/App/Http/Controllers/Decks/RestoreController';
+import UpdateCloudSyncController from '@/actions/App/Http/Controllers/Decks/UpdateCloudSyncController';
 import UpdateColorIdentityController from '@/actions/App/Http/Controllers/Decks/UpdateColorIdentityController';
 import UpdateCoverArtController from '@/actions/App/Http/Controllers/Decks/UpdateCoverArtController';
 import UpdateDeckArchetypeController from '@/actions/App/Http/Controllers/Decks/UpdateDeckArchetypeController';
-import DeckDestroyController from '@/actions/App/Http/Controllers/Decks/DestroyController';
-import DeckRestoreController from '@/actions/App/Http/Controllers/Decks/RestoreController';
 import UpdateNameController from '@/actions/App/Http/Controllers/Decks/UpdateNameController';
 import ManaSymbols from '@/components/ManaSymbols.vue';
 import ArchetypePicker from '@/components/archetypes/ArchetypePicker.vue';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { RotateCcw, TriangleAlert, Undo2 } from 'lucide-vue-next';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Spinner } from '@/components/ui/spinner';
+import { Switch } from '@/components/ui/switch';
+import DeckViewLayout from '@/layouts/DeckViewLayout.vue';
 import type { VersionStats } from '@/types/decks';
+import { router, usePage } from '@inertiajs/vue3';
+import { Cloud, RotateCcw, TriangleAlert, Undo2 } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
-import { router } from '@inertiajs/vue3';
 
 defineOptions({ layout: [AppLayout, DeckViewLayout] });
 
@@ -31,6 +34,15 @@ const props = defineProps<{
     coverArt: (App.Data.Front.CardData & { id: number }) | null;
     cardNames: string[];
     archetypes: App.Data.Front.ArchetypeData[];
+    cloudSync: {
+        linked: boolean;
+        enabled: boolean;
+        limit: number | null;
+        used: number;
+        freesAt: string | null;
+        heldBy: string | null;
+        requiresSupporter: boolean;
+    };
 }>();
 
 type ArtOption = {
@@ -48,7 +60,60 @@ const loadingOptions = ref(false);
 const saving = ref(false);
 
 const isReadonly = computed(() => !!props.deck?.deletedAt);
-const readonlyTitle = 'Deck deleted — restore it in the danger zone to make changes';
+const readonlyTitle = 'Deck deleted: restore it in the danger zone to make changes';
+
+const page = usePage();
+const cloudSyncError = computed(() => (page.props.errors as Record<string, string> | undefined)?.cloud_sync ?? null);
+const cloudSyncSaving = ref(false);
+const cloudSyncEnabled = ref(props.cloudSync.enabled);
+
+watch(
+    () => props.cloudSync.enabled,
+    (value) => {
+        cloudSyncEnabled.value = value;
+    },
+);
+
+const slotsFull = computed(
+    () =>
+        props.cloudSync.limit !== null &&
+        props.cloudSync.used >= props.cloudSync.limit &&
+        !props.cloudSync.enabled &&
+        props.cloudSync.freesAt === null,
+);
+
+const REQUIRES_SUPPORTER_MESSAGE = 'Draft and sealed decks sync with a supporter account. Your free deck slot is for constructed decks.';
+
+const cloudSyncDisabled = computed(() => !props.cloudSync.linked || isReadonly.value || cloudSyncSaving.value || props.cloudSync.requiresSupporter);
+
+const cloudSyncTitle = computed(() => {
+    if (!props.cloudSync.linked) return 'Sign in from Settings to sync decks.';
+    if (isReadonly.value) return readonlyTitle;
+    if (props.cloudSync.requiresSupporter) return REQUIRES_SUPPORTER_MESSAGE;
+    return undefined;
+});
+
+function formatDay(iso: string): string {
+    return new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+function toggleCloudSync(value: boolean) {
+    cloudSyncEnabled.value = value;
+    cloudSyncSaving.value = true;
+    router.patch(
+        UpdateCloudSyncController.url(props.deck.id),
+        { enabled: value },
+        {
+            preserveScroll: true,
+            onError: () => {
+                cloudSyncEnabled.value = props.cloudSync.enabled;
+            },
+            onFinish: () => {
+                cloudSyncSaving.value = false;
+            },
+        },
+    );
+}
 
 if (props.coverArt?.name) {
     selectedCardName.value = props.coverArt.name;
@@ -66,14 +131,14 @@ watch(selectedCardName, async (name) => {
     try {
         const url = CoverArtOptionsController.url({ deck: props.deck.id }) + `?card_name=${encodeURIComponent(name)}`;
         const response = await fetch(url, {
-            headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
         });
         const data: ArtOption[] = await response.json();
         artOptions.value = data;
 
         if (data.length === 1) {
             selectedCoverId.value = data[0].id;
-        } else if (!data.find(o => o.id === selectedCoverId.value)) {
+        } else if (!data.find((o) => o.id === selectedCoverId.value)) {
             selectedCoverId.value = null;
         }
     } finally {
@@ -84,12 +149,12 @@ watch(selectedCardName, async (name) => {
 if (props.coverArt?.name) {
     const url = CoverArtOptionsController.url({ deck: props.deck.id }) + `?card_name=${encodeURIComponent(props.coverArt.name)}`;
     fetch(url, {
-        headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+        headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
     })
-    .then(r => r.json())
-    .then((data: ArtOption[]) => {
-        artOptions.value = data;
-    });
+        .then((r) => r.json())
+        .then((data: ArtOption[]) => {
+            artOptions.value = data;
+        });
 }
 
 const hasChanged = computed(() => selectedCoverId.value !== (props.coverArt?.id ?? null));
@@ -101,7 +166,9 @@ function save() {
         { cover_id: selectedCoverId.value },
         {
             preserveScroll: true,
-            onFinish: () => { saving.value = false; },
+            onFinish: () => {
+                saving.value = false;
+            },
         },
     );
 }
@@ -123,7 +190,7 @@ function clear() {
     );
 }
 
-const selectedArt = computed(() => artOptions.value.find(o => o.id === selectedCoverId.value));
+const selectedArt = computed(() => artOptions.value.find((o) => o.id === selectedCoverId.value));
 
 const showArchetypeSelect = ref(false);
 const savingArchetype = ref(false);
@@ -150,7 +217,9 @@ function clearArchetype() {
         { archetype_id: null },
         {
             preserveScroll: true,
-            onFinish: () => { savingArchetype.value = false; },
+            onFinish: () => {
+                savingArchetype.value = false;
+            },
         },
     );
 }
@@ -158,9 +227,12 @@ function clearArchetype() {
 const nameDraft = ref(props.deck.name);
 const savingName = ref(false);
 
-watch(() => props.deck.name, (name) => {
-    nameDraft.value = name;
-});
+watch(
+    () => props.deck.name,
+    (name) => {
+        nameDraft.value = name;
+    },
+);
 
 const trimmedName = computed(() => nameDraft.value.trim());
 const nameChanged = computed(() => trimmedName.value !== '' && trimmedName.value !== props.deck.name);
@@ -178,8 +250,12 @@ function saveName() {
         {
             preserveScroll: true,
             preserveState: true,
-            onFinish: () => { savingName.value = false; },
-            onError: () => { nameDraft.value = props.deck.name; },
+            onFinish: () => {
+                savingName.value = false;
+            },
+            onError: () => {
+                nameDraft.value = props.deck.name;
+            },
         },
     );
 }
@@ -196,7 +272,9 @@ function revertName() {
         {
             preserveScroll: true,
             preserveState: true,
-            onFinish: () => { savingName.value = false; },
+            onFinish: () => {
+                savingName.value = false;
+            },
         },
     );
 }
@@ -216,15 +294,21 @@ function parseIdentity(value: string | null): string[] {
     if (!value) {
         return [];
     }
-    return value.split(',').map((c) => c.trim()).filter(Boolean);
+    return value
+        .split(',')
+        .map((c) => c.trim())
+        .filter(Boolean);
 }
 
 const selectedColors = ref<string[]>(parseIdentity(props.deck.colorIdentity));
 const savingIdentity = ref(false);
 
-watch(() => props.deck.colorIdentity, (value) => {
-    selectedColors.value = parseIdentity(value);
-});
+watch(
+    () => props.deck.colorIdentity,
+    (value) => {
+        selectedColors.value = parseIdentity(value);
+    },
+);
 
 function toggleColor(color: string) {
     if (isReadonly.value) {
@@ -239,25 +323,17 @@ function toggleColor(color: string) {
         current.add(color);
     }
 
-    selectedColors.value = Array.from(current).sort(
-        (a, b) => COLOR_ORDER.indexOf(a) - COLOR_ORDER.indexOf(b),
-    );
+    selectedColors.value = Array.from(current).sort((a, b) => COLOR_ORDER.indexOf(a) - COLOR_ORDER.indexOf(b));
 }
 
 function normalizeIdentity(colors: string[]): string[] {
-    return Array.from(new Set(colors)).sort(
-        (a, b) => COLOR_ORDER.indexOf(a) - COLOR_ORDER.indexOf(b),
-    );
+    return Array.from(new Set(colors)).sort((a, b) => COLOR_ORDER.indexOf(a) - COLOR_ORDER.indexOf(b));
 }
 
-const identityChanged = computed(
-    () => normalizeIdentity(selectedColors.value).join(',') !== (props.deck.colorIdentity ?? ''),
-);
+const identityChanged = computed(() => normalizeIdentity(selectedColors.value).join(',') !== (props.deck.colorIdentity ?? ''));
 
 const previewIdentity = computed(() => {
-    const sorted = [...selectedColors.value].sort(
-        (a, b) => COLOR_ORDER.indexOf(a) - COLOR_ORDER.indexOf(b),
-    );
+    const sorted = [...selectedColors.value].sort((a, b) => COLOR_ORDER.indexOf(a) - COLOR_ORDER.indexOf(b));
     return sorted.join(',') || null;
 });
 
@@ -273,7 +349,9 @@ function saveIdentity() {
         {
             preserveScroll: true,
             preserveState: true,
-            onFinish: () => { savingIdentity.value = false; },
+            onFinish: () => {
+                savingIdentity.value = false;
+            },
             onError: () => {
                 selectedColors.value = parseIdentity(props.deck.colorIdentity);
             },
@@ -301,7 +379,9 @@ function deleteDeck() {
     deleting.value = true;
     router.delete(DeckDestroyController.url({ deck: props.deck.id }), {
         data: { confirmation: DELETE_KEYWORD },
-        onFinish: () => { deleting.value = false; },
+        onFinish: () => {
+            deleting.value = false;
+        },
     });
 }
 
@@ -327,9 +407,7 @@ function restoreDeck() {
             <Card class="mb-4">
                 <CardHeader>
                     <CardTitle>Name</CardTitle>
-                    <CardDescription>
-                        Rename this deck. The original MTGO name is kept so you can revert at any time.
-                    </CardDescription>
+                    <CardDescription> Rename this deck. The original MTGO name is kept so you can revert at any time. </CardDescription>
                 </CardHeader>
                 <CardContent class="flex flex-col gap-3">
                     <div class="flex flex-col gap-2 sm:flex-row">
@@ -351,7 +429,10 @@ function restoreDeck() {
                             Save
                         </Button>
                     </div>
-                    <div v-if="hasCustomName" class="flex items-center justify-between rounded-md border border-dashed border-border bg-muted/30 px-3 py-2 text-sm">
+                    <div
+                        v-if="hasCustomName"
+                        class="flex items-center justify-between rounded-md border border-dashed border-border bg-muted/30 px-3 py-2 text-sm"
+                    >
                         <span class="text-muted-foreground">
                             Original MTGO name: <span class="font-medium text-foreground">{{ deck.originalName }}</span>
                         </span>
@@ -371,9 +452,7 @@ function restoreDeck() {
             <Card class="mb-4">
                 <CardHeader>
                     <CardTitle>Color Identity</CardTitle>
-                    <CardDescription>
-                        Override the deck's color identity. Used for filtering and matchup grouping.
-                    </CardDescription>
+                    <CardDescription> Override the deck's color identity. Used for filtering and matchup grouping. </CardDescription>
                 </CardHeader>
                 <CardContent class="flex flex-col gap-4">
                     <div class="flex flex-wrap gap-2">
@@ -401,7 +480,7 @@ function restoreDeck() {
                     <div class="flex items-center gap-3 rounded-md border border-dashed border-border bg-muted/30 px-3 py-2">
                         <span class="text-sm text-muted-foreground">Preview:</span>
                         <ManaSymbols :symbols="previewIdentity" />
-                        <span v-if="!previewIdentity" class="text-sm italic text-muted-foreground">No colors selected</span>
+                        <span v-if="!previewIdentity" class="text-sm text-muted-foreground italic">No colors selected</span>
                     </div>
 
                     <div class="flex items-center gap-2">
@@ -413,12 +492,7 @@ function restoreDeck() {
                             <Spinner v-if="savingIdentity" class="mr-2 size-4" />
                             Save
                         </Button>
-                        <Button
-                            v-if="identityChanged"
-                            variant="ghost"
-                            :disabled="savingIdentity || isReadonly"
-                            @click="resetIdentity"
-                        >
+                        <Button v-if="identityChanged" variant="ghost" :disabled="savingIdentity || isReadonly" @click="resetIdentity">
                             Cancel
                         </Button>
                     </div>
@@ -483,10 +557,7 @@ function restoreDeck() {
                 </CardHeader>
                 <CardContent class="flex flex-col gap-4">
                     <Select v-model="selectedCardName" :disabled="isReadonly">
-                        <SelectTrigger
-                            class="w-full"
-                            :title="isReadonly ? readonlyTitle : undefined"
-                        >
+                        <SelectTrigger class="w-full" :title="isReadonly ? readonlyTitle : undefined">
                             <SelectValue placeholder="Select a card..." />
                         </SelectTrigger>
                         <SelectContent>
@@ -512,34 +583,24 @@ function restoreDeck() {
                             :key="option.id"
                             type="button"
                             class="overflow-hidden rounded-md border-2 transition-all"
-                            :class="selectedCoverId === option.id
-                                ? 'border-primary ring-2 ring-primary/30 scale-105'
-                                : 'border-border opacity-60 hover:opacity-100 hover:border-muted-foreground'"
+                            :class="
+                                selectedCoverId === option.id
+                                    ? 'scale-105 border-primary ring-2 ring-primary/30'
+                                    : 'border-border opacity-60 hover:border-muted-foreground hover:opacity-100'
+                            "
                             :disabled="isReadonly"
                             @click="selectedCoverId = option.id"
                         >
-                            <img
-                                :src="option.art_crop"
-                                :alt="option.name"
-                                class="h-20 w-28 object-cover"
-                            />
+                            <img :src="option.art_crop" :alt="option.name" class="h-20 w-28 object-cover" />
                         </button>
                     </div>
 
                     <div v-if="selectedArt" class="max-w-sm overflow-hidden rounded-lg border border-border">
-                        <img
-                            :src="selectedArt.art_crop"
-                            :alt="selectedArt.name"
-                            class="w-full object-cover"
-                        />
+                        <img :src="selectedArt.art_crop" :alt="selectedArt.name" class="w-full object-cover" />
                     </div>
 
                     <div v-if="selectedCardName" class="flex items-center gap-2">
-                        <Button
-                            :disabled="!hasChanged || saving || isReadonly"
-                            :title="isReadonly ? readonlyTitle : undefined"
-                            @click="save"
-                        >
+                        <Button :disabled="!hasChanged || saving || isReadonly" :title="isReadonly ? readonlyTitle : undefined" @click="save">
                             <Spinner v-if="saving" class="mr-2 size-4" />
                             Save
                         </Button>
@@ -555,6 +616,49 @@ function restoreDeck() {
                     </div>
                 </CardContent>
             </Card>
+            <Card class="mt-4">
+                <CardHeader>
+                    <CardTitle class="flex items-center gap-2">
+                        <Cloud class="size-4" />
+                        Cloud sync
+                    </CardTitle>
+                    <CardDescription>
+                        Back this deck's matches and leagues up to your MyMTGO account and keep them in sync across your devices.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent class="flex flex-col gap-3">
+                    <div class="flex items-center justify-between gap-4">
+                        <div class="flex flex-col gap-1">
+                            <Label>Sync this deck to the cloud</Label>
+                            <p v-if="!cloudSync.linked" class="text-xs text-muted-foreground">Sign in from Settings to sync decks.</p>
+                            <p v-else-if="cloudSync.requiresSupporter" class="text-xs text-muted-foreground">
+                                {{ REQUIRES_SUPPORTER_MESSAGE }}
+                            </p>
+                            <p v-else-if="cloudSync.limit !== null" class="text-xs text-muted-foreground">
+                                {{ cloudSync.used }} of {{ cloudSync.limit }} deck slot{{ cloudSync.limit === 1 ? '' : 's' }} used. Supporter lifts
+                                this limit.
+                            </p>
+                        </div>
+                        <Switch
+                            :modelValue="cloudSyncEnabled"
+                            :disabled="cloudSyncDisabled"
+                            :title="cloudSyncTitle"
+                            @update:modelValue="toggleCloudSync"
+                        />
+                    </div>
+                    <p v-if="cloudSync.enabled" class="text-xs text-muted-foreground">
+                        Turning this off keeps your data in the cloud but holds the slot for 30 days.
+                    </p>
+                    <p v-if="cloudSync.freesAt" class="text-xs text-warning">
+                        Turned off. This slot stays held until {{ formatDay(cloudSync.freesAt) }}. Turning it back on before then is free.
+                    </p>
+                    <p v-else-if="cloudSync.linked && slotsFull" class="text-xs text-warning">
+                        Your free slot is in use<template v-if="cloudSync.heldBy"> by {{ cloudSync.heldBy }}</template
+                        >. Turn off sync on that deck first.
+                    </p>
+                    <p v-if="cloudSyncError" class="text-xs text-destructive">{{ cloudSyncError }}</p>
+                </CardContent>
+            </Card>
             <Card class="mt-4 border-destructive/40">
                 <CardHeader>
                     <CardTitle class="flex items-center gap-2 text-destructive">
@@ -562,15 +666,13 @@ function restoreDeck() {
                         Danger zone
                     </CardTitle>
                     <CardDescription>
-                        Deleting a deck hides it from your deck list and stops it being updated. Match
-                        history is kept, so you can restore the deck at any time.
+                        Deleting a deck hides it from your deck list and stops it being updated. Match history is kept, so you can restore the deck at
+                        any time.
                     </CardDescription>
                 </CardHeader>
                 <CardContent class="flex flex-col gap-4">
                     <template v-if="isReadonly">
-                        <p class="text-sm text-muted-foreground">
-                            This deck is deleted and read-only. Restore it to make changes again.
-                        </p>
+                        <p class="text-sm text-muted-foreground">This deck is deleted and read-only. Restore it to make changes again.</p>
                         <div>
                             <Button variant="outline" :disabled="restoring" @click="restoreDeck">
                                 <Spinner v-if="restoring" class="mr-2 size-4" />
@@ -594,11 +696,7 @@ function restoreDeck() {
                                     :disabled="deleting"
                                     @keydown.enter.prevent="deleteDeck"
                                 />
-                                <Button
-                                    variant="destructive"
-                                    :disabled="!canDelete || deleting"
-                                    @click="deleteDeck"
-                                >
+                                <Button variant="destructive" :disabled="!canDelete || deleting" @click="deleteDeck">
                                     <Spinner v-if="deleting" class="mr-2 size-4" />
                                     Delete deck
                                 </Button>

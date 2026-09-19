@@ -3,6 +3,8 @@
 namespace App\Actions\Limited;
 
 use App\Actions\Decks\GenerateDeckSignature;
+use App\Actions\Limited\Read\BuildLimitedCardRows;
+use App\Actions\Limited\Read\GetLimitedEventSharedProps;
 use App\Models\Account;
 use App\Models\Deck;
 use App\Models\DeckVersion;
@@ -25,7 +27,7 @@ class EnsureLimitedDeckVersion
      */
     public static function run(League $league, LimitedDeckSnapshot $snapshot): DeckVersion
     {
-        $key = $league->draft?->draft_token ?? "league-{$league->id}";
+        $key = self::keyFor($league);
         $name = trim(($league->set_code ?? 'Limited').' Draft '.($league->started_at ?? now())->toLocal()->format('j M Y'));
 
         $deck = Deck::withTrashed()->firstOrCreate(
@@ -52,5 +54,27 @@ class EnsureLimitedDeckVersion
         $league->update(['deck_version_id' => $version->id]);
 
         return $version;
+    }
+
+    /**
+     * The synthetic limited deck's key for $league. The only source of truth
+     * for this derivation; {@see GetLimitedEventSharedProps}
+     * and {@see BuildLimitedCardRows} look the deck
+     * up by this same key rather than deriving their own.
+     */
+    public static function keyFor(League $league): string
+    {
+        return match (true) {
+            $league->draft?->draft_token !== null => $league->draft->draft_token,
+
+            // Leagues are unique on (event_id, mtgo_course_id) and both come from
+            // MTGO, so this key is identical on every device that saw the event.
+            $league->event_id !== null && $league->mtgo_course_id !== null => "event-{$league->event_id}-{$league->mtgo_course_id}",
+
+            // No stable identity yet. Stay local-only rather than mint a key that
+            // would change when the course id arrives; Deck::scopeSyncableIdentity
+            // keeps this shape out of sync entirely.
+            default => "league-{$league->id}",
+        };
     }
 }

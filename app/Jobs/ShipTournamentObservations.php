@@ -2,7 +2,7 @@
 
 namespace App\Jobs;
 
-use App\Actions\RegisterDevice;
+use App\Actions\RecoverFromUnauthorized;
 use App\Exceptions\OfflineModeException;
 use App\Facades\AppSettings;
 use App\Models\TournamentObservationQueue;
@@ -89,7 +89,7 @@ class ShipTournamentObservations implements ShouldQueue
         }
 
         if ($response === 401) {
-            RegisterDevice::run();
+            RecoverFromUnauthorized::run();
         }
 
         $this->markFailure($rows, "HTTP {$response}");

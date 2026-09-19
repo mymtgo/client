@@ -38,7 +38,7 @@ class RecordRegisteredDeckSnapshot
 
         return LimitedDeckSnapshot::updateOrCreate(
             ['league_id' => $match->league_id, 'match_id' => $match->id, 'source' => 'registered'],
-            ['cards' => $cards, 'signature' => $signature, 'captured_at' => $event->logged_at],
+            ['cards' => $cards, 'signature' => $signature, 'captured_at' => $event->logged_at, 'match_token' => $match->token],
         );
     }
 }

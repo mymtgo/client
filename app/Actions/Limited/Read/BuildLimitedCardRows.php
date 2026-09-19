@@ -5,6 +5,7 @@ namespace App\Actions\Limited\Read;
 use App\Actions\Cards\GetCardGameStats;
 use App\Actions\Limited\Analytics\ComputeCrossDraftCardStats;
 use App\Actions\Limited\Analytics\ComputeSeenWheel;
+use App\Actions\Limited\EnsureLimitedDeckVersion;
 use App\Data\Front\LimitedCardData;
 use App\Models\Deck;
 use App\Models\DraftPick;
@@ -90,9 +91,7 @@ class BuildLimitedCardRows
      */
     private static function deck(League $league): ?Deck
     {
-        $key = $league->draft?->draft_token ?? "league-{$league->id}";
-
-        return Deck::withTrashed()->where('mtgo_id', "limited:{$key}")->first();
+        return Deck::withTrashed()->where('mtgo_id', 'limited:'.EnsureLimitedDeckVersion::keyFor($league))->first();
     }
 
     /**

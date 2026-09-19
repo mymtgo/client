@@ -51,3 +51,7 @@ CLAUDE.md
 
 # Real MTGO log fixtures used by tests
 !tests/Fixtures/logs/*.log
+
+# Claude Code worktrees
+.claude/worktrees/
+/tests/storage

@@ -2,6 +2,7 @@
 
 namespace App\Actions\Limited\Read;
 
+use App\Actions\Limited\EnsureLimitedDeckVersion;
 use App\Data\Front\LimitedEventData;
 use App\Enums\MatchOutcome;
 use App\Enums\MatchState;
@@ -35,9 +36,7 @@ class GetLimitedEventSharedProps
         $setName = $cards->first(fn (Card $c) => $c->set_name !== null)?->set_name;
         $cover = self::coverArt($pickedIds, $cards);
 
-        $deck = $draft
-            ? Deck::withTrashed()->where('mtgo_id', 'limited:'.$draft->draft_token)->first()
-            : Deck::withTrashed()->where('mtgo_id', 'limited:league-'.$league->id)->first();
+        $deck = Deck::withTrashed()->where('mtgo_id', 'limited:'.EnsureLimitedDeckVersion::keyFor($league))->first();
 
         [$state, $variant] = LeagueStateBadge::run($league, $draft, $matches->count());
         $kindLabel = ucfirst($league->kind->value);

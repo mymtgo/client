@@ -14,6 +14,7 @@ use App\Jobs\CheckArchetypeVersion;
 use App\Jobs\DownloadArchetypes;
 use App\Jobs\PopulateMissingCardData;
 use App\Jobs\RunPipelineJob;
+use App\Jobs\RunSyncJob;
 use App\Jobs\ShipCardStats;
 use App\Jobs\ShipTournamentObservations;
 use App\Jobs\SubmitMatch;
@@ -22,6 +23,7 @@ use App\Models\Account;
 use App\Models\Archetype;
 use App\Models\Deck;
 use App\Models\MtgoMatch;
+use App\Services\Sync\SyncTokens;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -274,6 +276,22 @@ class MtgoManager
         $schedule->job(new RunPipelineJob)
             ->everySecond()
             ->name('process_matches');
+
+        // Cross-device sync. Gated on the device actually being linked, and
+        // on offline mode being off, so an unlinked or offline install
+        // never dispatches a job that would only abort itself inside
+        // SyncRunner (offline mode throws OfflineModeException from the
+        // first HTTP call, which SyncRunner also catches as a belt-and-
+        // braces info-level skip for a run already queued when the user
+        // goes offline). withoutOverlapping's expiry is in minutes, per
+        // this file's convention; 120 comfortably outlives the job's own
+        // 3600-second (60-minute) timeout so a killed worker's stale lock
+        // can't outlive a legitimate retry window.
+        $schedule->job(new RunSyncJob)
+            ->everyThirtyMinutes()
+            ->name('run_sync')
+            ->withoutOverlapping(120)
+            ->when(fn () => ! AppSettings::isOffline() && app(SyncTokens::class)->linked());
 
         // Periodic maintenance (unchanged)
         $schedule->call(fn () => $this->retryUnsubmittedMatches())

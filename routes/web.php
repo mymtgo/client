@@ -49,6 +49,7 @@ use App\Http\Controllers\Decks\ToggleHideArchivedController;
 use App\Http\Controllers\Decks\TournamentsController;
 use App\Http\Controllers\Decks\TriggerArchetypeDetectionController;
 use App\Http\Controllers\Decks\UpdateCardSizeController;
+use App\Http\Controllers\Decks\UpdateCloudSyncController;
 use App\Http\Controllers\Decks\UpdateColorIdentityController;
 use App\Http\Controllers\Decks\UpdateCoverArtController;
 use App\Http\Controllers\Decks\UpdateDeckArchetypeController;
@@ -93,6 +94,7 @@ use App\Http\Controllers\Overlay\UpdateOpponentArchetypeController;
 use App\Http\Controllers\Settings\BrowseFolderController;
 use App\Http\Controllers\Settings\CheckApiStatusController;
 use App\Http\Controllers\Settings\DeleteOverlayBackgroundController;
+use App\Http\Controllers\Settings\Pages\AccountController;
 use App\Http\Controllers\Settings\Pages\AdvancedController;
 use App\Http\Controllers\Settings\Pages\GeneralController;
 use App\Http\Controllers\Settings\Pages\OverlaysController;
@@ -104,6 +106,7 @@ use App\Http\Controllers\Settings\RunPopulateCardsController;
 use App\Http\Controllers\Settings\RunSubmitMatchesController;
 use App\Http\Controllers\Settings\RunSyncController;
 use App\Http\Controllers\Settings\SwitchAccountController;
+use App\Http\Controllers\Settings\SyncController as DeviceSyncController;
 use App\Http\Controllers\Settings\UpdateAccountTrackingController;
 use App\Http\Controllers\Settings\UpdateAutostartController;
 use App\Http\Controllers\Settings\UpdateDataPathController;
@@ -235,6 +238,7 @@ Route::group([], function (Router $router) {
         $group->patch('{deck:id}/archetype', UpdateDeckArchetypeController::class)->name('decks.update-archetype')->withTrashed();
         $group->patch('{deck:id}/name', UpdateNameController::class)->name('decks.update-name')->withTrashed();
         $group->patch('{deck:id}/color-identity', UpdateColorIdentityController::class)->name('decks.update-color-identity')->withTrashed();
+        $group->patch('{deck:id}/cloud-sync', UpdateCloudSyncController::class)->name('decks.update-cloud-sync')->withTrashed();
         $group->patch('{deck:id}/restore', DeckRestoreController::class)->name('decks.restore')->withTrashed();
         $group->delete('{deck:id}', DeckDestroyController::class)->name('decks.destroy')->withTrashed();
         $group->post('{deck:id}/export-dek', App\Http\Controllers\Decks\ExportDekController::class)
@@ -296,6 +300,7 @@ Route::group([], function (Router $router) {
     ], function (Router $group) {
         $group->get('/', App\Http\Controllers\Settings\IndexController::class)->name('settings.index');
         $group->get('general', GeneralController::class)->name('settings.general');
+        $group->get('account', AccountController::class)->name('settings.account');
         $group->get('overlays', OverlaysController::class)->name('settings.overlays');
         $group->get('storage', StorageController::class)->name('settings.storage');
         $group->get('privacy', PrivacyController::class)->name('settings.privacy');
@@ -320,6 +325,11 @@ Route::group([], function (Router $router) {
         $group->patch('autostart', UpdateAutostartController::class)->name('settings.autostart');
         $group->get('api-status', CheckApiStatusController::class)->name('settings.api-status');
         $group->post('reauthenticate', ReauthenticateController::class)->name('settings.reauthenticate');
+        $group->get('device-sync', [DeviceSyncController::class, 'show'])->name('settings.device-sync.show');
+        $group->get('device-sync/cloud', [DeviceSyncController::class, 'cloud'])->name('settings.device-sync.cloud');
+        $group->post('device-sync/link', [DeviceSyncController::class, 'link'])->name('settings.device-sync.link');
+        $group->post('device-sync/unlink', [DeviceSyncController::class, 'unlink'])->name('settings.device-sync.unlink');
+        $group->post('device-sync/run', [DeviceSyncController::class, 'run'])->name('settings.device-sync.run');
     });
 
     $router->group([

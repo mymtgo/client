@@ -21,6 +21,9 @@ class SideboardGuideCard extends Model
 
     protected $guarded = [];
 
+    /** Cascades to the deck through the guide, so a plan edit marks the deck dirty for sync. */
+    protected $touches = ['guide'];
+
     /** @return array<string, string> */
     protected function casts(): array
     {

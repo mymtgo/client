@@ -8,10 +8,13 @@ use App\Enums\LeagueState;
 use App\Enums\MatchOutcome;
 use App\Enums\MatchState;
 use App\Events\AppNotification;
+use App\Facades\AppSettings;
 use App\Jobs\ComputeCardGameStats;
 use App\Jobs\DetermineMatchArchetypesJob;
+use App\Jobs\RunSyncJob;
 use App\Jobs\SubmitMatch;
 use App\Models\MtgoMatch;
+use App\Services\Sync\SyncTokens;
 use Illuminate\Support\Facades\Log;
 
 class MtgoMatchObserver
@@ -53,6 +56,19 @@ class MtgoMatchObserver
             // League completion check
             if (($league = $match->league) && $league->state === LeagueState::Active) {
                 CompleteLeague::runIfFinished($league);
+            }
+
+            // Cross-device sync should feel automatic: a completed match
+            // schedules a run a couple of minutes out (enough for the
+            // enrichments above to land; anything later is caught by the
+            // half-hourly schedule). RunSyncJob is unique, so a play
+            // session's worth of completions folds into one run.
+            try {
+                if (! AppSettings::isOffline() && app(SyncTokens::class)->linked()) {
+                    RunSyncJob::dispatch()->delay(now()->addSeconds(120));
+                }
+            } catch (\Throwable $e) {
+                Log::warning("Enrichment failed: sync trigger for match {$match->id}: {$e->getMessage()}");
             }
 
             return;

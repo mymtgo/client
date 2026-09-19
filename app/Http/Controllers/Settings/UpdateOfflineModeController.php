@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers\Settings;
 
+use App\Actions\Sync\AttestKnownAccounts;
 use App\Facades\AppSettings;
 use App\Http\Controllers\Controller;
 use App\Jobs\DownloadArchetypes;
+use App\Services\Sync\SyncTokens;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -16,7 +18,9 @@ class UpdateOfflineModeController extends Controller
      *
      * Rejoining dispatches an archetype resync. Nothing else refreshes the
      * catalog for an established install, so without this a long offline
-     * period leaves a permanently stale catalog.
+     * period leaves a permanently stale catalog. A linked client also
+     * re-attests its MTGO logins: attests are skipped while offline, so the
+     * API may never have heard which player rows this user owns.
      *
      * Leaving offline mode also starts a cooldown before it can be switched
      * back on, so that pulling a fresh catalogue and immediately going private
@@ -49,6 +53,10 @@ class UpdateOfflineModeController extends Controller
             );
 
             DownloadArchetypes::dispatch();
+
+            if (app(SyncTokens::class)->linked()) {
+                AttestKnownAccounts::run();
+            }
         }
 
         return back();

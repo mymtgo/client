@@ -6,6 +6,7 @@ use App\Enums\LeagueState;
 use App\Enums\MatchOutcome;
 use App\Enums\MatchState;
 use App\Models\Card;
+use App\Models\Deck;
 use App\Models\Draft;
 use App\Models\DraftPick;
 use App\Models\League;
@@ -61,4 +62,18 @@ it('tolerates a league without a draft', function () {
         ->and($event->picksMade)->toBe(0)
         ->and($event->coverArt)->toBeNull()
         ->and($event->draftState)->toBe('none');
+});
+
+it('finds a sealed league deck keyed on event and course id, not the local row id', function () {
+    // A sealed league has no draft, so the write path (EnsureLimitedDeckVersion)
+    // keys its deck on event_id/mtgo_course_id. The read path must derive the
+    // same key rather than falling straight to the local `league-{id}` shape.
+    $league = League::factory()->create([
+        'kind' => LeagueKind::Sealed, 'set_code' => 'HOB', 'event_id' => 4321, 'mtgo_course_id' => 99, 'started_at' => now(),
+    ]);
+    $deck = Deck::factory()->create(['mtgo_id' => 'limited:event-4321-99', 'format' => 'Limited']);
+
+    $event = GetLimitedEventSharedProps::run($league)['event'];
+
+    expect($event->deckId)->toBe($deck->id);
 });

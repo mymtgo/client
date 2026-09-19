@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import AccountController from '@/actions/App/Http/Controllers/Settings/Pages/AccountController';
 import AdvancedController from '@/actions/App/Http/Controllers/Settings/Pages/AdvancedController';
 import GeneralController from '@/actions/App/Http/Controllers/Settings/Pages/GeneralController';
 import OverlaysController from '@/actions/App/Http/Controllers/Settings/Pages/OverlaysController';
@@ -6,7 +7,7 @@ import PrivacyController from '@/actions/App/Http/Controllers/Settings/Pages/Pri
 import StorageController from '@/actions/App/Http/Controllers/Settings/Pages/StorageController';
 import type { SettingsCurrentPage } from '@/types/settings';
 import { Link } from '@inertiajs/vue3';
-import { HardDrive, Layers, ShieldCheck, SlidersHorizontal, Wrench, type LucideIcon } from 'lucide-vue-next';
+import { CircleUser, HardDrive, Layers, ShieldCheck, SlidersHorizontal, Wrench, type LucideIcon } from 'lucide-vue-next';
 
 defineProps<{
     currentPage: SettingsCurrentPage;
@@ -21,6 +22,7 @@ type NavItem = {
 
 const items: NavItem[] = [
     { key: 'general', label: 'General', icon: SlidersHorizontal, href: GeneralController.url() },
+    { key: 'account', label: 'Account', icon: CircleUser, href: AccountController.url() },
     { key: 'overlays', label: 'Overlays', icon: Layers, href: OverlaysController.url() },
     { key: 'storage', label: 'Storage', icon: HardDrive, href: StorageController.url() },
     { key: 'privacy', label: 'Data & Privacy', icon: ShieldCheck, href: PrivacyController.url() },
@@ -42,11 +44,7 @@ const items: NavItem[] = [
                 prefetch="hover"
                 cache-for="10s"
                 class="flex items-center gap-3 rounded px-3 py-2 text-sm font-medium transition-colors"
-                :class="
-                    currentPage === item.key
-                        ? 'nav-item-active'
-                        : 'nav-item-inactive'
-                "
+                :class="currentPage === item.key ? 'nav-item-active' : 'nav-item-inactive'"
             >
                 <component
                     :is="item.icon"

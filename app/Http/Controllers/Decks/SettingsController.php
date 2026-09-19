@@ -6,10 +6,13 @@ use App\Actions\Cards\GetCards;
 use App\Actions\Decks\GetDeckViewSharedProps;
 use App\Data\Front\ArchetypeData;
 use App\Data\Front\CardData;
+use App\Facades\AppSettings;
 use App\Http\Controllers\Controller;
 use App\Models\Archetype;
 use App\Models\Card;
 use App\Models\Deck;
+use App\Services\Sync\DeckClientId;
+use App\Services\Sync\SyncTokens;
 use App\Support\MtgoFormat;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -44,7 +47,38 @@ class SettingsController extends Controller
             'coverArt' => $coverArtWithId,
             'cardNames' => $cardNames,
             'archetypes' => $archetypes,
+            'cloudSync' => $this->cloudSync($deck),
         ]);
+    }
+
+    /**
+     * @return array{linked: bool, enabled: bool, limit: int|null, used: int, freesAt: string|null, heldBy: string|null, requiresSupporter: bool}
+     */
+    private function cloudSync(Deck $deck): array
+    {
+        $slots = AppSettings::syncSlots();
+        $clientId = DeckClientId::for((string) $deck->mtgo_id);
+
+        $own = collect($slots['decks'] ?? [])->first(fn (array $row) => (string) $row['client_id'] === $clientId);
+        $limit = $slots['limit'] ?? null;
+        $used = (int) ($slots['used'] ?? 0);
+        $full = $limit !== null && $used >= $limit;
+
+        $heldBy = null;
+
+        if (! $deck->cloud_sync_enabled && $own === null && $full) {
+            $heldBy = Deck::query()->where('cloud_sync_enabled', true)->whereKeyNot($deck->id)->value('name');
+        }
+
+        return [
+            'linked' => app(SyncTokens::class)->linked(),
+            'enabled' => (bool) $deck->cloud_sync_enabled,
+            'limit' => $limit,
+            'used' => $used,
+            'freesAt' => $own !== null && ($own['disabled_at'] ?? null) !== null ? $own['frees_at'] : null,
+            'heldBy' => $heldBy,
+            'requiresSupporter' => $deck->isLimited() && ! AppSettings::isSupporter(),
+        ];
     }
 
     /**

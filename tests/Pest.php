@@ -10,6 +10,7 @@ use App\Http\Middleware\HandleInertiaRequests;
 use App\Managers\MtgoManager;
 use App\Models\Account;
 use App\Models\Card;
+use App\Models\Deck;
 use App\Models\DeckVersion;
 use App\Models\Game;
 use App\Models\LogCursor;
@@ -172,6 +173,19 @@ function something()
 | Limited fixture helpers
 |--------------------------------------------------------------------------
 */
+
+/**
+ * A deck version whose deck is enabled for cloud sync, the precondition for
+ * any match or league hanging off it to sync at all. Lives here rather than
+ * beside the other sync helpers so a single sync test file still runs on its
+ * own.
+ */
+function syncEnabledDeckVersion(): DeckVersion
+{
+    $deck = Deck::factory()->create(['cloud_sync_enabled' => true]);
+
+    return DeckVersion::factory()->create(['deck_id' => $deck->id]);
+}
 
 function ingestFixtureLog(string $name, string $date = '2026-08-22'): string
 {

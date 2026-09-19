@@ -22,6 +22,9 @@ class Game extends Model
 
     protected $fillable = ['match_id', 'mtgo_id', 'started_at', 'ended_at', 'won', 'turn_count'];
 
+    // Sync dirtiness: editing this row must bump the parent's updated_at.
+    protected $touches = ['match'];
+
     protected $casts = [
         'won' => 'boolean',
         'started_at' => 'datetime',
@@ -40,7 +43,7 @@ class Game extends Model
     {
         return $this->belongsToMany(Player::class)
             ->using(GamePlayer::class)
-            ->withPivot(['on_play', 'instance_id', 'starting_hand_size', 'deck_json', 'is_local', 'mulligan_count', 'opening_hand_json']);
+            ->withPivot(['on_play', 'instance_id', 'starting_hand_size', 'deck_json', 'is_local', 'mulligan_count', 'dice_roll', 'opening_hand_json']);
     }
 
     /** @return BelongsToMany<Player, $this, GamePlayer, 'pivot'> */

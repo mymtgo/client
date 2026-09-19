@@ -289,6 +289,28 @@ it('persists events across multiple 500-row insert chunks', function () {
         ->and(LogCursor::first()->byte_offset)->toBe(filesize($this->logPath));
 });
 
+it('stores the MTGO login id on the account when the login line carries one', function () {
+    writeLog($this->logPath, "15:52:41 [INF] (Login|MtGO Login Success) Username: anticloser (3022021)\n");
+
+    IngestLogInstance::run($this->logPath);
+
+    expect(Account::where('username', 'anticloser')->value('login_id'))->toBe(3022021);
+});
+
+it('keeps the login id when the same account logs in again and when a line has none', function () {
+    writeLog($this->logPath, "15:52:41 [INF] (Login|MtGO Login Success) Username: anticloser (3022021)\n");
+    IngestLogInstance::run($this->logPath);
+
+    file_put_contents($this->logPath, "16:10:00 [INF] (Login|MtGO Login Success) Username: anticloser (3022021)\n", FILE_APPEND);
+    IngestLogInstance::run($this->logPath);
+
+    file_put_contents($this->logPath, "16:20:00 [INF] (Login|MtGO Login Success) Username: anticloser\n", FILE_APPEND);
+    IngestLogInstance::run($this->logPath);
+
+    expect(Account::where('username', 'anticloser')->count())->toBe(1)
+        ->and(Account::where('username', 'anticloser')->value('login_id'))->toBe(3022021);
+});
+
 it('stops reading at an event boundary once the per-tick byte budget is spent, then resumes', function () {
     // Sixty ~200KB events (~12MB) against an 8MB budget. Every line is the
     // same length, so a cursor resting on an event boundary is a multiple of it.

@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use App\Events\AccountCreated;
+use App\Jobs\AttestAccount;
+use App\Services\Sync\SyncTokens;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -87,11 +89,21 @@ class Account extends Model
             }
         });
 
-        static::saved(function () {
+        static::saved(function (Account $account) {
             static::flushCurrent();
 
             if (! static::where('active', true)->exists()) {
                 static::first()?->update(['active' => true]);
+            }
+
+            // A linked client tells the API about a login id it has just
+            // learned or a username that has changed. Nothing to say for
+            // a row without an id, and nothing to say to an API that does
+            // not know this client yet; the OAuth callback covers that.
+            if ($account->login_id !== null
+                && ($account->wasChanged('login_id') || $account->wasChanged('username'))
+                && app(SyncTokens::class)->linked()) {
+                AttestAccount::dispatch($account->id);
             }
         });
 
@@ -100,13 +112,21 @@ class Account extends Model
 
     /**
      * Find or create an account and activate it.
+     *
+     * The login id is recorded when the caller has one and the row does not
+     * yet carry it, or carries a different one (the same username re-created
+     * on MTGO). A caller without an id never clears one already stored.
      */
-    public static function registerAndActivate(string $username): self
+    public static function registerAndActivate(string $username, ?int $loginId = null): self
     {
         $account = static::firstOrCreate(
             ['username' => $username],
-            ['tracked' => true]
+            ['tracked' => true, 'login_id' => $loginId]
         );
+
+        if ($loginId !== null && $account->login_id !== $loginId) {
+            $account->update(['login_id' => $loginId]);
+        }
 
         $account->activate();
 

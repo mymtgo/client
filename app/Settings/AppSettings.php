@@ -617,6 +617,197 @@ class AppSettings
         $this->set('api_key_expires_at', $expiresAt);
     }
 
+    public function syncAccessToken(): ?string
+    {
+        $encrypted = $this->get('sync_access_token');
+
+        if (! is_string($encrypted) || $encrypted === '') {
+            return null;
+        }
+
+        try {
+            return Crypt::decrypt($encrypted);
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    public function setSyncAccessToken(?string $token): void
+    {
+        if ($token === null) {
+            $this->set('sync_access_token', null);
+
+            return;
+        }
+
+        $this->set('sync_access_token', Crypt::encrypt($token));
+    }
+
+    public function syncRefreshToken(): ?string
+    {
+        $encrypted = $this->get('sync_refresh_token');
+
+        if (! is_string($encrypted) || $encrypted === '') {
+            return null;
+        }
+
+        try {
+            return Crypt::decrypt($encrypted);
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    public function setSyncRefreshToken(?string $token): void
+    {
+        if ($token === null) {
+            $this->set('sync_refresh_token', null);
+
+            return;
+        }
+
+        $this->set('sync_refresh_token', Crypt::encrypt($token));
+    }
+
+    public function syncTokenExpiresAt(): ?string
+    {
+        $value = $this->get('sync_token_expires_at');
+
+        return is_string($value) ? $value : null;
+    }
+
+    public function setSyncTokenExpiresAt(?string $expiresAt): void
+    {
+        $this->set('sync_token_expires_at', $expiresAt);
+    }
+
+    /**
+     * The last sync run's unexpected error, shown on the settings Sync
+     * card. Null while runs complete cleanly.
+     */
+    public function syncLastError(): ?string
+    {
+        $value = $this->get('sync_last_error');
+
+        return is_string($value) && $value !== '' ? $value : null;
+    }
+
+    public function setSyncLastError(?string $error): void
+    {
+        $this->set('sync_last_error', $error);
+    }
+
+    /**
+     * The account's deck sync slots as the server last reported them
+     * (manifest or the slots endpoint). UI state only: the per-deck flag on
+     * decks.cloud_sync_enabled is what queries use.
+     *
+     * @return array{limit: int|null, used: int, decks: list<array{client_id: string, enabled_at: string, disabled_at: string|null, frees_at: string|null}>}|null
+     */
+    public function syncSlots(): ?array
+    {
+        $value = $this->get('sync_slots');
+
+        return is_array($value) ? $value : null;
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $slots
+     */
+    public function setSyncSlots(?array $slots): void
+    {
+        $this->set('sync_slots', $slots);
+    }
+
+    /**
+     * The tier the server last reported, defaulting to free. Fails closed: an
+     * account whose tier is unknown gets the free rules, never the paid ones.
+     */
+    public function syncTier(): string
+    {
+        $slots = $this->syncSlots();
+
+        return is_string($slots['tier'] ?? null) ? $slots['tier'] : 'free';
+    }
+
+    public function isSupporter(): bool
+    {
+        return $this->syncTier() === 'supporter';
+    }
+
+    /**
+     * The in-flight PKCE verifier, held between opening the browser and the
+     * deep-link callback. Encrypted like the tokens: together with an
+     * intercepted authorization code it is enough to mint tokens.
+     */
+    public function syncOauthVerifier(): ?string
+    {
+        $encrypted = $this->get('sync_oauth_verifier');
+
+        if (! is_string($encrypted) || $encrypted === '') {
+            return null;
+        }
+
+        try {
+            return Crypt::decrypt($encrypted);
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    public function setSyncOauthVerifier(?string $verifier): void
+    {
+        if ($verifier === null) {
+            $this->set('sync_oauth_verifier', null);
+
+            return;
+        }
+
+        $this->set('sync_oauth_verifier', Crypt::encrypt($verifier));
+    }
+
+    public function syncOauthState(): ?string
+    {
+        $value = $this->get('sync_oauth_state');
+
+        return is_string($value) && $value !== '' ? $value : null;
+    }
+
+    public function setSyncOauthState(?string $state): void
+    {
+        $this->set('sync_oauth_state', $state);
+    }
+
+    /**
+     * The MTGO logins this device has confirmed with the API, as
+     * `login id => username at the time it was confirmed`. The keys are
+     * numeric, so PHP holds them as ints whichever way they are written. Attesting is a
+     * fire-and-forget POST that can fail (a busy local database, a server
+     * blip), and nothing on the API tells us later whether it landed, so
+     * what is still owed is tracked here: every sync run retries whatever
+     * is missing, and a username change re-posts the same login.
+     *
+     * @return array<int, string>
+     */
+    public function syncAttested(): array
+    {
+        $value = $this->get('sync_attested', []);
+
+        if (! is_array($value)) {
+            return [];
+        }
+
+        return array_map(fn ($username) => (string) $username, $value);
+    }
+
+    /**
+     * @param  array<int, string>  $attested
+     */
+    public function setSyncAttested(array $attested): void
+    {
+        $this->set('sync_attested', $attested);
+    }
+
     public function archetypesLastRefreshedAt(): ?string
     {
         $value = $this->get('archetypes_last_refreshed_at');

@@ -19,6 +19,13 @@ class LimitedDeckSnapshot extends Model
 {
     protected $guarded = [];
 
+    /**
+     * Sync dirtiness: snapshots ride the league bundle.
+     *
+     * @var list<string>
+     */
+    protected $touches = ['league'];
+
     /** @return array<string, string> */
     protected function casts(): array
     {

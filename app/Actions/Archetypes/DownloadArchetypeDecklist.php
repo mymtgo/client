@@ -2,7 +2,7 @@
 
 namespace App\Actions\Archetypes;
 
-use App\Actions\RegisterDevice;
+use App\Actions\RecoverFromUnauthorized;
 use App\Models\Archetype;
 use App\Models\ArchetypeDeck;
 use App\Models\Card;
@@ -27,7 +27,7 @@ class DownloadArchetypeDecklist
         $response = self::fetchFromApi($archetype->uuid);
 
         if ($response->status() === 401) {
-            RegisterDevice::run();
+            RecoverFromUnauthorized::run();
             $response = self::fetchFromApi($archetype->uuid);
         }
 

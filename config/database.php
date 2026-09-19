@@ -41,6 +41,10 @@ return [
             'busy_timeout' => 30000,
             'journal_mode' => 'WAL',
             'synchronous' => 'NORMAL',
+            // Write transactions take the lock up front, so a contending
+            // writer waits out busy_timeout instead of failing instantly with
+            // "database is locked". Needs PHP 8.4; ignored below that.
+            'transaction_mode' => 'IMMEDIATE',
         ],
 
         'mysql' => [
