@@ -15,6 +15,7 @@ use App\Http\Controllers\Archetypes\Variants\ReassignController;
 use App\Http\Controllers\Cards\ArchetypesController;
 use App\Http\Controllers\Cards\ImageBase64Controller;
 use App\Http\Controllers\Cards\SearchController;
+use App\Http\Controllers\Dashboard\UpdateLayoutController;
 use App\Http\Controllers\Debug\Cards\PopulateController;
 use App\Http\Controllers\Debug\Decks\SyncController;
 use App\Http\Controllers\Debug\LogEvents\IngestController;
@@ -126,6 +127,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::group([], function (Router $router) {
     $router->get('/', IndexController::class)->name('home');
+    $router->post('dashboard/layout', UpdateLayoutController::class)->name('dashboard.layout');
 
     $router->group([
         'prefix' => 'cards',

@@ -27,10 +27,16 @@ it('counts draws as matches played in the home match winrate', function () {
     $this->get(route('home'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->where('matchRecord.wins', 1)
-            ->where('matchRecord.losses', 1)
-            ->where('matchRecord.draws', 2)
-            // 1 / 4 matches played.
-            ->where('matchRecord.winrate', 25)
+            ->where('hasMatches', true)
+            ->has('layout', 7)
+            ->where('layout.0.type', 'kpi_strip')
         );
+
+    inertiaPartial(route('home'), 'Index', ['widget_default-kpi-strip'])
+        ->assertOk()
+        ->assertJsonPath('props.widget_default-kpi-strip.matchRecord.wins', 1)
+        ->assertJsonPath('props.widget_default-kpi-strip.matchRecord.losses', 1)
+        ->assertJsonPath('props.widget_default-kpi-strip.matchRecord.draws', 2)
+        // 1 / 4 matches played.
+        ->assertJsonPath('props.widget_default-kpi-strip.matchRecord.winrate', 25);
 });

@@ -15,22 +15,15 @@ defineProps<{
 <template>
     <Card>
         <CardHeader class="pb-2">
-            <CardTitle class="text-sm font-medium text-muted-foreground uppercase tracking-wide">Top Matchups</CardTitle>
+            <CardTitle class="text-sm font-medium tracking-wide text-muted-foreground uppercase">Top Matchups</CardTitle>
         </CardHeader>
         <CardContent class="flex flex-col gap-3">
             <template v-if="matchupSpread.length > 0">
-                <div
-                    v-for="entry in matchupSpread"
-                    :key="entry.name"
-                    class="flex flex-col gap-1"
-                >
+                <div v-for="entry in matchupSpread" :key="entry.name" class="flex flex-col gap-1">
                     <div class="flex items-center justify-between text-sm">
                         <span class="truncate font-medium">{{ entry.name }}</span>
-                        <div class="flex items-center gap-2 shrink-0">
-                            <span
-                                class="font-bold tabular-nums"
-                                :class="entry.record.winrate >= 50 ? 'text-success' : 'text-destructive'"
-                            >
+                        <div class="flex shrink-0 items-center gap-2">
+                            <span class="font-bold tabular-nums" :class="entry.record.winrate >= 50 ? 'text-success' : 'text-destructive'">
                                 {{ entry.record.winrate }}%
                             </span>
                             <MatchRecord :record="entry.record" />
@@ -46,9 +39,7 @@ defineProps<{
                 </div>
             </template>
 
-            <div v-else class="py-8 text-center text-sm text-muted-foreground">
-                Play some matches to see matchup data
-            </div>
+            <div v-else class="py-8 text-center text-sm text-muted-foreground">Play some matches to see matchup data</div>
         </CardContent>
     </Card>
 </template>

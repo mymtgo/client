@@ -25,7 +25,7 @@ defineProps<{
 <template>
     <Card class="flex flex-col">
         <CardHeader class="pb-2">
-            <CardTitle class="text-sm font-medium text-muted-foreground uppercase tracking-wide">Last Session</CardTitle>
+            <CardTitle class="text-sm font-medium tracking-wide text-muted-foreground uppercase">Last Session</CardTitle>
         </CardHeader>
         <CardContent class="flex flex-1 flex-col gap-3">
             <template v-if="lastSession">
@@ -41,16 +41,11 @@ defineProps<{
                         class="flex items-center gap-2 rounded-sm px-2 py-1 text-sm"
                         :class="match.outcome === 'win' ? 'bg-success/10' : 'bg-destructive/10'"
                     >
-                        <span
-                            class="w-4 shrink-0 font-bold tabular-nums"
-                            :class="match.outcome === 'win' ? 'text-success' : 'text-destructive'"
-                        >
+                        <span class="w-4 shrink-0 font-bold tabular-nums" :class="match.outcome === 'win' ? 'text-success' : 'text-destructive'">
                             {{ match.outcome === 'win' ? 'W' : 'L' }}
                         </span>
                         <span class="flex-1 truncate text-xs">{{ match.opponentArchetype }}</span>
-                        <span class="tabular-nums text-xs text-muted-foreground">
-                            {{ match.gamesWon }}-{{ match.gamesLost }}
-                        </span>
+                        <span class="text-xs text-muted-foreground tabular-nums"> {{ match.gamesWon }}-{{ match.gamesLost }} </span>
                     </div>
                 </div>
 
@@ -60,9 +55,7 @@ defineProps<{
                 </div>
             </template>
 
-            <div v-else class="flex flex-1 items-center justify-center py-8 text-sm text-muted-foreground">
-                No sessions recorded
-            </div>
+            <div v-else class="flex flex-1 items-center justify-center py-8 text-sm text-muted-foreground">No sessions recorded</div>
         </CardContent>
     </Card>
 </template>

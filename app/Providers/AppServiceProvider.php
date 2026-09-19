@@ -5,6 +5,19 @@ namespace App\Providers;
 use App\Actions\Database\ConfigureNativephpConnection;
 use App\Actions\RegisterDevice;
 use App\Actions\Sync\Auth\EnsureAccessToken;
+use App\Dashboard\WidgetRegistry;
+use App\Dashboard\Widgets\ArchetypeStatsWidget;
+use App\Dashboard\Widgets\DeckPerformanceWidget;
+use App\Dashboard\Widgets\DeckStatsWidget;
+use App\Dashboard\Widgets\FormatStatsWidget;
+use App\Dashboard\Widgets\KpiStripWidget;
+use App\Dashboard\Widgets\LastSessionWidget;
+use App\Dashboard\Widgets\LeagueResultsWidget;
+use App\Dashboard\Widgets\LimitedLeagueWidget;
+use App\Dashboard\Widgets\LimitedPicksWidget;
+use App\Dashboard\Widgets\MatchupSpreadWidget;
+use App\Dashboard\Widgets\RecentMatchesWidget;
+use App\Dashboard\Widgets\RollingFormWidget;
 use App\Exceptions\OfflineModeException;
 use App\Exceptions\Sync\NotLinkedException;
 use App\Facades\AppSettings;
@@ -34,6 +47,21 @@ class AppServiceProvider extends ServiceProvider
         });
 
         $this->app->singleton(ConcreteAppSettings::class);
+
+        $this->app->singleton(WidgetRegistry::class, fn () => new WidgetRegistry([
+            new KpiStripWidget,
+            new LeagueResultsWidget,
+            new RollingFormWidget,
+            new LastSessionWidget,
+            new DeckPerformanceWidget,
+            new MatchupSpreadWidget,
+            new RecentMatchesWidget,
+            new DeckStatsWidget,
+            new ArchetypeStatsWidget,
+            new LimitedLeagueWidget,
+            new LimitedPicksWidget,
+            new FormatStatsWidget,
+        ]));
     }
 
     /**

@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed } from 'vue';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { computed } from 'vue';
 
 type RollingForm = {
     results: string[];
@@ -19,7 +19,7 @@ const showDeltaBanner = computed(() => Math.abs(props.rollingForm.delta) >= 5);
 <template>
     <Card>
         <CardHeader class="pb-2">
-            <CardTitle class="text-sm font-medium text-muted-foreground uppercase tracking-wide">
+            <CardTitle class="text-sm font-medium tracking-wide text-muted-foreground uppercase">
                 Rolling Form · last {{ rollingForm.results.length }} matches
             </CardTitle>
         </CardHeader>
@@ -66,9 +66,7 @@ const showDeltaBanner = computed(() => Math.abs(props.rollingForm.delta) >= 5);
                 </div>
             </template>
 
-            <div v-else class="py-8 text-center text-sm text-muted-foreground">
-                No matches yet
-            </div>
+            <div v-else class="py-8 text-center text-sm text-muted-foreground">No matches yet</div>
         </CardContent>
     </Card>
 </template>

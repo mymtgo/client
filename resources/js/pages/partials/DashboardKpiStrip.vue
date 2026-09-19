@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import MatchRecord from '@/components/MatchRecord.vue';
-import { computed } from 'vue';
-import { Card, CardContent } from '@/components/ui/card';
 import ResultBadge from '@/components/matches/ResultBadge.vue';
-import { TrendingUp, TrendingDown, Minus, Trophy } from 'lucide-vue-next';
+import MatchRecord from '@/components/MatchRecord.vue';
+import { Card, CardContent } from '@/components/ui/card';
+import { Minus, TrendingDown, TrendingUp, Trophy } from 'lucide-vue-next';
+import { computed } from 'vue';
 
 type ActiveLeague = {
     name: string;
@@ -70,10 +70,7 @@ const gameDelta = computed(() => props.gameWinrateDelta ?? 0);
             <!-- Cell 2: Match Win Rate -->
             <div class="flex flex-col items-center gap-1 px-4 py-3">
                 <div class="flex items-center gap-1">
-                    <span
-                        class="text-3xl font-bold tabular-nums"
-                        :class="matchRecord.winrate < 50 ? 'text-destructive' : ''"
-                    >
+                    <span class="text-3xl font-bold tabular-nums" :class="matchRecord.winrate < 50 ? 'text-destructive' : ''">
                         {{ matchRecord.winrate }}%
                     </span>
                     <TrendingUp v-if="matchDelta > 0" class="size-4 text-success" />
@@ -81,12 +78,9 @@ const gameDelta = computed(() => props.gameWinrateDelta ?? 0);
                     <Minus v-else class="size-4 text-muted-foreground" />
                 </div>
                 <span class="text-xs text-muted-foreground">Match Win Rate</span>
-                <span class="text-xs tabular-nums text-muted-foreground/60">
+                <span class="text-xs text-muted-foreground/60 tabular-nums">
                     <MatchRecord :record="matchRecord" :muted="false" class="text-muted-foreground/60" />
-                    <span
-                        v-if="matchDelta !== 0"
-                        :class="matchDelta > 0 ? 'text-success' : 'text-destructive'"
-                    >
+                    <span v-if="matchDelta !== 0" :class="matchDelta > 0 ? 'text-success' : 'text-destructive'">
                         ({{ matchDelta > 0 ? '+' : '' }}{{ matchDelta }}%)
                     </span>
                 </span>
@@ -95,23 +89,15 @@ const gameDelta = computed(() => props.gameWinrateDelta ?? 0);
             <!-- Cell 3: Game Win Rate -->
             <div class="flex flex-col items-center gap-1 px-4 py-3">
                 <div class="flex items-center gap-1">
-                    <span
-                        class="text-3xl font-bold tabular-nums"
-                        :class="gameWinrate < 50 ? 'text-destructive' : ''"
-                    >
-                        {{ gameWinrate }}%
-                    </span>
+                    <span class="text-3xl font-bold tabular-nums" :class="gameWinrate < 50 ? 'text-destructive' : ''"> {{ gameWinrate }}% </span>
                     <TrendingUp v-if="gameDelta > 0" class="size-4 text-success" />
                     <TrendingDown v-else-if="gameDelta < 0" class="size-4 text-destructive" />
                     <Minus v-else class="size-4 text-muted-foreground" />
                 </div>
                 <span class="text-xs text-muted-foreground">Game Win Rate</span>
-                <span class="text-xs tabular-nums text-muted-foreground/60">
+                <span class="text-xs text-muted-foreground/60 tabular-nums">
                     {{ gamesWon }}W – {{ gamesLost }}L
-                    <span
-                        v-if="gameDelta !== 0"
-                        :class="gameDelta > 0 ? 'text-success' : 'text-destructive'"
-                    >
+                    <span v-if="gameDelta !== 0" :class="gameDelta > 0 ? 'text-success' : 'text-destructive'">
                         ({{ gameDelta > 0 ? '+' : '' }}{{ gameDelta }}%)
                     </span>
                 </span>
@@ -124,7 +110,7 @@ const gameDelta = computed(() => props.gameWinrateDelta ?? 0);
                         <span class="text-2xl font-bold">{{ playDrawSplit?.otpWinrate ?? '—' }}%</span>
                         <span class="text-xs text-muted-foreground">On Play</span>
                     </div>
-                    <span class="text-muted-foreground/40 text-lg">/</span>
+                    <span class="text-lg text-muted-foreground/40">/</span>
                     <div class="flex flex-col items-center">
                         <span class="text-2xl font-bold">{{ playDrawSplit?.otdWinrate ?? '—' }}%</span>
                         <span class="text-xs text-muted-foreground">On Draw</span>
@@ -150,7 +136,7 @@ const gameDelta = computed(() => props.gameWinrateDelta ?? 0);
                     <span class="text-xs text-muted-foreground">
                         {{ activeLeague.isActive ? 'Active League' : 'Last League' }}
                     </span>
-                    <span class="text-xs tabular-nums text-muted-foreground/60">
+                    <span class="text-xs text-muted-foreground/60 tabular-nums">
                         {{ activeLeague.wins }}W – {{ activeLeague.losses }}L
                         <span v-if="activeLeague.isActive">· {{ activeLeague.matchesRemaining }} left</span>
                     </span>

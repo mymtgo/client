@@ -1,207 +1,72 @@
 <script setup lang="ts">
-import { Deferred, router } from '@inertiajs/vue3';
-import { computed } from 'vue';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import TimeframeFilter from '@/components/TimeframeFilter.vue';
-import { LayoutDashboard } from 'lucide-vue-next';
-import DashboardKpiStrip from '@/pages/partials/DashboardKpiStrip.vue';
-import DashboardDecks from '@/pages/partials/DashboardDecks.vue';
-import DashboardSessionRecap from '@/pages/partials/DashboardSessionRecap.vue';
-import DashboardMatchupSpread from '@/pages/partials/DashboardMatchupSpread.vue';
-import DashboardRollingForm from '@/pages/partials/DashboardRollingForm.vue';
-import DashboardLeagueResults from '@/pages/partials/DashboardLeagueResults.vue';
-import DashboardRecentMatches from '@/pages/partials/DashboardRecentMatches.vue';
-
-type ActiveLeague = {
-    name: string;
-    format: string;
-    isActive: boolean;
-    isTrophy: boolean;
-    deckName: string | null;
-    results: ('W' | 'L' | null)[];
-    wins: number;
-    losses: number;
-    matchesRemaining: number;
-};
-
-type Streak = {
-    current: string | null;
-    bestWin: number;
-    bestLoss: number;
-};
-
-type PlayDrawSplit = {
-    otpWinrate: number;
-    otdWinrate: number;
-};
-
-type SessionMatch = {
-    id: number;
-    outcome: string;
-    opponentArchetype: string;
-    gamesWon: number;
-    gamesLost: number;
-};
-
-type LastSession = {
-    startedAt: string;
-    endedAt: string;
-    matches: SessionMatch[];
-    record: string;
-    duration: string;
-};
-
-type MatchupEntry = {
-    name: string;
-    record: App.Data.Front.MatchRecordData;
-};
-
-type RollingForm = {
-    results: string[];
-    winrate: number;
-    allTimeWinrate: number;
-    delta: number;
-};
-
-type LeagueDistribution = {
-    buckets: Record<string, number>;
-    trophies: number;
-    total: number;
-};
+import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
+import DashboardCustomiseSheet from '@/pages/partials/DashboardCustomiseSheet.vue';
+import { COL_SPAN_CLASS, packRows, type WidgetInstance, type WidgetOptions } from '@/pages/partials/dashboardWidgets';
+import WidgetHost from '@/pages/partials/WidgetHost.vue';
+import { Deferred, router, usePage } from '@inertiajs/vue3';
+import { LayoutDashboard, SlidersHorizontal } from 'lucide-vue-next';
+import { computed, ref } from 'vue';
 
 const props = defineProps<{
-    matchRecord: App.Data.Front.MatchRecordData;
-    gamesWon: number;
-    gamesLost: number;
-    gameWinrate: number;
     timeframe: string;
-    format: string | null;
-    activeLeague: ActiveLeague | null;
-    // Deferred props
-    deckStats?: App.Data.Front.DeckData[];
-    formats?: { value: string; label: string }[];
-    streak?: Streak;
-    matchWinrateDelta?: number;
-    gameWinrateDelta?: number;
-    playDrawSplit?: PlayDrawSplit;
-    lastSession?: LastSession | null;
-    matchupSpread?: MatchupEntry[];
-    rollingForm?: RollingForm;
-    leagueDistribution?: LeagueDistribution;
-    recentMatches?: App.Data.Front.MatchData[];
+    hasMatches: boolean;
+    layout: WidgetInstance[];
+    widgetOptions?: WidgetOptions;
 }>();
 
-const hasData = computed(() => props.matchRecord.total > 0);
+const cells = computed(() => packRows(props.layout));
 
-function navigate(params: Record<string, string | null>) {
-    const query: Record<string, string> = { timeframe: props.timeframe };
-    if (props.format) query.format = props.format;
-    Object.assign(query, params);
-    // Remove null values
-    Object.keys(query).forEach((k) => {
-        if (query[k] === null || query[k] === undefined) delete query[k];
-    });
-    router.get('/', query, { preserveScroll: true });
+const page = usePage();
+const customising = ref(false);
+
+/**
+ * Widget payloads are dynamic prop names, so they are not declared above and
+ * Vue would route them to $attrs. Read them straight from the page props.
+ */
+function widgetData(id: string): unknown {
+    return (page.props as Record<string, unknown>)[`widget_${id}`];
 }
 
 function setTimeframe(value: string) {
-    navigate({ timeframe: value });
-}
-
-function setFormat(value: string) {
-    navigate({ format: value === 'all' ? null : value });
+    router.get('/', { timeframe: value }, { preserveScroll: true });
 }
 </script>
 
 <template>
     <div class="flex flex-col gap-4 p-3 lg:p-4">
-        <!-- KPI Strip -->
-        <DashboardKpiStrip
-            :streak="streak"
-            :match-record="matchRecord"
-            :match-winrate-delta="matchWinrateDelta"
-            :game-winrate="gameWinrate"
-            :game-winrate-delta="gameWinrateDelta"
-            :play-draw-split="playDrawSplit"
-            :active-league="activeLeague"
-            :games-won="gamesWon"
-            :games-lost="gamesLost"
-        />
-
-        <!-- Timeframe + Format selector -->
-        <div class="flex items-center gap-3">
+        <div class="flex items-center justify-between gap-3">
             <TimeframeFilter :model-value="timeframe" @update:model-value="setTimeframe" />
-
-            <Select :modelValue="format ?? 'all'" @update:modelValue="setFormat" v-if="formats && formats.length > 1">
-                <SelectTrigger class="h-9 w-40">
-                    <SelectValue placeholder="All formats" />
-                </SelectTrigger>
-                <SelectContent>
-                    <SelectItem value="all">All formats</SelectItem>
-                    <SelectItem v-for="f in formats" :key="f.value" :value="f.value">
-                        {{ f.label }}
-                    </SelectItem>
-                </SelectContent>
-            </Select>
+            <Button variant="outline" size="sm" class="cursor-pointer gap-2" @click="customising = true">
+                <SlidersHorizontal class="size-4" />
+                Customise
+            </Button>
         </div>
 
-        <!-- Empty state -->
-        <div v-if="!hasData" class="flex flex-col items-center gap-2 py-16 text-center">
+        <div v-if="!hasMatches" class="flex flex-col items-center gap-2 py-16 text-center">
             <LayoutDashboard class="size-10 text-muted-foreground/40" />
             <p class="font-medium">No match data yet</p>
             <p class="text-sm text-muted-foreground">Start the file watcher in Settings to begin tracking your MTGO matches.</p>
         </div>
 
-        <template v-else>
-            <!-- Row 1: League Finishes + Rolling Form + Last Session -->
-            <div class="grid grid-cols-3 gap-4">
-                <Deferred :data="['leagueDistribution']">
+        <div v-else-if="layout.length === 0" class="flex flex-col items-center gap-2 py-16 text-center">
+            <LayoutDashboard class="size-10 text-muted-foreground/40" />
+            <p class="font-medium">Your dashboard is empty</p>
+            <p class="text-sm text-muted-foreground">Add some widgets with the Customise button.</p>
+        </div>
+
+        <div v-else class="grid grid-cols-1 gap-4 lg:grid-cols-12">
+            <div v-for="{ instance, columns } in cells" :key="instance.id" class="min-h-0" :class="COL_SPAN_CLASS[columns]">
+                <Deferred :data="`widget_${instance.id}`">
                     <template #fallback>
-                        <div class="h-48 animate-pulse rounded-xl bg-muted" />
+                        <Skeleton class="h-48 rounded-xl bg-muted" />
                     </template>
-                    <DashboardLeagueResults
-                        :league-distribution="leagueDistribution ?? { buckets: {}, trophies: 0, total: 0 }"
-                    />
-                </Deferred>
-                <Deferred :data="['rollingForm']">
-                    <template #fallback>
-                        <div class="h-48 animate-pulse rounded-xl bg-muted" />
-                    </template>
-                    <DashboardRollingForm
-                        :rolling-form="rollingForm ?? { results: [], winrate: 0, allTimeWinrate: 0, delta: 0 }"
-                    />
-                </Deferred>
-                <Deferred :data="['lastSession']">
-                    <template #fallback>
-                        <div class="h-48 animate-pulse rounded-xl bg-muted" />
-                    </template>
-                    <DashboardSessionRecap :last-session="lastSession ?? null" />
+                    <WidgetHost :instance="instance" :data="widgetData(instance.id)" />
                 </Deferred>
             </div>
+        </div>
 
-            <!-- Row 2: Deck Performance + Matchup Spread -->
-            <div class="grid grid-cols-2 gap-4">
-                <Deferred :data="['deckStats']">
-                    <template #fallback>
-                        <div class="h-48 animate-pulse rounded-xl bg-muted" />
-                    </template>
-                    <DashboardDecks :deck-stats="deckStats ?? []" />
-                </Deferred>
-                <Deferred :data="['matchupSpread']">
-                    <template #fallback>
-                        <div class="h-48 animate-pulse rounded-xl bg-muted" />
-                    </template>
-                    <DashboardMatchupSpread :matchup-spread="matchupSpread ?? []" />
-                </Deferred>
-            </div>
-
-            <!-- Row 3: Recent Matches -->
-            <Deferred :data="['recentMatches']">
-                <template #fallback>
-                    <div class="h-48 animate-pulse rounded-xl bg-muted" />
-                </template>
-                <DashboardRecentMatches :matches="recentMatches ?? []" />
-            </Deferred>
-        </template>
+        <DashboardCustomiseSheet v-model:open="customising" :layout="layout" :options="widgetOptions" />
     </div>
 </template>

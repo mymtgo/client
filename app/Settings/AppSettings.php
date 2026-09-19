@@ -2,6 +2,7 @@
 
 namespace App\Settings;
 
+use App\Dashboard\DefaultLayout;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Log;
@@ -508,6 +509,28 @@ class AppSettings
         }
 
         $this->set('decks_per_page', $value);
+    }
+
+    /**
+     * Ordered dashboard widget instances, or the default layout when absent or malformed.
+     *
+     * @return array<int, array{id: string, type: string, config: array<string, mixed>}>
+     */
+    public function dashboardLayout(): array
+    {
+        $value = $this->get('dashboard_layout');
+
+        if (! is_array($value) || ! array_is_list($value)) {
+            return DefaultLayout::instances();
+        }
+
+        return $value;
+    }
+
+    /** @param array<int, array{id: string, type: string, config: array<string, mixed>}> $layout */
+    public function setDashboardLayout(array $layout): void
+    {
+        $this->set('dashboard_layout', array_values($layout));
     }
 
     public function deckCardSize(): string
