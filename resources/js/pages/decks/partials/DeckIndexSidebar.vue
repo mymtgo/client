@@ -4,6 +4,7 @@ import ManaSymbols from '@/components/ManaSymbols.vue';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { archetypeFormatKey } from '@/composables/useArchetypeSplit';
 import { hasDeckDrag, readDeckDrag } from '@/lib/deckDrag';
@@ -39,6 +40,14 @@ const emit = defineEmits<{
 
 const totalDecks = computed(() => props.formatOptions.reduce((sum, option) => sum + option.count, 0));
 const selectedCount = computed(() => props.selectedIds.length);
+
+// Select rejects an empty-string value, so "All" needs a sentinel that maps back to ''.
+const ALL_FORMATS = '__all__';
+
+function onFormatChange(value: unknown) {
+    const next = String(value ?? '');
+    emit('update:format', next === ALL_FORMATS ? '' : next);
+}
 
 const rowClass = 'flex w-full cursor-pointer items-center gap-2 rounded px-2.5 py-1.5 text-left text-sm transition-colors';
 const activeClass = 'nav-item-active';
@@ -148,26 +157,25 @@ const otherFormat = computed(() => {
 
             <section class="flex flex-col gap-1">
                 <h3 class="px-2.5 text-[10px] font-semibold tracking-wider text-muted-foreground/70 uppercase">Format</h3>
-                <button
-                    type="button"
-                    :class="cn(rowClass, format === '' ? activeClass : inactiveClass)"
-                    :aria-pressed="format === ''"
-                    @click="emit('update:format', '')"
-                >
-                    <span class="flex-1">All</span>
-                    <span class="text-xs text-muted-foreground tabular-nums">{{ totalDecks }}</span>
-                </button>
-                <button
-                    v-for="option in formatOptions"
-                    :key="option.value"
-                    type="button"
-                    :class="cn(rowClass, format === option.value ? activeClass : inactiveClass)"
-                    :aria-pressed="format === option.value"
-                    @click="emit('update:format', format === option.value ? '' : option.value)"
-                >
-                    <span class="flex-1 truncate">{{ option.label }}</span>
-                    <span class="text-xs text-muted-foreground tabular-nums">{{ option.count }}</span>
-                </button>
+                <Select :model-value="format === '' ? ALL_FORMATS : format" @update:model-value="onFormatChange">
+                    <SelectTrigger class="h-8 w-full text-xs">
+                        <SelectValue placeholder="All formats" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem :value="ALL_FORMATS">
+                            All
+                            <template #trailing>
+                                <span class="ml-auto text-xs text-muted-foreground tabular-nums">{{ totalDecks }}</span>
+                            </template>
+                        </SelectItem>
+                        <SelectItem v-for="option in formatOptions" :key="option.value" :value="option.value">
+                            {{ option.label }}
+                            <template #trailing>
+                                <span class="ml-auto text-xs text-muted-foreground tabular-nums">{{ option.count }}</span>
+                            </template>
+                        </SelectItem>
+                    </SelectContent>
+                </Select>
             </section>
         </div>
 
