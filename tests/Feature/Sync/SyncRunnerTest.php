@@ -1,8 +1,10 @@
 <?php
 
+use App\Actions\Decks\GenerateDeckSignature;
 use App\Events\AppNotification;
 use App\Facades\AppSettings;
 use App\Models\Account;
+use App\Models\Card;
 use App\Models\CardGameStat;
 use App\Models\Deck;
 use App\Models\MtgoMatch;
@@ -773,4 +775,53 @@ it('completes the run and leaves the account owed when confirming fails', functi
         ->and(AppSettings::syncAttested())->toBe([])
         ->and(implode("\n", SyncActivity::tail()))->toContain('Sync complete.')
         ->and(implode("\n", SyncActivity::tail()))->toContain('Could not confirm 1 MTGO account, retrying next run.');
+});
+
+/**
+ * A device that takes its history from the cloud never runs the log
+ * ingestion that normally creates card stubs, because bundles are written
+ * with Model::withoutEvents() and their decklists arrive pre-built. Left
+ * alone that device ends up with an empty cards table: no deck covers, no
+ * names, no images, and no way to ask for them.
+ */
+it('creates card stubs for the rows an import just wrote', function () {
+    $original = syncTestMatch();
+    $token = $original->token;
+
+    // The shared fixture's signature is uuid-based filler, so give this
+    // deck version a real decklist: catalog ids are what gets recovered.
+    $original->deckVersion->forceFill([
+        'signature' => GenerateDeckSignature::run(collect([
+            ['mtgo_id' => 313131, 'quantity' => 4, 'sideboard' => false],
+        ])),
+    ])->save();
+
+    $bundle = app(MatchBundleBuilder::class)->build($original->fresh());
+    $hash = CanonicalJson::hash($bundle);
+    $gzip = gzencode(CanonicalJson::encode($bundle), 6);
+
+    wipeMatchLocally($original);
+    Card::query()->delete();
+
+    fakeSync(
+        manifestByType: ['match' => [['upload' => [], 'download' => [$token], 'tombstones' => []]]],
+        fetchResponse: Http::response(['blobs' => [
+            ['client_id' => $token, 'hash' => $hash, 'data' => base64_encode($gzip)],
+        ]]),
+    );
+
+    app(SyncRunner::class)->run();
+
+    expect(Card::query()->where('mtgo_id', 313131)->exists())->toBeTrue();
+});
+
+it('does not scan for cards when the run only pushed', function () {
+    syncTestMatch();
+    Card::query()->delete();
+
+    fakeSync();
+
+    app(SyncRunner::class)->run();
+
+    expect(Card::query()->count())->toBe(0);
 });

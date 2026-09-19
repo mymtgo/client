@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import AppLayout from '@/AppLayout.vue';
+import CardDataCard from '@/components/settings/CardDataCard.vue';
 import FilePathsCard from '@/components/settings/FilePathsCard.vue';
 import LocalImagesCard from '@/components/settings/LocalImagesCard.vue';
 import WatcherCard from '@/components/settings/WatcherCard.vue';
@@ -17,6 +18,8 @@ const props = defineProps<{
     watcherActive: boolean;
     localImages: boolean;
     localImagesSize: string;
+    cardsTotal: number;
+    cardsIncomplete: number;
 }>();
 
 const pathsValid = computed(() => props.logPathStatus.valid && props.dataPathStatus.valid);
@@ -25,6 +28,7 @@ const pathsValid = computed(() => props.logPathStatus.valid && props.dataPathSta
 <template>
     <div class="flex flex-col divide-y divide-border">
         <LocalImagesCard :enabled="localImages" :usage="localImagesSize" />
+        <CardDataCard :total="cardsTotal" :incomplete="cardsIncomplete" />
         <FilePathsCard :log-path="logPath" :data-path="dataPath" :log-path-status="logPathStatus" :data-path-status="dataPathStatus" />
         <WatcherCard :active="watcherActive" :paths-valid="pathsValid" />
     </div>

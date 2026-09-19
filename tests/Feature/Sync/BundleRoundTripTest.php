@@ -402,3 +402,43 @@ it('restores cover and archetype from a deck bundle', function () {
     expect($restored->cover_id)->toBe($card->id)
         ->and($restored->archetype->uuid)->toBe('aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee');
 });
+
+/**
+ * The state a fresh install is in the first time it syncs: history arrives
+ * as bundles, and nothing on that path has ever created a `cards` row.
+ * Resolving the cover against that empty table used to null it, and the
+ * deck was then saved with `synced_hash` set, so the server stopped
+ * offering it and the cover never came back.
+ */
+it('keeps a deck cover when the importing device has no cards yet', function () {
+    $cover = Card::factory()->create(['mtgo_id' => 987654, 'art_crop' => 'https://example.test/art.jpg']);
+    $deck = Deck::factory()->create(['cover_id' => $cover->id]);
+
+    $bundle = app(DeckBundleBuilder::class)->build($deck->fresh());
+
+    expect($bundle['deck']['cover_mtgo_id'])->toBe('987654');
+
+    Deck::query()->forceDelete();
+    Card::query()->delete();
+
+    app(DeckBundleImporter::class)->import($bundle, CanonicalJson::hash($bundle));
+
+    $imported = Deck::query()->where('mtgo_id', $deck->mtgo_id)->first();
+
+    expect($imported->cover_id)->not->toBeNull()
+        ->and(Card::query()->find($imported->cover_id)->mtgo_id)->toEqual(987654);
+});
+
+it('reuses an existing card row for the cover rather than duplicating it', function () {
+    $cover = Card::factory()->create(['mtgo_id' => 987654, 'art_crop' => 'https://example.test/art.jpg']);
+    $deck = Deck::factory()->create(['cover_id' => $cover->id]);
+
+    $bundle = app(DeckBundleBuilder::class)->build($deck->fresh());
+
+    Deck::query()->forceDelete();
+
+    app(DeckBundleImporter::class)->import($bundle, CanonicalJson::hash($bundle));
+
+    expect(Card::query()->where('mtgo_id', 987654)->count())->toBe(1)
+        ->and(Deck::query()->where('mtgo_id', $deck->mtgo_id)->value('cover_id'))->toBe($cover->id);
+});

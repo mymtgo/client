@@ -74,7 +74,7 @@ class DeckBundleImporter
         if (array_key_exists('cover_mtgo_id', $data)) {
             $values['cover_id'] = $data['cover_mtgo_id'] === null
                 ? null
-                : Card::query()->where('mtgo_id', $data['cover_mtgo_id'])->whereNotNull('art_crop')->value('id');
+                : self::coverCardId((int) $data['cover_mtgo_id']);
         }
 
         if (array_key_exists('archetype_uuid', $data)) {
@@ -84,6 +84,33 @@ class DeckBundleImporter
         $deck->forceFill($values)->save();
 
         return $deck;
+    }
+
+    /**
+     * Resolves the cover to a local card row, creating the stub when this
+     * device has never seen that catalog id.
+     *
+     * Two earlier constraints are deliberately gone. The lookup no longer
+     * demands `art_crop`, and a missing row is no longer fatal to the
+     * cover. A device whose history arrived by sync has an empty cards
+     * table (bundles never reach CreateMissingCards), so requiring either
+     * meant every imported deck silently lost its cover, permanently: the
+     * deck is saved with `synced_hash` set, so the server stops offering it
+     * and no later run re-resolves it.
+     *
+     * Pointing at an art-less stub costs nothing in the meantime. The
+     * frontend guards cover art with `v-if`, so the deck renders exactly as
+     * it did with no cover at all until CreateMissingCardsFromLocalData and
+     * PopulateMissingCardData fill the row in, at which point the art
+     * appears on its own.
+     *
+     * The stub is created here rather than through CreateMissingCards:
+     * this runs inside the import transaction, and that action dispatches
+     * a job. The end-of-run scan in SyncRunner queues the fill instead.
+     */
+    private static function coverCardId(int $mtgoId): int
+    {
+        return (int) Card::query()->firstOrCreate(['mtgo_id' => $mtgoId])->getKey();
     }
 
     /**

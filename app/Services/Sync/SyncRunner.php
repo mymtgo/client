@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Sync;
 
+use App\Actions\Cards\CreateMissingCardsFromLocalData;
 use App\Actions\Sync\ApplyDeckSyncSlots;
 use App\Actions\Sync\AttestKnownAccounts;
 use App\Events\AppNotification;
@@ -80,12 +81,16 @@ class SyncRunner
 
     private int $pulledMatches = 0;
 
+    /** Whether this run wrote at least one bundle into the local database. */
+    private bool $importedAnything = false;
+
     private bool $trashedSlotsReleased = false;
 
     public function run(bool $full = false): void
     {
         $this->pushedMatches = 0;
         $this->pulledMatches = 0;
+        $this->importedAnything = false;
         $this->trashedSlotsReleased = false;
 
         SyncActivity::reset();
@@ -96,6 +101,7 @@ class SyncRunner
                 $this->runType($type, $full);
             }
 
+            $this->backfillCardsForImportedRows();
             $this->attestKnownAccounts();
 
             AppSettings::setSyncLastError(null);
@@ -744,6 +750,31 @@ class SyncRunner
         );
     }
 
+    /**
+     * Bundles are written straight to the tables inside
+     * Model::withoutEvents(), and their decklists arrive as pre-built
+     * signatures, so no part of an import ever reaches CreateMissingCards
+     * the way log ingestion does. Left alone, a device that took its whole
+     * history from the cloud ends up with an empty cards table: no covers,
+     * no names, no images.
+     *
+     * Running this once per run rather than per blob keeps it to a single
+     * scan, and it is skipped entirely when the run only pushed.
+     * CreateMissingCards queues the Scryfall fill itself for anything new.
+     */
+    private function backfillCardsForImportedRows(): void
+    {
+        if (! $this->importedAnything) {
+            return;
+        }
+
+        $created = CreateMissingCardsFromLocalData::run();
+
+        if ($created > 0) {
+            SyncActivity::log(sprintf('%d new %s queued for card details.', $created, $created === 1 ? 'card' : 'cards'));
+        }
+    }
+
     private function importBlob(string $type, array $blob): void
     {
         $raw = gzdecode(base64_decode($blob['data']));
@@ -774,6 +805,8 @@ class SyncRunner
                 fn (int $attempt) => $attempt * 250,
                 fn (Throwable $e) => str_contains($e->getMessage(), 'database is locked'),
             );
+
+            $this->importedAnything = true;
         } catch (Throwable $e) {
             if (! str_contains($e->getMessage(), 'database is locked')) {
                 throw $e;

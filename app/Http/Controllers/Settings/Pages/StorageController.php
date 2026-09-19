@@ -7,6 +7,7 @@ use App\Actions\Settings\ValidatePath;
 use App\Facades\AppSettings;
 use App\Facades\Mtgo;
 use App\Http\Controllers\Controller;
+use App\Models\Card;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -26,6 +27,11 @@ class StorageController extends Controller
             'watcherActive' => AppSettings::isWatcherActive(),
             'localImages' => AppSettings::downloadImagesLocally(),
             'localImagesSize' => MeasureLocalImagesSize::run(),
+            'cardsTotal' => Card::query()->count(),
+            // A stub with no name has never been filled from Scryfall, which
+            // is the whole cards table on a device that took its history
+            // from cloud sync.
+            'cardsIncomplete' => Card::query()->whereNull('name')->count(),
         ]);
     }
 }
