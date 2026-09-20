@@ -36,7 +36,16 @@ const linkError = ref<string | null>(null);
 const running = ref(false);
 const unlinking = ref(false);
 
+const emit = defineEmits<{ 'update:linked': [value: boolean] }>();
+
 const offlineMode = useOfflineMode();
+
+// The deck list below this card needs the same answer, and this card is the
+// one that polls for it.
+watch(
+    () => status.value?.linked,
+    (value) => emit('update:linked', value === true),
+);
 
 let pollTimer: ReturnType<typeof setInterval> | null = null;
 let pollDeadline = 0;
@@ -362,8 +371,7 @@ onBeforeUnmount(() => {
                         <span class="text-sm">{{ deckSlots.used }} of {{ deckSlots.limit }} used</span>
                     </div>
                     <p class="text-xs text-muted-foreground">
-                        Your slot is for constructed decks. Choose which one syncs from its Settings page. Supporter lifts the limit and adds draft
-                        and sealed decks.
+                        Your slot is for constructed decks. Choose which one syncs below. Supporter lifts the limit and adds draft and sealed decks.
                     </p>
                 </div>
                 <p v-if="status.notSynced > 0" class="text-xs text-warning">

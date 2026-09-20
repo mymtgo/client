@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import ShowController from '@/actions/App/Http/Controllers/Decks/DashboardController';
+import DeckSyncBadge from '@/components/decks/DeckSyncBadge.vue';
 import ManaSymbols from '@/components/ManaSymbols.vue';
 import MatchRecord from '@/components/MatchRecord.vue';
 import { Badge } from '@/components/ui/badge';
@@ -89,6 +90,7 @@ function onGripDragStart(event: DragEvent) {
                 <div class="flex flex-col gap-1.5">
                     <div class="flex items-center justify-between gap-2">
                         <div class="flex min-w-0 items-center gap-2 text-xs">
+                            <DeckSyncBadge :enabled="deck.cloudSyncEnabled" class="shrink-0" />
                             <ManaSymbols v-if="deck.colorIdentity" :symbols="deck.colorIdentity" class="shrink-0" />
                             <Badge variant="outline" class="shrink-0 py-0 text-xs">{{ deck.format }}</Badge>
                             <Badge v-if="deck.deletedAt" variant="destructive" class="shrink-0 py-0 text-xs">Deleted</Badge>

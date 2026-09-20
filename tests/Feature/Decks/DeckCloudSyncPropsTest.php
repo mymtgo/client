@@ -29,3 +29,16 @@ it('does not gate a constructed deck, or a limited one for a supporter', functio
     $this->get(route('decks.settings', $limited))
         ->assertInertia(fn ($page) => $page->where('cloudSync.requiresSupporter', false));
 });
+
+it('carries each deck card its own cloud sync state on the deck listing', function () {
+    Deck::factory()->create(['name' => 'Synced', 'mtgo_id' => '111', 'cloud_sync_enabled' => true]);
+    Deck::factory()->create(['name' => 'Unsynced', 'mtgo_id' => '222']);
+
+    $this->get(route('decks.index', ['sort' => 'name']))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('decks.data.0.name', 'Synced')
+            ->where('decks.data.0.cloudSyncEnabled', true)
+            ->where('decks.data.1.name', 'Unsynced')
+            ->where('decks.data.1.cloudSyncEnabled', false));
+});

@@ -18,6 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Spinner } from '@/components/ui/spinner';
 import { Switch } from '@/components/ui/switch';
 import DeckViewLayout from '@/layouts/DeckViewLayout.vue';
+import { formatDay } from '@/lib/utils';
 import type { VersionStats } from '@/types/decks';
 import { router, usePage } from '@inertiajs/vue3';
 import { Cloud, RotateCcw, TriangleAlert, Undo2 } from 'lucide-vue-next';
@@ -92,10 +93,6 @@ const cloudSyncTitle = computed(() => {
     if (props.cloudSync.requiresSupporter) return REQUIRES_SUPPORTER_MESSAGE;
     return undefined;
 });
-
-function formatDay(iso: string): string {
-    return new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
-}
 
 function toggleCloudSync(value: boolean) {
     cloudSyncEnabled.value = value;

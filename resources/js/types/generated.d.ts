@@ -70,6 +70,7 @@ archetype: App.Data.Front.ArchetypeData | null;
 lastPlayedAt: string | null;
 lastPlayedAtHuman: string | null;
 deletedAt: string | null;
+cloudSyncEnabled: boolean;
 matches: any;
 identity: any;
 cards: any;

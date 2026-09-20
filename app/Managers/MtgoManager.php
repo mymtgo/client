@@ -199,9 +199,11 @@ class MtgoManager
             $this->syncDecks(sync: false);
         }
 
+        // Account-less decks are adopted by the AdoptOrphanDecks listener on
+        // AccountCreated, which also covers the account learned later from a
+        // log line rather than here at boot.
         if ($this->getUsername() && ! Account::exists()) {
-            $account = Account::registerAndActivate($this->getUsername());
-            Deck::whereNull('account_id')->update(['account_id' => $account->id]);
+            Account::registerAndActivate($this->getUsername());
         }
     }
 

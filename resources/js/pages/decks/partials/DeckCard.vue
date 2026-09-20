@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import ShowController from '@/actions/App/Http/Controllers/Decks/DashboardController';
+import DeckSyncBadge from '@/components/decks/DeckSyncBadge.vue';
 import ManaSymbols from '@/components/ManaSymbols.vue';
 import MatchRecord from '@/components/MatchRecord.vue';
 import { Badge } from '@/components/ui/badge';
@@ -151,6 +152,12 @@ function onGripDragStart(event: DragEvent) {
                     </div>
                 </div>
             </div>
+
+            <!-- Mirrors the mana pill on the opposite corner. -->
+            <DeckSyncBadge
+                :enabled="deck.cloudSyncEnabled"
+                class="absolute top-3 left-3 z-10 rounded-full border border-white/10 bg-black/60 px-2 py-1 shadow shadow-black/50 backdrop-blur-sm"
+            />
 
             <!--
                 Pinned to the card rather than sitting inline beside the name so

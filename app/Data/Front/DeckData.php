@@ -24,6 +24,7 @@ class DeckData extends Data
         public ?Carbon $lastPlayedAt,
         public ?string $lastPlayedAtHuman,
         public ?Carbon $deletedAt,
+        public bool $cloudSyncEnabled,
         public Lazy $matches,
         public Lazy $identity,
         public Lazy $cards,
@@ -49,6 +50,7 @@ class DeckData extends Data
             lastPlayedAt: $deck->matches_max_started_at ? Carbon::parse($deck->matches_max_started_at) : null,
             lastPlayedAtHuman: $deck->matches_max_started_at ? Carbon::parse($deck->matches_max_started_at)->toLocal()->diffForHumans() : null,
             deletedAt: $deck->deleted_at,
+            cloudSyncEnabled: (bool) $deck->cloud_sync_enabled,
             matches: Lazy::whenLoaded('matches', $deck, fn () => MatchData::collect($deck->matches)),
             identity: Lazy::whenLoaded('cards', $deck, function () use ($deck) {
                 return $deck->cards->pluck('color_identity')->map(

@@ -27,10 +27,13 @@ export function parseLocalDate(dayKey: string): Date {
  * Escape text for interpolation into an HTML string (e.g. chart tooltip templates).
  */
 export function escapeHtml(value: string): string {
-    return value
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
+    return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+/**
+ * A date written out for reading, e.g. "10 Oct 2026". Used for the cloud
+ * sync slot cooldown, which is a day rather than a moment.
+ */
+export function formatDay(iso: string): string {
+    return new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
 }

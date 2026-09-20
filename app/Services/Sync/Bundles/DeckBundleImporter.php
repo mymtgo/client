@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Sync\Bundles;
 
+use App\Models\Account;
 use App\Models\Card;
 use App\Models\Deck;
 use App\Services\Sync\LocalArchetypeId;
@@ -79,6 +80,17 @@ class DeckBundleImporter
 
         if (array_key_exists('archetype_uuid', $data)) {
             $values['archetype_id'] = $data['archetype_uuid'] === null ? null : LocalArchetypeId::for($data['archetype_uuid']);
+        }
+
+        // A bundle carries no account: it is this user's own history, pulled
+        // with this user's token. A deck this device has never seen is filed
+        // under the active account, because Deck::forActiveAccount hides every
+        // account-less deck the moment an account exists, so an unfiled deck
+        // restores into the database and then never appears anywhere in the UI.
+        // A deck already filed keeps its account: with a second MTGO account on
+        // the device, its decks are not the active account's to claim.
+        if ($deck->account_id === null) {
+            $values['account_id'] = Account::currentId();
         }
 
         $deck->forceFill($values)->save();
