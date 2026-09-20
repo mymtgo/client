@@ -2,6 +2,7 @@
 
 namespace App\Managers;
 
+use App\Actions\Accounts\BackfillAccountLoginIds;
 use App\Actions\Cards\EnqueueCardStats;
 use App\Actions\Logs\FindMtgoLogPath;
 use App\Actions\Logs\GetLogFilePaths;
@@ -246,6 +247,11 @@ class MtgoManager
                 ]);
             }
         });
+
+        // An account registered from a login line without an id, or from the
+        // username read at boot, has nothing to attest with. The rows just
+        // ingested are where the id turns up.
+        BackfillAccountLoginIds::run();
     }
 
     /**
@@ -337,5 +343,13 @@ class MtgoManager
         $schedule->call(fn () => PruneProcessedLogEvents::run())
             ->daily()
             ->name('prune_log_events');
+
+        // Belt and braces for the call after ingestion: an account can be
+        // registered while the id-bearing login row is already stored, and
+        // an account with no id never attests, so the website holds its
+        // matches under a player the user does not hold.
+        $schedule->call(fn () => BackfillAccountLoginIds::run())
+            ->hourly()
+            ->name('backfill_account_login_ids');
     }
 }

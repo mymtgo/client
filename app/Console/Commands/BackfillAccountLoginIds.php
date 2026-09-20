@@ -2,8 +2,7 @@
 
 namespace App\Console\Commands;
 
-use App\Models\Account;
-use App\Models\LogEvent;
+use App\Actions\Accounts\BackfillAccountLoginIds as BackfillAction;
 use Illuminate\Console\Command;
 
 class BackfillAccountLoginIds extends Command
@@ -13,29 +12,13 @@ class BackfillAccountLoginIds extends Command
     protected $description = 'Fill accounts.login_id from stored MTGO login rows for accounts that have none.';
 
     /**
-     * Login rows are persisted with their raw text even when they classify
-     * to no event, so an account registered before the id was captured can
-     * pick it up from history. The newest row for the username wins.
+     * The manual entry point for a repair the app also runs by itself, after
+     * every log ingestion and hourly from the schedule. A packaged client
+     * gives nobody an artisan prompt, so this is for development only.
      */
     public function handle(): int
     {
-        $filled = 0;
-
-        Account::withTrashed()->whereNull('login_id')->each(function (Account $account) use (&$filled): void {
-            $row = LogEvent::query()
-                ->where('category', 'Login')
-                ->where('context', 'MtGO Login Success')
-                ->where('raw_text', 'like', '%Username: '.$account->username.' (%')
-                ->orderByDesc('timestamp')
-                ->first();
-
-            if ($row === null || ! preg_match('/Username:\s*(\S+)\s*\((\d+)\)/', $row->raw_text, $m) || $m[1] !== $account->username) {
-                return;
-            }
-
-            $account->update(['login_id' => (int) $m[2]]);
-            $filled++;
-        });
+        $filled = BackfillAction::run();
 
         $this->info("{$filled} account login ids filled.");
 
