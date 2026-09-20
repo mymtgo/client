@@ -111,3 +111,32 @@ it('throws on API failure', function () {
         ['mtgo_id' => 12345, 'quantity' => 4, 'sideboard' => false],
     ]);
 })->throws(RuntimeException::class);
+
+it('keeps maindeck and sideboard entries separate for the same card', function () {
+    Http::fake([
+        '*/api/cards/resolve' => Http::response([
+            'cards' => [
+                [
+                    'mtgo_id' => 117674,
+                    'oracle_id' => 'oracle-get-lost',
+                    'name' => 'Get Lost',
+                    'type' => 'Instant',
+                    'identity' => 'W',
+                ],
+            ],
+        ]),
+    ]);
+
+    $result = ResolveCardsFromDek::run([
+        ['mtgo_id' => 117674, 'quantity' => 2, 'sideboard' => false],
+        ['mtgo_id' => 117674, 'quantity' => 1, 'sideboard' => true],
+    ]);
+
+    expect($result['cards'])->toHaveCount(2);
+
+    $main = collect($result['cards'])->firstWhere('sideboard', false);
+    $side = collect($result['cards'])->firstWhere('sideboard', true);
+
+    expect($main['quantity'])->toBe(2);
+    expect($side['quantity'])->toBe(1);
+});

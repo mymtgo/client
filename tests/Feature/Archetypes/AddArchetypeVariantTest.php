@@ -92,3 +92,25 @@ it('treats sideboard differences as distinct variants', function () {
 
     expect($archetype->fresh()->decks)->toHaveCount(2);
 });
+
+it('stores a card that appears in both the maindeck and the sideboard', function () {
+    $archetype = Archetype::factory()->create();
+    $card = Card::create([
+        'oracle_id' => 'oracle-get-lost',
+        'mtgo_id' => 117674,
+        'name' => 'Get Lost',
+        'type' => 'Instant',
+    ]);
+
+    $deck = AddArchetypeVariant::run($archetype, [
+        ['oracle_id' => 'oracle-get-lost', 'mtgo_id' => 117674, 'quantity' => 2, 'sideboard' => false],
+        ['oracle_id' => 'oracle-get-lost', 'mtgo_id' => 117674, 'quantity' => 1, 'sideboard' => true],
+    ]);
+
+    $rows = $deck->cards()->get();
+
+    expect($rows)->toHaveCount(2);
+    expect($rows->firstWhere('pivot.sideboard', false)->pivot->quantity)->toBe(2);
+    expect($rows->firstWhere('pivot.sideboard', true)->pivot->quantity)->toBe(1);
+    expect($rows->pluck('id')->unique()->all())->toBe([$card->id]);
+});

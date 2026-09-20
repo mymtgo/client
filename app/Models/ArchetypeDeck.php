@@ -44,4 +44,22 @@ class ArchetypeDeck extends Model
             ->withPivot('quantity', 'sideboard')
             ->withTimestamps();
     }
+
+    /**
+     * Replace this deck's card rows. A card may hold one maindeck row and one
+     * sideboard row, which sync() cannot express because it keys on card id alone.
+     *
+     * @param  array<int, array{card_id: int, quantity: int, sideboard: bool}>  $rows
+     */
+    public function syncCardRows(array $rows): void
+    {
+        $this->cards()->detach();
+
+        foreach ($rows as $row) {
+            $this->cards()->attach($row['card_id'], [
+                'quantity' => $row['quantity'],
+                'sideboard' => $row['sideboard'],
+            ]);
+        }
+    }
 }

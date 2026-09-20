@@ -34,15 +34,18 @@ class AddArchetypeVariant
                 'last_synced_at' => now(),
             ]);
 
-            $deck->cards()->sync($pivotData);
+            $deck->syncCardRows($pivotData);
 
             return $deck->refresh();
         });
     }
 
     /**
+     * A card may appear once in the maindeck and again in the sideboard, so rows are
+     * keyed by card and board rather than by card alone.
+     *
      * @param  array<int, array{oracle_id: string|null, mtgo_id: int, quantity: int, sideboard: bool}>  $resolvedCards
-     * @return array<int, array{quantity: int, sideboard: bool}>
+     * @return array<string, array{card_id: int, quantity: int, sideboard: bool}>
      */
     private static function resolvePivotData(array $resolvedCards): array
     {
@@ -59,9 +62,12 @@ class AddArchetypeVariant
                 continue;
             }
 
-            $pivotData[$card->id] = [
+            $sideboard = (bool) $cardData['sideboard'];
+
+            $pivotData[$card->id.':'.(int) $sideboard] = [
+                'card_id' => $card->id,
                 'quantity' => $cardData['quantity'],
-                'sideboard' => $cardData['sideboard'],
+                'sideboard' => $sideboard,
             ];
         }
 
@@ -69,13 +75,13 @@ class AddArchetypeVariant
     }
 
     /**
-     * @param  array<int, array{quantity: int, sideboard: bool}>  $pivotData
+     * @param  array<string, array{card_id: int, quantity: int, sideboard: bool}>  $pivotData
      */
     private static function hashPivot(array $pivotData): string
     {
         $rows = [];
-        foreach ($pivotData as $cardId => $row) {
-            $rows[] = $cardId.':'.((int) $row['sideboard']).':'.$row['quantity'];
+        foreach ($pivotData as $row) {
+            $rows[] = $row['card_id'].':'.((int) $row['sideboard']).':'.$row['quantity'];
         }
         sort($rows);
 
@@ -86,9 +92,12 @@ class AddArchetypeVariant
     {
         $pivotData = [];
         foreach ($deck->cards as $card) {
-            $pivotData[$card->id] = [
+            $sideboard = (bool) $card->pivot->sideboard;
+
+            $pivotData[$card->id.':'.(int) $sideboard] = [
+                'card_id' => $card->id,
                 'quantity' => $card->pivot->quantity,
-                'sideboard' => (bool) $card->pivot->sideboard,
+                'sideboard' => $sideboard,
             ];
         }
 

@@ -4,7 +4,7 @@ namespace App\Actions\Archetypes;
 
 use App\Facades\AppSettings;
 use App\Models\Archetype;
-use App\Models\Card;
+use App\Models\ArchetypeDeck;
 use App\Models\MatchArchetype;
 use App\Models\MtgoMatch;
 use Illuminate\Support\Str;
@@ -37,35 +37,18 @@ class StoreManualArchetype
             'decklist_downloaded_at' => now(),
         ]);
 
-        $pivotData = [];
-
-        foreach ($resolvedCards as $cardData) {
-            if (empty($cardData['oracle_id'])) {
-                continue;
-            }
-
-            $card = Card::where('oracle_id', $cardData['oracle_id'])->first();
-
-            if (! $card) {
-                continue;
-            }
-
-            $pivotData[$card->id] = [
-                'quantity' => $cardData['quantity'],
-                'sideboard' => $cardData['sideboard'],
-            ];
-        }
-
-        $archetype->cards()->sync($pivotData);
+        $deck = $resolvedCards !== []
+            ? AddArchetypeVariant::run($archetype, $resolvedCards)
+            : null;
 
         if ($sourceMatchId !== null) {
-            self::linkOpponentToArchetype($sourceMatchId, $archetype->id);
+            self::linkOpponentToArchetype($sourceMatchId, $archetype->id, $deck);
         }
 
-        return $archetype->load('cards');
+        return $archetype->load('decks.cards');
     }
 
-    private static function linkOpponentToArchetype(int $matchId, int $archetypeId): void
+    private static function linkOpponentToArchetype(int $matchId, int $archetypeId, ?ArchetypeDeck $deck): void
     {
         $match = MtgoMatch::with('games.players')->find($matchId);
 
@@ -91,6 +74,7 @@ class StoreManualArchetype
                 ],
                 [
                     'archetype_id' => $archetypeId,
+                    'archetype_deck_id' => $deck?->id,
                 ],
             );
         }

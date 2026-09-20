@@ -46,9 +46,10 @@ it('creates a manual archetype with cards', function () {
     expect($archetype->color_identity)->toBe('R');
     expect($archetype->decklist_downloaded_at)->not->toBeNull();
     expect($archetype->uuid)->toStartWith('abcdef12-');
-    expect($archetype->cards)->toHaveCount(1);
-    expect($archetype->cards->first()->pivot->quantity)->toBe(4);
-    expect($archetype->cards->first()->pivot->sideboard)->toBeFalse();
+    expect($archetype->decks)->toHaveCount(1);
+    expect($archetype->decks->first()->cards)->toHaveCount(1);
+    expect($archetype->decks->first()->cards->first()->pivot->quantity)->toBe(4);
+    expect($archetype->decks->first()->cards->first()->pivot->sideboard)->toBeFalse();
 });
 
 it('persists source_match_id and incomplete flag when supplied', function () {
@@ -140,4 +141,78 @@ it('overwrites an existing MatchArchetype for opponent on the source match', fun
         ->first();
 
     expect($matchArchetype->archetype_id)->toBe($newArchetype->id);
+});
+
+it('creates a variant deck holding the cards so the archetype renders', function () {
+    AppSettings::setDeviceId('abcdef1234567890');
+
+    Card::create([
+        'oracle_id' => 'oracle-bolt',
+        'mtgo_id' => 12345,
+        'name' => 'Lightning Bolt',
+        'type' => 'Instant',
+    ]);
+
+    $archetype = StoreManualArchetype::run(
+        name: 'My Burn Deck',
+        format: 'modern',
+        colorIdentity: 'R',
+        resolvedCards: [
+            [
+                'mtgo_id' => 12345,
+                'oracle_id' => 'oracle-bolt',
+                'quantity' => 4,
+                'sideboard' => false,
+            ],
+        ],
+    );
+
+    $deck = $archetype->decks()->first();
+
+    expect($deck)->not->toBeNull();
+    expect($deck->cards)->toHaveCount(1);
+    expect($deck->cards->first()->pivot->quantity)->toBe(4);
+});
+
+it('links the source match opponent to the created variant', function () {
+    AppSettings::setDeviceId('abcdef1234567890');
+
+    Card::create([
+        'oracle_id' => 'oracle-bolt',
+        'mtgo_id' => 12345,
+        'name' => 'Lightning Bolt',
+        'type' => 'Instant',
+    ]);
+
+    $match = MtgoMatch::factory()->create();
+    $opponent = Player::create(['username' => 'opponent']);
+    $game = Game::factory()->create(['match_id' => $match->id]);
+    $game->players()->attach($opponent->id, [
+        'instance_id' => 2,
+        'is_local' => false,
+        'on_play' => false,
+        'starting_hand_size' => 7,
+        'deck_json' => [],
+    ]);
+
+    $archetype = StoreManualArchetype::run(
+        name: 'From Match',
+        format: 'modern',
+        colorIdentity: 'R',
+        resolvedCards: [
+            [
+                'mtgo_id' => 12345,
+                'oracle_id' => 'oracle-bolt',
+                'quantity' => 4,
+                'sideboard' => false,
+            ],
+        ],
+        sourceMatchId: $match->id,
+    );
+
+    $matchArchetype = MatchArchetype::where('mtgo_match_id', $match->id)
+        ->where('player_id', $opponent->id)
+        ->first();
+
+    expect($matchArchetype->archetype_deck_id)->toBe($archetype->decks()->first()->id);
 });

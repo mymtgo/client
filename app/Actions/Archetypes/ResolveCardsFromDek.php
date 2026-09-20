@@ -17,8 +17,8 @@ class ResolveCardsFromDek
      */
     public static function run(array $parsedCards): array
     {
-        $mtgoIds = array_column($parsedCards, 'mtgo_id');
-        $quantityMap = collect($parsedCards)->keyBy('mtgo_id');
+        $mtgoIds = array_values(array_unique(array_column($parsedCards, 'mtgo_id')));
+        $entriesByMtgoId = collect($parsedCards)->groupBy('mtgo_id');
 
         $response = Http::mymtgoReference()->post('/api/cards/resolve', [
             'mtgo_ids' => $mtgoIds,
@@ -33,9 +33,9 @@ class ResolveCardsFromDek
         $resolvedCards = [];
 
         foreach ($apiCards as $cardData) {
-            $entry = $quantityMap->get($cardData['mtgo_id']);
+            $entries = $entriesByMtgoId->get($cardData['mtgo_id']);
 
-            if (! $entry) {
+            if ($entries === null || $entries->isEmpty()) {
                 continue;
             }
 
@@ -60,18 +60,20 @@ class ResolveCardsFromDek
                 }
             }
 
-            $resolvedCards[] = [
-                'mtgo_id' => $cardData['mtgo_id'],
-                'oracle_id' => $cardData['oracle_id'] ?? null,
-                'name' => $cardData['name'],
-                'type' => $cardData['type'],
-                'image' => $cardData['image'] ?? null,
-                'art_crop' => $cardData['art_crop'] ?? null,
-                'cmc' => $cardData['cmc'] ?? null,
-                'identity' => $cardData['identity'] ?? null,
-                'quantity' => $entry['quantity'],
-                'sideboard' => $entry['sideboard'],
-            ];
+            foreach ($entries as $entry) {
+                $resolvedCards[] = [
+                    'mtgo_id' => $cardData['mtgo_id'],
+                    'oracle_id' => $cardData['oracle_id'] ?? null,
+                    'name' => $cardData['name'],
+                    'type' => $cardData['type'],
+                    'image' => $cardData['image'] ?? null,
+                    'art_crop' => $cardData['art_crop'] ?? null,
+                    'cmc' => $cardData['cmc'] ?? null,
+                    'identity' => $cardData['identity'] ?? null,
+                    'quantity' => $entry['quantity'],
+                    'sideboard' => $entry['sideboard'],
+                ];
+            }
         }
 
         $sortedColors = $colors->unique()

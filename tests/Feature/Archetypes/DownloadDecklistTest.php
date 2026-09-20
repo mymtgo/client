@@ -234,3 +234,31 @@ it('retries on 401 after re-registration', function () {
     expect($archetype->decks)->toHaveCount(1);
     expect($archetype->decks->first()->uuid)->toBe('retry-deck-uuid');
 });
+
+it('keeps maindeck and sideboard rows for the same card when syncing a decklist', function () {
+    $archetype = Archetype::factory()->create(['uuid' => 'uuid-dup']);
+
+    Http::fake([
+        '*/api/archetypes/uuid-dup/decklists' => Http::response([
+            'decks' => [
+                [
+                    'uuid' => 'deck-dup',
+                    'seen_count' => 3,
+                    'cards' => [
+                        ['oracle_id' => 'oracle-get-lost', 'mtgo_id' => 117674, 'name' => 'Get Lost', 'type' => 'Instant', 'quantity' => 2, 'sideboard' => false],
+                        ['oracle_id' => 'oracle-get-lost', 'mtgo_id' => 117674, 'name' => 'Get Lost', 'type' => 'Instant', 'quantity' => 1, 'sideboard' => true],
+                    ],
+                ],
+            ],
+        ]),
+        '*' => Http::response([]),
+    ]);
+
+    DownloadArchetypeDecklist::run($archetype);
+
+    $rows = $archetype->decks()->first()->cards()->get();
+
+    expect($rows)->toHaveCount(2);
+    expect($rows->firstWhere('pivot.sideboard', false)->pivot->quantity)->toBe(2);
+    expect($rows->firstWhere('pivot.sideboard', true)->pivot->quantity)->toBe(1);
+});

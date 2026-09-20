@@ -52,7 +52,8 @@ describe('store', function () {
         $archetype = Archetype::where('name', 'My Burn Deck')->first();
         expect($archetype)->not->toBeNull();
         expect($archetype->manual)->toBeTrue();
-        expect($archetype->cards)->toHaveCount(1);
+        expect($archetype->decks)->toHaveCount(1);
+        expect($archetype->decks->first()->cards)->toHaveCount(1);
     });
 
     it('validates required fields', function () {

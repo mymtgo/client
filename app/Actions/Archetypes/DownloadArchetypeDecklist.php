@@ -81,13 +81,16 @@ class DownloadArchetypeDecklist
                 ]
             );
 
-            $pivotData[$card->id] = [
+            $sideboard = (bool) ($cardData['sideboard'] ?? false);
+
+            $pivotData[$card->id.':'.(int) $sideboard] = [
+                'card_id' => $card->id,
                 'quantity' => $cardData['quantity'],
-                'sideboard' => $cardData['sideboard'] ?? false,
+                'sideboard' => $sideboard,
             ];
         }
 
-        $deck->cards()->sync($pivotData);
+        $deck->syncCardRows($pivotData);
     }
 
     private static function fetchFromApi(string $uuid): Response
