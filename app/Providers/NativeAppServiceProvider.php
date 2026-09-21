@@ -5,10 +5,12 @@ namespace App\Providers;
 use App\Actions\Leagues\OpenOverlayWindow;
 use App\Actions\Overlay\SyncDraftNotesWindowVisibility;
 use App\Actions\Overlay\SyncGameOverlayVisibility;
+use App\Actions\Sidecar\StartSidecarSupervisor;
 use App\Actions\Tray\CreateTrayMenuBar;
 use App\Actions\Updates\RunAppUpdates;
 use App\Facades\AppSettings;
 use App\Facades\Mtgo;
+use Illuminate\Support\Facades\Log;
 use Native\Desktop\Contracts\ProvidesPhpIni;
 use Native\Desktop\Facades\App as NativeApp;
 use Native\Desktop\Facades\Menu;
@@ -53,6 +55,13 @@ class NativeAppServiceProvider implements ProvidesPhpIni
             ->title('mymtgo');
 
         Mtgo::runInitialSetup();
+
+        try {
+            StartSidecarSupervisor::run();
+        } catch (\Throwable $e) {
+            Log::warning('Sidecar supervisor failed to start', ['error' => $e->getMessage()]);
+        }
+
         Mtgo::retryUnsubmittedMatches();
 
         if (AppSettings::showLeagueWindow()) {

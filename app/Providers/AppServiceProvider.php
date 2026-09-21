@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Actions\Database\ConfigureNativephpConnection;
 use App\Actions\RegisterDevice;
+use App\Actions\Sidecar\StartSidecarSupervisor;
 use App\Actions\Sync\Auth\EnsureAccessToken;
 use App\Dashboard\WidgetRegistry;
 use App\Dashboard\Widgets\ArchetypeStatsWidget;
@@ -33,6 +34,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\ServiceProvider;
 use Native\Desktop\Events\App\OpenedFromURL;
+use Native\Desktop\Events\ChildProcess\ProcessExited;
 use Native\Desktop\Events\MenuBar\MenuBarClicked;
 
 class AppServiceProvider extends ServiceProvider
@@ -80,6 +82,12 @@ class AppServiceProvider extends ServiceProvider
             OpenedFromURL::class,
             HandleSyncAuthCallback::class,
         );
+
+        Event::listen(ProcessExited::class, function ($event) {
+            if ($event->alias === StartSidecarSupervisor::ALIAS) {
+                StartSidecarSupervisor::handleExit();
+            }
+        });
 
         if (! Storage::disk()->exists('settings.json')) {
             (new MigrateSettingsToJson)->run();

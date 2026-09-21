@@ -95,6 +95,7 @@ use App\Http\Controllers\Overlay\UpdateOpponentArchetypeController;
 use App\Http\Controllers\Settings\BrowseFolderController;
 use App\Http\Controllers\Settings\CheckApiStatusController;
 use App\Http\Controllers\Settings\DeleteOverlayBackgroundController;
+use App\Http\Controllers\Settings\MarkSidecarNoticeSeenController;
 use App\Http\Controllers\Settings\Pages\AccountController;
 use App\Http\Controllers\Settings\Pages\AdvancedController;
 use App\Http\Controllers\Settings\Pages\GeneralController;
@@ -116,6 +117,7 @@ use App\Http\Controllers\Settings\UpdateLocalImagesController;
 use App\Http\Controllers\Settings\UpdateLogPathController;
 use App\Http\Controllers\Settings\UpdateOfflineModeController;
 use App\Http\Controllers\Settings\UpdateOverlaySettingsController;
+use App\Http\Controllers\Settings\UpdateSidecarEnabledController;
 use App\Http\Controllers\Settings\UpdateTrustSettingController;
 use App\Http\Controllers\Settings\UpdateWatcherController;
 use App\Http\Controllers\Settings\UploadOverlayBackgroundController;
@@ -323,6 +325,8 @@ Route::group([], function (Router $router) {
         $group->post('overlay/background', UploadOverlayBackgroundController::class)->name('settings.overlay.background.upload');
         $group->delete('overlay/background', DeleteOverlayBackgroundController::class)->name('settings.overlay.background.delete');
         $group->patch('debug-mode', UpdateDebugModeController::class)->name('settings.debug-mode');
+        $group->patch('sidecar-enabled', UpdateSidecarEnabledController::class)->name('settings.sidecar-enabled');
+        $group->post('sidecar-notice/seen', MarkSidecarNoticeSeenController::class)->name('settings.sidecar-notice.seen');
         $group->patch('local-images', UpdateLocalImagesController::class)->name('settings.local-images');
         $group->patch('autostart', UpdateAutostartController::class)->name('settings.autostart');
         $group->get('api-status', CheckApiStatusController::class)->name('settings.api-status');
@@ -403,6 +407,9 @@ Route::group([], function (Router $router) {
         // Log Cursors
         $group->get('log-cursors', App\Http\Controllers\Debug\LogCursors\IndexController::class)->name('debug.log-cursors.index');
         $group->delete('log-cursors/{logCursor}', App\Http\Controllers\Debug\LogCursors\DestroyController::class)->name('debug.log-cursors.destroy');
+
+        // Sidecar
+        $group->get('sidecar', App\Http\Controllers\Debug\Sidecar\IndexController::class)->name('debug.sidecar.index');
 
         // Pipeline Log
         $group->get('pipeline-log', App\Http\Controllers\Debug\PipelineLog\IndexController::class)->name('debug.pipeline-log.index');

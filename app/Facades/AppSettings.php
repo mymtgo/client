@@ -12,6 +12,8 @@ use Illuminate\Support\Facades\Facade;
  * @method static void setLogPath(string $path)
  * @method static string logDataPath()
  * @method static void setLogDataPath(string $path)
+ * @method static string sidecarDirectory()
+ * @method static void setSidecarDirectory(string $path)
  * @method static bool isOffline()
  * @method static void setOffline(bool $value)
  * @method static ?string offlineModeLockedUntil()
@@ -76,6 +78,18 @@ use Illuminate\Support\Facades\Facade;
  * @method static void setSyncSlots(?array $slots)
  * @method static string syncTier()
  * @method static bool isSupporter()
+ * @method static array<string, bool> sidecarAuthority()
+ * @method static void setSidecarAuthority(array $flags)
+ * @method static bool sidecarEnabled()
+ * @method static void setSidecarEnabled(bool $value)
+ * @method static bool sidecarAvailable()
+ * @method static void setSidecarAvailable(bool $value)
+ * @method static bool sidecarNoticeSeen()
+ * @method static void setSidecarNoticeSeen(bool $value)
+ * @method static bool sidecarTripped()
+ * @method static void setSidecarTripped(bool $value)
+ * @method static int recordSidecarCrash(int $windowSeconds = 600)
+ * @method static void clearSidecarCrashes()
  */
 class AppSettings extends Facade
 {

@@ -197,6 +197,16 @@ class AppSettings
         $this->set('log_data_path', $path);
     }
 
+    public function sidecarDirectory(): string
+    {
+        return (string) $this->get('sidecar_directory', storage_path('app/sidecar'));
+    }
+
+    public function setSidecarDirectory(string $path): void
+    {
+        $this->set('sidecar_directory', $path);
+    }
+
     /**
      * Whether the app should make no community API calls.
      *
@@ -851,6 +861,83 @@ class AppSettings
     public function setArchetypesRefreshInProgress(bool $value): void
     {
         $this->set('archetypes_refresh_in_progress', $value);
+    }
+
+    /** @return array<string, bool> */
+    public function sidecarAuthority(): array
+    {
+        $stored = $this->get('sidecar_authority', []);
+
+        return is_array($stored) ? $stored : [];
+    }
+
+    /** @param array<string, bool> $flags */
+    public function setSidecarAuthority(array $flags): void
+    {
+        $this->set('sidecar_authority', $flags);
+    }
+
+    public function sidecarEnabled(): bool
+    {
+        return (bool) $this->get('sidecar_enabled', true);
+    }
+
+    public function setSidecarEnabled(bool $value): void
+    {
+        $this->set('sidecar_enabled', $value);
+    }
+
+    public function sidecarAvailable(): bool
+    {
+        return (bool) $this->get('sidecar_available', false);
+    }
+
+    public function setSidecarAvailable(bool $value): void
+    {
+        $this->set('sidecar_available', $value);
+    }
+
+    public function sidecarNoticeSeen(): bool
+    {
+        return (bool) $this->get('sidecar_notice_seen', false);
+    }
+
+    public function setSidecarNoticeSeen(bool $value): void
+    {
+        $this->set('sidecar_notice_seen', $value);
+    }
+
+    public function sidecarTripped(): bool
+    {
+        return (bool) $this->get('sidecar_tripped', false);
+    }
+
+    public function setSidecarTripped(bool $value): void
+    {
+        $this->set('sidecar_tripped', $value);
+    }
+
+    /**
+     * Append a crash timestamp and return how many fall inside the window.
+     *
+     * @return int crashes within the last $windowSeconds
+     */
+    public function recordSidecarCrash(int $windowSeconds = 600): int
+    {
+        $now = time();
+        $crashes = array_values(array_filter(
+            (array) $this->get('sidecar_crashes', []),
+            fn ($t) => is_int($t) && $t >= $now - $windowSeconds,
+        ));
+        $crashes[] = $now;
+        $this->set('sidecar_crashes', $crashes);
+
+        return count($crashes);
+    }
+
+    public function clearSidecarCrashes(): void
+    {
+        $this->forget('sidecar_crashes');
     }
 
     private function path(): string
