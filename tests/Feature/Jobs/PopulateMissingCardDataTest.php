@@ -191,3 +191,78 @@ it('does not ask by name for a card that has no name', function () {
 
     Http::assertNotSent(fn ($request) => collect($request['names'] ?? [])->isNotEmpty());
 });
+
+it('finds a front face one below when the printing has no foil id between them', function () {
+    AppSettings::setApiKey('key-one');
+    AppSettings::setApiKeyExpiresAt(now()->addHour()->toIso8601String());
+
+    // MTGO allocates a nonfoil id then a foil id, so a back face usually
+    // lands two above its front. A set with no foil ids closes that gap and
+    // the back face sits one above instead, as in Hobbit.
+    Card::factory()->stub()->create(['mtgo_id' => '154069']);
+
+    Http::fake([
+        '*/api/cards' => function ($request) {
+            $ids = collect($request['ids'] ?? [])->map(fn ($id) => (int) $id);
+
+            // Two below is a different, single-faced card and must be refused.
+            if ($ids->contains(154067)) {
+                return Http::response([[
+                    'value' => 154067,
+                    'scryfall_id' => 'scryfall-riddlemaster',
+                    'oracle_id' => 'oracle-riddlemaster',
+                    'name' => 'Gollum, Riddle Master',
+                    'image' => 'https://example.test/riddle.png',
+                ]], 200);
+            }
+
+            if ($ids->contains(154068)) {
+                return Http::response([[
+                    'value' => 154068,
+                    'scryfall_id' => 'scryfall-slinker',
+                    'oracle_id' => 'oracle-slinker',
+                    'name' => 'Gollum, Silent Slinker // Meager Meal',
+                    'image' => 'https://example.test/slinker.png',
+                ]], 200);
+            }
+
+            return Http::response([], 200);
+        },
+    ]);
+
+    (new PopulateMissingCardData)->handle();
+
+    $card = Card::where('mtgo_id', '154069')->sole();
+
+    expect($card->name)->toBe('Gollum, Silent Slinker // Meager Meal')
+        ->and($card->scryfall_id)->toBe('scryfall-slinker');
+});
+
+it('prefers the front face two below when both neighbours are multi-face', function () {
+    AppSettings::setApiKey('key-one');
+    AppSettings::setApiKeyExpiresAt(now()->addHour()->toIso8601String());
+
+    Card::factory()->stub()->create(['mtgo_id' => '126519']);
+
+    Http::fake([
+        '*/api/cards' => function ($request) {
+            $ids = collect($request['ids'] ?? [])->map(fn ($id) => (int) $id);
+
+            if ($ids->contains(126517)) {
+                return Http::response([[
+                    'value' => 126517,
+                    'scryfall_id' => 'scryfall-nonfoil',
+                    'oracle_id' => 'oracle-boggart',
+                    'name' => 'Boggart Trawler // Boggart Bog',
+                    'image' => 'https://example.test/boggart.png',
+                ]], 200);
+            }
+
+            return Http::response([], 200);
+        },
+    ]);
+
+    (new PopulateMissingCardData)->handle();
+
+    expect(Card::where('mtgo_id', '126519')->sole()->scryfall_id)->toBe('scryfall-nonfoil');
+});
