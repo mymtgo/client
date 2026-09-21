@@ -1434,3 +1434,26 @@ it('RecomputeManualMatchStats ignores tracked matches', function () {
 
     expect(DB::table('card_game_stats')->count())->toBe(0);
 });
+
+it('creates card stubs for opponent cards that only ever appear in the game log', function () {
+    [$match, $deckVersion, $local, $opponent] = createMatchWithGames();
+
+    $game = Game::factory()->for($match, 'match')->create(['won' => true, 'started_at' => now()]);
+    attachPlayers($game, $local, $opponent, deckJson: []);
+
+    // The opponent casts Damnation (catalog id 26279, logged doubled as
+    // 52558) and it never reaches a GameCards snapshot, so nothing else in
+    // the pipeline ever learns the id exists.
+    createTimeline($game, []);
+
+    ccgs_seedLogEntries($match->token, [
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@Ptestplayer joined the game.'],
+        ['timestamp' => '2026-01-01T00:00:00+00:00', 'message' => '@P@Popponent joined the game.'],
+        ['timestamp' => '2026-01-01T09:01:00+00:00', 'message' => '@Popponent casts @[Damnation@:52558,101:@].'],
+        ['timestamp' => '2026-01-01T09:05:00+00:00', 'message' => '@Popponent wins the game.'],
+    ]);
+
+    (new ComputeCardGameStats($match->id))->handle();
+
+    expect(Card::where('mtgo_id', '26279')->exists())->toBeTrue();
+});

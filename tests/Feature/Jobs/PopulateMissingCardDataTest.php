@@ -62,3 +62,132 @@ it('rebuilds the api client per chunk, so a key that expires mid-run still resol
 
     Http::assertSent(fn ($request) => str($request->url())->endsWith('/api/devices/register'));
 });
+
+it('resolves a back face by retrying the front face catalog id, which sits two below it', function () {
+    AppSettings::setApiKey('key-one');
+    AppSettings::setApiKeyExpiresAt(now()->addHour()->toIso8601String());
+
+    // MTGO numbers a multi-face printing's back face two above its front
+    // face, and the reference API only indexes the front. 126519 is
+    // "Boggart Bog", the back of "Boggart Trawler // Boggart Bog" (126517).
+    Card::factory()->stub()->create(['mtgo_id' => '126519']);
+
+    Http::fake([
+        '*/api/cards' => function ($request) {
+            $front = collect($request['ids'] ?? [])->contains(126517);
+
+            return Http::response($front ? [[
+                'value' => 126517,
+                'scryfall_id' => 'scryfall-boggart',
+                'oracle_id' => 'oracle-boggart',
+                'name' => 'Boggart Trawler // Boggart Bog',
+                'image' => 'https://example.test/boggart.png',
+            ]] : [], 200);
+        },
+    ]);
+
+    (new PopulateMissingCardData)->handle();
+
+    $card = Card::where('mtgo_id', '126519')->sole();
+
+    expect($card->scryfall_id)->toBe('scryfall-boggart')
+        ->and($card->name)->toBe('Boggart Trawler // Boggart Bog')
+        ->and($card->mtgo_id)->toBe('126519');
+});
+
+it('leaves a card alone when the id two below it is a different single-faced card', function () {
+    AppSettings::setApiKey('key-one');
+    AppSettings::setApiKeyExpiresAt(now()->addHour()->toIso8601String());
+
+    // 16156 is MTGO's "Ice" (half of "Fire // Ice"), but 16154 is an
+    // unrelated single-faced card. Accepting it would mislabel the row.
+    Card::factory()->stub()->create(['mtgo_id' => '16156']);
+
+    Http::fake([
+        '*/api/cards' => function ($request) {
+            $front = collect($request['ids'] ?? [])->contains(16154);
+
+            return Http::response($front ? [[
+                'value' => 16154,
+                'scryfall_id' => 'scryfall-vindicate',
+                'oracle_id' => 'oracle-vindicate',
+                'name' => 'Vindicate',
+                'image' => 'https://example.test/vindicate.png',
+            ]] : [], 200);
+        },
+    ]);
+
+    (new PopulateMissingCardData)->handle();
+
+    expect(Card::where('mtgo_id', '16156')->sole()->scryfall_id)->toBeNull();
+});
+
+it('fetches cards missing a scryfall id even when every card already has a name', function () {
+    AppSettings::setApiKey('key-one');
+    AppSettings::setApiKeyExpiresAt(now()->addHour()->toIso8601String());
+
+    // No nameless stub exists, so the job must not stop before the pass
+    // that fills in scryfall data.
+    Card::factory()->create(['mtgo_id' => '12345', 'name' => 'Lightning Bolt', 'scryfall_id' => null]);
+
+    Http::fake([
+        '*/api/cards' => Http::response([[
+            'value' => 12345,
+            'scryfall_id' => 'scryfall-bolt',
+            'oracle_id' => 'oracle-bolt',
+            'name' => 'Lightning Bolt',
+            'image' => 'https://example.test/bolt.png',
+        ]], 200),
+    ]);
+
+    (new PopulateMissingCardData)->handle();
+
+    expect(Card::where('mtgo_id', '12345')->sole()->scryfall_id)->toBe('scryfall-bolt');
+});
+
+it('resolves a card the api only knows by name, such as a split card half', function () {
+    AppSettings::setApiKey('key-one');
+    AppSettings::setApiKeyExpiresAt(now()->addHour()->toIso8601String());
+
+    // MTGO numbers each half of a split card separately and Scryfall holds
+    // neither id, so 48556 can only ever be found as the name "Tear".
+    Card::factory()->create(['mtgo_id' => '48556', 'name' => 'Tear', 'scryfall_id' => null]);
+
+    Http::fake([
+        '*/api/cards' => function ($request) {
+            if (! collect($request['names'] ?? [])->contains('Tear')) {
+                return Http::response([], 200);
+            }
+
+            return Http::response([[
+                'query' => 'Tear',
+                'value' => null,
+                'scryfall_id' => 'scryfall-weartear',
+                'oracle_id' => 'oracle-weartear',
+                'name' => 'Wear // Tear',
+                'image' => 'https://example.test/weartear.png',
+            ]], 200);
+        },
+    ]);
+
+    (new PopulateMissingCardData)->handle();
+
+    $card = Card::where('mtgo_id', '48556')->sole();
+
+    expect($card->scryfall_id)->toBe('scryfall-weartear')
+        ->and($card->name)->toBe('Wear // Tear')
+        ->and($card->mtgo_id)->toBe('48556');
+});
+
+it('does not ask by name for a card that has no name', function () {
+    AppSettings::setApiKey('key-one');
+    AppSettings::setApiKeyExpiresAt(now()->addHour()->toIso8601String());
+
+    Card::factory()->stub()->create(['mtgo_id' => '99999']);
+
+    Http::fake(['*/api/cards' => Http::response([], 200)]);
+
+    (new PopulateMissingCardData)->handle();
+
+    Http::assertNotSent(fn ($request) => collect($request['names'] ?? [])->isNotEmpty());
+});

@@ -23,6 +23,9 @@ class PopulateMissingCardData implements ShouldQueue
     /** @var int[] */
     public array $backoff = [10, 60];
 
+    /** How far below a back face's CatalogID its front face sits in MTGO. */
+    private const FRONT_FACE_OFFSET = 2;
+
     public function __construct()
     {
         $this->onQueue('card_downloads');
@@ -37,14 +40,15 @@ class PopulateMissingCardData implements ShouldQueue
         // (tokens and other permanents that only appear in game state, not deck lists)
         CreateMissingCardsFromTimelines::run();
 
-        $cards = Card::whereNull('name')->get();
+        $nameless = Card::whereNull('name')->get();
 
-        if ($cards->isEmpty()) {
-            return;
+        // First pass: identify tokens from local MTGO XMLs. Only nameless rows
+        // can gain anything here, but an empty set must not end the job: a row
+        // can carry a name and still be missing its scryfall data, and that is
+        // exactly what the passes below exist to fix.
+        if ($nameless->isNotEmpty()) {
+            PopulateTokensFromXml::run($nameless);
         }
-
-        // First pass: identify tokens from local MTGO XMLs
-        PopulateTokensFromXml::run($cards);
 
         // Re-query cards still missing scryfall_id (tokens now have names but still need API data)
         $unresolved = Card::whereNull('scryfall_id')->get();
@@ -67,6 +71,103 @@ class PopulateMissingCardData implements ShouldQueue
         if ($tokenCards->isNotEmpty()) {
             $this->fetchAndUpdate(collect(), $tokenCards, $downloadImages);
         }
+
+        $this->resolveBackFaces($downloadImages);
+        $this->resolveByName($downloadImages);
+    }
+
+    /**
+     * Last pass: ask by name for what no catalog id can reach.
+     *
+     * MTGO issues a separate catalog id for each half of a split card, each
+     * adventure, and every token, and Scryfall records none of them: it holds
+     * one mtgo_id per printing, for the card as a whole. "Tear" (48556) and
+     * "Wear" (48394) are 162 apart and neither appears in any catalog, so no
+     * id and no offset can find them. The name from the game log is the only
+     * key left, and the row keeps its own mtgo_id.
+     */
+    private function resolveByName(bool $downloadImages): void
+    {
+        $unresolved = Card::whereNull('scryfall_id')->whereNotNull('name')->get();
+
+        if ($unresolved->isEmpty()) {
+            return;
+        }
+
+        $unresolved->chunk(100)->each(function (Collection $chunk) use ($downloadImages) {
+            try {
+                $response = $this->apiClient()->post('/api/cards', [
+                    'ids' => [],
+                    'tokens' => [],
+                    'names' => $chunk->pluck('name')->unique()->values(),
+                ]);
+
+                foreach (collect($response->json()) as $cardData) {
+                    $query = $cardData['query'] ?? null;
+
+                    if ($query === null) {
+                        continue;
+                    }
+
+                    // One answer can serve several rows: a deck can hold more
+                    // than one printing of the same token.
+                    foreach ($chunk->where('name', $query) as $card) {
+                        $this->updateCard($card, $cardData, $downloadImages);
+                    }
+                }
+            } catch (\Throwable $e) {
+                report($e);
+            }
+        });
+    }
+
+    /**
+     * Second pass for the rows the reference API does not know.
+     *
+     * MTGO gives a multi-face printing's back face its own CatalogID, two
+     * above the front face's, and the reference catalog only indexes the
+     * front. A row for "Boggart Bog" (126519) therefore never resolves on
+     * its own id, and every run re-asks for an id that will never be known,
+     * so the card sits in the missing count forever.
+     *
+     * Retrying two below recovers the whole class. The offset alone is not
+     * proof though: for a single-faced card it lands on an unrelated
+     * printing, so only a genuinely multi-face answer is accepted. The row
+     * keeps its own mtgo_id and takes the pair's name, art and oracle id,
+     * which is what Scryfall holds for a double-faced card anyway.
+     */
+    private function resolveBackFaces(bool $downloadImages): void
+    {
+        $unresolved = Card::whereNull('scryfall_id')
+            ->get()
+            ->filter(fn (Card $card) => ((int) $card->mtgo_id) > self::FRONT_FACE_OFFSET);
+
+        if ($unresolved->isEmpty()) {
+            return;
+        }
+
+        $unresolved->chunk(50)->each(function (Collection $chunk) use ($downloadImages) {
+            $byFrontId = $chunk->keyBy(fn (Card $card) => ((int) $card->mtgo_id) - self::FRONT_FACE_OFFSET);
+
+            try {
+                $response = $this->apiClient()->post('/api/cards', [
+                    'ids' => $byFrontId->keys()->values(),
+                    'tokens' => [],
+                ]);
+
+                foreach (collect($response->json()) as $cardData) {
+                    $card = $byFrontId->get((int) ($cardData['value'] ?? 0));
+
+                    if (! $card || ! str_contains((string) ($cardData['name'] ?? ''), ' // ')) {
+                        continue;
+                    }
+
+                    $this->updateCard($card, $cardData, $downloadImages);
+                }
+            } catch (\Throwable $e) {
+                report($e);
+            }
+        });
     }
 
     /**
