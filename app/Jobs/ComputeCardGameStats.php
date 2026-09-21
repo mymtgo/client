@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Actions\Cards\AggregateGameLogCardStats;
 use App\Actions\Cards\CountSeenCardsByOracle;
 use App\Actions\Cards\CountZonesByOracle;
+use App\Actions\Cards\CreateMissingCards;
 use App\Actions\Cards\UpdateGameMetaFromLog;
 use App\Actions\Import\ExtractCardsFromGameLog;
 use App\Actions\Import\LinkImportedMatchGameLog;
@@ -73,6 +74,10 @@ class ComputeCardGameStats implements ShouldQueue
         $gameLogStats = ! empty($entries)
             ? ExtractCardsFromGameLog::run($entries)
             : null;
+
+        if ($gameLogStats !== null) {
+            self::createStubsForLogCards($gameLogStats);
+        }
 
         // No game-log source (the .dat is gone from disk and log_events are
         // pruned): recomputing would overwrite good log-derived counters (cast,
@@ -825,5 +830,36 @@ class ComputeCardGameStats implements ShouldQueue
             'pregame_revealed' => [],
             'pregame_played' => [],
         ];
+    }
+
+    /**
+     * Give every card the game log names a row of its own.
+     *
+     * A card the opponent played can leave a visible zone before the final
+     * GameCards snapshot is written, and a multi-face printing is logged
+     * under a face CatalogID the snapshot never carries. Either way the id
+     * reaches the match view through the log alone, and nothing on the live
+     * path has ever created a stub for it: CreateGames only sees timeline
+     * CatalogIDs, GenerateDeckSignature only sees the local decklist. The
+     * import path already does this; without it here, the card renders as
+     * "Unknown (26279)" forever and never enters the missing-card count, so
+     * fetching missing data cannot reach it either.
+     *
+     * @param  array<string, mixed>  $gameLogStats  output of ExtractCardsFromGameLog::run
+     */
+    private static function createStubsForLogCards(array $gameLogStats): void
+    {
+        $mtgoIds = collect($gameLogStats['cards_by_game'] ?? [])
+            ->flatMap(fn ($byPlayer) => collect($byPlayer)->flatMap(
+                fn ($cards) => collect($cards)->pluck('mtgo_id')
+            ))
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        if ($mtgoIds !== []) {
+            CreateMissingCards::run($mtgoIds);
+        }
     }
 }
