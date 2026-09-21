@@ -23,8 +23,18 @@ class PopulateMissingCardData implements ShouldQueue
     /** @var int[] */
     public array $backoff = [10, 60];
 
-    /** How far below a back face's CatalogID its front face sits in MTGO. */
-    private const FRONT_FACE_OFFSET = 2;
+    /**
+     * How far below a back face's CatalogID its front face can sit in MTGO.
+     *
+     * MTGO allocates a nonfoil id then a foil id, so a back face usually
+     * lands two above its front. A set issued without foil ids closes that
+     * gap and the back face sits one above instead. Two is tried first
+     * because where both exist they are the same printing, and where they
+     * differ two is the pair that actually holds a foil id between them.
+     *
+     * @var list<int>
+     */
+    private const FRONT_FACE_OFFSETS = [2, 1];
 
     public function __construct()
     {
@@ -138,36 +148,46 @@ class PopulateMissingCardData implements ShouldQueue
      */
     private function resolveBackFaces(bool $downloadImages): void
     {
-        $unresolved = Card::whereNull('scryfall_id')
-            ->get()
-            ->filter(fn (Card $card) => ((int) $card->mtgo_id) > self::FRONT_FACE_OFFSET);
+        foreach (self::FRONT_FACE_OFFSETS as $offset) {
+            $unresolved = Card::whereNull('scryfall_id')
+                ->get()
+                ->filter(fn (Card $card) => ((int) $card->mtgo_id) > $offset);
 
-        if ($unresolved->isEmpty()) {
-            return;
-        }
-
-        $unresolved->chunk(50)->each(function (Collection $chunk) use ($downloadImages) {
-            $byFrontId = $chunk->keyBy(fn (Card $card) => ((int) $card->mtgo_id) - self::FRONT_FACE_OFFSET);
-
-            try {
-                $response = $this->apiClient()->post('/api/cards', [
-                    'ids' => $byFrontId->keys()->values(),
-                    'tokens' => [],
-                ]);
-
-                foreach (collect($response->json()) as $cardData) {
-                    $card = $byFrontId->get((int) ($cardData['value'] ?? 0));
-
-                    if (! $card || ! str_contains((string) ($cardData['name'] ?? ''), ' // ')) {
-                        continue;
-                    }
-
-                    $this->updateCard($card, $cardData, $downloadImages);
-                }
-            } catch (\Throwable $e) {
-                report($e);
+            if ($unresolved->isEmpty()) {
+                return;
             }
-        });
+
+            $unresolved->chunk(50)->each(fn (Collection $chunk) => $this->resolveBackFaceChunk($chunk, $offset, $downloadImages));
+        }
+    }
+
+    /**
+     * @param  Collection<int, Card>  $chunk
+     */
+    private function resolveBackFaceChunk(Collection $chunk, int $offset, bool $downloadImages): void
+    {
+        $byFrontId = $chunk->keyBy(fn (Card $card) => ((int) $card->mtgo_id) - $offset);
+
+        try {
+            $response = $this->apiClient()->post('/api/cards', [
+                'ids' => $byFrontId->keys()->values(),
+                'tokens' => [],
+            ]);
+
+            foreach (collect($response->json()) as $cardData) {
+                $card = $byFrontId->get((int) ($cardData['value'] ?? 0));
+
+                // A single-faced answer means the offset landed on a
+                // neighbouring printing, not this card's front face.
+                if (! $card || ! str_contains((string) ($cardData['name'] ?? ''), ' // ')) {
+                    continue;
+                }
+
+                $this->updateCard($card, $cardData, $downloadImages);
+            }
+        } catch (\Throwable $e) {
+            report($e);
+        }
     }
 
     /**
