@@ -85,7 +85,7 @@ class AppServiceProvider extends ServiceProvider
 
         Event::listen(ProcessExited::class, function ($event) {
             if ($event->alias === StartSidecarSupervisor::ALIAS) {
-                StartSidecarSupervisor::handleExit();
+                StartSidecarSupervisor::handleExit($event->code);
             }
         });
 

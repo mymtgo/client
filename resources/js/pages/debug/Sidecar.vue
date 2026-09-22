@@ -20,7 +20,7 @@ const props = defineProps<{
         last_error: string | null;
         stale: boolean;
     };
-    settings: { enabled: boolean; available: boolean; tripped: boolean; authority: Record<string, boolean> };
+    settings: { enabled: boolean; available: boolean; runtime_missing: boolean; runtime_url: string; tripped: boolean; authority: Record<string, boolean> };
     summary: Record<string, { agree: number; disagree: number; sidecar_incomplete: number; sidecar_degraded: number }>;
     recentEvents: Array<{
         id: number;
@@ -90,6 +90,12 @@ function stringifyValue(value: unknown): string {
                                 <Badge :variant="settings.enabled ? 'default' : 'outline'">{{ settings.enabled ? 'enabled' : 'disabled' }}</Badge>
                                 <Badge :variant="settings.available ? 'default' : 'outline'">{{ settings.available ? 'available' : 'unavailable' }}</Badge>
                                 <Badge v-if="settings.tripped" variant="destructive">tripped</Badge>
+                                <Badge v-if="settings.runtime_missing" variant="destructive">.NET runtime missing</Badge>
+                            </div>
+                            <div v-if="settings.runtime_missing" class="text-xs text-muted-foreground">
+                                Live tracking needs the .NET Desktop Runtime. Install it from
+                                <a :href="settings.runtime_url" target="_blank" class="cursor-pointer underline">{{ settings.runtime_url }}</a>,
+                                then switch live tracking off and on.
                             </div>
                             <div class="grid grid-cols-2 gap-x-6 gap-y-1 text-xs text-muted-foreground sm:grid-cols-3">
                                 <div>MTGO version: <span class="text-foreground">{{ status.mtgo_version ?? '-' }}</span></div>

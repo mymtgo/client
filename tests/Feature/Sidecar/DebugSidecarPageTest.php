@@ -15,6 +15,8 @@ it('renders the sidecar debug page', function () {
             ->component('debug/Sidecar')
             ->has('status')
             ->has('settings.enabled')
+            ->where('settings.runtime_missing', false)
+            ->has('settings.runtime_url')
             ->has('settings.authority.username')
             ->has('summary.game_result.agree')
             ->has('recentEvents')

@@ -8,6 +8,7 @@ use App\Facades\AppSettings;
 use App\Http\Controllers\Controller;
 use App\Models\GameEvent;
 use App\Models\GameFieldDiff;
+use App\Sidecar\DotnetRuntime;
 use App\Sidecar\SidecarAuthorityFlags;
 use App\Sidecar\SidecarTables;
 use Inertia\Inertia;
@@ -28,6 +29,8 @@ class IndexController extends Controller
             'settings' => [
                 'enabled' => AppSettings::sidecarEnabled(),
                 'available' => AppSettings::sidecarAvailable(),
+                'runtime_missing' => AppSettings::sidecarRuntimeMissing(),
+                'runtime_url' => DotnetRuntime::DOWNLOAD_URL,
                 'tripped' => AppSettings::sidecarTripped(),
                 'authority' => SidecarAuthorityFlags::current(),
             ],
