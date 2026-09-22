@@ -35,6 +35,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\ServiceProvider;
 use Native\Desktop\Events\App\OpenedFromURL;
 use Native\Desktop\Events\ChildProcess\ProcessExited;
+use Native\Desktop\Events\ChildProcess\ProcessSpawned;
 use Native\Desktop\Events\MenuBar\MenuBarClicked;
 
 class AppServiceProvider extends ServiceProvider
@@ -86,6 +87,12 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(ProcessExited::class, function ($event) {
             if ($event->alias === StartSidecarSupervisor::ALIAS) {
                 StartSidecarSupervisor::handleExit($event->code);
+            }
+        });
+
+        Event::listen(ProcessSpawned::class, function ($event) {
+            if ($event->alias === StartSidecarSupervisor::ALIAS) {
+                StartSidecarSupervisor::handleSpawn();
             }
         });
 
