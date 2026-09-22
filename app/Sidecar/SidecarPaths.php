@@ -6,7 +6,7 @@ use App\Facades\AppSettings;
 
 class SidecarPaths
 {
-    public const EXE_RELATIVE = 'resources/sidecar/mymtgo-sidecar.exe';
+    public const EXE_RELATIVE = 'resources/sidecar/mymtgo-helper.exe';
 
     public static function directory(): string
     {

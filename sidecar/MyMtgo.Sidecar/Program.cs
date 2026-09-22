@@ -15,7 +15,7 @@ try
 catch (ArgumentException ex)
 {
     Console.Error.WriteLine(ex.Message);
-    Console.Error.WriteLine("usage: mymtgo-sidecar --out <dir> --parent-pid <pid> [--config <https url>] [--probe-interval <seconds>]");
+    Console.Error.WriteLine("usage: mymtgo-helper --out <dir> --parent-pid <pid> [--config <https url>] [--probe-interval <seconds>]");
     return 2;
 }
 

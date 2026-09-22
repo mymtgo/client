@@ -49,7 +49,7 @@ rm -rf "$STAGE"
 mkdir -p "$STAGE"
 trap 'rm -rf "$STAGE"' EXIT
 
-cp "artifacts/publish/mymtgo-sidecar.exe" "$STAGE/mymtgo-sidecar.exe"
+cp "artifacts/publish/mymtgo-helper.exe" "$STAGE/mymtgo-helper.exe"
 
 if [ ! -f "$PKG/NOTICE" ]; then
   echo "error: no NOTICE in $PKG; refusing to ship the exe without attribution" >&2
@@ -75,7 +75,7 @@ else
 fi
 
 mkdir -p "$OUT"
-mv -f "$STAGE/mymtgo-sidecar.exe" "$OUT/mymtgo-sidecar.exe"
+mv -f "$STAGE/mymtgo-helper.exe" "$OUT/mymtgo-helper.exe"
 mv -f "$STAGE/MTGOSDK-NOTICE.txt" "$OUT/MTGOSDK-NOTICE.txt"
 mv -f "$STAGE/MTGOSDK-LICENSE.txt" "$OUT/MTGOSDK-LICENSE.txt"
 rm -rf "$STAGE"

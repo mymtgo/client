@@ -26,7 +26,7 @@ Toolchain used to build this: .NET 10 SDK 10.0.401 via Homebrew on macOS, MTGOSD
     ./publish.sh 0.30.0            # macOS/Linux
     .\publish.ps1 -Version 0.30.0  # Windows
 
-Output: `resources/sidecar/mymtgo-sidecar.exe` plus the MTGOSDK licence and notice. The folder is
+Output: `resources/sidecar/mymtgo-helper.exe` plus the MTGOSDK licence and notice. The folder is
 git-ignored; the NativePHP Windows build bundles whatever is there. Mac builds ship without it.
 
 The exe is self-contained and untrimmed, about 146 MB. Trimming stays off (`PublishTrimmed=false`)
@@ -34,7 +34,7 @@ because MTGOSDK relies on reflection; NativeAOT is not viable for the same reaso
 
 ## Run by hand
 
-    mymtgo-sidecar.exe --out C:\path\to\sidecar --parent-pid <pid> [--config <https url>] [--probe-interval <seconds>]
+    mymtgo-helper.exe --out C:\path\to\sidecar --parent-pid <pid> [--config <https url>] [--probe-interval <seconds>]
 
 Square brackets mark optional flags; drop the brackets when you type the command.
 

@@ -3,7 +3,11 @@
     <OutputType>Exe</OutputType>
     <TargetFramework>net10.0-windows</TargetFramework>
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
-    <AssemblyName>mymtgo-sidecar</AssemblyName>
+    <AssemblyName>mymtgo-helper</AssemblyName>
+    <AssemblyTitle>MyMTGO Helper</AssemblyTitle>
+    <Product>MyMTGO</Product>
+    <Company>MyMTGO</Company>
+    <Description>Reads live game state from the MTGO client for the MyMTGO deck tracker.</Description>
     <RootNamespace>MyMtgo.Sidecar</RootNamespace>
     <PublishSingleFile>true</PublishSingleFile>
     <PublishTrimmed>false</PublishTrimmed>

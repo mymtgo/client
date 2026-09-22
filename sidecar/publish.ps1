@@ -25,7 +25,7 @@ $Stage = Join-Path "artifacts" "stage"
 if (Test-Path $Stage) { Remove-Item $Stage -Recurse -Force }
 New-Item -ItemType Directory -Force -Path $Stage | Out-Null
 
-Copy-Item artifacts/publish/mymtgo-sidecar.exe (Join-Path $Stage "mymtgo-sidecar.exe") -Force
+Copy-Item artifacts/publish/mymtgo-helper.exe (Join-Path $Stage "mymtgo-helper.exe") -Force
 
 $NoticePath = Join-Path $Pkg "NOTICE"
 if (-not (Test-Path $NoticePath)) {
@@ -65,7 +65,7 @@ if (Test-Path $LicensePath) {
 }
 
 New-Item -ItemType Directory -Force -Path $Out | Out-Null
-Move-Item (Join-Path $Stage "mymtgo-sidecar.exe") (Join-Path $Out "mymtgo-sidecar.exe") -Force
+Move-Item (Join-Path $Stage "mymtgo-helper.exe") (Join-Path $Out "mymtgo-helper.exe") -Force
 Move-Item (Join-Path $Stage "MTGOSDK-NOTICE.txt") (Join-Path $Out "MTGOSDK-NOTICE.txt") -Force
 Move-Item (Join-Path $Stage "MTGOSDK-LICENSE.txt") (Join-Path $Out "MTGOSDK-LICENSE.txt") -Force
 Remove-Item $Stage -Recurse -Force

@@ -17,7 +17,7 @@ it('spawns nothing when disabled even if the exe exists', function () {
     $fake = ChildProcess::fake();
     AppSettings::setSidecarEnabled(false);
 
-    StartSidecarSupervisor::run(exePath: '/fake/mymtgo-sidecar.exe');
+    StartSidecarSupervisor::run(exePath: '/fake/mymtgo-helper.exe');
 
     expect(AppSettings::sidecarAvailable())->toBeTrue();
     expect($fake->starts)->toBeEmpty();
@@ -28,12 +28,12 @@ it('spawns the sidecar with output directory and parent pid', function () {
     AppSettings::setSidecarDirectory('/tmp/sidecar-out');
     AppSettings::setOffline(true);
 
-    StartSidecarSupervisor::run(exePath: '/fake/mymtgo-sidecar.exe');
+    StartSidecarSupervisor::run(exePath: '/fake/mymtgo-helper.exe');
 
     ChildProcess::assertStarted(function ($cmd, $alias, $cwd, $env, $persistent) {
         return $alias === StartSidecarSupervisor::ALIAS
             && $persistent === true
-            && $cmd[0] === '/fake/mymtgo-sidecar.exe'
+            && $cmd[0] === '/fake/mymtgo-helper.exe'
             && in_array('--out', $cmd, true)
             && in_array('/tmp/sidecar-out', $cmd, true)
             && in_array('--parent-pid', $cmd, true)
@@ -47,7 +47,7 @@ it('passes the app server config url when online', function () {
     AppSettings::setOffline(false);
     AppSettings::setAppServerUrl('https://api.example.test');
 
-    StartSidecarSupervisor::run(exePath: '/fake/mymtgo-sidecar.exe');
+    StartSidecarSupervisor::run(exePath: '/fake/mymtgo-helper.exe');
 
     ChildProcess::assertStarted(fn ($cmd, $alias, $cwd, $env, $persistent) => $cmd[array_search('--config', $cmd, true) + 1] === 'https://api.example.test/sidecar/config');
 });
@@ -67,7 +67,7 @@ it('clears the trip on boot', function () {
     ChildProcess::fake();
     AppSettings::setSidecarTripped(true);
 
-    StartSidecarSupervisor::run(exePath: '/fake/mymtgo-sidecar.exe');
+    StartSidecarSupervisor::run(exePath: '/fake/mymtgo-helper.exe');
 
     expect(AppSettings::sidecarTripped())->toBeFalse();
     ChildProcess::assertStarted(fn ($cmd, $alias, $cwd, $env, $persistent) => $alias === StartSidecarSupervisor::ALIAS);
