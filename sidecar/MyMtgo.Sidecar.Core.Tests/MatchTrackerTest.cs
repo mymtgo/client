@@ -163,4 +163,62 @@ public class MatchTrackerTest
         Assert.Equal(0, t.GamesSeen);
         Assert.Equal(1, t.NextGameNumber);
     }
+
+    [Fact]
+    public void Match_end_that_arrives_before_the_last_game_result_waits_for_it()
+    {
+        // Seen on 2026-09-22: a concession flagged MatchCompleted 60 ms before the recorder's
+        // result grace period wrote game_ended, so match_ended went out first with score [0,0].
+        var t = New();
+        t.OnMatchStarted(["local.player", "Opp_Name"], "CMODERN", "challenge");
+        t.OnGameStarted();
+        t.OnMatchEnded(["local.player"]);
+        Assert.Equal("match_started", Types());
+        Assert.False(t.Ended);
+
+        t.OnGameEnded("local.player");
+        Assert.Equal("match_started,match_ended", Types());
+        Assert.Equal("{\"winner_p\":0,\"score\":[1,0]}", Snap.Json(_out.Last().Data));
+        Assert.True(t.Ended);
+    }
+
+    [Fact]
+    public void A_parked_match_end_is_flushed_by_a_disconnect_with_no_winner()
+    {
+        var t = New();
+        t.OnMatchStarted(["local.player", "Opp_Name"], "CMODERN", "challenge");
+        t.OnGameStarted(); t.OnGameEnded("Opp_Name");
+        t.OnGameStarted();
+        t.OnMatchEnded(["Opp_Name"]);
+        Assert.False(t.Ended);
+
+        t.OnGameEnded(null);
+        Assert.Equal("{\"winner_p\":1,\"score\":[0,1]}", Snap.Json(_out.Last().Data));
+        Assert.True(t.Ended);
+    }
+
+    [Fact]
+    public void A_second_match_end_while_one_is_parked_does_not_double_emit()
+    {
+        var t = New();
+        t.OnMatchStarted(["local.player", "Opp_Name"], "CMODERN", "challenge");
+        t.OnGameStarted();
+        t.OnMatchEnded(["local.player"]);
+        t.OnMatchEnded(["local.player"]);
+        t.OnGameEnded("local.player");
+        Assert.Equal(1, _out.Count(e => e.Type == "match_ended"));
+    }
+
+    [Fact]
+    public void Extra_game_ended_calls_do_not_confuse_the_open_game_count()
+    {
+        var t = New();
+        t.OnMatchStarted(["local.player", "Opp_Name"], "CMODERN", "challenge");
+        t.OnGameStarted(); t.OnGameEnded("local.player"); t.OnGameEnded(null);
+        t.OnGameStarted();
+        t.OnMatchEnded(["local.player"]);
+        Assert.False(t.Ended);
+        t.OnGameEnded("local.player");
+        Assert.Equal("{\"winner_p\":0,\"score\":[2,0]}", Snap.Json(_out.Last().Data));
+    }
 }

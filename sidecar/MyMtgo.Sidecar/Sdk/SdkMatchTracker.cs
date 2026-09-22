@@ -223,15 +223,17 @@ public sealed class SdkMatchTracker
     }
 
     /// <summary>
-    /// Kind is not documented on this property. Ruling: treat it as UTC. PHP reads the event
-    /// timestamps for the sideboard clock, so a wrong offset here is cosmetic. An unreadable or
-    /// sentinel deadline yields null, which still opens the window.
+    /// Kind is not documented on this property. Measured on 2026-09-22 (machine on BST): read as
+    /// UTC the deadline landed 63 minutes after the window opened, so the value is machine local
+    /// time and the window is the expected 3 minutes once converted. PHP reads the event
+    /// timestamps for the sideboard clock, so the offset is cosmetic either way. An unreadable
+    /// or sentinel deadline yields null, which still opens the window.
     /// </summary>
     private DateTimeOffset? ReadSideboardingDeadline()
     {
         var ends = Try(() => _match.SideboardingEnds, DateTime.MinValue);
 
-        return ends == DateTime.MinValue ? null : new DateTimeOffset(DateTime.SpecifyKind(ends, DateTimeKind.Utc));
+        return ends == DateTime.MinValue ? null : new DateTimeOffset(DateTime.SpecifyKind(ends, DateTimeKind.Local));
     }
 
     /// <summary>

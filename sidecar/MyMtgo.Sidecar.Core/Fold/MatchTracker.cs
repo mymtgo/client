@@ -11,6 +11,8 @@ public sealed class MatchTracker(string matchId, Action<PendingEvent> emit)
     private readonly HashSet<int> _submittedThisWindow = [];
     private DateTimeOffset? _currentWindow;
     private int _games;
+    private int _gamesEnded;
+    private List<string>? _pendingEnd;
 
     public bool Started { get; private set; }
     public bool Ended { get; private set; }
@@ -62,15 +64,23 @@ public sealed class MatchTracker(string matchId, Action<PendingEvent> emit)
     /// </summary>
     public void OnGameEnded(string? winnerName)
     {
-        if (winnerName is null)
+        if (_gamesEnded < _games)
         {
-            return;
+            _gamesEnded++;
         }
 
-        var slot = _names.IndexOf(winnerName);
-        if (slot is >= 0 and < 2)
+        if (winnerName is not null)
         {
-            _score[slot]++;
+            var slot = _names.IndexOf(winnerName);
+            if (slot is >= 0 and < 2)
+            {
+                _score[slot]++;
+            }
+        }
+
+        if (_pendingEnd is not null && _gamesEnded >= _games)
+        {
+            EmitMatchEnded(_pendingEnd);
         }
     }
 
@@ -110,14 +120,35 @@ public sealed class MatchTracker(string matchId, Action<PendingEvent> emit)
         emit(Ev(EventTypes.SideboardSubmitted, new() { ["p"] = slot }));
     }
 
+    /// <summary>
+    /// The client can flag the match complete before the last game's result has landed: a
+    /// concession ends the match instantly while the game recorder is still inside its result
+    /// grace period. Emitting then would put match_ended before game_ended in the stream with a
+    /// score missing the deciding game. So while a claimed game is still open the end is parked
+    /// and goes out from <see cref="OnGameEnded"/>, which also covers the disconnect path
+    /// because an abandoned game reports a null winner.
+    /// </summary>
     public void OnMatchEnded(IReadOnlyList<string> winningNames)
     {
-        if (Ended)
+        if (Ended || _pendingEnd is not null)
         {
             return;
         }
 
+        if (_gamesEnded < _games)
+        {
+            _pendingEnd = [.. winningNames];
+
+            return;
+        }
+
+        EmitMatchEnded(winningNames);
+    }
+
+    private void EmitMatchEnded(IReadOnlyList<string> winningNames)
+    {
         Ended = true;
+        _pendingEnd = null;
         int? winner = null;
         foreach (var name in winningNames)
         {

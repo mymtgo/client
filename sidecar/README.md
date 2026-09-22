@@ -78,10 +78,10 @@ Record `SMOKE: pass|fail` per item; adapter drift found here becomes a fix round
    `card_zone_changed` for every land drop, `card_tapped` when paying mana, `clock_tick` on turn
    boundaries, `game_ended` with the right `winner_p`, `match_started` (may be after
    `game_started`) and, after the match, `match_ended` with the right score.
-4. Record answers to the two open spikes: does `c` (`card_zone_changed.c`) equal the Twitch
-   snapshot card id for the same card (compare with `game_timelines` content for the same game);
-   is `sideboarding_started.ends_at` offset from real time (see the `SideboardingEnds` ruling in
-   Task 12).
+4. Both open spikes answered on 2026-09-22 against a real capture: `c` (`card_zone_changed.c`)
+   equals the Twitch snapshot `Id` for the same card (227 of 227 id and catalog pairs matched the
+   log, none disagreed), and `SideboardingEnds` is machine local time, not UTC (now read as
+   `DateTimeKind.Local`). Re-check only after an MTGO or SDK update.
 5. Kill MTGO mid-game. Expect `game_ended {reason: "disconnect"}`, `state: waiting`, then a new
    session file and `keyframe {trigger: "reattach"}` when MTGO is restarted into the same game.
 6. Close the app. Expect the exe to exit within 5 seconds (Task Manager).

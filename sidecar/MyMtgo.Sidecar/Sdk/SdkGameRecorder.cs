@@ -232,6 +232,7 @@ public sealed class SdkGameRecorder : IDisposable
     {
         try
         {
+            bool ended;
             lock (_gate)
             {
                 if (_disposed)
@@ -239,7 +240,18 @@ public sealed class SdkGameRecorder : IDisposable
                     return;
                 }
 
+                var wasEnded = _recorder.Ended;
                 _recorder.OnAbandoned();
+                ended = _recorder.Ended && !wasEnded;
+            }
+
+            // The match tracker counts open games so it can hold match_ended until the last
+            // result lands; a game closed by disconnect has to be counted too or a parked
+            // match_ended never goes out. Outside the gate for the same lock order reason as
+            // the results path.
+            if (ended)
+            {
+                _onEnded(null);
             }
         }
         catch (Exception ex)
