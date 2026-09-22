@@ -41,8 +41,8 @@ it('fills a null log value from the sidecar only when every gate is open', funct
     $r = ResolveFieldAuthority::run('on_play', null, 'Opp_Name', true, true, true, true);
     expect($r->value)->toBe('Opp_Name')->and($r->chosenSource)->toBe('sidecar')->and($r->disagree)->toBeFalse();
 
-    $r = ResolveFieldAuthority::run('on_play', 'saidin.raken', null, true, true, true, true);
-    expect($r->value)->toBe('saidin.raken')->and($r->chosenSource)->toBe('log')->and($r->disagree)->toBeFalse();
+    $r = ResolveFieldAuthority::run('on_play', 'local.player', null, true, true, true, true);
+    expect($r->value)->toBe('local.player')->and($r->chosenSource)->toBe('log')->and($r->disagree)->toBeFalse();
 });
 
 it('ignores the sidecar value for a null log value when the flag is off', function () {

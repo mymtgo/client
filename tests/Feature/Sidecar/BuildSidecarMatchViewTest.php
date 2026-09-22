@@ -31,11 +31,11 @@ it('returns null for an unknown match', function () {
 it('folds match-level facts', function () {
     $view = BuildSidecarMatchView::run('288955358');
 
-    expect($view->playerNames)->toBe([0 => 'saidin.raken', 1 => 'Opp_Name'])
+    expect($view->playerNames)->toBe([0 => 'local.player', 1 => 'Opp_Name'])
         ->and($view->matchEnded)->toBeTrue()
         ->and($view->matchResult)->toBe(['winner' => null, 'score' => [1, 1]])
         ->and($view->allVerified)->toBeTrue()
-        ->and($view->latestProbeUsername)->toBe('saidin.raken')
+        ->and($view->latestProbeUsername)->toBe('local.player')
         ->and(array_keys($view->games))->toBe([958291826, 958292028]);
 });
 
@@ -48,11 +48,11 @@ it('folds game one with clock summary and on play', function () {
         ->and($g->coverageComplete())->toBeTrue()
         ->and($g->startedAt->toIso8601ZuluString('millisecond'))->toBe('2026-08-05T12:16:10.000Z')
         ->and($g->endedAt->toIso8601ZuluString('millisecond'))->toBe('2026-08-05T12:24:00.500Z')
-        ->and($g->winnerName)->toBe('saidin.raken')
-        ->and($g->onPlayName)->toBe('saidin.raken')
+        ->and($g->winnerName)->toBe('local.player')
+        ->and($g->onPlayName)->toBe('local.player')
         ->and($g->turnCount)->toBe(2)
         ->and($g->clockByName)->toBe([
-            'saidin.raken' => ['start' => 1500000, 'end' => 1300000, 'min' => 1300000, 'sideboard_used' => null],
+            'local.player' => ['start' => 1500000, 'end' => 1300000, 'min' => 1300000, 'sideboard_used' => null],
             'Opp_Name' => ['start' => 1500000, 'end' => 1200000, 'min' => 1200000, 'sideboard_used' => null],
         ])
         ->and($g->keyframes)->toHaveCount(2)
@@ -64,7 +64,7 @@ it('folds game two with the opponent winning on the play', function () {
 
     expect($g->winnerName)->toBe('Opp_Name')
         ->and($g->onPlayName)->toBe('Opp_Name')
-        ->and($g->clockByName['saidin.raken'])->toBe(['start' => 1500000, 'end' => 900000, 'min' => 900000, 'sideboard_used' => 65000])
+        ->and($g->clockByName['local.player'])->toBe(['start' => 1500000, 'end' => 900000, 'min' => 900000, 'sideboard_used' => 65000])
         ->and($g->clockByName['Opp_Name']['sideboard_used'])->toBe(105000);
 });
 
@@ -85,7 +85,7 @@ it('orders across sessions by session_started_at then seq', function () {
 
     expect($g->turnCount)->toBe(2)
         ->and($g->hasEnd)->toBeTrue()
-        ->and($g->winnerName)->toBe('saidin.raken');
+        ->and($g->winnerName)->toBe('local.player');
 });
 
 it('reports incomplete coverage when game_ended is missing', function () {

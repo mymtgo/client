@@ -55,3 +55,9 @@ CLAUDE.md
 # Claude Code worktrees
 .claude/worktrees/
 /tests/storage
+
+# .NET sidecar build output and bundled exe
+/sidecar/**/bin/
+/sidecar/**/obj/
+/sidecar/artifacts/
+/resources/sidecar/

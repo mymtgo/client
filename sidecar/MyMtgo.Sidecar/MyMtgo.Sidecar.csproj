@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <AssemblyName>mymtgo-sidecar</AssemblyName>
+    <RootNamespace>MyMtgo.Sidecar</RootNamespace>
+    <PublishSingleFile>true</PublishSingleFile>
+    <PublishTrimmed>false</PublishTrimmed>
+    <SelfContained>true</SelfContained>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <Version Condition="'$(Version)' == ''">0.0.0</Version>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="MTGOSDK" Version="1.7.0.20260903" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../MyMtgo.Sidecar.Core/MyMtgo.Sidecar.Core.csproj" />
+  </ItemGroup>
+</Project>

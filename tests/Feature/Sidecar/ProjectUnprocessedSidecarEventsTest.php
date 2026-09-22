@@ -30,7 +30,7 @@ afterEach(function () {
 function sweepMatchWithGames(): MtgoMatch
 {
     $match = MtgoMatch::factory()->create(['mtgo_id' => '288955358', 'state' => MatchState::Complete]);
-    $local = Player::factory()->create(['username' => 'saidin.raken']);
+    $local = Player::factory()->create(['username' => 'local.player']);
     $opponent = Player::factory()->create(['username' => 'Opp_Name']);
 
     foreach (['958291826', '958292028'] as $gameMtgoId) {
@@ -52,7 +52,7 @@ it('projects a match no log event would have revisited and marks its events proc
     expect(ProjectUnprocessedSidecarEvents::run())->toBe(1);
 
     $pivot = Game::where('mtgo_id', '958291826')->first()
-        ->players()->where('username', 'saidin.raken')->first()->pivot;
+        ->players()->where('username', 'local.player')->first()->pivot;
 
     expect($pivot->clock_remaining_ms_start)->toBe(1500000)
         ->and($pivot->clock_remaining_ms_end)->toBe(1300000)

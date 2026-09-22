@@ -31,7 +31,7 @@ it('counts agreement, disagreement, incomplete and degraded', function () {
     IngestSidecarEvents::run();
 
     $match = MtgoMatch::factory()->create(['mtgo_id' => '288955358']);
-    $local = Player::factory()->create(['username' => 'saidin.raken']);
+    $local = Player::factory()->create(['username' => 'local.player']);
     $opp = Player::factory()->create(['username' => 'Opp_Name']);
     $g1 = Game::factory()->create(['match_id' => $match->id, 'mtgo_id' => '958291826', 'won' => true]);
     $g2 = Game::factory()->create(['match_id' => $match->id, 'mtgo_id' => '958292028', 'won' => true]);
@@ -40,7 +40,7 @@ it('counts agreement, disagreement, incomplete and degraded', function () {
         $g->players()->attach($opp->id, ['instance_id' => 1, 'is_local' => false, 'on_play' => false]);
     }
     GameTimeline::create(['game_id' => $g1->id, 'timestamp' => '13:16:41', 'content' => json_encode([
-        'Players' => [['Id' => 0, 'Name' => 'saidin.raken'], ['Id' => 1, 'Name' => 'Opp_Name']],
+        'Players' => [['Id' => 0, 'Name' => 'local.player'], ['Id' => 1, 'Name' => 'Opp_Name']],
         'Cards' => [['Id' => 445, 'CatalogID' => 132587, 'Zone' => 'Battlefield', 'Owner' => 0], ['Id' => 446, 'CatalogID' => 39339, 'Zone' => 'Battlefield', 'Owner' => 0]],
     ])]);
 

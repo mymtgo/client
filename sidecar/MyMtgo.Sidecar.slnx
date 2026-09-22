@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="MyMtgo.Sidecar.Core/MyMtgo.Sidecar.Core.csproj" />
+  <Project Path="MyMtgo.Sidecar.Core.Tests/MyMtgo.Sidecar.Core.Tests.csproj" />
+  <Project Path="MyMtgo.Sidecar/MyMtgo.Sidecar.csproj" />
+</Solution>

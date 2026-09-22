@@ -88,6 +88,7 @@ return [
         'content',
         'node_modules',
         '*/tests',
+        'sidecar',
     ],
 
     /**

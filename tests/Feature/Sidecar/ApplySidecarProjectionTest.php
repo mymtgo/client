@@ -33,7 +33,7 @@ beforeEach(function () {
         'games_won' => 2,
         'games_lost' => 0,
     ]);
-    $local = Player::factory()->create(['username' => 'saidin.raken']);
+    $local = Player::factory()->create(['username' => 'local.player']);
     $opp = Player::factory()->create(['username' => 'Opp_Name']);
 
     $this->game1 = Game::factory()->create(['match_id' => $this->match->id, 'mtgo_id' => '958291826', 'won' => true, 'started_at' => '2026-08-05 12:16:12', 'ended_at' => '2026-08-05 12:23:59']);
@@ -45,7 +45,7 @@ beforeEach(function () {
     }
 
     GameTimeline::create(['game_id' => $this->game1->id, 'timestamp' => '13:16:41', 'content' => json_encode([
-        'Players' => [['Id' => 0, 'Name' => 'saidin.raken'], ['Id' => 1, 'Name' => 'Opp_Name']],
+        'Players' => [['Id' => 0, 'Name' => 'local.player'], ['Id' => 1, 'Name' => 'Opp_Name']],
         'Cards' => [
             ['Id' => 445, 'CatalogID' => 132587, 'Zone' => 'Battlefield', 'Owner' => 0],
             ['Id' => 446, 'CatalogID' => 39339, 'Zone' => 'Battlefield', 'Owner' => 0],
@@ -70,7 +70,7 @@ beforeEach(function () {
             'cards' => [['c' => '600', 'zone' => 'Battlefield', 'owner_p' => 1, 'controller_p' => 1, 'catalog_id' => 87907, 'tapped' => false]]],
     ]);
     GameTimeline::create(['game_id' => $this->game2->id, 'timestamp' => '13:30:00', 'content' => json_encode([
-        'Players' => [['Id' => 0, 'Name' => 'saidin.raken'], ['Id' => 1, 'Name' => 'Opp_Name']],
+        'Players' => [['Id' => 0, 'Name' => 'local.player'], ['Id' => 1, 'Name' => 'Opp_Name']],
         'Cards' => [['Id' => 600, 'CatalogID' => 87907, 'Zone' => 'Battlefield', 'Owner' => 1]],
     ])]);
 });
@@ -83,7 +83,7 @@ afterEach(function () {
 it('writes clock summaries regardless of flags', function () {
     ApplySidecarProjection::run($this->match);
 
-    $pivot = $this->game1->players()->where('username', 'saidin.raken')->first()->pivot;
+    $pivot = $this->game1->players()->where('username', 'local.player')->first()->pivot;
     expect($pivot->clock_remaining_ms_start)->toBe(1500000)
         ->and($pivot->clock_remaining_ms_end)->toBe(1300000)
         ->and($pivot->clock_remaining_ms_min)->toBe(1300000)
@@ -91,7 +91,7 @@ it('writes clock summaries regardless of flags', function () {
 
     $opp = $this->game2->players()->where('username', 'Opp_Name')->first()->pivot;
     expect($opp->clock_remaining_ms_end)->toBe(1100000)->and($opp->sideboard_ms_used)->toBe(105000);
-    expect($this->game2->players()->where('username', 'saidin.raken')->first()->pivot->sideboard_ms_used)->toBe(65000);
+    expect($this->game2->players()->where('username', 'local.player')->first()->pivot->sideboard_ms_used)->toBe(65000);
 });
 
 it('records disagreements but keeps log values when flags are off', function () {
@@ -120,7 +120,7 @@ it('keeps the log value when the cross check fails even with the flag on', funct
     // disagree and the diff row below is about authority, not precision.
     $this->game1->update(['started_at' => '2026-08-05 12:17:30']);
     GameTimeline::where('game_id', $this->game1->id)->update(['content' => json_encode([
-        'Players' => [['Id' => 0, 'Name' => 'saidin.raken'], ['Id' => 1, 'Name' => 'Opp_Name']],
+        'Players' => [['Id' => 0, 'Name' => 'local.player'], ['Id' => 1, 'Name' => 'Opp_Name']],
         'Cards' => [['Id' => 445, 'CatalogID' => 132587, 'Zone' => 'Battlefield', 'Owner' => 0]],
     ])]);
 
@@ -196,7 +196,7 @@ it('touches nothing but the clock when every flag is off and the log has no valu
     }
 
     // Clock is sidecar-only, so it is still written.
-    expect($game->players->firstWhere('username', 'saidin.raken')->pivot->clock_remaining_ms_start)->toBe(1500000);
+    expect($game->players->firstWhere('username', 'local.player')->pivot->clock_remaining_ms_start)->toBe(1500000);
 });
 
 it('treats a boundary within the tolerance as agreement', function () {
