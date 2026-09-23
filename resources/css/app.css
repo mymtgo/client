@@ -2,6 +2,8 @@
 
 @import 'tw-animate-css';
 
+@import '../../vendor/mymtgo/replay/resources/css/replay.css';
+
 @font-face {
     font-family: 'Bungee';
     src: url('../fonts/Bungee-Regular.ttf') format('truetype');
@@ -12,6 +14,7 @@
 
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
+@source '../../vendor/mymtgo/replay/resources/js';
 
 @custom-variant dark (&:is(.dark *));
 

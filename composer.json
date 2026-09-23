@@ -12,6 +12,10 @@
         {
             "type": "vcs",
             "url": "https://github.com/alecritson/desktop"
+        },
+        {
+            "type": "vcs",
+            "url": "https://github.com/mymtgo/replay"
         }
     ],
     "require": {
@@ -21,6 +25,7 @@
         "laravel/framework": "^13.0",
         "laravel/tinker": "^3.0",
         "laravel/wayfinder": "^0.1.12",
+        "mymtgo/replay": "dev-main as 1.0.0",
         "nativephp/desktop": "dev-feat/mymtgo-2.3 as 2.3.0",
         "sentry/sentry-laravel": "^4.25",
         "spatie/laravel-data": "^4.18",

@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "63147787549a520878cfd46a8cf6c289",
+    "content-hash": "00710ef45ed62849a6a21d72942de4a5",
     "packages": [
         {
             "name": "brick/math",
@@ -2446,6 +2446,51 @@
                 }
             ],
             "time": "2026-09-09T08:34:20+00:00"
+        },
+        {
+            "name": "mymtgo/replay",
+            "version": "dev-main",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/mymtgo/replay.git",
+                "reference": "ae42747d1fc9d2db7e99d0bc83653ee8d46b3341"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/mymtgo/replay/zipball/ae42747d1fc9d2db7e99d0bc83653ee8d46b3341",
+                "reference": "ae42747d1fc9d2db7e99d0bc83653ee8d46b3341",
+                "shasum": ""
+            },
+            "require": {
+                "illuminate/support": "^13.0",
+                "illuminate/validation": "^13.0",
+                "php": "^8.3"
+            },
+            "require-dev": {
+                "orchestra/testbench": "^11.0",
+                "pestphp/pest": "^4.1"
+            },
+            "default-branch": true,
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Mymtgo\\Replay\\": "src/"
+                }
+            },
+            "autoload-dev": {
+                "psr-4": {
+                    "Mymtgo\\Replay\\Tests\\": "tests/"
+                }
+            },
+            "license": [
+                "proprietary"
+            ],
+            "description": "Replay snapshot contract and viewer shared by the myMTGO desktop app and mymtgo.com.",
+            "support": {
+                "source": "https://github.com/mymtgo/replay/tree/main",
+                "issues": "https://github.com/mymtgo/replay/issues"
+            },
+            "time": "2026-09-23T11:59:42+00:00"
         },
         {
             "name": "nativephp/desktop",
@@ -11290,6 +11335,12 @@
     ],
     "aliases": [
         {
+            "package": "mymtgo/replay",
+            "version": "dev-main",
+            "alias": "1.0.0",
+            "alias_normalized": "1.0.0.0"
+        },
+        {
             "package": "nativephp/desktop",
             "version": "dev-feat/mymtgo-2.3",
             "alias": "2.3.0",
@@ -11298,6 +11349,7 @@
     ],
     "minimum-stability": "dev",
     "stability-flags": {
+        "mymtgo/replay": 20,
         "nativephp/desktop": 20
     },
     "prefer-stable": true,
