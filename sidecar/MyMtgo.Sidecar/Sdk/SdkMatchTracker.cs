@@ -105,8 +105,8 @@ public sealed class SdkMatchTracker
         var lookup = Task.Run(() =>
         {
             var format = ReadFormat();
-            var eventType = ReadEventType();
-            StartMatch(slotNames, format, eventType);
+            var (eventType, eventName) = ReadParentEvent();
+            StartMatch(slotNames, format, eventType, eventName);
         });
 
         // The lookup keeps running after a timeout, so its fault would otherwise go unobserved.
@@ -127,7 +127,7 @@ public sealed class SdkMatchTracker
                     }
 
                     _log.LogWarning("format or parent event lookup for match {MatchId} did not finish; using unknown", MatchId);
-                    StartMatch(slotNames, "unknown", "unknown");
+                    StartMatch(slotNames, "unknown", "unknown", null);
                 },
                 TaskScheduler.Default);
     }
@@ -214,11 +214,11 @@ public sealed class SdkMatchTracker
         }
     }
 
-    private void StartMatch(IReadOnlyList<string> slotNames, string format, string eventType)
+    private void StartMatch(IReadOnlyList<string> slotNames, string format, string eventType, string? eventName)
     {
         lock (_gate)
         {
-            _tracker.OnMatchStarted(slotNames, format, eventType);
+            _tracker.OnMatchStarted(slotNames, format, eventType, eventName);
         }
     }
 
@@ -253,22 +253,29 @@ public sealed class SdkMatchTracker
         return string.IsNullOrEmpty(name) ? "unknown" : name;
     }
 
-    private string ReadEventType() => Try(
+    /// <summary>
+    /// Kind of the event this match belongs to, plus its display name. The name is what lets PHP
+    /// tell a Challenge tournament from a Preliminary or a Showcase: MTGO exposes them all as
+    /// <c>Tournament</c>, the word is only in the description. A parentless match is a direct
+    /// challenge or a practice game; the app treats both as <c>casual</c> and the word
+    /// <c>challenge</c> is reserved for the tournament, so it is never emitted here.
+    /// </summary>
+    private (string Type, string? Name) ReadParentEvent() => Try(
         () =>
         {
             var parent = EventManager.FindParentEvent(EventManager.JoinedEvents, _match);
 
             return parent switch
             {
-                Tournament => "tournament",
-                League => "league",
-                Queue => "queue",
-                Match => "challenge",
-                null when !string.IsNullOrEmpty(Try<string?>(() => _match.ChallengeText, null)) => "challenge",
-                _ => "unknown",
+                Tournament t => ("tournament", Try<string?>(() => t.Description, null)),
+                League l => ("league", Try<string?>(() => l.Name, null)),
+                Queue q => ("queue", Try<string?>(() => q.Description, null)),
+                Match => ("casual", null),
+                null => ("casual", null),
+                _ => ("unknown", null),
             };
         },
-        "unknown");
+        ("unknown", null));
 
     /// <summary>Every SDK read here crosses to MTGO's heap and can throw once the match is gone.</summary>
     private static T Try<T>(Func<T> read, T fallback)

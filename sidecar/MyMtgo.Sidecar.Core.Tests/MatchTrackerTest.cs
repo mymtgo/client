@@ -16,7 +16,7 @@ public class MatchTrackerTest
         t.OnMatchStarted(["local.player", "Opp_Name"], "CPAUPER", "league");
         t.OnMatchStarted(["x", "y"], "CMODERN", "queue");
         Assert.Equal("match_started", Types());
-        Assert.Equal("{\"players\":[{\"p\":0,\"name\":\"local.player\"},{\"p\":1,\"name\":\"Opp_Name\"}],\"format\":\"CPAUPER\",\"event_type\":\"league\"}", Snap.Json(_out[0].Data));
+        Assert.Equal("{\"players\":[{\"p\":0,\"name\":\"local.player\"},{\"p\":1,\"name\":\"Opp_Name\"}],\"format\":\"CPAUPER\",\"event_type\":\"league\",\"event_name\":null}", Snap.Json(_out[0].Data));
         Assert.Null(_out[0].Game);
         Assert.Equal("288955358", _out[0].Match);
         Assert.Equal(1, t.NextGameNumber);
@@ -170,7 +170,7 @@ public class MatchTrackerTest
         // Seen on 2026-09-22: a concession flagged MatchCompleted 60 ms before the recorder's
         // result grace period wrote game_ended, so match_ended went out first with score [0,0].
         var t = New();
-        t.OnMatchStarted(["local.player", "Opp_Name"], "CMODERN", "challenge");
+        t.OnMatchStarted(["local.player", "Opp_Name"], "CMODERN", "casual");
         t.OnGameStarted();
         t.OnMatchEnded(["local.player"]);
         Assert.Equal("match_started", Types());
@@ -186,7 +186,7 @@ public class MatchTrackerTest
     public void A_parked_match_end_is_flushed_by_a_disconnect_with_no_winner()
     {
         var t = New();
-        t.OnMatchStarted(["local.player", "Opp_Name"], "CMODERN", "challenge");
+        t.OnMatchStarted(["local.player", "Opp_Name"], "CMODERN", "casual");
         t.OnGameStarted(); t.OnGameEnded("Opp_Name");
         t.OnGameStarted();
         t.OnMatchEnded(["Opp_Name"]);
@@ -201,7 +201,7 @@ public class MatchTrackerTest
     public void A_second_match_end_while_one_is_parked_does_not_double_emit()
     {
         var t = New();
-        t.OnMatchStarted(["local.player", "Opp_Name"], "CMODERN", "challenge");
+        t.OnMatchStarted(["local.player", "Opp_Name"], "CMODERN", "casual");
         t.OnGameStarted();
         t.OnMatchEnded(["local.player"]);
         t.OnMatchEnded(["local.player"]);
@@ -213,12 +213,20 @@ public class MatchTrackerTest
     public void Extra_game_ended_calls_do_not_confuse_the_open_game_count()
     {
         var t = New();
-        t.OnMatchStarted(["local.player", "Opp_Name"], "CMODERN", "challenge");
+        t.OnMatchStarted(["local.player", "Opp_Name"], "CMODERN", "casual");
         t.OnGameStarted(); t.OnGameEnded("local.player"); t.OnGameEnded(null);
         t.OnGameStarted();
         t.OnMatchEnded(["local.player"]);
         Assert.False(t.Ended);
         t.OnGameEnded("local.player");
         Assert.Equal("{\"winner_p\":0,\"score\":[2,0]}", Snap.Json(_out.Last().Data));
+    }
+
+    [Fact]
+    public void Match_started_carries_the_parent_event_name_so_php_can_tell_a_challenge_tournament_from_a_prelim()
+    {
+        var t = New();
+        t.OnMatchStarted(["local.player", "Opp_Name"], "CMODERN", "tournament", "Modern Challenge 32");
+        Assert.Equal("{\"players\":[{\"p\":0,\"name\":\"local.player\"},{\"p\":1,\"name\":\"Opp_Name\"}],\"format\":\"CMODERN\",\"event_type\":\"tournament\",\"event_name\":\"Modern Challenge 32\"}", Snap.Json(_out[0].Data));
     }
 }

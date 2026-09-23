@@ -22,7 +22,14 @@ public sealed class MatchTracker(string matchId, Action<PendingEvent> emit)
     public IReadOnlyList<string> PlayerNames => _names;
     public int NextGameNumber => _games + 1;
 
-    public void OnMatchStarted(IReadOnlyList<string> playerNames, string format, string eventType)
+    /// <summary>
+    /// <paramref name="eventType"/> is the parent event's kind: <c>league</c>, <c>tournament</c>,
+    /// <c>casual</c> (a parentless match: direct challenge or practice, which the app does not
+    /// tell apart) or <c>unknown</c>. Never <c>challenge</c>: in the app that word means the MTGO
+    /// Challenge tournament, which is a <c>tournament</c> whose <paramref name="eventName"/>
+    /// (the MTGO event description) carries the word. PHP classifies from the pair.
+    /// </summary>
+    public void OnMatchStarted(IReadOnlyList<string> playerNames, string format, string eventType, string? eventName = null)
     {
         if (Started)
         {
@@ -37,7 +44,7 @@ public sealed class MatchTracker(string matchId, Action<PendingEvent> emit)
             players.Add(new() { ["p"] = slot, ["name"] = _names[slot] });
         }
 
-        emit(Ev(EventTypes.MatchStarted, new() { ["players"] = players, ["format"] = format, ["event_type"] = eventType }));
+        emit(Ev(EventTypes.MatchStarted, new() { ["players"] = players, ["format"] = format, ["event_type"] = eventType, ["event_name"] = eventName }));
     }
 
     /// <summary>

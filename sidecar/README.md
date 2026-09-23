@@ -104,8 +104,11 @@ Additional checks flagged by earlier tasks, to run alongside the above:
     graceful app close; this is the parent-watch failure path).
 18. MTGO quitting mid-session sets `state: waiting`, and a fresh attach produces a new session
     file (new `events-{session}.ndjson`), not a reused one.
-19. Challenge match parent shape: verify both the `Match` parent case and the `null` parent with
-    challenge text case are handled and distinguishable in `match_started.event_type`.
+19. `match_started.event_type` and `event_name`: a league match gives `league` plus the league
+    name; a Challenge or Preliminary gives `tournament` plus the MTGO event description (the word
+    "Challenge" or "Preliminary" must be in it, that is how PHP tells them apart); a direct
+    challenge or practice match gives `casual` with a null name. `challenge` is never emitted.
+    Practice matches verified `casual` on 2026-09-22 (was `challenge` before the rename).
 20. `sideboarding_started` is emitted for every between-game window in a best-of-three, not
     only the first (the tracker fires on the rising edge of the sideboarding flag).
 21. With the app offline the PHP supervisor passes `--config ''`; confirm the exe starts (empty
