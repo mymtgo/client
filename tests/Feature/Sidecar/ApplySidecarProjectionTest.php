@@ -9,6 +9,7 @@ use App\Models\Game;
 use App\Models\GameEvent;
 use App\Models\GameFieldDiff;
 use App\Models\GameTimeline;
+use App\Models\LogEvent;
 use App\Models\MtgoMatch;
 use App\Models\Player;
 use App\Sidecar\SidecarAuthorityFlags;
@@ -44,13 +45,23 @@ beforeEach(function () {
         $g->players()->attach($opp->id, ['instance_id' => 1, 'is_local' => false, 'on_play' => ! $g->is($this->game1)]);
     }
 
-    GameTimeline::create(['game_id' => $this->game1->id, 'timestamp' => '13:16:41', 'content' => json_encode([
+    // The cross-check reads the log's Twitch Info snapshots out of
+    // log_events, not game_timelines, because game_timelines now holds the
+    // sidecar's own frames.
+    $game1Snapshot = json_encode([
         'Players' => [['Id' => 0, 'Name' => 'local.player'], ['Id' => 1, 'Name' => 'Opp_Name']],
         'Cards' => [
             ['Id' => 445, 'CatalogID' => 132587, 'Zone' => 'Battlefield', 'Owner' => 0],
             ['Id' => 446, 'CatalogID' => 39339, 'Zone' => 'Battlefield', 'Owner' => 0],
         ],
-    ])]);
+    ]);
+    LogEvent::factory()->create([
+        'event_type' => 'game_state_update',
+        'game_id' => '958291826',
+        'match_id' => '288955358',
+        'timestamp' => '13:16:41',
+        'raw_text' => "Game ID: 958291826, Match ID: 288955358 {$game1Snapshot}",
+    ]);
 
     // The fixture's game 2 only has a game_start keyframe (no cards), so it
     // could never be cross-checked. Add a turn keyframe with one card and a
@@ -69,10 +80,17 @@ beforeEach(function () {
         'data' => ['trigger' => 'turn', 'turn' => 3, 'active_p' => 1, 'priority_p' => 1, 'players' => [['p' => 0], ['p' => 1]],
             'cards' => [['c' => '600', 'zone' => 'Battlefield', 'owner_p' => 1, 'controller_p' => 1, 'catalog_id' => 87907, 'tapped' => false]]],
     ]);
-    GameTimeline::create(['game_id' => $this->game2->id, 'timestamp' => '13:30:00', 'content' => json_encode([
+    $game2Snapshot = json_encode([
         'Players' => [['Id' => 0, 'Name' => 'local.player'], ['Id' => 1, 'Name' => 'Opp_Name']],
         'Cards' => [['Id' => 600, 'CatalogID' => 87907, 'Zone' => 'Battlefield', 'Owner' => 1]],
-    ])]);
+    ]);
+    LogEvent::factory()->create([
+        'event_type' => 'game_state_update',
+        'game_id' => '958292028',
+        'match_id' => '288955358',
+        'timestamp' => '13:30:00',
+        'raw_text' => "Game ID: 958292028, Match ID: 288955358 {$game2Snapshot}",
+    ]);
 });
 
 afterEach(function () {
@@ -119,15 +137,23 @@ it('keeps the log value when the cross check fails even with the flag on', funct
     // Well outside BOUNDARY_TOLERANCE_SECONDS, so the two sources really do
     // disagree and the diff row below is about authority, not precision.
     $this->game1->update(['started_at' => '2026-08-05 12:17:30']);
-    GameTimeline::where('game_id', $this->game1->id)->update(['content' => json_encode([
+    $snapshot = json_encode([
         'Players' => [['Id' => 0, 'Name' => 'local.player'], ['Id' => 1, 'Name' => 'Opp_Name']],
         'Cards' => [['Id' => 445, 'CatalogID' => 132587, 'Zone' => 'Battlefield', 'Owner' => 0]],
-    ])]);
+    ]);
+    LogEvent::query()->where('game_id', '958291826')->update([
+        'raw_text' => "Game ID: 958291826, Match ID: 288955358 {$snapshot}",
+    ]);
 
     ApplySidecarProjection::run($this->match);
 
     expect($this->game1->fresh()->started_at->format('Y-m-d H:i:s'))->toBe('2026-08-05 12:17:30')
         ->and(GameFieldDiff::where('game_id', $this->game1->id)->where('field', 'game_boundaries')->value('chosen_source'))->toBe('log');
+
+    // Frames are ungated (spec section 6): a failed cross-check withholds
+    // authority over shared fields, it does not withhold the replay.
+    expect($this->game1->fresh()->timeline_source)->toBe('sidecar')
+        ->and(GameTimeline::where('game_id', $this->game1->id)->count())->toBeGreaterThan(0);
 });
 
 it('applies match result when every game is covered and the flag is on', function () {
@@ -236,4 +262,15 @@ it('does not record a boundary diff while the game is still running', function (
     ApplySidecarProjection::run($this->match);
 
     expect(GameFieldDiff::where('game_id', $this->game1->id)->where('field', 'game_boundaries')->exists())->toBeFalse();
+});
+
+it('projects sidecar frames into game_timelines for every game regardless of flags or cross-check', function () {
+    SidecarAuthorityFlags::applyRemote(array_fill_keys(SidecarAuthorityFlags::FIELDS, false));
+
+    ApplySidecarProjection::run($this->match);
+
+    expect($this->game1->fresh()->timeline_source)->toBe('sidecar')
+        ->and($this->game2->fresh()->timeline_source)->toBe('sidecar')
+        ->and(GameTimeline::where('game_id', $this->game1->id)->count())->toBeGreaterThan(0)
+        ->and(GameTimeline::where('game_id', $this->game2->id)->count())->toBeGreaterThan(0);
 });

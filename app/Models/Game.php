@@ -20,7 +20,7 @@ class Game extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['match_id', 'mtgo_id', 'started_at', 'ended_at', 'won', 'turn_count'];
+    protected $fillable = ['match_id', 'mtgo_id', 'started_at', 'ended_at', 'won', 'turn_count', 'timeline_source'];
 
     // Sync dirtiness: editing this row must bump the parent's updated_at.
     protected $touches = ['match'];

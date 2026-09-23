@@ -297,6 +297,32 @@ it('orders same-second timelines by content hash, not insertion order or row id'
         ->and($timelinesForGame[1]['content'])->toBe($higherHash);
 });
 
+it('orders same-second timelines by millisecond before falling back to content hash', function () {
+    $match = syncTestMatch();
+    $game = $match->games()->orderBy('mtgo_id')->first();
+    GameTimeline::where('game_id', $game->id)->delete();
+
+    $contentA = ['note' => 'alpha-marker'];
+    $contentB = ['note' => 'bravo-marker'];
+    $hashA = hash('sha256', CanonicalJson::encode($contentA));
+    $hashB = hash('sha256', CanonicalJson::encode($contentB));
+    $lowerHash = $hashA < $hashB ? $contentA : $contentB;
+    $higherHash = $hashA < $hashB ? $contentB : $contentA;
+
+    // The earlier millisecond carries the HIGHER hash and is inserted second,
+    // so both a hash tiebreak and a row id order would put it last. Only the
+    // millisecond key puts it first.
+    GameTimeline::create(['game_id' => $game->id, 'timestamp' => '13:16:41.900', 'content' => $lowerHash]);
+    GameTimeline::create(['game_id' => $game->id, 'timestamp' => '13:16:41.100', 'content' => $higherHash]);
+
+    $bundle = app(MatchBundleBuilder::class)->build($match->fresh());
+
+    $rows = collect($bundle['timelines'])->where('game', $game->mtgo_id)->values();
+    expect($rows)->toHaveCount(2)
+        ->and($rows[0]['content'])->toBe($higherHash)
+        ->and($rows[1]['content'])->toBe($lowerHash);
+});
+
 it("orders a mirror match's archetypes by player_username when the uuid ties", function () {
     $match = syncTestMatch();
     $mirroredArchetype = Archetype::factory()->create();

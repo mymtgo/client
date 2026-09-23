@@ -73,7 +73,7 @@ class CreateGames
             SyncGamePivots::forGame($gameModel, $gameData, $username);
         }
 
-        Log::channel('pipeline')->info("Match {$match->mtgo_id}: game {$gameId} — ".($gameModel->wasRecentlyCreated ? 'created' : 'updated').", {$gameModel->players()->count()} players synced");
+        Log::channel('pipeline')->info("Match {$match->mtgo_id}: game {$gameId}, ".($gameModel->wasRecentlyCreated ? 'created' : 'updated').", {$gameModel->players()->count()} players synced");
 
         self::replaceTimeline($gameModel, $gameStateEvents);
     }
@@ -104,7 +104,7 @@ class CreateGames
 
     /**
      * Attach missing pivot rows and refresh deck_json / instance_id / is_local
-     * on existing rows. Never touches `on_play` — that is owned by SyncGamePivots.
+     * on existing rows. Never touches `on_play`: that is owned by SyncGamePivots.
      *
      * @param  array<int, array<string, mixed>>  $players
      * @param  array<int, array<string, mixed>>  $playerDeck
@@ -211,6 +211,12 @@ class CreateGames
      */
     private static function replaceTimeline(Game $game, Collection $gameStateEvents): void
     {
+        // Sidecar frames replace log frames wholesale; a log reprocess must
+        // not claw them back (spec 2026-09-23 §2).
+        if ($game->timeline_source === 'sidecar') {
+            return;
+        }
+
         $events = [];
         $timelineCatalogIds = [];
 
@@ -234,12 +240,13 @@ class CreateGames
 
         CreateMissingCards::run(array_unique($timelineCatalogIds));
 
-        // Replace timeline entries — events may have grown since last call.
+        // Replace timeline entries, events may have grown since last call.
         // Non-critical: if the DB is locked by concurrent ingestion, skip
         // and let the next pass fill them in.
         try {
             GameTimeline::where('game_id', $game->id)->delete();
             GameTimeline::insert($events);
+            $game->update(['timeline_source' => 'log']);
         } catch (QueryException $e) {
             Log::channel('pipeline')->info("CreateGames: timeline update skipped for game {$game->id}: {$e->getMessage()}");
         }

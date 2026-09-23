@@ -4,6 +4,7 @@ use App\Actions\Sidecar\CrossCheckSidecarGame;
 use App\Facades\AppSettings;
 use App\Models\Game;
 use App\Models\GameTimeline;
+use App\Models\LogEvent;
 use App\Models\MtgoMatch;
 use App\Sidecar\SidecarGameView;
 use Carbon\CarbonImmutable;
@@ -36,13 +37,17 @@ function keyframeView(array $cards, string $ts = '2026-08-05T12:16:41.050Z'): Si
 
 function snapshot(Game $game, array $cards, string $timestamp = '13:16:41'): void
 {
-    GameTimeline::create([
-        'game_id' => $game->id,
+    $content = json_encode([
+        'Players' => [['Id' => 0, 'Name' => 'local.player'], ['Id' => 1, 'Name' => 'Opp_Name']],
+        'Cards' => $cards,
+    ]);
+
+    LogEvent::factory()->create([
+        'event_type' => 'game_state_update',
+        'game_id' => $game->mtgo_id,
+        'match_id' => $game->match->mtgo_id,
         'timestamp' => $timestamp,
-        'content' => [
-            'Players' => [['Id' => 0, 'Name' => 'local.player'], ['Id' => 1, 'Name' => 'Opp_Name']],
-            'Cards' => $cards,
-        ],
+        'raw_text' => "Game ID: {$game->mtgo_id}, Match ID: {$game->match->mtgo_id} {$content}",
     ]);
 }
 
@@ -109,4 +114,18 @@ it('skips keyframes with an empty card list', function () {
     $result = CrossCheckSidecarGame::run($this->game, keyframeView([]));
 
     expect($result->compared)->toBe(0);
+});
+
+it('ignores sidecar frames stored in game_timelines and compares only log snapshots', function () {
+    // A sidecar-owned timeline whose frame would agree with the keyframe must not count as a comparison.
+    GameTimeline::create(['game_id' => $this->game->id, 'timestamp' => '13:16:41.050', 'content' => [
+        'Players' => [['Id' => 0, 'Name' => 'local.player'], ['Id' => 1, 'Name' => 'Opp_Name']],
+        'Cards' => [['Id' => 445, 'CatalogID' => 132587, 'Zone' => 'Battlefield', 'Owner' => 0]],
+    ]]);
+
+    $result = CrossCheckSidecarGame::run($this->game, keyframeView([
+        ['c' => '445', 'zone' => 'Battlefield', 'owner_p' => 0, 'catalog_id' => 132587],
+    ]));
+
+    expect($result->compared)->toBe(0)->and($result->passed)->toBeTrue();
 });

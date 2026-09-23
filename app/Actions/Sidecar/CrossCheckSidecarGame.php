@@ -2,9 +2,10 @@
 
 namespace App\Actions\Sidecar;
 
+use App\Actions\Util\ExtractJson;
 use App\Facades\AppSettings;
 use App\Models\Game;
-use App\Models\GameTimeline;
+use App\Models\LogEvent;
 use App\Sidecar\CrossCheckResult;
 use App\Sidecar\SidecarGameView;
 use Carbon\CarbonImmutable;
@@ -18,17 +19,19 @@ class CrossCheckSidecarGame
 
     /**
      * External verification of the sidecar stream: its keyframes must agree
-     * with the Twitch Info snapshots the log pipeline already stored. The
+     * with the Twitch Info snapshots in log_events (game_timelines may now
+     * hold sidecar frames, which would compare the sidecar with itself). The
      * in-process probe cannot catch "plausible but wrong" reads; this can.
      */
     public static function run(Game $game, SidecarGameView $view): CrossCheckResult
     {
-        $snapshots = GameTimeline::query()
-            ->where('game_id', $game->id)
-            ->get()
-            ->map(fn (GameTimeline $t) => [
-                'seconds' => self::secondsOfDay((string) $t->timestamp),
-                'content' => is_array($t->content) ? $t->content : json_decode((string) $t->content, true),
+        $snapshots = LogEvent::query()
+            ->where('event_type', 'game_state_update')
+            ->where('game_id', $game->mtgo_id)
+            ->get(['timestamp', 'raw_text'])
+            ->map(fn (LogEvent $e) => [
+                'seconds' => self::secondsOfDay((string) $e->timestamp),
+                'content' => ExtractJson::run((string) $e->raw_text)->first(),
             ])
             ->filter(fn ($s) => is_array($s['content']))
             ->values();

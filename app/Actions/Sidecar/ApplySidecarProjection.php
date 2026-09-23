@@ -62,6 +62,10 @@ class ApplySidecarProjection
                 continue;
             }
 
+            // Replay frames: no gate. When the sidecar saw the game, its
+            // frames replace the log's wholesale (spec 2026-09-23 section 2).
+            ProjectSidecarTimeline::run($game, $gameView);
+
             $cross = CrossCheckSidecarGame::run($game, $gameView);
             $crossOk = $cross->passed && $cross->compared > 0;
             $gameEligible[(string) $gameMtgoId] = $gameView->coverageComplete() && $gameView->allVerified && $crossOk;
