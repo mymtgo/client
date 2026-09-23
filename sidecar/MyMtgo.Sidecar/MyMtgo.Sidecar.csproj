@@ -11,9 +11,9 @@
     <RootNamespace>MyMtgo.Sidecar</RootNamespace>
     <PublishSingleFile>true</PublishSingleFile>
     <PublishTrimmed>false</PublishTrimmed>
-    <SelfContained>false</SelfContained>
-    <RollForward>Major</RollForward>
+    <SelfContained>true</SelfContained>
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <Version Condition="'$(Version)' == ''">0.0.0</Version>
   </PropertyGroup>

@@ -34,7 +34,7 @@ fi
 export DOTNET_ROOT
 export PATH="/opt/homebrew/bin:$PATH"
 
-dotnet publish MyMtgo.Sidecar -c Release -r win-x64 --self-contained false \
+dotnet publish MyMtgo.Sidecar -c Release -r win-x64 --self-contained true \
   -p:PublishSingleFile=true -p:PublishTrimmed=false -p:Version="$VERSION" \
   -o artifacts/publish
 

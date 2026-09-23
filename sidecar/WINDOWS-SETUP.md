@@ -8,7 +8,7 @@ Run each command from the repo root (the folder that holds `artisan`) unless tol
 
 ## 1. Install the .NET 10 SDK (once)
 
-The SDK is the compiler. It also installs the Desktop Runtime the helper needs at run time.
+The SDK is the compiler. Users need nothing: the published helper carries its own runtime.
 
 ```powershell
 winget install Microsoft.DotNet.SDK.10
@@ -147,26 +147,15 @@ dotnet test MyMtgo.Sidecar.Core.Tests
 cd ..
 ```
 
-## 9. Testing the "runtime missing" path (smoke item 23)
+## 9. Checking it runs without .NET installed (smoke item 23)
 
-The helper needs the .NET Desktop Runtime on the user's machine. Step 1 installed it as part of
-the SDK, so to test the missing case:
+The helper is self-contained, so a user needs no .NET at all. Step 1 installed the Desktop
+Runtime as part of the SDK, so to prove the helper does not lean on it:
 
 1. Settings, Apps, Installed apps. Uninstall "Microsoft Windows Desktop Runtime - 10.x.y (x64)".
    Leave the SDK alone.
-2. Start the app. Expect no helper process, `/debug/sidecar` showing a red ".NET runtime missing"
-   badge with a download link, and logs still ingesting.
-3. Run the exe by hand to see the raw failure:
-
-   ```powershell
-   .\resources\sidecar\mymtgo-helper.exe --out C:\temp\sidecar --parent-pid 1
-   echo $LASTEXITCODE
-   ```
-
-   Expect a message starting "You must install or update .NET" and exit code `-2147450730`.
-4. Reinstall the runtime from <https://dotnet.microsoft.com/download/dotnet/10.0> ("Desktop
-   Runtime", "x64"), or reinstall the SDK. Restart the app (detection runs at boot). Expect
-   `status.json` back to `waiting` or `attached`.
+2. Start the app with MTGO running. Expect `status.json` to reach `attached` as usual.
+3. Reinstall the runtime afterwards if you still build here: reinstalling the SDK brings it back.
 
 ## Troubleshooting
 

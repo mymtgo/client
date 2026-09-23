@@ -10,7 +10,7 @@ $Out = Join-Path ".." "resources/sidecar"
 $PkgId = "mtgosdk"
 $PkgVersion = "1.7.0.20260903"
 
-dotnet publish MyMtgo.Sidecar -c Release -r win-x64 --self-contained false `
+dotnet publish MyMtgo.Sidecar -c Release -r win-x64 --self-contained true `
   -p:PublishSingleFile=true -p:PublishTrimmed=false "-p:Version=$Version" `
   -o artifacts/publish
 if ($LASTEXITCODE -ne 0) { throw "publish failed" }

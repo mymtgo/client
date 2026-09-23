@@ -29,12 +29,10 @@ Toolchain used to build this: .NET 10 SDK 10.0.401 via Homebrew on macOS, MTGOSD
 Output: `resources/sidecar/mymtgo-helper.exe` plus the MTGOSDK licence and notice. The folder is
 git-ignored; the NativePHP Windows build bundles whatever is there. Mac builds ship without it.
 
-The exe is framework-dependent and untrimmed, roughly 10 MB. It needs the .NET Desktop Runtime
-(major 10 or newer, `RollForward=Major`) installed on the user's machine; MTGOSDK pulls in WPF, so
-the Desktop runtime is the one that matters, not the base runtime. The PHP supervisor
-(`App\Sidecar\DotnetRuntime`) checks for it before spawning and records `runtime_missing`, and the
-apphost exit code `0x80008096` is treated the same way if the runtime disappears later. Without
-the runtime the app runs log-only. Trimming stays off (`PublishTrimmed=false`) because MTGOSDK
+The exe is self-contained, compressed single-file and untrimmed: it carries its own .NET 10
+runtime (including the WPF Desktop runtime MTGOSDK pulls in), so users install nothing. It was
+framework-dependent for a while (about 10 MB), but few machines have the .NET Desktop Runtime 10
+installed, so live tracking would have been off for most users. Trimming stays off (`PublishTrimmed=false`) because MTGOSDK
 relies on reflection; NativeAOT is not viable for the same reason.
 
 ## Run by hand
@@ -116,8 +114,6 @@ Additional checks flagged by earlier tasks, to run alongside the above:
 22. A session that dies immediately after attach (for example MTGO killed during login) backs
     off (1 s doubling to 30 s) instead of re-attaching every second, and does not mint a new
     `events-{session}.ndjson` each cycle.
-23. With the .NET Desktop Runtime uninstalled, the app boots log-only: `settings.json` has
-    `sidecar_runtime_missing: true`, `/debug/sidecar` shows the runtime badge and link, no exe
-    spawns, no crash is counted. Install the runtime, toggle the sidecar off and on, expect attach.
-24. Run `mymtgo-helper.exe` by hand with the runtime uninstalled: expect the apphost message
-    "You must install or update .NET" and exit code `-2147450730` (`0x80008096`).
+23. On a machine with no .NET installed (or with the .NET Desktop Runtime uninstalled), the
+    helper still starts and attaches: it is self-contained. Note the first start time, since the
+    compressed single-file extracts itself on first run.

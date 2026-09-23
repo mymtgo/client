@@ -897,21 +897,6 @@ class AppSettings
         $this->set('sidecar_available', $value);
     }
 
-    /**
-     * True when the helper exe is bundled but the .NET Desktop Runtime it
-     * needs is not installed. Distinct from "unavailable" so the UI can point
-     * the user at the runtime download instead of saying nothing.
-     */
-    public function sidecarRuntimeMissing(): bool
-    {
-        return (bool) $this->get('sidecar_runtime_missing', false);
-    }
-
-    public function setSidecarRuntimeMissing(bool $value): void
-    {
-        $this->set('sidecar_runtime_missing', $value);
-    }
-
     public function sidecarNoticeSeen(): bool
     {
         return (bool) $this->get('sidecar_notice_seen', false);
