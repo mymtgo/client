@@ -6,6 +6,7 @@ namespace App\Services\Sync;
 
 use App\Actions\Sync\Auth\EnsureAccessToken;
 use App\Actions\Sync\Auth\RefreshAccessToken;
+use App\Exceptions\Replays\ReplayShareRefused;
 use App\Exceptions\Sync\LimitedRequiresSupporterException;
 use App\Exceptions\Sync\SlotLimitException;
 use Closure;
@@ -179,6 +180,56 @@ class SyncApi
         }
 
         return $response->json();
+    }
+
+    /**
+     * Shares one match's replay, every game in it; sharing the same match
+     * again refreshes it under the same link. The body is gzipped: a match
+     * is a megabyte or more of repetitive JSON. The refusals a player can act on (tier, claim,
+     * size, shape) come back as ReplayShareRefused; everything else throws
+     * through send() as usual.
+     *
+     * @param  array<string, mixed>  $snapshot
+     * @return array{uuid: string, url: string}
+     */
+    public function shareReplay(string $clientMatchKey, int $loginId, array $snapshot): array
+    {
+        $body = gzencode(json_encode([
+            'client_match_key' => $clientMatchKey,
+            'login_id' => $loginId,
+            'snapshot' => $snapshot,
+        ], JSON_THROW_ON_ERROR), 6);
+
+        $response = $this->send(
+            fn (PendingRequest $request): Response => $request
+                ->withHeaders(['Content-Encoding' => 'gzip'])
+                ->withBody($body, 'application/json')
+                ->post('/api/replays'),
+            passthroughStatuses: [409, 413, 422],
+        );
+
+        $reason = match (true) {
+            $response->status() === 422 && $response->json('error') === 'replay_share_requires_supporter' => ReplayShareRefused::SUPPORTER,
+            $response->status() === 409 => ReplayShareRefused::NOT_CLAIMED,
+            $response->status() === 413 => ReplayShareRefused::TOO_LARGE,
+            $response->status() === 422 => ReplayShareRefused::INVALID,
+            default => null,
+        };
+
+        if ($reason !== null) {
+            throw new ReplayShareRefused($reason);
+        }
+
+        return ['uuid' => (string) $response->json('uuid'), 'url' => (string) $response->json('url')];
+    }
+
+    /** Switches a shared link off. A 404 means it is already gone, which is the goal. */
+    public function revokeReplay(string $uuid): void
+    {
+        $this->send(
+            fn (PendingRequest $request): Response => $request->delete("/api/replays/{$uuid}"),
+            passthroughStatuses: [404],
+        );
     }
 
     /**

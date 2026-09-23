@@ -57,6 +57,8 @@ use App\Http\Controllers\Decks\UpdateDeckArchetypeController;
 use App\Http\Controllers\Decks\UpdateNameController;
 use App\Http\Controllers\Decks\UpdatePerPageController;
 use App\Http\Controllers\Games\OpenReplayController;
+use App\Http\Controllers\Games\RevokeReplayShareController;
+use App\Http\Controllers\Games\ShareReplayController;
 use App\Http\Controllers\Games\UpdateHandController;
 use App\Http\Controllers\Games\UpdateRevealsController;
 use App\Http\Controllers\Games\UpdateSideboardController;
@@ -157,6 +159,8 @@ Route::group([], function (Router $router) {
         $group->get('{id}', App\Http\Controllers\Games\ShowController::class)->name('games.show');
         $group->post('{id}/replay', OpenReplayController::class)->name('games.open-replay');
         $group->put('{game}/hand', UpdateHandController::class)->name('games.hand.update');
+        $group->post('{game}/share', ShareReplayController::class)->name('games.share');
+        $group->delete('{game}/share', RevokeReplayShareController::class)->name('games.share.destroy');
         $group->put('{game}/sideboard', UpdateSideboardController::class)->name('games.sideboard.update');
         $group->put('{game}/reveals', UpdateRevealsController::class)->name('games.reveals.update');
     });
