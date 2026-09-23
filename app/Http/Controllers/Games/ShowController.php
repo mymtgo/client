@@ -50,6 +50,27 @@ class ShowController extends Controller
             'game' => $game,
             'timeline' => GameTimelineData::collect($events),
             'gameLog' => GetGameLogEntries::run($game),
+            'matchGames' => $this->matchGames($game),
         ]);
+    }
+
+    /**
+     * Every game in the match in play order, so the replay can move between them.
+     *
+     * @return list<array{id: int, number: int, won: bool|null}>
+     */
+    private function matchGames(Game $game): array
+    {
+        return Game::where('match_id', $game->match_id)
+            ->orderBy('started_at')
+            ->orderBy('id')
+            ->get(['id', 'won'])
+            ->values()
+            ->map(fn (Game $sibling, int $index) => [
+                'id' => $sibling->id,
+                'number' => $index + 1,
+                'won' => $sibling->won,
+            ])
+            ->all();
     }
 }
