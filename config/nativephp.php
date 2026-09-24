@@ -89,6 +89,26 @@ return [
         'content',
         'node_modules',
         '*/tests',
+
+        // The build copies whatever is on the build machine. None of this is
+        // read by the installed app (storage lives in the user's app data),
+        // and some of it is private: local settings, API keys, support
+        // bundles, logs and databases.
+        'storage/app/*',
+        'storage/inertia-devtools',
+        '*.log',
+        '*.sqlite',
+        '*.sqlite-*',
+
+        // Development only.
+        'tests',
+        'docs',
+        'v1',
+        'screenshots',
+        '.claude',
+        '.superpowers',
+        '.idea',
+        '.vscode',
     ],
 
     /**
