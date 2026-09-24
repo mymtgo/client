@@ -6,6 +6,7 @@ import { computed } from 'vue';
 type LeagueDistribution = {
     buckets: Record<string, number>;
     trophies: number;
+    dropped: number;
     total: number;
     formatLabel: string | null;
 };
@@ -18,12 +19,16 @@ const title = computed(() => (props.leagueDistribution.formatLabel ? `${props.le
 
 const bucketOrder = ['5-0', '4-1', '3-2', '2-3', '1-4', '0-5'];
 
-const bucketEntries = computed(() =>
-    bucketOrder.map((key) => ({
+/** Finishes from 5-0 down, then runs the player dropped from. */
+const bucketEntries = computed(() => [
+    ...bucketOrder.map((key) => ({
         key,
+        label: key,
         count: props.leagueDistribution.buckets[key] ?? 0,
+        barClass: key === '5-0' ? 'bg-yellow-400' : 'bg-primary/60',
     })),
-);
+    { key: 'dropped', label: 'Drop', count: props.leagueDistribution.dropped ?? 0, barClass: 'bg-muted-foreground/60' },
+]);
 
 const maxCount = computed(() => Math.max(1, ...bucketEntries.value.map((b) => b.count)));
 </script>
@@ -36,11 +41,11 @@ const maxCount = computed(() => Math.max(1, ...bucketEntries.value.map((b) => b.
         <CardContent class="flex flex-col gap-2">
             <template v-if="leagueDistribution.total > 0">
                 <div v-for="entry in bucketEntries" :key="entry.key" class="flex items-center gap-2 text-sm">
-                    <span class="w-8 shrink-0 font-mono text-xs text-muted-foreground tabular-nums">{{ entry.key }}</span>
+                    <span class="w-8 shrink-0 font-mono text-xs text-muted-foreground tabular-nums">{{ entry.label }}</span>
                     <div class="h-4 flex-1 overflow-hidden rounded-sm bg-muted">
                         <div
                             class="h-full rounded-sm transition-all"
-                            :class="entry.key === '5-0' ? 'bg-yellow-400' : 'bg-primary/60'"
+                            :class="entry.barClass"
                             :style="{ width: `${(entry.count / maxCount) * 100}%` }"
                         />
                     </div>

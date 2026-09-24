@@ -1,6 +1,8 @@
 <?php
 
 use App\Actions\Dashboard\GetDashboardLeagueDistribution;
+use App\Enums\LeagueKind;
+use App\Enums\LeagueState;
 use App\Models\Account;
 use App\Models\Deck;
 use App\Models\DeckVersion;
@@ -20,9 +22,9 @@ function setupLeagueDistAccount(): array
     return [$account, $version];
 }
 
-function createLeagueWithRecord(DeckVersion $version, int $wins, int $losses, ?Carbon $finishedAt = null): void
+function createLeagueWithRecord(DeckVersion $version, int $wins, int $losses, ?Carbon $finishedAt = null, LeagueState $state = LeagueState::Complete, LeagueKind $kind = LeagueKind::Constructed): void
 {
-    $league = League::factory()->complete()->create(['deck_version_id' => $version->id]);
+    $league = League::factory()->create(['deck_version_id' => $version->id, 'state' => $state, 'kind' => $kind]);
     $playedAt = $finishedAt ?? now()->subDays(rand(1, 30));
 
     for ($i = 0; $i < $wins; $i++) {
@@ -45,6 +47,7 @@ it('returns empty buckets when no leagues', function () {
     $result = GetDashboardLeagueDistribution::run(null, now()->subCentury(), now()->endOfDay());
     expect($result['buckets'])->toBe(['5-0' => 0, '4-1' => 0, '3-2' => 0, '2-3' => 0, '1-4' => 0, '0-5' => 0]);
     expect($result['trophies'])->toBe(0);
+    expect($result['dropped'])->toBe(0);
     expect($result['total'])->toBe(0);
 });
 
@@ -113,4 +116,38 @@ it('counts every match of a league that straddles the window edge', function () 
 
     expect($result['buckets']['3-2'])->toBe(1);
     expect($result['total'])->toBe(1);
+});
+
+it('counts dropped leagues and includes them in the total', function () {
+    [$account, $version] = setupLeagueDistAccount();
+    createLeagueWithRecord($version, 5, 0);
+    createLeagueWithRecord($version, 1, 2, state: LeagueState::Dropped);
+
+    $result = GetDashboardLeagueDistribution::run($account->id, now()->subCentury(), now()->endOfDay());
+
+    expect($result['dropped'])->toBe(1);
+    expect($result['trophies'])->toBe(1);
+    expect($result['total'])->toBe(2);
+});
+
+it('counts only drops whose last match is inside the window', function () {
+    [$account, $version] = setupLeagueDistAccount();
+    createLeagueWithRecord($version, 2, 1, finishedAt: now()->subDays(3), state: LeagueState::Dropped);
+    createLeagueWithRecord($version, 0, 2, finishedAt: now()->subDays(40), state: LeagueState::Dropped);
+
+    $result = GetDashboardLeagueDistribution::run($account->id, now()->subWeeks(2), now()->endOfDay());
+
+    expect($result['dropped'])->toBe(1);
+    expect($result['total'])->toBe(1);
+});
+
+it('does not count partial or draft leagues as drops', function () {
+    [$account, $version] = setupLeagueDistAccount();
+    createLeagueWithRecord($version, 1, 1, state: LeagueState::Partial);
+    createLeagueWithRecord($version, 1, 1, state: LeagueState::Dropped, kind: LeagueKind::Draft);
+
+    $result = GetDashboardLeagueDistribution::run($account->id, now()->subCentury(), now()->endOfDay());
+
+    expect($result['dropped'])->toBe(0);
+    expect($result['total'])->toBe(0);
 });

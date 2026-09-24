@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { Card, CardContent } from '@/components/ui/card';
 import type { LeagueKpis } from '@/types/leagues';
-import { Activity, Coins, Swords, Target, Trophy, Users } from 'lucide-vue-next';
+import { Activity, Coins, DoorOpen, Swords, Target, Trophy, Users } from 'lucide-vue-next';
 
 defineProps<{ kpis: LeagueKpis }>();
 </script>
 
 <template>
-    <div class="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
+    <div class="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-7">
         <Card class="gap-0 py-0">
             <CardContent class="flex flex-col gap-0.5 p-3">
                 <span class="inline-flex items-center gap-1 text-xs tracking-wide text-muted-foreground uppercase">
@@ -15,7 +15,7 @@ defineProps<{ kpis: LeagueKpis }>();
                 </span>
                 <span class="text-3xl font-bold tabular-nums">{{ kpis.runs.total }}</span>
                 <span class="text-sm text-muted-foreground">
-                    {{ kpis.runs.completed }} completed · {{ kpis.runs.live }} live
+                    {{ kpis.runs.completed }} finished · {{ kpis.runs.live }} live
                 </span>
             </CardContent>
         </Card>
@@ -57,13 +57,25 @@ defineProps<{ kpis: LeagueKpis }>();
         <Card class="gap-0 py-0">
             <CardContent class="flex flex-col gap-0.5 p-3">
                 <span class="inline-flex items-center gap-1 text-xs tracking-wide text-muted-foreground uppercase">
+                    <DoorOpen class="size-3" /> Dropped
+                </span>
+                <span class="text-3xl font-bold tabular-nums">{{ kpis.dropped }}</span>
+                <span class="text-sm text-muted-foreground">
+                    {{ kpis.dropRate !== null ? kpis.dropRate + '% of runs' : 'no finished runs' }}
+                </span>
+            </CardContent>
+        </Card>
+
+        <Card class="gap-0 py-0">
+            <CardContent class="flex flex-col gap-0.5 p-3">
+                <span class="inline-flex items-center gap-1 text-xs tracking-wide text-muted-foreground uppercase">
                     <Users class="size-3" /> Avg Finish
                 </span>
                 <span class="text-3xl font-bold tabular-nums">
                     {{ kpis.avgFinish !== null ? kpis.avgFinish : '—' }}
                 </span>
                 <span class="text-sm text-muted-foreground">
-                    {{ kpis.avgFinish !== null ? 'wins per run' : 'no completed runs' }}
+                    {{ kpis.avgFinish !== null ? 'wins per run' : 'no finished runs' }}
                 </span>
             </CardContent>
         </Card>

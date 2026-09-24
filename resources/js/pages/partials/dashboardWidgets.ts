@@ -99,7 +99,7 @@ export const widgetComponents: Record<WidgetKey, Component> = {
  */
 export const widgetProps: Record<WidgetKey, (data: unknown, config: WidgetConfig) => Record<string, unknown>> = {
     kpi_strip: (data) => ({ ...(data as Record<string, unknown>) }),
-    league_results: (data) => ({ leagueDistribution: data ?? { buckets: {}, trophies: 0, total: 0, formatLabel: null } }),
+    league_results: (data) => ({ leagueDistribution: data ?? { buckets: {}, trophies: 0, dropped: 0, total: 0, formatLabel: null } }),
     rolling_form: (data) => ({ rollingForm: data ?? { results: [], winrate: 0, allTimeWinrate: 0, delta: 0 } }),
     last_session: (data) => ({ lastSession: data ?? null }),
     deck_performance: (data) => ({ deckStats: data ?? [] }),

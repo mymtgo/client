@@ -71,6 +71,8 @@ export type LeagueKpis = {
     trophies: number;
     trophyRate: number | null;
     cashRate: number | null;
+    dropped: number;
+    dropRate: number | null;
     avgFinish: number | null;
     topMatchup: { archetype: string; wins: number; losses: number; count: number } | null;
 };

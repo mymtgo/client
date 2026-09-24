@@ -81,7 +81,21 @@ it('returns null rates and avg when no completed runs', function () {
 
     expect($kpis['trophyRate'])->toBeNull()
         ->and($kpis['cashRate'])->toBeNull()
-        ->and($kpis['avgFinish'])->toBeNull();
+        ->and($kpis['avgFinish'])->toBeNull()
+        ->and($kpis['dropped'])->toBe(0)
+        ->and($kpis['dropRate'])->toBeNull();
+});
+
+it('returns dropped count and drop rate across finished runs', function () {
+    seedLeagueRun($this->dv, LeagueState::Complete, 5, 0);
+    seedLeagueRun($this->dv, LeagueState::Complete, 3, 2);
+    seedLeagueRun($this->dv, LeagueState::Dropped, 1, 2);
+    seedLeagueRun($this->dv, LeagueState::Active, 1, 0);
+
+    $kpis = GetLeagueKpis::run(League::query());
+
+    expect($kpis['dropped'])->toBe(1)
+        ->and($kpis['dropRate'])->toBe(33.0);
 });
 
 it('returns top matchup with record and play count', function () {

@@ -51,14 +51,22 @@ const totalGames = computed(() => props.gamesWon + props.gamesLost);
 /** A run still being played outranks a finished one; only one is ever shown. */
 const currentLeagueRun = computed(() => props.leagueInProgress ?? props.latestLeague ?? null);
 
-const activeLeagueResults = computed(() => props.leagueResults ?? { '5-0': 0, '4-1': 0, '3-2': 0, '2-3': 0, '1-4': 0, '0-5': 0 });
+const activeLeagueResults = computed(() => props.leagueResults ?? { '5-0': 0, '4-1': 0, '3-2': 0, '2-3': 0, '1-4': 0, '0-5': 0, dropped: 0 });
 
 const leagueResultsTotal = computed(() => {
     const sum = Object.values(activeLeagueResults.value).reduce((a, b) => a + b, 0);
     return sum || 1;
 });
 
-const leagueResultsBuckets = ['5-0', '4-1', '3-2', '2-3', '1-4', '0-5'];
+/** Finishes from 5-0 down, then runs the player dropped from. */
+const leagueResultsBuckets = [
+    ...['5-0', '4-1', '3-2', '2-3', '1-4', '0-5'].map((key) => {
+        const [wins, losses] = key.split('-').map(Number);
+
+        return { key, label: key, barClass: wins > losses ? 'bg-success' : wins < losses ? 'bg-destructive' : 'bg-muted-foreground' };
+    }),
+    { key: 'dropped', label: 'Drop', barClass: 'bg-destructive' },
+];
 </script>
 
 <template>
@@ -131,16 +139,16 @@ const leagueResultsBuckets = ['5-0', '4-1', '3-2', '2-3', '1-4', '0-5'];
                         <CardContent class="p-4">
                             <p class="mb-3 text-xs font-medium tracking-wide text-muted-foreground uppercase">League Finishes</p>
                             <div class="flex flex-col gap-2">
-                                <div v-for="bucket in leagueResultsBuckets" :key="bucket" class="flex items-center gap-3">
-                                    <span class="w-8 text-right text-sm tabular-nums font-medium">{{ bucket }}</span>
+                                <div v-for="bucket in leagueResultsBuckets" :key="bucket.key" class="flex items-center gap-3">
+                                    <span class="w-8 text-right text-sm tabular-nums font-medium">{{ bucket.label }}</span>
                                     <div class="relative h-5 flex-1 rounded bg-muted">
                                         <div
                                             class="h-full rounded"
-                                            :class="parseInt(bucket) > parseInt(bucket.split('-')[1]) ? 'bg-success' : parseInt(bucket) < parseInt(bucket.split('-')[1]) ? 'bg-destructive' : 'bg-muted-foreground'"
-                                            :style="{ width: `${((activeLeagueResults[bucket] ?? 0) / leagueResultsTotal) * 100}%` }"
+                                            :class="bucket.barClass"
+                                            :style="{ width: `${((activeLeagueResults[bucket.key] ?? 0) / leagueResultsTotal) * 100}%` }"
                                         />
                                     </div>
-                                    <span class="w-6 text-right text-sm tabular-nums text-muted-foreground">{{ activeLeagueResults[bucket] ?? 0 }}</span>
+                                    <span class="w-6 text-right text-sm tabular-nums text-muted-foreground">{{ activeLeagueResults[bucket.key] ?? 0 }}</span>
                                 </div>
                             </div>
                         </CardContent>

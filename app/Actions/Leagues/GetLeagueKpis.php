@@ -14,6 +14,8 @@ class GetLeagueKpis
      *     trophies: int,
      *     trophyRate: float|null,
      *     cashRate: float|null,
+     *     dropped: int,
+     *     dropRate: float|null,
      *     avgFinish: float|null,
      *     topMatchup: array{archetype: string, wins: int, losses: int, count: int}|null
      * }
@@ -40,6 +42,7 @@ class GetLeagueKpis
 
         $completedWins = collect();
         $completed = 0;
+        $dropped = 0;
         $live = 0;
         $trophies = 0;
 
@@ -50,6 +53,9 @@ class GetLeagueKpis
 
             if ($state === 'complete' || $state === 'dropped') {
                 $completed++;
+                if ($state === 'dropped') {
+                    $dropped++;
+                }
                 $completedWins->push($wins);
                 if ($wins >= ($kindById[$id]?->roundCount() ?? 5)) {
                     $trophies++;
@@ -69,6 +75,7 @@ class GetLeagueKpis
 
         $trophyRate = $completed > 0 ? round(($trophies / $completed) * 100, 0) : null;
         $cashRate = $completed > 0 ? round(($cash / $completed) * 100, 0) : null;
+        $dropRate = $completed > 0 ? round(($dropped / $completed) * 100, 0) : null;
         $avgFinish = $completed > 0 ? round($completedWins->avg(), 1) : null;
 
         return [
@@ -81,6 +88,8 @@ class GetLeagueKpis
             'trophies' => $trophies,
             'trophyRate' => $trophyRate,
             'cashRate' => $cashRate,
+            'dropped' => $dropped,
+            'dropRate' => $dropRate,
             'avgFinish' => $avgFinish,
             'topMatchup' => self::topMatchup($leagueIds),
         ];
@@ -148,6 +157,8 @@ class GetLeagueKpis
             'trophies' => 0,
             'trophyRate' => null,
             'cashRate' => null,
+            'dropped' => 0,
+            'dropRate' => null,
             'avgFinish' => null,
             'topMatchup' => null,
         ];
