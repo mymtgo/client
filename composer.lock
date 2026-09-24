@@ -2453,12 +2453,12 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/mymtgo/replay.git",
-                "reference": "c52f0671b49284670cef7ae14d2a90b017d32196"
+                "reference": "20208e337c98d7f9ed4d0c3d8999bbba69e5a92a"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/mymtgo/replay/zipball/c52f0671b49284670cef7ae14d2a90b017d32196",
-                "reference": "c52f0671b49284670cef7ae14d2a90b017d32196",
+                "url": "https://api.github.com/repos/mymtgo/replay/zipball/20208e337c98d7f9ed4d0c3d8999bbba69e5a92a",
+                "reference": "20208e337c98d7f9ed4d0c3d8999bbba69e5a92a",
                 "shasum": ""
             },
             "require": {
@@ -2490,7 +2490,7 @@
                 "source": "https://github.com/mymtgo/replay/tree/main",
                 "issues": "https://github.com/mymtgo/replay/issues"
             },
-            "time": "2026-09-24T09:14:10+00:00"
+            "time": "2026-09-24T10:36:00+00:00"
         },
         {
             "name": "nativephp/desktop",
