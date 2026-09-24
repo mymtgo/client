@@ -84,6 +84,13 @@ return [
      * You may use glob / wildcard patterns here.
      */
     'cleanup_exclude_files' => [
+        '.ai',
+        '.idea',
+        '.github',
+        '.junie',
+        '.superpowers',
+        '.swarm',
+        '.vscode',
         'build',
         'temp',
         'content',
