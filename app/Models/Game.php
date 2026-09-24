@@ -20,7 +20,7 @@ class Game extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['match_id', 'mtgo_id', 'started_at', 'ended_at', 'won', 'turn_count'];
+    protected $fillable = ['match_id', 'mtgo_id', 'started_at', 'ended_at', 'won', 'turn_count', 'timeline_source'];
 
     // Sync dirtiness: editing this row must bump the parent's updated_at.
     protected $touches = ['match'];
@@ -43,7 +43,7 @@ class Game extends Model
     {
         return $this->belongsToMany(Player::class)
             ->using(GamePlayer::class)
-            ->withPivot(['on_play', 'instance_id', 'starting_hand_size', 'deck_json', 'is_local', 'mulligan_count', 'dice_roll', 'opening_hand_json']);
+            ->withPivot(['on_play', 'instance_id', 'starting_hand_size', 'deck_json', 'is_local', 'mulligan_count', 'dice_roll', 'opening_hand_json', 'clock_remaining_ms_start', 'clock_remaining_ms_end', 'clock_remaining_ms_min', 'sideboard_ms_used']);
     }
 
     /** @return BelongsToMany<Player, $this, GamePlayer, 'pivot'> */
@@ -74,5 +74,11 @@ class Game extends Model
     public function shipQueueEntry(): HasOne
     {
         return $this->hasOne(CardStatShipQueue::class);
+    }
+
+    /** @return HasMany<GameFieldDiff, $this> */
+    public function fieldDiffs(): HasMany
+    {
+        return $this->hasMany(GameFieldDiff::class);
     }
 }

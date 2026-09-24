@@ -35,6 +35,8 @@
         // "baseUrl": "./",                                  /* Specify the base directory to resolve non-relative module names. */
         "paths": {
             /* Specify a set of entries that re-map imports to additional lookup locations. */ "@/*": ["./resources/js/*"],
+            "@mymtgo/replay": ["./vendor/mymtgo/replay/resources/js/index.ts"],
+            "@mymtgo/replay/*": ["./vendor/mymtgo/replay/resources/js/*"],
         },
         // "rootDirs": [],                                   /* Allow multiple folders to be treated as one when resolving modules. */
         // "typeRoots": [],                                  /* Specify multiple folders that act like './node_modules/@types'. */
@@ -114,12 +116,15 @@
 
         /* Completeness */
         // "skipDefaultLibCheck": true,                      /* Skip type checking .d.ts files that are included with TypeScript. */
-        "skipLibCheck": true /* Skip type checking all .d.ts files. */
+        "skipLibCheck": true,
+        "preserveSymlinks": true /* Skip type checking all .d.ts files. */
     },
     "include": [
         "resources/js/**/*.ts",
         "resources/js/**/*.d.ts",
         "resources/js/**/*.tsx", 
-        "resources/js/**/*.vue"
+        "resources/js/**/*.vue",
+        "vendor/mymtgo/replay/resources/js/**/*.ts",
+        "vendor/mymtgo/replay/resources/js/**/*.vue"
     ]
 }

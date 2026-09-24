@@ -247,13 +247,15 @@ class MatchBundleBuilder
                 'content' => $timeline->content,
             ])->all();
 
-            // timestamp is only second precision, so same-second rows are
-            // common (rapid log events). The tiebreak must be content
-            // derived, never the local autoincrement row id: two devices
-            // insert rows in different orders, so an id tiebreak would not
-            // be byte-stable across devices.
-            usort($rows, fn (array $a, array $b) => [$a['timestamp']->getTimestamp(), self::contentHash($a['content'])]
-                <=> [$b['timestamp']->getTimestamp(), self::contentHash($b['content'])]);
+            // Log frames are second precision, so same-second rows are
+            // common (rapid log events). Sidecar frames carry milliseconds,
+            // and a burst within one second must keep its order, hence the
+            // millisecond key. The content hash stays as the tiebreak so
+            // output is byte-stable across devices: it must never be the
+            // local autoincrement row id, since two devices insert rows in
+            // different orders.
+            usort($rows, fn (array $a, array $b) => [(int) $a['timestamp']->getPreciseTimestamp(3), self::contentHash($a['content'])]
+                <=> [(int) $b['timestamp']->getPreciseTimestamp(3), self::contentHash($b['content'])]);
 
             return collect($rows)->map(fn (array $row) => [
                 'game' => $game->mtgo_id,

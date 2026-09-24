@@ -37,7 +37,7 @@ it('zips the mtgo log, laravel log, and the latest pipeline log', function () {
     $zip = new ZipArchive;
     $zip->open($zipPath);
 
-    expect($zip->numFiles)->toBe(3);
+    expect($zip->numFiles)->toBe(4);
     expect($zip->getFromName('mtgo.log'))->toBe("MTGO log contents\n");
     expect($zip->getFromName('laravel.log'))->toBe("Laravel log contents\n");
     expect($zip->getFromName('pipeline-2026-04-13.log'))->toBe("Pipeline log contents\n");
@@ -55,7 +55,7 @@ it('zips only the mtgo log when no pipeline or laravel logs exist', function () 
     $zip = new ZipArchive;
     $zip->open($zipPath);
 
-    expect($zip->numFiles)->toBe(1);
+    expect($zip->numFiles)->toBe(2);
     expect($zip->getFromName('mtgo.log'))->toBe("MTGO log contents\n");
 
     $zip->close();
@@ -72,7 +72,7 @@ it('zips only the pipeline log when no mtgo or laravel logs exist', function () 
     $zip = new ZipArchive;
     $zip->open($zipPath);
 
-    expect($zip->numFiles)->toBe(1);
+    expect($zip->numFiles)->toBe(2);
     expect($zip->getFromName('pipeline-2026-04-13.log'))->toBe("Pipeline log contents\n");
 
     $zip->close();
@@ -89,7 +89,7 @@ it('zips only the laravel log when no mtgo or pipeline logs exist', function () 
     $zip = new ZipArchive;
     $zip->open($zipPath);
 
-    expect($zip->numFiles)->toBe(1);
+    expect($zip->numFiles)->toBe(2);
     expect($zip->getFromName('laravel.log'))->toBe("Laravel log contents\n");
 
     $zip->close();
@@ -115,8 +115,8 @@ it('includes up to three most recent pipeline logs', function () {
     $zip = new ZipArchive;
     $zip->open($zipPath);
 
-    // mtgo.log + laravel.log + 3 pipeline logs
-    expect($zip->numFiles)->toBe(5);
+    // mtgo.log + laravel.log + 3 pipeline logs + sidecar/game_field_diffs.json
+    expect($zip->numFiles)->toBe(6);
     expect($zip->getFromName('pipeline-2026-04-13.log'))->toBe("Pipeline log contents\n");
     expect($zip->getFromName('pipeline-2026-04-12.log'))->toBe("Day 2\n");
     expect($zip->getFromName('pipeline-2026-04-11.log'))->toBe("Day 3\n");
@@ -136,8 +136,8 @@ it('drops pipeline logs older than the three most recent', function () {
     $zip = new ZipArchive;
     $zip->open($zipPath);
 
-    // mtgo.log + laravel.log + 3 pipeline logs (limit enforced)
-    expect($zip->numFiles)->toBe(5);
+    // mtgo.log + laravel.log + 3 pipeline logs (limit enforced) + sidecar/game_field_diffs.json
+    expect($zip->numFiles)->toBe(6);
     expect($zip->getFromName('pipeline-2026-04-10.log'))->toBeFalse();
     expect($zip->getFromName('pipeline-2026-04-09.log'))->toBeFalse();
 

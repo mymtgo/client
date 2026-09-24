@@ -1,19 +1,36 @@
 <script setup lang="ts">
+import ReplayShareButton from '@/components/replay-share/ReplayShareButton.vue';
+import type { ReplayShareState } from '@/components/replay-share/types';
 import OverlayLayout from '@/layouts/OverlayLayout.vue';
-import GameReplay from './partials/GameReplay.vue';
+import { show } from '@/routes/games';
+import { Link } from '@inertiajs/vue3';
+import { ReplayViewer, type ReplayFrame, type ReplayLogEntry, type ReplayMatchGame } from '@mymtgo/replay';
 
 defineOptions({ layout: OverlayLayout });
 
 defineProps<{
-    game: App.Data.Front.GameData & { match_id: number };
-    timeline: App.Data.Front.GameTimelineData[];
-    gameLog: Array<{ timestamp: string; message: string }>;
+    game: App.Data.Front.GameData & { match_id: number; won: boolean | null };
+    timeline: ReplayFrame[];
+    gameLog: ReplayLogEntry[];
+    matchGames: ReplayMatchGame[];
+    share: ReplayShareState;
 }>();
+
+const gameHref = (id: number) => show(id).url;
 </script>
 
 <template>
-    <div class="flex h-full flex-col gap-4 overflow-y-auto p-3 lg:p-4">
-        <h1 class="text-lg font-bold tracking-tight">Game Replay</h1>
-        <GameReplay :timeline="timeline" :game-log="gameLog" />
-    </div>
+    <ReplayViewer
+        :frames="timeline"
+        :log="gameLog"
+        :won="game.won"
+        :game-id="game.id"
+        :match-games="matchGames"
+        :game-href="gameHref"
+        :link-component="Link"
+    >
+        <template #actions>
+            <ReplayShareButton :game-id="game.id" :share="share" />
+        </template>
+    </ReplayViewer>
 </template>

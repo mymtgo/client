@@ -67,6 +67,7 @@ return [
         'DO_SPACES_*',
         '*_SECRET',
         'ZEPHPYR_*',
+        'SIDECAR_*',
         'NATIVEPHP_UPDATER_PATH',
         'NATIVEPHP_APPLE_ID',
         'NATIVEPHP_APPLE_ID_PASS',
@@ -175,6 +176,12 @@ return [
             'queues' => ['updates'],
             'memory_limit' => 1024,
             'timeout' => 60,
+            'sleep' => 3,
+        ],
+        'sidecar' => [
+            'queues' => ['sidecar'],
+            'memory_limit' => 1024,
+            'timeout' => 600,
             'sleep' => 3,
         ],
         'sync' => [

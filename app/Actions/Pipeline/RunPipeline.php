@@ -11,6 +11,8 @@ use App\Actions\Matches\AbandonStaleMatches;
 use App\Actions\Matches\LinkMatchToTournament;
 use App\Actions\Matches\RelinkOrphanMatches;
 use App\Actions\Overlay\SyncDraftNotesWindowVisibility;
+use App\Actions\Sidecar\IngestSidecarEvents;
+use App\Actions\Sidecar\ProjectUnprocessedSidecarEvents;
 use App\Actions\Tournaments\EnqueueTournamentObservations;
 use App\Models\MtgoMatch;
 use Illuminate\Support\Facades\Log;
@@ -26,6 +28,19 @@ class RunPipeline
         try {
             // Phase 1: Ingest main log
             app('mtgo')->ingestLogs();
+
+            // Phase 1.1: Sidecar event stream. No-op when the sidecar
+            // directory does not exist (macOS, dev, disabled). Guarded on
+            // its own: the sidecar is an external process writing files we
+            // don't control (torn status.json, malformed lines), and it
+            // must never abort log ingestion or projection for the tick.
+            try {
+                IngestSidecarEvents::run();
+            } catch (\Throwable $e) {
+                Log::channel('pipeline')->warning('Sidecar ingestion skipped this tick', [
+                    'error' => $e->getMessage(),
+                ]);
+            }
 
             // Phase 1.5: Process league join/drop events. Runs before
             // ProcessMatchEvents so League rows (with event_id) exist before
@@ -45,6 +60,21 @@ class RunPipeline
             // Phase 2: Process matches. Resolution now fires from inside
             // ProcessMatchEvents via ResolveMatchFromMetaMessages.
             ProcessMatchEvents::run();
+
+            // Phase 2.4: Project sidecar events that no log activity will
+            // bring back. ProcessMatchEvents only visits matches with
+            // unprocessed log_events, so a game_ended or match_ended the
+            // sidecar flushed after the log's last line for that match would
+            // otherwise never reach games / matches. Guarded on its own for
+            // the same reason phase 1.1 is: the sidecar is an external
+            // process and must never abort a pipeline tick.
+            try {
+                ProjectUnprocessedSidecarEvents::run();
+            } catch (\Throwable $e) {
+                Log::channel('pipeline')->warning('Sidecar projection sweep skipped this tick', [
+                    'error' => $e->getMessage(),
+                ]);
+            }
 
             // Phase 2.5: Abandon in_progress matches that will never resolve.
             // Runs after ProcessMatchEvents so any match still resolvable from

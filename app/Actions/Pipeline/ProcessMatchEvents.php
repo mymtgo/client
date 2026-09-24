@@ -3,6 +3,7 @@
 namespace App\Actions\Pipeline;
 
 use App\Actions\Matches\AdvanceMatchState;
+use App\Actions\Sidecar\ApplySidecarProjection;
 use App\Enums\MatchState;
 use App\Facades\Mtgo;
 use App\Models\Account;
@@ -163,6 +164,16 @@ class ProcessMatchEvents
                     ResolveMatchFromMetaMessages::run($match);
                 } catch (\Throwable $e) {
                     Log::channel('pipeline')->warning("Match {$match->mtgo_id}: metamessage resolution failed, will retry", [
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+
+            if (in_array($match->state, [MatchState::InProgress, MatchState::Ended, MatchState::Complete], true)) {
+                try {
+                    ApplySidecarProjection::run($match->fresh());
+                } catch (\Throwable $e) {
+                    Log::channel('pipeline')->warning("Match {$match->mtgo_id}: sidecar projection failed, will retry", [
                         'error' => $e->getMessage(),
                     ]);
                 }

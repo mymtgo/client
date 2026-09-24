@@ -19,3 +19,9 @@ export type PendingMatch = {
     outcome: string | null;
     started_at: string;
 };
+
+export type HelperStatus = {
+    state: 'off' | 'tripped' | 'running' | 'starting' | 'downloading' | 'failed' | 'offline';
+    progress: number | null;
+    error: 'network' | 'checksum' | 'quarantined' | null;
+};

@@ -39,6 +39,7 @@ class MtgoMatch extends Model
         'submitted_at' => 'datetime',
         'failed_at' => 'datetime',
         'archetype_detection_queued_at' => 'datetime',
+        'replay_shared_at' => 'datetime',
         'attempts' => 'integer',
         'state' => MatchState::class,
         'outcome' => MatchOutcome::class,
