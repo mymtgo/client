@@ -43,6 +43,7 @@ class BuildReplaySnapshot
                     'local_username' => $game->localPlayers->first()?->username,
                     'timeline' => $timeline,
                     'log' => $timeline === [] ? [] : array_values(GetGameLogEntries::run($game)),
+                    'sideboard' => GetLocalSideboard::run($game),
                 ];
             }, $games),
         ], self::cards(...));

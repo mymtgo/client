@@ -76,3 +76,17 @@ it('numbers a game by its place in the match', function () {
 
     expect(BuildReplaySnapshot::gameNumber($games[1]))->toBe(2);
 });
+
+it('carries your recorded sideboard for each game', function () {
+    ['match' => $match, 'games' => $games] = snapshotMatch();
+    $local = $games[0]->localPlayers()->first();
+    $games[0]->players()->updateExistingPivot($local->id, ['deck_json' => [
+        ['mtgo_id' => 1234, 'quantity' => 4, 'sideboard' => false],
+        ['mtgo_id' => 5678, 'quantity' => 2, 'sideboard' => true],
+    ]]);
+
+    $snapshot = BuildReplaySnapshot::run($match);
+
+    expect($snapshot['games'][0]['sideboard'])->toBe([['catalog_id' => 5678, 'quantity' => 2, 'name' => null, 'type' => null, 'image' => null]])
+        ->and($snapshot['games'][1])->not->toHaveKey('sideboard');
+});
