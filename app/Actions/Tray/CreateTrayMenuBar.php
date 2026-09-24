@@ -2,6 +2,7 @@
 
 namespace App\Actions\Tray;
 
+use App\Events\TrayOpenRequested;
 use Native\Desktop\Facades\Menu;
 use Native\Desktop\Facades\MenuBar;
 
@@ -26,7 +27,7 @@ class CreateTrayMenuBar
             ->showDockIcon()
             ->withContextMenu(
                 Menu::make(
-                    Menu::link(url('/'), 'Open mymtgo'),
+                    Menu::label('Open mymtgo')->event(TrayOpenRequested::class),
                     Menu::separator(),
                     Menu::quit(),
                 )

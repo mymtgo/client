@@ -19,6 +19,7 @@ use App\Dashboard\Widgets\LimitedPicksWidget;
 use App\Dashboard\Widgets\MatchupSpreadWidget;
 use App\Dashboard\Widgets\RecentMatchesWidget;
 use App\Dashboard\Widgets\RollingFormWidget;
+use App\Events\TrayOpenRequested;
 use App\Exceptions\OfflineModeException;
 use App\Exceptions\Sync\NotLinkedException;
 use App\Facades\AppSettings;
@@ -76,6 +77,11 @@ class AppServiceProvider extends ServiceProvider
 
         Event::listen(
             MenuBarClicked::class,
+            HandleTrayClick::class,
+        );
+
+        Event::listen(
+            TrayOpenRequested::class,
             HandleTrayClick::class,
         );
 

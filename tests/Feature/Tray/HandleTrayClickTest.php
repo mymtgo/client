@@ -1,6 +1,7 @@
 <?php
 
 use App\Actions\Tray\FocusOrOpenMainWindow;
+use App\Events\TrayOpenRequested;
 use App\Listeners\Tray\HandleTrayClick;
 use Native\Desktop\Events\MenuBar\MenuBarClicked;
 
@@ -26,6 +27,13 @@ it('focuses or opens the main window on tray click', function () {
     // a static call, so we just exercise the listener and rely on no exception.
     $listener = new HandleTrayClick;
     $event = new MenuBarClicked(combo: [], bounds: [], position: []);
+
+    expect(fn () => $listener->handle($event))->not->toThrow(Throwable::class);
+});
+
+it('focuses or opens the main window when the tray "Open" item is clicked', function () {
+    $listener = new HandleTrayClick;
+    $event = new TrayOpenRequested(item: ['label' => 'Open mymtgo'], combo: []);
 
     expect(fn () => $listener->handle($event))->not->toThrow(Throwable::class);
 });
