@@ -17,6 +17,7 @@ use App\Http\Controllers\Cards\ImageBase64Controller;
 use App\Http\Controllers\Cards\SearchController;
 use App\Http\Controllers\Dashboard\UpdateLayoutController;
 use App\Http\Controllers\Debug\Cards\PopulateController;
+use App\Http\Controllers\Debug\Cards\UploadTokenCatalogController;
 use App\Http\Controllers\Debug\Decks\SyncController;
 use App\Http\Controllers\Debug\LogEvents\IngestController;
 use App\Http\Controllers\Debug\Matches\DestroyController;
@@ -403,6 +404,7 @@ Route::group([], function (Router $router) {
         // Cards
         $group->get('cards', App\Http\Controllers\Debug\Cards\IndexController::class)->name('debug.cards.index');
         $group->post('cards/populate', PopulateController::class)->name('debug.cards.populate');
+        $group->post('cards/token-catalog', UploadTokenCatalogController::class)->name('debug.cards.token-catalog');
 
         // Leagues
         $group->get('leagues', App\Http\Controllers\Debug\Leagues\IndexController::class)->name('debug.leagues.index');

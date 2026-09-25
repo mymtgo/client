@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useSpinGuard } from '@/composables/useSpinGuard';
 import { useToast } from '@/composables/useToast';
 import { router, usePoll } from '@inertiajs/vue3';
-import { Download, RefreshCw } from 'lucide-vue-next';
+import { Download, RefreshCw, Upload } from 'lucide-vue-next';
 import { ref } from 'vue';
 
 const { add: toast } = useToast();
@@ -31,6 +31,7 @@ const searchFilter = ref(props.filters.search);
 const statusFilter = ref(props.filters.status);
 const [populating, startPopulating] = useSpinGuard();
 const [refreshing, startRefreshing] = useSpinGuard();
+const [uploadingCatalog, startUploadingCatalog] = useSpinGuard();
 
 function applyFilters() {
     router.get('/debug/cards', {
@@ -50,6 +51,16 @@ function populateNow() {
     router.post('/debug/cards/populate', {}, {
         preserveScroll: true,
         onSuccess: () => toast({ type: 'success', title: 'Populated', message: 'Missing card data fetched.', duration: 2000 }),
+        onFinish: stop,
+    });
+}
+
+function uploadTokenCatalog() {
+    const stop = startUploadingCatalog();
+    router.post('/debug/cards/token-catalog', {}, {
+        preserveScroll: true,
+        onSuccess: () => toast({ type: 'success', title: 'Token catalog uploaded', message: 'Tokens are re-resolving against their exact printings.', duration: 4000 }),
+        onError: (errors) => toast({ type: 'error', title: 'Upload failed', message: errors.catalog ?? 'The token catalog could not be uploaded.', duration: 6000 }),
         onFinish: stop,
     });
 }
@@ -120,6 +131,11 @@ const columns = [
                 <Button size="sm" class="h-8" :disabled="populating || (missingCount === 0 && missingArtCount === 0)" @click="populateNow">
                     <Download class="mr-1.5 h-3.5 w-3.5" :class="{ 'animate-bounce': populating }" />
                     Fetch Missing ({{ missingCount + missingArtCount }})
+                </Button>
+
+                <Button size="sm" variant="outline" class="h-8" :disabled="uploadingCatalog" @click="uploadTokenCatalog">
+                    <Upload class="mr-1.5 h-3.5 w-3.5" :class="{ 'animate-bounce': uploadingCatalog }" />
+                    Upload token catalog
                 </Button>
 
                 <Button size="sm" variant="outline" class="h-8" @click="refresh">

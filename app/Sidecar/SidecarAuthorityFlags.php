@@ -6,7 +6,7 @@ use App\Facades\AppSettings;
 
 class SidecarAuthorityFlags
 {
-    public const FIELDS = ['username', 'on_play', 'game_boundaries', 'game_result', 'match_result'];
+    public const FIELDS = ['username', 'on_play', 'game_boundaries', 'game_result', 'match_result', 'match_deck', 'league_run', 'league_drop'];
 
     public const DEFAULTS = [
         'username' => true,
@@ -14,6 +14,9 @@ class SidecarAuthorityFlags
         'game_boundaries' => false,
         'game_result' => false,
         'match_result' => false,
+        'match_deck' => false,
+        'league_run' => false,
+        'league_drop' => false,
     ];
 
     /** @return array<string, bool> */

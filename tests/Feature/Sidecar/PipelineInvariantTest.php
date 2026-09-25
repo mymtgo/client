@@ -10,6 +10,7 @@ use App\Models\GameEvent;
 use App\Models\LogEvent;
 use App\Models\LogInstance;
 use App\Models\MtgoMatch;
+use App\Sidecar\SidecarAuthorityFlags;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 
@@ -104,4 +105,24 @@ it('sweeps nothing when there are no sidecar events at all', function () {
 
     expect(ProjectUnprocessedSidecarEvents::run())->toBe(0)
         ->and(GameEvent::count())->toBe(0);
+});
+
+it('queries no sidecar table with every league flag on but no sidecar directory', function () {
+    AppSettings::setSidecarDirectory(sys_get_temp_dir().'/nope-'.uniqid());
+    SidecarAuthorityFlags::applyRemote(['match_deck' => true, 'league_run' => true, 'league_drop' => true]);
+    $match = MtgoMatch::factory()->create(['state' => MatchState::InProgress, 'league_id' => null, 'deck_version_id' => null, 'started_at' => now()]);
+    LogEvent::factory()->create([
+        'event_type' => 'game_management_json',
+        'match_token' => $match->token,
+        'context' => 'MatchJoinedEventUnderwayState',
+        'raw_text' => "12:00:00 [INF] (Game Management|Match State Changed) Receiver:\nLeague Token=league-token-123\nPlayFormatCd=CMODERN",
+    ]);
+
+    DB::enableQueryLog();
+    RunPipeline::run();
+    $sidecarQueries = collect(DB::getQueryLog())->filter(fn (array $q) => str_contains($q['query'], 'game_events'));
+    DB::disableQueryLog();
+
+    expect($sidecarQueries)->toBeEmpty()
+        ->and($match->fresh()->league_id)->not->toBeNull();
 });

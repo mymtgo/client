@@ -2,11 +2,10 @@
 
 namespace App\Actions\Matches;
 
+use App\Actions\Leagues\CompleteLeague;
 use App\Actions\Limited\SyncLimitedMatchDeck;
-use App\Actions\Util\ExtractKeyValueBlock;
-use App\Enums\LogEventType;
+use App\Enums\LeagueState;
 use App\Enums\MatchState;
-use App\Models\LogEvent;
 use App\Models\MtgoMatch;
 use Illuminate\Support\Facades\Log;
 
@@ -61,7 +60,14 @@ class RelinkOrphanMatches
             ->get()
             ->each(function (MtgoMatch $match): void {
                 self::retryAssignLeague($match);
-                SyncLimitedMatchDeck::run($match->refresh());
+                $match->refresh();
+                SyncLimitedMatchDeck::run($match);
+
+                // A Complete match that only now got its league never passed
+                // through MtgoMatchObserver's completion check with a league.
+                if ($match->state === MatchState::Complete && $match->league?->state === LeagueState::Active) {
+                    CompleteLeague::runIfFinished($match->league);
+                }
             });
 
         self::inheritTournamentDecks();
@@ -117,31 +123,13 @@ class RelinkOrphanMatches
     }
 
     /**
-     * Re-extract gameMeta from the most informative joined-state log event
-     * for the match and hand it back to AssignLeague. Prefers the
-     * game_management_json variant (carries Receiver: + key=value block);
-     * falls back to the match_state_changed header only if no JSON variant
-     * exists. AssignLeague itself is idempotent and short-circuits on an
-     * empty League Token.
+     * Re-extract gameMeta for the match (see ReadJoinedGameMeta) and hand it
+     * back to AssignLeague. AssignLeague itself is idempotent and
+     * short-circuits on an empty League Token.
      */
     private static function retryAssignLeague(MtgoMatch $match): void
     {
-        $joinedState = LogEvent::where('match_token', $match->token)
-            ->where('event_type', 'game_management_json')
-            ->where('context', 'like', '%MatchJoinedEventUnderwayState%')
-            ->orderByDesc('id')
-            ->first()
-            ?? LogEvent::where('match_token', $match->token)
-                ->where('event_type', LogEventType::MATCH_STATE_CHANGED->value)
-                ->where('context', 'like', '%MatchJoinedEventUnderwayState%')
-                ->orderByDesc('id')
-                ->first();
-
-        if (! $joinedState) {
-            return;
-        }
-
-        $gameMeta = ExtractKeyValueBlock::run($joinedState->raw_text);
+        $gameMeta = ReadJoinedGameMeta::run($match);
 
         if (empty($gameMeta['League Token'])) {
             return;

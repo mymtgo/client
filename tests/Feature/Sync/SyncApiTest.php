@@ -273,3 +273,16 @@ it('stores and reads sync slots in app settings', function () {
 
     expect(AppSettings::syncSlots())->toBeNull();
 });
+
+it('uploads the token catalog gzipped with the bearer header', function () {
+    Http::fake(['*/api/cards/token-catalog' => Http::response(['added' => 3, 'already_mapped' => 0, 'tiers' => [], 'unmatched' => []])]);
+
+    $result = app(SyncApi::class)->uploadTokenCatalog(['client_TOK' => '<CardSet/>']);
+
+    expect($result['added'])->toBe(3);
+
+    Http::assertSent(fn ($request) => $request->url() === 'https://mymtgo.com/api/cards/token-catalog'
+        && $request->hasHeader('Authorization', 'Bearer access-token')
+        && $request->hasHeader('Content-Encoding', 'gzip')
+        && json_decode(gzdecode($request->body()), true) === ['files' => ['client_TOK' => '<CardSet/>']]);
+});

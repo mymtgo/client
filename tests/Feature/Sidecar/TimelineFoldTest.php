@@ -46,7 +46,7 @@ it('adds a card on zone change from Nowhere and drops it on zone change to Nowhe
     $f = fold();
     expect($f->apply('card_zone_changed', battlefieldCard()))->toBeTrue();
     expect($f->frame()['Cards'])->toBe([
-        ['Id' => 447, 'CatalogID' => 127507, 'Zone' => 'Battlefield', 'Owner' => 1, 'Controller' => 1, 'Tapped' => false],
+        ['Id' => 447, 'CatalogID' => 127507, 'Zone' => 'Battlefield', 'Owner' => 1, 'Controller' => 1, 'Tapped' => false, 'Name' => 'Solitude'],
     ]);
 
     $f->apply('card_zone_changed', ['c' => '447', 'from' => 'Battlefield', 'to' => 'Nowhere', 'owner_p' => 1, 'controller_p' => 1, 'name' => 'Solitude', 'catalog_id' => 127507]);
@@ -62,7 +62,7 @@ it('moves a known card between zones keeping its tapped and pt state but clearin
     $f->apply('card_zone_changed', ['c' => '447', 'from' => 'Battlefield', 'to' => 'Graveyard', 'owner_p' => 1, 'controller_p' => 1, 'name' => 'Solitude', 'catalog_id' => 127507]);
 
     expect($f->frame()['Cards'][0])->toBe([
-        'Id' => 447, 'CatalogID' => 127507, 'Zone' => 'Graveyard', 'Owner' => 1, 'Controller' => 1, 'Tapped' => true, 'Power' => 3, 'Toughness' => 2,
+        'Id' => 447, 'CatalogID' => 127507, 'Zone' => 'Graveyard', 'Owner' => 1, 'Controller' => 1, 'Tapped' => true, 'Name' => 'Solitude', 'Power' => 3, 'Toughness' => 2,
     ]);
 });
 
@@ -163,9 +163,9 @@ it('replaces the whole state on a keyframe', function () {
             ['Id' => 1, 'Name' => 'Opp_Name', 'Life' => 12, 'HandCount' => 2, 'LibraryCount' => 49, 'TimeLeft' => 1300000, 'Pool' => ['G' => 2]],
         ])
         ->and($frame['Cards'])->toBe([
-            ['Id' => 450, 'CatalogID' => 125685, 'Zone' => 'Battlefield', 'Owner' => 1, 'Controller' => 1, 'Tapped' => true, 'Power' => 2, 'Toughness' => 2, 'Counters' => ['Time' => 1], 'Damage' => 2],
-            ['Id' => 451, 'CatalogID' => 68070, 'Zone' => 'Hand', 'Owner' => 0, 'Controller' => 0, 'Tapped' => false],
-            ['Id' => 452, 'CatalogID' => 90210, 'Zone' => 'Battlefield', 'Owner' => 0, 'Controller' => 0, 'Tapped' => false],
+            ['Id' => 450, 'CatalogID' => 125685, 'Zone' => 'Battlefield', 'Owner' => 1, 'Controller' => 1, 'Tapped' => true, 'Name' => 'Emperor of Bones', 'Power' => 2, 'Toughness' => 2, 'Counters' => ['Time' => 1], 'Damage' => 2],
+            ['Id' => 451, 'CatalogID' => 68070, 'Zone' => 'Hand', 'Owner' => 0, 'Controller' => 0, 'Tapped' => false, 'Name' => 'Swamp'],
+            ['Id' => 452, 'CatalogID' => 90210, 'Zone' => 'Battlefield', 'Owner' => 0, 'Controller' => 0, 'Tapped' => false, 'Name' => 'Ephemerate'],
         ]);
 
     expect($frame['Cards'][2])->not->toHaveKey('Counters');

@@ -149,6 +149,9 @@ final class TimelineFold
             if ($card['Zone'] === 'Nowhere') {
                 continue;
             }
+            if (! empty($c['name'])) {
+                $card['Name'] = (string) $c['name'];
+            }
             if (isset($c['power'])) {
                 $card['Power'] = (int) $c['power'];
             }
@@ -259,6 +262,9 @@ final class TimelineFold
         $card['Controller'] = (int) ($data['controller_p'] ?? $card['Controller']);
         if (! empty($data['catalog_id'])) {
             $card['CatalogID'] = (int) $data['catalog_id'];
+        }
+        if (! empty($data['name'])) {
+            $card['Name'] = (string) $data['name'];
         }
         foreach (self::COMBAT_KEYS as $key) {
             unset($card[$key]);

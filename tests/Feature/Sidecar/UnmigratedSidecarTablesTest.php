@@ -80,7 +80,7 @@ it('returns an all-zero agreement summary with the sidecar tables missing', func
 
     $summary = BuildSidecarAgreementSummary::run();
 
-    expect(array_keys($summary))->toBe(['username', 'on_play', 'game_boundaries', 'game_result', 'match_result'])
+    expect(array_keys($summary))->toBe(['username', 'on_play', 'game_boundaries', 'game_result', 'match_result', 'match_deck', 'league_run', 'league_drop'])
         ->and($summary['game_result'])->toBe(['agree' => 0, 'disagree' => 0, 'sidecar_incomplete' => 0, 'sidecar_degraded' => 0]);
 });
 

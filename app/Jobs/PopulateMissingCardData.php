@@ -216,7 +216,10 @@ class PopulateMissingCardData implements ShouldQueue
 
         try {
             $response = $this->apiClient()->post('/api/cards', [
-                'ids' => $regularCards->pluck('mtgo_id')->values(),
+                // Token rows are asked about by catalog id too: the API maps
+                // MTGO's token catalog to exact printings, where a name alone
+                // picks any of dozens of printings.
+                'ids' => $regularCards->merge($tokenCards)->pluck('mtgo_id')->unique()->values(),
                 'tokens' => $tokenCards->pluck('name')->unique()->values(),
             ]);
 
@@ -233,8 +236,13 @@ class PopulateMissingCardData implements ShouldQueue
             }
 
             foreach ($tokenCards as $card) {
+                // An id answer names this exact printing. A row with a value
+                // is some other card's id answer, so it never stands in as
+                // the name answer for a row that merely shares the name.
                 $cardData = $cardsResponse->first(
-                    fn ($data) => ($data['layout'] ?? null) === 'token' && ($data['name'] ?? null) === $card->name
+                    fn ($data) => ($data['value'] ?? null) == $card->mtgo_id
+                ) ?? $cardsResponse->first(
+                    fn ($data) => ! isset($data['value']) && ($data['layout'] ?? null) === 'token' && ($data['name'] ?? null) === $card->name
                 );
 
                 if ($cardData) {

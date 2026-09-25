@@ -233,6 +233,26 @@ class SyncApi
     }
 
     /**
+     * MTGO's token catalog from this install, for the API to map tokens to
+     * their exact printings. Admin accounts only; anyone else gets a 403,
+     * which throws like any other failure.
+     *
+     * @param  array<string, string>  $files  file contents keyed by name without `.xml`
+     * @return array<string, mixed>
+     */
+    public function uploadTokenCatalog(array $files): array
+    {
+        $body = gzencode(json_encode(['files' => $files], JSON_THROW_ON_ERROR), 6);
+
+        return $this->send(
+            fn (PendingRequest $request): Response => $request
+                ->withHeaders(['Content-Encoding' => 'gzip'])
+                ->withBody($body, 'application/json')
+                ->post('/api/cards/token-catalog'),
+        )->json();
+    }
+
+    /**
      * Runs $call with a valid bearer token, refreshing and retrying once on
      * a 401. Never logs the token itself.
      *

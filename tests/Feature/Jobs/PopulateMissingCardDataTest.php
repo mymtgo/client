@@ -266,3 +266,42 @@ it('prefers the front face two below when both neighbours are multi-face', funct
 
     expect(Card::where('mtgo_id', '126519')->sole()->scryfall_id)->toBe('scryfall-nonfoil');
 });
+
+it('resolves a token by its catalog id ahead of its name', function () {
+    AppSettings::setApiKey('key-one');
+    AppSettings::setApiKeyExpiresAt(now()->addHour()->toIso8601String());
+
+    Card::factory()->create(['mtgo_id' => '125873', 'name' => 'Cat', 'type' => 'Token Creature', 'rarity' => 'token', 'scryfall_id' => null]);
+
+    Http::fake([
+        '*/api/cards' => fn ($request) => Http::response(array_values(array_filter([
+            collect($request['ids'] ?? [])->map(fn ($id) => (int) $id)->contains(125873)
+                ? ['value' => '125873', 'scryfall_id' => 'mh3-cat', 'oracle_id' => 'o-cat', 'name' => 'Cat', 'type' => 'Token Creature', 'layout' => 'token', 'set' => 'TMH3', 'image' => 'https://cards.scryfall.io/mh3-cat.jpg']
+                : null,
+            collect($request['tokens'] ?? [])->contains('Cat')
+                ? ['scryfall_id' => 'green-cat', 'oracle_id' => 'o-cat', 'name' => 'Cat', 'type' => 'Token Creature', 'layout' => 'token', 'set' => 'PLST', 'image' => 'https://cards.scryfall.io/green-cat.jpg']
+                : null,
+        ])), 200),
+    ]);
+
+    (new PopulateMissingCardData)->handle();
+
+    expect(Card::where('mtgo_id', '125873')->sole()->scryfall_id)->toBe('mh3-cat');
+});
+
+it('still resolves a token by name when its catalog id is unknown', function () {
+    AppSettings::setApiKey('key-one');
+    AppSettings::setApiKeyExpiresAt(now()->addHour()->toIso8601String());
+
+    Card::factory()->create(['mtgo_id' => '999001', 'name' => 'Cat', 'type' => 'Token Creature', 'rarity' => 'token', 'scryfall_id' => null]);
+
+    Http::fake([
+        '*/api/cards' => fn ($request) => Http::response(collect($request['tokens'] ?? [])->contains('Cat')
+            ? [['scryfall_id' => 'green-cat', 'oracle_id' => 'o-cat', 'name' => 'Cat', 'type' => 'Token Creature', 'layout' => 'token', 'set' => 'PLST', 'image' => 'https://cards.scryfall.io/green-cat.jpg']]
+            : [], 200),
+    ]);
+
+    (new PopulateMissingCardData)->handle();
+
+    expect(Card::where('mtgo_id', '999001')->sole()->scryfall_id)->toBe('green-cat');
+});

@@ -2,10 +2,12 @@
 
 namespace App\Actions\Sidecar;
 
+use App\Actions\Leagues\CompleteLeagueFromSnapshot;
+use App\Actions\Leagues\ResolveLeagueRunFromSidecar;
+use App\Actions\Matches\ResolveMatchDeckFromSidecar;
 use App\Enums\MatchState;
 use App\Models\Game;
 use App\Models\GameEvent;
-use App\Models\GameFieldDiff;
 use App\Models\MtgoMatch;
 use App\Sidecar\Resolution;
 use App\Sidecar\SidecarAuthorityFlags;
@@ -29,7 +31,7 @@ class ApplySidecarProjection
     public const BOUNDARY_TOLERANCE_SECONDS = 5;
 
     /**
-     * Runs after the log projection for a match. Never changes match state.
+     * Runs after the log projection for a match. Never changes match state; may correct deck_version_id and league_id through the sidecar entries.
      * Sidecar-only fields (clock) are written unconditionally; shared fields
      * go through ResolveFieldAuthority and land in game_field_diffs when the
      * two sources disagree.
@@ -45,6 +47,15 @@ class ApplySidecarProjection
         if ($view === null) {
             return;
         }
+
+        // Late corrections (spec 5.3 / 5.5), acting only on a snapshot that
+        // has just arrived. Deck first so a league it fixes carries it.
+        // Unassigned matches are decided by AssignLeague through the retry
+        // path, which keeps one deciding path per match.
+        ResolveMatchDeckFromSidecar::correct($match);
+        ResolveLeagueRunFromSidecar::correct($match->fresh());
+
+        CompleteLeagueFromSnapshot::run($match->fresh());
 
         $flags = SidecarAuthorityFlags::current();
         $games = $match->games()->with('players')->get()->keyBy(fn (Game $g) => (string) $g->mtgo_id);
@@ -145,7 +156,7 @@ class ApplySidecarProjection
         ];
 
         foreach ($resolutions as $field => $resolution) {
-            self::recordDiff($match, $game, $field, $resolution, $logValues[$field], $sidecarValues[$field]);
+            RecordFieldDiff::run($match, $game, $field, $resolution, $logValues[$field], $sidecarValues[$field]);
         }
 
         if ($resolutions['on_play']->chosenSource === 'sidecar' && $resolutions['on_play']->value !== null) {
@@ -268,7 +279,7 @@ class ApplySidecarProjection
 
         $resolution = ResolveFieldAuthority::run('match_result', $logValue, $sidecarValue, $flags['match_result'], $view->matchEnded && $allGamesEligible, $view->allVerified, $allGamesEligible);
 
-        self::recordDiff($match, null, 'match_result', $resolution, $logValue, $sidecarValue);
+        RecordFieldDiff::run($match, null, 'match_result', $resolution, $logValue, $sidecarValue);
 
         if ($resolution->chosenSource === 'sidecar' && $match->state === MatchState::Complete) {
             $match->update([
@@ -276,37 +287,6 @@ class ApplySidecarProjection
                 'games_won' => $resolution->value['games_won'],
                 'games_lost' => $resolution->value['games_lost'],
             ]);
-        }
-    }
-
-    private static function recordDiff(MtgoMatch $match, ?Game $game, string $field, Resolution $resolution, mixed $logValue, mixed $sidecarValue): void
-    {
-        $query = GameFieldDiff::query()
-            ->where('match_id', $match->id)
-            ->where('field', $field)
-            ->when($game, fn ($q) => $q->where('game_id', $game->id), fn ($q) => $q->whereNull('game_id'));
-
-        if (! $resolution->disagree) {
-            $query->delete();
-
-            return;
-        }
-
-        $existing = (clone $query)->first();
-
-        $attributes = [
-            'match_id' => $match->id,
-            'game_id' => $game?->id,
-            'field' => $field,
-            'log_value' => is_array($logValue) ? $logValue : ['value' => $logValue],
-            'sidecar_value' => is_array($sidecarValue) ? $sidecarValue : ['value' => $sidecarValue],
-            'chosen_source' => $resolution->chosenSource,
-        ];
-
-        if ($existing) {
-            $existing->update($attributes);
-        } else {
-            GameFieldDiff::create($attributes);
         }
     }
 }

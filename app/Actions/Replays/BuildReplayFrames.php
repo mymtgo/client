@@ -42,7 +42,8 @@ class BuildReplayFrames
                 $cardModel = $cardsByMtgoId->get($card['CatalogID']);
                 $content['Cards'][$i]['image'] = $cardModel === null ? null : self::image($cardModel, $portableImages);
                 $content['Cards'][$i]['type'] = $cardModel?->type;
-                $content['Cards'][$i]['name'] = $cardModel?->name;
+                $content['Cards'][$i]['name'] = $cardModel?->name ?? self::mtgoName($card);
+                unset($content['Cards'][$i]['Name']);
             }
 
             return [
@@ -50,6 +51,20 @@ class BuildReplayFrames
                 'content' => $content,
             ];
         })->values()->all();
+    }
+
+    /**
+     * The name MTGO itself gave a card, for tokens the local catalog has no
+     * row for. Only for a card whose identity is known: a hidden card has
+     * catalog id 0 and must stay nameless.
+     *
+     * @param  array<string, mixed>  $card
+     */
+    private static function mtgoName(array $card): ?string
+    {
+        $name = $card['Name'] ?? null;
+
+        return (int) ($card['CatalogID'] ?? 0) > 0 && is_string($name) && $name !== '' ? $name : null;
     }
 
     private static function image(Card $card, bool $portable): ?string

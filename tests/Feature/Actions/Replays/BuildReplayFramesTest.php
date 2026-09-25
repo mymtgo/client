@@ -71,3 +71,15 @@ it('leaves a card unknown to the catalog with null fields', function () {
     expect($frames[0]['content']['Cards'][0]['name'])->toBeNull()
         ->and($frames[0]['content']['Cards'][0]['image'])->toBeNull();
 });
+
+it('names a card the catalog has no row for with the name MTGO gave it', function () {
+    $game = framesGame();
+    $timeline = $game->timeline()->first();
+    $content = $timeline->content;
+    $content['Cards'][0]['Name'] = 'Eldrazi Spawn';
+    $timeline->update(['content' => $content]);
+
+    $card = BuildReplayFrames::run($game)[0]['content']['Cards'][0];
+
+    expect($card['name'])->toBe('Eldrazi Spawn')->and($card)->not->toHaveKey('Name');
+});

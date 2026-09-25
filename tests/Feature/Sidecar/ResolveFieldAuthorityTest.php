@@ -10,6 +10,9 @@ it('defaults to username on and everything else off', function () {
         'game_boundaries' => false,
         'game_result' => false,
         'match_result' => false,
+        'match_deck' => false,
+        'league_run' => false,
+        'league_drop' => false,
     ]);
 });
 
