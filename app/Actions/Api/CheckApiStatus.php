@@ -3,13 +3,18 @@
 namespace App\Actions\Api;
 
 use App\Facades\AppSettings;
+use App\Services\Sync\SyncTokens;
 use Illuminate\Support\Facades\Http;
 use Throwable;
 
 class CheckApiStatus
 {
     /**
-     * @return array{state: 'ok'}|array{state: 'noauth', message: string}|array{state: 'unreachable', error: string}|array{state: 'offline'}
+     * A noauth answer says whether the client is signed in: a signed-in
+     * client sends its account token, not the device key, so re-registering
+     * the device cannot fix it and the card must point at signing in.
+     *
+     * @return array{state: 'ok'}|array{state: 'noauth', message: string, signedIn: bool}|array{state: 'unreachable', error: string}|array{state: 'offline'}
      */
     public static function run(): array
     {
@@ -47,6 +52,7 @@ class CheckApiStatus
             return [
                 'state' => 'noauth',
                 'message' => $payload['message'] ?? 'Authentication required.',
+                'signedIn' => app(SyncTokens::class)->linked(),
             ];
         }
 

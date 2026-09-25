@@ -4,9 +4,15 @@ import ReauthenticateController from '@/actions/App/Http/Controllers/Settings/Re
 import SettingsSection from '@/components/settings/SettingsSection.vue';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
+import { account } from '@/routes/settings';
+import { Link } from '@inertiajs/vue3';
 import { onMounted, ref } from 'vue';
 
-type ApiStatus = { state: 'ok' } | { state: 'noauth'; message: string } | { state: 'unreachable'; error: string } | { state: 'offline' };
+type ApiStatus =
+    | { state: 'ok' }
+    | { state: 'noauth'; message: string; signedIn: boolean }
+    | { state: 'unreachable'; error: string }
+    | { state: 'offline' };
 
 const status = ref<ApiStatus | null>(null);
 const checking = ref(false);
@@ -95,7 +101,16 @@ onMounted(() => {
                 </span>
             </div>
             <div class="flex items-center gap-2">
-                <Button v-if="status && status.state === 'noauth'" variant="outline" size="sm" :disabled="reauthenticating" @click="reauthenticate">
+                <Button v-if="status && status.state === 'noauth' && status.signedIn" variant="outline" size="sm" as-child>
+                    <Link :href="account()">Sign in again</Link>
+                </Button>
+                <Button
+                    v-else-if="status && status.state === 'noauth'"
+                    variant="outline"
+                    size="sm"
+                    :disabled="reauthenticating"
+                    @click="reauthenticate"
+                >
                     <Spinner v-if="reauthenticating" />
                     {{ reauthenticating ? 'Reauthenticating…' : 'Reauthenticate' }}
                 </Button>

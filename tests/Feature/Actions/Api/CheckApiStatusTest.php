@@ -2,6 +2,7 @@
 
 use App\Actions\Api\CheckApiStatus;
 use App\Facades\AppSettings;
+use App\Services\Sync\SyncTokens;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 
@@ -35,6 +36,24 @@ it('returns noauth with message when API responds with noauth', function () {
     expect(CheckApiStatus::run())->toBe([
         'state' => 'noauth',
         'message' => 'Device not recognized.',
+        'signedIn' => false,
+    ]);
+});
+
+it('flags a noauth answer for a signed-in client so the card offers sign-in, not device re-registration', function () {
+    app(SyncTokens::class)->store('access-token', 'refresh-token', 2592000);
+
+    Http::fake([
+        '*/api/status' => Http::response([
+            'status' => 'noauth',
+            'message' => 'Your sign-in has expired. Please sign in again.',
+        ]),
+    ]);
+
+    expect(CheckApiStatus::run())->toBe([
+        'state' => 'noauth',
+        'message' => 'Your sign-in has expired. Please sign in again.',
+        'signedIn' => true,
     ]);
 });
 

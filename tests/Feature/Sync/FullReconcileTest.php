@@ -81,6 +81,17 @@ it('excludes a free account\'s limited matches and leagues in full mode too, not
         ->and(manifestRequestsFor('match')->flatMap(fn ($r) => collect($r['dirty'])->pluck('client_id'))->all())->toBe([]);
 });
 
+it('leaves an unfinished match out of a full reconcile too', function () {
+    $match = MtgoMatch::factory()->inProgress()->create(['deck_version_id' => syncEnabledDeckVersion()->id]);
+
+    fakeSync();
+
+    app(SyncRunner::class)->run(true);
+
+    expect(manifestRequestsFor('match')->flatMap(fn ($r) => collect($r['dirty'])->pluck('client_id'))->all())
+        ->not->toContain($match->token);
+});
+
 it('persists the cursor past a pushed batch even when the run is interrupted afterwards', function () {
     $matchLo = syncTestMatch();
     $matchHi = syncTestMatch();

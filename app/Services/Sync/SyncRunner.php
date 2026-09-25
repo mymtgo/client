@@ -850,13 +850,14 @@ class SyncRunner
      * as in {@see DirtyRows::query}. Nor past the same free-tier limited
      * gate as {@see DirtyRows::base()}: a free account's match and league
      * arms drop limited decks too, since the slot row that would otherwise
-     * gate them survives a tier lapse by design. Must be kept in agreement
-     * with that method.
+     * gate them survives a tier lapse by design. Nor past the finished-match
+     * gate: a live match is never sent. Must be kept in agreement with that
+     * method.
      */
     private function fullQuery(string $type): Builder
     {
         return match ($type) {
-            'match' => MtgoMatch::query()->whereHas('deckVersion.deck', fn (Builder $query) => $query
+            'match' => MtgoMatch::query()->finished()->whereHas('deckVersion.deck', fn (Builder $query) => $query
                 ->where('cloud_sync_enabled', true)
                 ->when(! AppSettings::isSupporter(), fn (Builder $q) => $q->withoutLimited())),
             'deck' => Deck::query()

@@ -1,6 +1,7 @@
 <?php
 
 use App\Actions\SideboardGuides\SaveSideboardGuideCards;
+use App\Enums\MatchState;
 use App\Models\Deck;
 use App\Models\DeckArchetypeNote;
 use App\Models\DeckVersion;
@@ -140,3 +141,15 @@ it('marks a deck dirty when a sideboard plan is saved or a matchup note lands', 
 
     expect(DirtyRows::query('deck')->pluck('id'))->toContain($deck->id);
 });
+
+it('leaves unfinished matches out of sync until they end', function (string $state) {
+    $match = MtgoMatch::factory()->{$state}()->create(['deck_version_id' => syncEnabledDeckVersion()->id, 'synced_hash' => null]);
+
+    expect(DirtyRows::query('match')->pluck('id'))->not->toContain($match->id)
+        ->and(DirtyRows::knownIds('match'))->not->toContain($match->token);
+
+    $match->update(['state' => MatchState::Complete]);
+
+    expect(DirtyRows::query('match')->pluck('id'))->toContain($match->id)
+        ->and(DirtyRows::knownIds('match'))->toContain($match->token);
+})->with(['started', 'inProgress', 'ended']);

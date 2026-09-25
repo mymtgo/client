@@ -59,13 +59,14 @@ class MtgoMatchObserver
             }
 
             // Cross-device sync should feel automatic: a completed match
-            // schedules a run a couple of minutes out (enough for the
-            // enrichments above to land; anything later is caught by the
-            // half-hourly schedule). RunSyncJob is unique, so a play
-            // session's worth of completions folds into one run.
+            // schedules a run 30 seconds out. Short, so closing the app
+            // soon after a match rarely leaves it stranded on this device;
+            // any enrichment landing later marks the match dirty again and
+            // rides the next run. RunSyncJob is unique while queued, so
+            // completions close together fold into one run.
             try {
                 if (! AppSettings::isOffline() && app(SyncTokens::class)->linked()) {
-                    RunSyncJob::dispatch()->delay(now()->addSeconds(120));
+                    RunSyncJob::dispatch()->delay(now()->addSeconds(30));
                 }
             } catch (\Throwable $e) {
                 Log::warning("Enrichment failed: sync trigger for match {$match->id}: {$e->getMessage()}");

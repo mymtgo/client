@@ -35,5 +35,6 @@ it('passes through noauth result', function () {
         ->assertExactJson([
             'state' => 'noauth',
             'message' => 'API key has expired. Please re-authenticate.',
+            'signedIn' => false,
         ]);
 });

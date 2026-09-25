@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Jobs;
 
 use App\Services\Sync\SyncRunner;
-use Illuminate\Contracts\Queue\ShouldBeUnique;
+use Illuminate\Contracts\Queue\ShouldBeUniqueUntilProcessing;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 
@@ -31,8 +31,13 @@ use Illuminate\Foundation\Queue\Queueable;
  * onto the `sync` queue, but the worker only runs one job at a time per
  * queue, so the two serialize on the single `sync` worker rather than
  * overlapping, which is acceptable.
+ *
+ * The lock is released when the job starts, not when it finishes. A match
+ * that completes while a run is in flight then queues a follow-up run
+ * instead of being swallowed until the half-hourly schedule; the single
+ * `sync` worker still keeps the two from overlapping.
  */
-class RunSyncJob implements ShouldBeUnique, ShouldQueue
+class RunSyncJob implements ShouldBeUniqueUntilProcessing, ShouldQueue
 {
     use Queueable;
 

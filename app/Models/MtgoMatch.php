@@ -134,6 +134,16 @@ class MtgoMatch extends Model
         return $query->where('state', MatchState::Complete);
     }
 
+    /**
+     * Matches that have reached a terminal state and will not change score
+     * again. Sync only ever sees these: a live match would reach the server
+     * (and other devices) as 0-0.
+     */
+    public function scopeFinished(Builder $query): Builder
+    {
+        return $query->whereIn('state', [MatchState::Complete, MatchState::Abandoned]);
+    }
+
     public function scopeIncomplete(Builder $query): Builder
     {
         return $query->where('state', '!=', MatchState::Complete);

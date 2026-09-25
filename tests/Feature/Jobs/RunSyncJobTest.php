@@ -2,6 +2,7 @@
 
 use App\Jobs\RunSyncJob;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
+use Illuminate\Contracts\Queue\ShouldBeUniqueUntilProcessing;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Cache;
 
@@ -34,4 +35,8 @@ it('lets a full and an incremental dispatch queue independently', function () {
     RunSyncJob::dispatch(full: true);
 
     Bus::assertDispatchedTimes(RunSyncJob::class, 2);
+});
+
+it('releases its unique lock once it starts so a match finishing mid-run queues a follow-up', function () {
+    expect(new RunSyncJob)->toBeInstanceOf(ShouldBeUniqueUntilProcessing::class);
 });

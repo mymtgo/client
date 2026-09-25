@@ -44,6 +44,10 @@ class DirtyRows
     }
 
     /**
+     * Matches are also held back until they finish (see
+     * {@see MtgoMatch::scopeFinished()}): a live match is neither dirty nor
+     * known, so no device ever sees it at 0-0.
+     *
      * Deck and League use SoftDeletes, so their default query scope already
      * excludes trashed rows; matches have no soft deletes. Matches and
      * leagues are further restricted to decks enabled for cloud sync: a row
@@ -71,7 +75,7 @@ class DirtyRows
     private static function base(string $type): Builder
     {
         return match ($type) {
-            'match' => MtgoMatch::query()->whereHas('deckVersion.deck', fn (Builder $query) => $query
+            'match' => MtgoMatch::query()->finished()->whereHas('deckVersion.deck', fn (Builder $query) => $query
                 ->where('cloud_sync_enabled', true)
                 ->when(! AppSettings::isSupporter(), fn (Builder $q) => $q->withoutLimited())),
             'deck' => Deck::query()

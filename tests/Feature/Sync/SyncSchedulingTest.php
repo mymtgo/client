@@ -83,6 +83,17 @@ it('schedules a sync when a match completes on a linked, online device', functio
     Bus::assertDispatched(RunSyncJob::class);
 });
 
+it('schedules the completion sync about thirty seconds out so closing the app soon after rarely strands the match', function () {
+    app(SyncTokens::class)->store('access-token', 'refresh-token', 2592000);
+    Bus::fake([RunSyncJob::class]);
+
+    $match = MtgoMatch::factory()->create(['state' => MatchState::InProgress]);
+    $match->update(['state' => MatchState::Complete]);
+
+    Bus::assertDispatched(RunSyncJob::class, fn (RunSyncJob $job) => $job->delay instanceof DateTimeInterface
+        && abs(now()->diffInSeconds($job->delay)) <= 30);
+});
+
 it('does not schedule a completion sync while unlinked', function () {
     app(SyncTokens::class)->clear();
     Bus::fake([RunSyncJob::class]);
