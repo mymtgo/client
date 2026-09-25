@@ -14,9 +14,12 @@ class SidecarAuthorityFlags
         'game_boundaries' => false,
         'game_result' => false,
         'match_result' => false,
-        'match_deck' => false,
-        'league_run' => false,
-        'league_drop' => false,
+        // On for the live league test (2026-09-25): the sidecar decides league
+        // runs, drops and match decks wherever it has an answer. Revisit
+        // before a public release.
+        'match_deck' => true,
+        'league_run' => true,
+        'league_drop' => true,
     ];
 
     /** @return array<string, bool> */

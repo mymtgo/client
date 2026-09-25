@@ -43,6 +43,7 @@ it('leaves a run that is still going', function () {
 });
 
 it('ignores the ended snapshot with the flag off', function () {
+    SidecarAuthorityFlags::applyRemote(['league_run' => false]);
     $league = League::factory()->create(['event_id' => 10983]);
     $m = MtgoMatch::factory()->create(['league_id' => $league->id, 'format' => 'CMODERN']);
     SidecarSnapshotFactory::snapshot($m, 'ended', SidecarSnapshotFactory::league(['match_number' => 5, 'matches_remaining' => 0]));

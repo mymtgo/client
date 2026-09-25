@@ -13,9 +13,9 @@ return [
     |
     */
 
-    'version' => '0.1.0',
+    'version' => '0.1.1',
 
-    'sha256' => 'e6327ddbc50e943c092991b95297a3e9fc743f033cd2bb8f40a2eef4fcf5224c',
+    'sha256' => '88db2fab90e34a56130861f40b80c24a492a8d717baa68c16a4a4ec898bfc979',
 
     'url' => 'https://github.com/mymtgo/sidecar/releases/download/v%s/mymtgo-helper.exe',
 

@@ -38,6 +38,7 @@ it('never waits for a match that is not live', function () {
 
 it('never waits when the flag is off', function () {
     ($this->writeStatus)();
+    SidecarAuthorityFlags::applyRemote(['league_run' => true, 'match_deck' => false]);
 
     expect(AwaitSidecarAnswer::run('match_deck', now()))->toBeFalse();
 });
