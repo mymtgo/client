@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Sync\Bundles;
 
+use App\Actions\Logs\ConvertMtgoTimestamp;
 use App\Models\CardGameStat;
 use App\Models\Game;
 use App\Models\MatchArchetype;
@@ -242,8 +243,9 @@ class MatchBundleBuilder
             // model, so it arrives as a raw driver string; parse it once
             // up front, for both the sort key and the emitted value,
             // rather than repeatedly inside the sort comparator.
+            $endedAt = $game->ended_at ?? now();
             $rows = $game->timeline->map(fn ($timeline) => [
-                'timestamp' => Carbon::parse($timeline->timestamp),
+                'timestamp' => self::frameInstant((string) $timeline->timestamp, $endedAt),
                 'content' => $timeline->content,
             ])->all();
 
@@ -349,6 +351,24 @@ class MatchBundleBuilder
         );
 
         return $row?->archetype?->uuid;
+    }
+
+    /**
+     * The instant a timeline frame was recorded. Frames store the local time
+     * of day only (`H:i:s` or `H:i:s.v`), so the date comes from the game's
+     * end the way log lines take theirs from the file's mtime: a frame past
+     * that time of day was recorded the day before. Parsing the bare time
+     * would date every frame today, sorting the frames of a game that
+     * crossed midnight out of play order.
+     * Spec docs/specs/2026-09-28-replay-midnight-frame-order.md (api repo).
+     */
+    private static function frameInstant(string $timestamp, Carbon $endedAt): Carbon
+    {
+        if (! preg_match('/^\d{2}:\d{2}:\d{2}(\.\d+)?$/', $timestamp)) {
+            return Carbon::parse($timestamp);
+        }
+
+        return Carbon::instance(ConvertMtgoTimestamp::run($endedAt, $timestamp));
     }
 
     private static function datetime(?Carbon $value): ?string

@@ -323,6 +323,24 @@ it('orders same-second timelines by millisecond before falling back to content h
         ->and($rows[1]['content'])->toBe($lowerHash);
 });
 
+it('dates frames of a game that crossed local midnight from its end, in play order', function () {
+    AppSettings::setSystemTimezone('Europe/London');
+    $match = syncTestMatch();
+    $game = $match->games()->orderBy('mtgo_id')->first();
+    GameTimeline::where('game_id', $game->id)->delete();
+    // Ends 00:01:10 BST on the 27th, so a frame at 23:48 local was the 26th.
+    $game->update(['ended_at' => '2026-09-26 23:01:10']);
+
+    GameTimeline::create(['game_id' => $game->id, 'timestamp' => '00:00:39.500', 'content' => ['note' => 'after-midnight']]);
+    GameTimeline::create(['game_id' => $game->id, 'timestamp' => '23:48:07.250', 'content' => ['note' => 'opening-hand']]);
+
+    $bundle = app(MatchBundleBuilder::class)->build($match->fresh());
+
+    $rows = collect($bundle['timelines'])->where('game', $game->mtgo_id)->values();
+    expect($rows->pluck('timestamp')->all())->toBe(['2026-09-26T22:48:07Z', '2026-09-26T23:00:39Z'])
+        ->and($rows[0]['content'])->toBe(['note' => 'opening-hand']);
+});
+
 it("orders a mirror match's archetypes by player_username when the uuid ties", function () {
     $match = syncTestMatch();
     $mirroredArchetype = Archetype::factory()->create();
