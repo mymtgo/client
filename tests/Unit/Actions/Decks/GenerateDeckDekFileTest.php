@@ -44,6 +44,25 @@ it('builds a .dek XML payload from the latest deck version', function () {
     expect($xml)->toEndWith('</Deck>');
 });
 
+it('keeps the sideboard flag from signatures written as true and false', function () {
+    $deck = Deck::factory()->create();
+    Card::factory()->create(['mtgo_id' => 100, 'name' => 'Lightning Bolt']);
+
+    DeckVersion::factory()->create([
+        'deck_id' => $deck->id,
+        'modified_at' => now(),
+        'signature' => makeSignature([
+            ['mtgo_id' => 100, 'quantity' => 4, 'sideboard' => 'false'],
+            ['mtgo_id' => 100, 'quantity' => 2, 'sideboard' => 'true'],
+        ]),
+    ]);
+
+    $xml = GenerateDeckDekFile::run($deck->fresh());
+
+    expect($xml)->toContain('CatID="100" Quantity="4" Sideboard="false"')
+        ->and($xml)->toContain('CatID="100" Quantity="2" Sideboard="true"');
+});
+
 it('skips cards whose mtgo_id is not in the database', function () {
     $deck = Deck::factory()->create();
     Card::factory()->create(['mtgo_id' => 100, 'name' => 'Known Card']);

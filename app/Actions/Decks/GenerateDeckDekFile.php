@@ -47,7 +47,8 @@ class GenerateDeckDekFile
                 continue;
             }
 
-            $sideboard = ((int) $card['sideboard']) === 1 ? 'true' : 'false';
+            // Signatures store the flag as "true"/"false", which casts to 0.
+            $sideboard = filter_var($card['sideboard'], FILTER_VALIDATE_BOOL) ? 'true' : 'false';
             $name = htmlspecialchars($resolved->name, ENT_XML1, 'UTF-8');
 
             $lines[] = sprintf(

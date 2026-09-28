@@ -36,6 +36,20 @@ class PopulateMissingCardData implements ShouldQueue
      */
     private const FRONT_FACE_OFFSETS = [2, 1];
 
+    /**
+     * Catalog ids the API was asked about and answered without.
+     *
+     * Only these may go on to the back-face and by-name passes. A row whose
+     * request failed is not unknown, just unanswered, and guessing for it is
+     * how a fresh install once stored Eldritch Evolution (61460) as Ulvenwald
+     * Captive: the id pass failed, and two below it sits Ulvenwald Captive's
+     * back face, which the back-face pass accepted as multi-face. Such a row
+     * is left for the next run instead.
+     *
+     * @var array<string, true>
+     */
+    private array $unknownIds = [];
+
     public function __construct()
     {
         $this->onQueue('card_downloads');
@@ -46,6 +60,8 @@ class PopulateMissingCardData implements ShouldQueue
      */
     public function handle(): void
     {
+        $this->unknownIds = [];
+
         // Create stubs for any CatalogIDs in timelines that don't have Card records yet
         // (tokens and other permanents that only appear in game state, not deck lists)
         CreateMissingCardsFromTimelines::run();
@@ -98,7 +114,7 @@ class PopulateMissingCardData implements ShouldQueue
      */
     private function resolveByName(bool $downloadImages): void
     {
-        $unresolved = Card::whereNull('scryfall_id')->whereNotNull('name')->get();
+        $unresolved = $this->unknownRows(Card::whereNull('scryfall_id')->whereNotNull('name')->get());
 
         if ($unresolved->isEmpty()) {
             return;
@@ -149,8 +165,7 @@ class PopulateMissingCardData implements ShouldQueue
     private function resolveBackFaces(bool $downloadImages): void
     {
         foreach (self::FRONT_FACE_OFFSETS as $offset) {
-            $unresolved = Card::whereNull('scryfall_id')
-                ->get()
+            $unresolved = $this->unknownRows(Card::whereNull('scryfall_id')->get())
                 ->filter(fn (Card $card) => ((int) $card->mtgo_id) > $offset);
 
             if ($unresolved->isEmpty()) {
@@ -223,6 +238,12 @@ class PopulateMissingCardData implements ShouldQueue
                 'tokens' => $tokenCards->pluck('name')->unique()->values(),
             ]);
 
+            // An error body answers nothing, so it must not mark every id in
+            // the chunk as unknown to the API.
+            if (! $response->successful()) {
+                return;
+            }
+
             $cardsResponse = collect($response->json());
 
             foreach ($regularCards as $card) {
@@ -232,6 +253,8 @@ class PopulateMissingCardData implements ShouldQueue
 
                 if ($cardData) {
                     $this->updateCard($card, $cardData, $downloadImages);
+                } else {
+                    $this->unknownIds[(string) $card->mtgo_id] = true;
                 }
             }
 
@@ -247,11 +270,24 @@ class PopulateMissingCardData implements ShouldQueue
 
                 if ($cardData) {
                     $this->updateCard($card, $cardData, $downloadImages, isToken: true);
+                } else {
+                    $this->unknownIds[(string) $card->mtgo_id] = true;
                 }
             }
         } catch (\Throwable $e) {
             report($e);
         }
+    }
+
+    /**
+     * The rows the id pass asked about and got no answer for.
+     *
+     * @param  Collection<int, Card>  $cards
+     * @return Collection<int, Card>
+     */
+    private function unknownRows(Collection $cards): Collection
+    {
+        return $cards->filter(fn (Card $card) => isset($this->unknownIds[(string) $card->mtgo_id]));
     }
 
     /**

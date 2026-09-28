@@ -122,6 +122,47 @@ it('leaves a card alone when the id two below it is a different single-faced car
     expect(Card::where('mtgo_id', '16156')->sole()->scryfall_id)->toBeNull();
 });
 
+it('does not guess a neighbouring back face for a card whose own lookup failed', function () {
+    AppSettings::setApiKey('key-one');
+    AppSettings::setApiKeyExpiresAt(now()->addHour()->toIso8601String());
+
+    // 61460 is Eldritch Evolution. Two below it sits a back-face id of
+    // Ulvenwald Captive, which is multi-face, so a failed id lookup used
+    // to fall through and store the row as Ulvenwald Captive.
+    Card::factory()->stub()->create(['mtgo_id' => '61460', 'name' => 'Eldritch Evolution']);
+
+    Http::fake([
+        '*/api/cards' => function ($request) {
+            $ids = collect($request['ids'] ?? [])->map(fn ($id) => (int) $id);
+
+            if ($ids->contains(61460)) {
+                return Http::response(['message' => 'Too Many Attempts.'], 429);
+            }
+
+            if ($ids->contains(61458)) {
+                return Http::response([[
+                    'value' => 61458,
+                    'scryfall_id' => 'scryfall-captive',
+                    'oracle_id' => 'oracle-captive',
+                    'name' => 'Ulvenwald Captive // Ulvenwald Abomination',
+                    'image' => 'https://example.test/captive.png',
+                ]], 200);
+            }
+
+            return Http::response([], 200);
+        },
+    ]);
+
+    (new PopulateMissingCardData)->handle();
+
+    $card = Card::where('mtgo_id', '61460')->sole();
+
+    expect($card->scryfall_id)->toBeNull()
+        ->and($card->name)->toBe('Eldritch Evolution');
+
+    Http::assertNotSent(fn ($request) => collect($request['names'] ?? [])->isNotEmpty());
+});
+
 it('fetches cards missing a scryfall id even when every card already has a name', function () {
     AppSettings::setApiKey('key-one');
     AppSettings::setApiKeyExpiresAt(now()->addHour()->toIso8601String());
