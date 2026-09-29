@@ -8,6 +8,7 @@ use App\Enums\LeagueState;
 use App\Enums\MatchOutcome;
 use App\Enums\MatchState;
 use App\Events\AppNotification;
+use App\Events\LeagueOverlayChanged;
 use App\Facades\AppSettings;
 use App\Jobs\ComputeCardGameStats;
 use App\Jobs\DetermineMatchArchetypesJob;
@@ -24,6 +25,8 @@ class MtgoMatchObserver
      */
     public function updated(MtgoMatch $match): void
     {
+        self::notifyLeagueOverlay($match);
+
         if ($match->isDirty('state') && $match->state === MatchState::Complete) {
             // Each enrichment is independent — failure in one doesn't block others
             try {
@@ -83,6 +86,25 @@ class MtgoMatchObserver
         ) {
             ComputeCardGameStats::dispatch($match->id);
         }
+    }
+
+    /**
+     * Push a refresh to the league overlay when a league match changes
+     * anything it shows, so the record lands without waiting on its poll.
+     * The original league_id counts too: unlinking a match changes the
+     * record of the league it left.
+     */
+    private static function notifyLeagueOverlay(MtgoMatch $match): void
+    {
+        if (! $match->isDirty(['state', 'outcome', 'league_id'])) {
+            return;
+        }
+
+        if ($match->league_id === null && $match->getOriginal('league_id') === null) {
+            return;
+        }
+
+        LeagueOverlayChanged::dispatch();
     }
 
     /**
