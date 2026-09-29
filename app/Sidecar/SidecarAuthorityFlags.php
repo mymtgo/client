@@ -13,7 +13,10 @@ class SidecarAuthorityFlags
         'on_play' => false,
         'game_boundaries' => false,
         'game_result' => false,
-        'match_result' => false,
+        // On so a match conceded between games takes MTGO's named winner
+        // instead of the game tally's draw (2026-09-29). Still gated on full
+        // coverage, verification and the cross-check.
+        'match_result' => true,
         // On for the live league test (2026-09-25): the sidecar decides league
         // runs, drops and match decks wherever it has an answer. Revisit
         // before a public release.

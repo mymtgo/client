@@ -113,6 +113,8 @@ it('writes clock summaries regardless of flags', function () {
 });
 
 it('records disagreements but keeps log values when flags are off', function () {
+    SidecarAuthorityFlags::applyRemote(['match_result' => false]);
+
     ApplySidecarProjection::run($this->match);
 
     expect($this->game2->fresh()->won)->toBeTrue()
@@ -164,6 +166,51 @@ it('applies match result when every game is covered and the flag is on', functio
     $m = $this->match->fresh();
     expect($m->games_won)->toBe(1)->and($m->games_lost)->toBe(1)->and($m->outcome)->toBe(MatchOutcome::Draw)
         ->and($m->state)->toBe(MatchState::Complete);
+});
+
+it('lets the match winner decide a match the game tally calls a draw', function (int $winnerSlot, MatchOutcome $expected) {
+    // A 1-1 match conceded between games: the log counts games and calls it
+    // a draw, but MTGO names the winner on match_ended.
+    SidecarAuthorityFlags::applyRemote(['match_result' => true]);
+    $ended = GameEvent::where('type', 'match_ended')->where('match_mtgo_id', '288955358')->firstOrFail();
+    $ended->update(['data' => ['winner_p' => $winnerSlot, 'score' => [1, 1]]]);
+
+    ApplySidecarProjection::run($this->match);
+
+    $m = $this->match->fresh();
+    expect($m->outcome)->toBe($expected)
+        ->and($m->games_won)->toBe(1)
+        ->and($m->games_lost)->toBe(1);
+})->with([
+    'opponent named winner' => [1, MatchOutcome::Loss],
+    'local player named winner' => [0, MatchOutcome::Win],
+]);
+
+it('is idempotent when the match winner decides the outcome', function () {
+    SidecarAuthorityFlags::applyRemote(['match_result' => true]);
+    $ended = GameEvent::where('type', 'match_ended')->where('match_mtgo_id', '288955358')->firstOrFail();
+    $ended->update(['data' => ['winner_p' => 1, 'score' => [1, 1]]]);
+
+    ApplySidecarProjection::run($this->match);
+    ApplySidecarProjection::run($this->match);
+
+    // The first run writes the loss, so the second sees both sources agree
+    // and clears the diff rather than recording it again.
+    $m = $this->match->fresh();
+    expect($m->outcome)->toBe(MatchOutcome::Loss)
+        ->and($m->games_won)->toBe(1)
+        ->and($m->games_lost)->toBe(1)
+        ->and(GameFieldDiff::whereNull('game_id')->where('field', 'match_result')->exists())->toBeFalse();
+});
+
+it('ignores the match winner when the match_result flag is off', function () {
+    SidecarAuthorityFlags::applyRemote(['match_result' => false]);
+    $ended = GameEvent::where('type', 'match_ended')->where('match_mtgo_id', '288955358')->firstOrFail();
+    $ended->update(['data' => ['winner_p' => 1, 'score' => [1, 1]]]);
+
+    ApplySidecarProjection::run($this->match);
+
+    expect($this->match->fresh()->outcome)->toBe(MatchOutcome::Win);
 });
 
 it('does not promote match result when a DB game has no sidecar coverage at all', function () {

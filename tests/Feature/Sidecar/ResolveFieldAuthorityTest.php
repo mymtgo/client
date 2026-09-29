@@ -3,13 +3,13 @@
 use App\Actions\Sidecar\ResolveFieldAuthority;
 use App\Sidecar\SidecarAuthorityFlags;
 
-it('defaults to username and the league and deck fields on, everything else off', function () {
+it('defaults to username, match result and the league and deck fields on, everything else off', function () {
     expect(SidecarAuthorityFlags::current())->toBe([
         'username' => true,
         'on_play' => false,
         'game_boundaries' => false,
         'game_result' => false,
-        'match_result' => false,
+        'match_result' => true,
         'match_deck' => true,
         'league_run' => true,
         'league_drop' => true,

@@ -5,6 +5,7 @@ namespace App\Actions\Sidecar;
 use App\Actions\Leagues\CompleteLeagueFromSnapshot;
 use App\Actions\Leagues\ResolveLeagueRunFromSidecar;
 use App\Actions\Matches\ResolveMatchDeckFromSidecar;
+use App\Enums\MatchOutcome;
 use App\Enums\MatchState;
 use App\Models\Game;
 use App\Models\GameEvent;
@@ -264,8 +265,19 @@ class ApplySidecarProjection
                 }
                 $g->winnerName === $localName ? $wins++ : $losses++;
             }
+            // MTGO names the match winner even when the game tally cannot:
+            // a match conceded between games at 1-1 counts as a draw from
+            // games alone. A null winner leaves the tally to decide, so a
+            // genuine draw stays one.
+            $matchWinner = $view->matchResult['winner'] ?? null;
+            $outcome = match (true) {
+                $matchWinner === null => MtgoMatch::determineOutcome($wins, $losses),
+                $matchWinner === $localName => MatchOutcome::Win,
+                default => MatchOutcome::Loss,
+            };
+
             $sidecarValue = [
-                'outcome' => MtgoMatch::determineOutcome($wins, $losses)->value,
+                'outcome' => $outcome->value,
                 'games_won' => $wins,
                 'games_lost' => $losses,
             ];
