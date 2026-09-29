@@ -283,6 +283,80 @@ it('detects opponent mulligans via library count difference', function () {
     expect($result['opponent_mulligans'])->toBe(1);
 });
 
+/**
+ * Sidecar frames record every change, so the first frame with an opponent
+ * hand is the initial 7-card draw, before any mulligan. The London
+ * mulligan's redraw never shows a 0 hand either (7 stays 7), so only the
+ * cards bottomed afterwards move the library back up.
+ *
+ * @param  array<int, array{0: int, 1: int}>  $opponentFrames  [HandCount, LibraryCount]
+ * @return array<int, array<string, mixed>>
+ */
+function denseOpeningFrames(array $opponentFrames): array
+{
+    $localHand = array_map(
+        fn (int $i) => ['Id' => 100 + $i, 'CatalogID' => 1000 + $i, 'Owner' => 1, 'Zone' => 'Hand'],
+        range(1, 7),
+    );
+
+    $frames = [[
+        'Players' => [
+            ['Id' => 1, 'HandCount' => 0, 'LibraryCount' => 60],
+            ['Id' => 2, 'HandCount' => 0, 'LibraryCount' => 60],
+        ],
+        'Cards' => [],
+    ]];
+
+    foreach ($opponentFrames as [$hand, $library]) {
+        $frames[] = [
+            'Players' => [
+                ['Id' => 1, 'HandCount' => 7, 'LibraryCount' => 53],
+                ['Id' => 2, 'HandCount' => $hand, 'LibraryCount' => $library],
+            ],
+            'Cards' => $localHand,
+        ];
+    }
+
+    $frames[] = [
+        'Players' => [
+            ['Id' => 1, 'HandCount' => 6, 'LibraryCount' => 53],
+            ['Id' => 2, 'HandCount' => end($opponentFrames)[0], 'LibraryCount' => end($opponentFrames)[1]],
+        ],
+        'Cards' => [['Id' => 101, 'CatalogID' => 1001, 'Owner' => 1, 'Zone' => 'Battlefield']],
+    ];
+
+    return $frames;
+}
+
+it('counts opponent mulligans from dense sidecar frames', function (array $opponentFrames, int $expected) {
+    $game = createGameForHandTest(timelineSnapshots: denseOpeningFrames($opponentFrames));
+
+    $result = ParseOpeningHand::run($game, 1, 2);
+
+    expect($result['opponent_mulligans'])->toBe($expected);
+})->with([
+    'keeps seven' => [[[7, 53], [7, 53]], 0],
+    'one mulligan, bottoms one' => [[[7, 53], [7, 53], [6, 54]], 1],
+    'two mulligans, bottoms two' => [[[7, 53], [7, 53], [7, 53], [6, 54], [5, 55]], 2],
+    'on the draw, draws before the local player acts' => [[[7, 53], [6, 54], [7, 53]], 1],
+]);
+
+it('skips the empty placeholder frame the sidecar writes before the decks load', function () {
+    $frames = denseOpeningFrames([[7, 53], [6, 54]]);
+    array_unshift($frames, [
+        'Players' => [
+            ['Id' => 1, 'HandCount' => 0, 'LibraryCount' => 0],
+            ['Id' => 2, 'HandCount' => 0, 'LibraryCount' => 0],
+        ],
+        'Cards' => [],
+    ]);
+    $game = createGameForHandTest(timelineSnapshots: $frames);
+
+    $result = ParseOpeningHand::run($game, 1, 2);
+
+    expect($result['opponent_mulligans'])->toBe(1);
+});
+
 it('only counts the final bottomed card when player swaps bottom selection', function () {
     // Mulligan to 6: original 7, swap to second 7, then transient bottoming UI
     // user clicks card A to bottom (hand drops to 6), then changes mind and

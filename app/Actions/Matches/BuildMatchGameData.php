@@ -67,6 +67,9 @@ class BuildMatchGameData
             'onThePlay' => (bool) ($localPlayer?->pivot->on_play ?? false),
             'duration' => $duration,
             'turns' => $game->turn_count ?? self::estimateTurns($game, $cardsByMtgoId),
+            // Sidecar-only: each player's MTGO match clock at the end of this game.
+            'clockRemainingMs' => $localPlayer?->pivot->clock_remaining_ms_end,
+            'opponentClockRemainingMs' => $opponentPlayer?->pivot->clock_remaining_ms_end,
             'localMulligans' => $handData['localMulligans'],
             'opponentMulligans' => $handData['opponentMulligans'],
             'mulliganedHands' => $handData['mulliganedHands'],

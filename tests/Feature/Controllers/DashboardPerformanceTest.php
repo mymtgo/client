@@ -1,5 +1,7 @@
 <?php
 
+use App\Dashboard\DashboardScope;
+use App\Dashboard\Widgets\KpiStripWidget;
 use App\Models\Account;
 use App\Models\Deck;
 use App\Models\DeckVersion;
@@ -55,11 +57,10 @@ it('loads dashboard with bounded query count', function () {
 it('returns correct match and game stats', function () {
     setupDashboardData();
 
-    $response = $this->get('/')->assertOk();
-    $props = $response->original->getData()['page']['props'];
+    $kpis = (new KpiStripWidget)->resolve([], DashboardScope::fromTimeframe('alltime'));
 
-    expect($props['matchRecord']['wins'])->toBe(5);
-    expect($props['matchRecord']['losses'])->toBe(0);
-    expect($props['gamesWon'])->toBe(5);
-    expect($props['gamesLost'])->toBe(0);
+    expect($kpis['matchRecord']->wins)->toBe(5)
+        ->and($kpis['matchRecord']->losses)->toBe(0)
+        ->and($kpis['gamesWon'])->toBe(5)
+        ->and($kpis['gamesLost'])->toBe(0);
 });

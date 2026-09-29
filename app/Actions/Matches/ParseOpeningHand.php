@@ -40,9 +40,14 @@ class ParseOpeningHand
         $latestFullHand = [];        // Largest hand seen since last mulligan, used to derive bottoms
         $openingPhase = true;
 
-        // Opponent mulligan tracking via library count
+        // Opponent mulligan tracking via library count. The kept library is
+        // the highest count seen while the opponent holds a hand during the
+        // opening phase: bottoming is the only thing that raises it, draws
+        // and fetches only lower it. The first hand frame is not enough on
+        // its own, because dense (sidecar) frames catch the initial 7-card
+        // draw before any mulligan, which always reads as zero.
         $opponentStartLibrary = null;
-        $opponentFirstHandLibrary = null;
+        $opponentKeptLibrary = null;
 
         foreach ($snapshots as $snapshot) {
             $content = $snapshot->content;
@@ -54,15 +59,17 @@ class ParseOpeningHand
             if ($opponentState) {
                 $oppHand = (int) $opponentState['HandCount'];
                 $oppLib = (int) $opponentState['LibraryCount'];
-                if ($opponentStartLibrary === null && $oppHand === 0) {
+                // A zero library with a zero hand is the sidecar's placeholder
+                // frame before the decks load, not the starting library.
+                if ($opponentStartLibrary === null && $oppHand === 0 && $oppLib > 0) {
                     $opponentStartLibrary = $oppLib;
-                } elseif ($opponentFirstHandLibrary === null && $oppHand > 0) {
-                    $opponentFirstHandLibrary = $oppLib;
+                } elseif ($oppHand > 0 && ($openingPhase || $opponentKeptLibrary === null)) {
+                    $opponentKeptLibrary = max($opponentKeptLibrary ?? $oppLib, $oppLib);
                 }
             }
 
             if (! $openingPhase) {
-                if ($opponentFirstHandLibrary !== null) {
+                if ($opponentKeptLibrary !== null) {
                     break;
                 }
 
@@ -137,8 +144,8 @@ class ParseOpeningHand
 
         // Opponent mulligans: library after first hand > (startLibrary - 7) means shuffled back
         $opponentMulligans = 0;
-        if ($opponentStartLibrary !== null && $opponentFirstHandLibrary !== null) {
-            $opponentMulligans = max(0, $opponentFirstHandLibrary - ($opponentStartLibrary - 7));
+        if ($opponentStartLibrary !== null && $opponentKeptLibrary !== null) {
+            $opponentMulligans = max(0, $opponentKeptLibrary - ($opponentStartLibrary - 7));
         }
 
         return [

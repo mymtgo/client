@@ -42,6 +42,14 @@ class MatchData extends Data
          * has no archetype, so its colours are all a reader gets.
          */
         public ?string $opponentColors = null,
+        /**
+         * The local player's clock left when the match ended: MTGO's clock
+         * runs across the whole match, so that is the last game's end value.
+         * Sidecar-only, so null wherever it was not running.
+         */
+        public Lazy|int|null $clockRemainingMs = null,
+        /** The opponent's clock left when the match ended, same rules. */
+        public Lazy|int|null $opponentClockRemainingMs = null,
     ) {}
 
     public static function fromModel(MtgoMatch $match): self
@@ -73,6 +81,21 @@ class MatchData extends Data
                     result: $g->won ? 'W' : 'L',
                     onPlay: $g->players->first(fn ($p) => $p->pivot->is_local)?->pivot->on_play,
                 ))->all()),
+            clockRemainingMs: Lazy::whenLoaded('games', $match, fn () => self::endClock($match, local: true)),
+            opponentClockRemainingMs: Lazy::whenLoaded('games', $match, fn () => self::endClock($match, local: false)),
         );
+    }
+
+    /**
+     * One side's clock at the end of the last game. MTGO's clock runs across
+     * the whole match, so that is the match clock.
+     */
+    private static function endClock(MtgoMatch $match, bool $local): ?int
+    {
+        return $match->games
+            ->sortBy('started_at')
+            ->last()
+            ?->players->first(fn ($p) => (bool) $p->pivot->is_local === $local)
+            ?->pivot->clock_remaining_ms_end;
     }
 }

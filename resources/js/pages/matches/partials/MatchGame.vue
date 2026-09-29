@@ -1,15 +1,16 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
-import { router } from '@inertiajs/vue3';
-import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import GameLogPanel from '@/components/matches/GameLogPanel.vue';
+import OpenReplayController from '@/actions/App/Http/Controllers/Games/OpenReplayController';
 import CardTilePill from '@/components/matches/CardTilePill.vue';
 import EditKeptHandDialog from '@/components/matches/EditKeptHandDialog.vue';
 import EditSideboardDialog from '@/components/matches/EditSideboardDialog.vue';
-import { Clock, Coins, Hand, Layers, PencilLine, Play, ScrollText, Undo2 } from 'lucide-vue-next';
-import OpenReplayController from '@/actions/App/Http/Controllers/Games/OpenReplayController';
+import GameLogPanel from '@/components/matches/GameLogPanel.vue';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { formatClock, isCloseToTime } from '@/lib/clock';
 import type { DeckCardOption, GameDetail, ManualEditingData } from '@/types/matches';
+import { router } from '@inertiajs/vue3';
+import { Clock, Coins, Hand, Layers, PencilLine, Play, ScrollText, Undo2 } from 'lucide-vue-next';
+import { computed, ref } from 'vue';
 
 const props = defineProps<{
     game: GameDetail;
@@ -50,9 +51,7 @@ const effectiveMains = computed<DeckCardOption[]>(() => {
     return [...byId.values()].filter((c) => c.quantity > 0);
 });
 
-const sideboardCount = computed(() =>
-    props.game.sideboardChanges.reduce((sum, c) => sum + c.quantity, 0),
-);
+const sideboardCount = computed(() => props.game.sideboardChanges.reduce((sum, c) => sum + c.quantity, 0));
 
 const expectedKeptSize = computed(() => 7 - props.game.localMulligans);
 
@@ -64,9 +63,7 @@ const drawnIndex = computed(() => {
     return -1;
 });
 
-const handGridClass = computed(() =>
-    props.game.keptHand.length >= 8 ? 'grid-cols-8' : 'grid-cols-7',
-);
+const handGridClass = computed(() => (props.game.keptHand.length >= 8 ? 'grid-cols-8' : 'grid-cols-7'));
 </script>
 
 <template>
@@ -75,10 +72,7 @@ const handGridClass = computed(() =>
         <div class="flex flex-wrap items-center gap-x-5 gap-y-2 border-b pb-4 font-mono text-xs text-muted-foreground">
             <span class="inline-flex items-center gap-1.5">
                 <span class="text-muted-foreground/60">Result</span>
-                <strong
-                    class="font-medium"
-                    :class="game.won ? 'text-success' : 'text-destructive'"
-                >
+                <strong class="font-medium" :class="game.won ? 'text-success' : 'text-destructive'">
                     {{ game.won ? 'Win' : 'Loss' }}
                 </strong>
             </span>
@@ -95,6 +89,18 @@ const handGridClass = computed(() =>
             <span v-if="game.turns !== null" class="inline-flex items-center gap-1.5">
                 <span class="text-muted-foreground/60">Turns</span>
                 <strong class="font-medium text-foreground">{{ game.turns }}</strong>
+            </span>
+            <span v-if="game.clockRemainingMs !== null" class="inline-flex items-center gap-1.5">
+                <span class="text-muted-foreground/60">Clock</span>
+                <strong class="font-medium" :class="isCloseToTime(game.clockRemainingMs) ? 'text-destructive' : 'text-foreground'">
+                    {{ formatClock(game.clockRemainingMs) }}
+                </strong>
+            </span>
+            <span v-if="game.opponentClockRemainingMs !== null" class="inline-flex items-center gap-1.5">
+                <span class="text-muted-foreground/60">{{ opponentName }} clock</span>
+                <strong class="font-medium" :class="isCloseToTime(game.opponentClockRemainingMs) ? 'text-destructive' : 'text-foreground'">
+                    {{ formatClock(game.opponentClockRemainingMs) }}
+                </strong>
             </span>
             <span v-if="game.localMulligans > 0" class="inline-flex items-center gap-1.5">
                 <span class="text-muted-foreground/60">You mull</span>
@@ -154,12 +160,7 @@ const handGridClass = computed(() =>
                 <div v-if="game.keptHand.length" class="grid gap-1.5" :class="handGridClass">
                     <div v-for="(card, i) in game.keptHand" :key="`kept_${i}`" class="flex flex-col items-center gap-1">
                         <div class="aspect-[63/88] w-full overflow-hidden rounded-md shadow-sm" :class="card.bottomed ? 'opacity-60' : ''">
-                            <img
-                                v-if="card.image"
-                                :src="card.image"
-                                :alt="card.name"
-                                class="h-full w-full object-cover"
-                            />
+                            <img v-if="card.image" :src="card.image" :alt="card.name" class="h-full w-full object-cover" />
                             <div v-else class="flex h-full w-full items-center justify-center bg-muted p-1.5 text-center">
                                 <span class="text-xs leading-tight text-muted-foreground">{{ card.name }}</span>
                             </div>
@@ -177,17 +178,13 @@ const handGridClass = computed(() =>
             <section v-if="game.mulliganedHands.length" class="flex flex-col gap-3">
                 <header class="flex items-baseline gap-3">
                     <Undo2 :size="13" class="text-muted-foreground" />
-                    <h3 class="text-[11px] font-semibold tracking-widest uppercase">
-                        Mulliganed hands
-                    </h3>
+                    <h3 class="text-[11px] font-semibold tracking-widest uppercase">Mulliganed hands</h3>
                     <span class="font-mono text-[11px] text-muted-foreground">({{ game.mulliganedHands.length }})</span>
                     <span class="ml-2 h-px flex-1 bg-border" />
                 </header>
 
                 <div v-for="(hand, hi) in game.mulliganedHands" :key="`mull_${hi}`" class="flex flex-col gap-1.5">
-                    <p v-if="game.mulliganedHands.length > 1" class="font-mono text-[11px] text-muted-foreground">
-                        Hand {{ hi + 1 }}
-                    </p>
+                    <p v-if="game.mulliganedHands.length > 1" class="font-mono text-[11px] text-muted-foreground">Hand {{ hi + 1 }}</p>
                     <p v-if="hand.length === 0" class="rounded-md border border-dashed px-4 py-3 text-center text-xs text-muted-foreground italic">
                         Not recorded.
                     </p>
@@ -197,12 +194,7 @@ const handGridClass = computed(() =>
                             :key="`mull_${hi}_${ci}`"
                             class="aspect-[63/88] shrink-0 overflow-hidden rounded-md border border-transparent"
                         >
-                            <img
-                                v-if="card.image"
-                                :src="card.image"
-                                :alt="card.name"
-                                class="h-full w-full object-cover"
-                            />
+                            <img v-if="card.image" :src="card.image" :alt="card.name" class="h-full w-full object-cover" />
                             <div v-else class="flex h-full w-full items-center justify-center bg-muted p-1.5 text-center">
                                 <span class="text-xs leading-tight text-muted-foreground">{{ card.name }}</span>
                             </div>
@@ -215,9 +207,7 @@ const handGridClass = computed(() =>
             <section v-if="game.number > 1" class="flex flex-col gap-3">
                 <header class="flex items-baseline gap-3">
                     <Layers :size="13" class="text-muted-foreground" />
-                    <h3 class="text-[11px] font-semibold tracking-widest uppercase">
-                        Sideboard changes
-                    </h3>
+                    <h3 class="text-[11px] font-semibold tracking-widest uppercase">Sideboard changes</h3>
                     <span v-if="sideboardCount" class="font-mono text-[11px] text-muted-foreground">({{ sideboardCount }})</span>
                     <Button v-if="manual" variant="ghost" size="sm" class="h-6 px-1.5 text-[11px]" @click="sideboardDialog?.open()">
                         <PencilLine :size="11" />
@@ -227,18 +217,9 @@ const handGridClass = computed(() =>
                 </header>
 
                 <div v-if="game.sideboardChanges.length" class="grid grid-cols-10 gap-1.5">
-                    <div
-                        v-for="change in game.sideboardChanges"
-                        :key="`${change.type}_${change.name}`"
-                        class="flex flex-col items-center gap-1"
-                    >
+                    <div v-for="change in game.sideboardChanges" :key="`${change.type}_${change.name}`" class="flex flex-col items-center gap-1">
                         <div class="aspect-[63/88] w-full overflow-hidden rounded-md shadow-sm" :class="change.type === 'out' ? 'opacity-60' : ''">
-                            <img
-                                v-if="change.image"
-                                :src="change.image"
-                                :alt="change.name"
-                                class="h-full w-full object-cover"
-                            />
+                            <img v-if="change.image" :src="change.image" :alt="change.name" class="h-full w-full object-cover" />
                             <div v-else class="flex h-full w-full items-center justify-center bg-muted p-1.5 text-center">
                                 <span class="text-xs leading-tight text-muted-foreground">{{ change.name }}</span>
                             </div>
@@ -246,10 +227,7 @@ const handGridClass = computed(() =>
                         <CardTilePill :tone="change.type">{{ change.type === 'in' ? '+' : '−' }}{{ change.quantity }}</CardTilePill>
                     </div>
                 </div>
-                <p
-                    v-else
-                    class="rounded-md border border-dashed px-4 py-5 text-center text-xs text-muted-foreground italic"
-                >
+                <p v-else class="rounded-md border border-dashed px-4 py-5 text-center text-xs text-muted-foreground italic">
                     {{ manual ? 'No sideboard changes recorded for this game.' : 'Pre-sideboard game, no changes yet.' }}
                 </p>
             </section>

@@ -18,6 +18,9 @@ it('routes every mymtgo request through a macro', function () {
         // request of its own, so there is no macro call site for it to
         // route through.
         'Actions/Sync/Auth/BuildAuthorizationRequest.php',
+        // Reads the configured host only to name the site in error
+        // messages; the share request itself goes through SyncApi.
+        'Http/Controllers/Games/ShareReplayController.php',
     ];
 
     // Four ways a call site can bypass the macros and talk to mymtgo.com

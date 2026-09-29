@@ -6,6 +6,9 @@ export type GameDetail = {
     onThePlay: boolean;
     duration: string | null;
     turns: number | null;
+    /** Each player's match clock at the end of this game (sidecar-only). */
+    clockRemainingMs: number | null;
+    opponentClockRemainingMs: number | null;
     localMulligans: number;
     opponentMulligans: number;
     mulliganedHands: { mtgoId: number; name: string; image: string | null }[][];

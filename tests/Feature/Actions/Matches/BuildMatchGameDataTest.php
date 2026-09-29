@@ -388,3 +388,30 @@ it('compares correctly when registered cards are legacy (oracle_id only, no mtgo
 
     expect($result['sideboardChanges'])->toBe([]);
 });
+
+it('includes the local clock left at the end of the game', function () {
+    $game = makeGameWithLocalDeck([]);
+    $local = $game->players->first(fn ($p) => $p->pivot->is_local);
+    $game->players()->updateExistingPivot($local->id, ['clock_remaining_ms_end' => 481000]);
+
+    $result = BuildMatchGameData::run($game->fresh()->load(['players', 'timeline']), 1, collect(), collect(), []);
+
+    expect($result['clockRemainingMs'])->toBe(481000);
+});
+
+it('leaves the clock null when the sidecar never recorded it', function () {
+    $result = BuildMatchGameData::run(makeGameWithLocalDeck([]), 1, collect(), collect(), []);
+
+    expect($result['clockRemainingMs'])->toBeNull();
+});
+
+it('includes the opponent clock left at the end of the game', function () {
+    $game = makeGameWithLocalDeck([]);
+    $opponent = $game->players->first(fn ($p) => ! $p->pivot->is_local);
+    $game->players()->updateExistingPivot($opponent->id, ['clock_remaining_ms_end' => 301000]);
+
+    $result = BuildMatchGameData::run($game->fresh()->load(['players', 'timeline']), 1, collect(), collect(), []);
+
+    expect($result['opponentClockRemainingMs'])->toBe(301000)
+        ->and($result['clockRemainingMs'])->toBeNull();
+});

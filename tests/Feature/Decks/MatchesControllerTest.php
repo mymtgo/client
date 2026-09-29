@@ -92,3 +92,17 @@ it('omits per-game payloads from match rows', function () {
             ->missing('matches.data.0.games')
         );
 });
+
+it('sends each match clock on the match rows', function () {
+    $game = MtgoMatch::query()->orderByDesc('started_at')->first()->games()->first();
+    $opponent = $game->players()->first();
+    $game->players()->updateExistingPivot($opponent->id, ['clock_remaining_ms_end' => 301000]);
+
+    $this->get(route('decks.matches', $this->deck))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('matches.data.0.opponentClockRemainingMs', 301000)
+            ->where('matches.data.0.clockRemainingMs', null)
+            ->where('matches.data.1.opponentClockRemainingMs', null)
+        );
+});

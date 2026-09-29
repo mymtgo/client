@@ -15,6 +15,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useToast } from '@/composables/useToast';
+import { formatClock, isCloseToTime } from '@/lib/clock';
 import { config, router, useForm } from '@inertiajs/vue3';
 import { NotepadText, RefreshCw, Tags, X } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
@@ -183,6 +184,7 @@ const detectArchetype = (matchId: number) => {
                 <TableHead class="cursor-pointer select-none" @click="emit('sort', 'duration')">
                     <SortableHeader label="Duration" column="duration" :sort-by="sortBy" :sort-dir="sortDir" />
                 </TableHead>
+                <TableHead>Clock</TableHead>
                 <TableHead class="cursor-pointer select-none" @click="emit('sort', 'started_at')">
                     <SortableHeader label="Date" column="started_at" :sort-by="sortBy" :sort-dir="sortDir" />
                 </TableHead>
@@ -262,6 +264,17 @@ const detectArchetype = (matchId: number) => {
                         </TableCell>
                         <TableCell>
                             <span v-if="match.matchTime">{{ match.matchTime }}</span>
+                            <span v-else class="text-muted-foreground">&mdash;</span>
+                        </TableCell>
+                        <TableCell>
+                            <template v-if="typeof match.clockRemainingMs === 'number'">
+                                <span :class="isCloseToTime(match.clockRemainingMs) ? 'text-destructive' : ''">
+                                    {{ formatClock(match.clockRemainingMs) }}
+                                </span>
+                                <span v-if="typeof match.opponentClockRemainingMs === 'number'" class="text-xs text-muted-foreground">
+                                    &middot; {{ formatClock(match.opponentClockRemainingMs) }}
+                                </span>
+                            </template>
                             <span v-else class="text-muted-foreground">&mdash;</span>
                         </TableCell>
                         <TableCell>
