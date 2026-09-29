@@ -103,6 +103,14 @@ it('clears combat keys on every card when a turn starts', function () {
     }
 });
 
+it('hands the turn over within a round, since MTGO numbers turns per round', function () {
+    $f = fold();
+    $f->apply('turn_started', ['turn' => 1, 'active_p' => 0]);
+
+    expect($f->apply('turn_started', ['turn' => 1, 'active_p' => 1]))->toBeTrue()
+        ->and($f->frame())->toMatchArray(['Turn' => 1, 'ActivePlayer' => 1]);
+});
+
 it('tracks phase, step and priority at the frame root', function () {
     $f = fold();
     expect($f->apply('phase_changed', ['phase' => 'Combat', 'step' => 'DeclareAttackers']))->toBeTrue();

@@ -19,6 +19,8 @@ const props = defineProps<{
     sideboard: ReplaySideboardEntry[] | null;
     /** Your sideboard as the previous recorded game began; null for a first game. */
     previousSideboard: { game: number; sideboard: ReplaySideboardEntry[] } | null;
+    /** The decks either side was on, when known. */
+    archetypes: { local: string | null; opponent: string | null };
 }>();
 
 const previous = computed(() =>
@@ -39,6 +41,7 @@ const gameHref = (id: number) => show(id).url;
         :sideboard="sideboard"
         :game-href="gameHref"
         :link-component="Link"
+        :archetypes="archetypes"
     >
         <template #actions>
             <ReplayShareButton :game-id="game.id" :share="share" />

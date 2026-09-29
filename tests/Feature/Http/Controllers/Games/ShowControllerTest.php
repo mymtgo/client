@@ -27,7 +27,8 @@ it('lists the match games in play order so the replay can offer the next one', f
                 ['id' => $first->id, 'number' => 1, 'won' => true],
                 ['id' => $second->id, 'number' => 2, 'won' => false],
                 ['id' => $third->id, 'number' => 3, 'won' => true],
-            ]));
+            ])
+            ->where('archetypes', ['local' => null, 'opponent' => null]));
 });
 
 /**

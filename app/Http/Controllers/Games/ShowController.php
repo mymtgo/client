@@ -26,6 +26,7 @@ class ShowController extends Controller
         ));
 
         $matchGames = $this->matchGames($game);
+        $game->match->loadMissing(['deck.archetype', 'opponentArchetypes.archetype']);
 
         return Inertia::render('games/Show', [
             'game' => $game,
@@ -34,6 +35,10 @@ class ShowController extends Controller
             'matchGames' => $matchGames,
             'sideboard' => $this->sideboard($game),
             'previousSideboard' => $this->previousSideboard($game, $matchGames),
+            'archetypes' => [
+                'local' => $game->match->deck?->archetype?->name,
+                'opponent' => $game->match->opponentArchetypes->first()?->archetype?->name,
+            ],
             'share' => [
                 'linked' => app(SyncTokens::class)->linked(),
                 'supporter' => AppSettings::isSupporter(),

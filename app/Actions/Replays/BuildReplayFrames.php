@@ -5,6 +5,7 @@ namespace App\Actions\Replays;
 use App\Models\Card;
 use App\Models\Game;
 use App\Models\GameTimeline;
+use Mymtgo\Replay\Actions\RepairActivePlayer;
 
 class BuildReplayFrames
 {
@@ -16,6 +17,9 @@ class BuildReplayFrames
      * prefers the local card cache, which is served by this app's own
      * localhost server and is dead anywhere else, so portable frames carry
      * the card's remote https image or nothing.
+     *
+     * The active player is repaired the way shared replays are, since
+     * sidecar frames carry the player who went first throughout.
      *
      * @return list<array{timestamp: string, content: array<string, mixed>}>
      */
@@ -31,7 +35,7 @@ class BuildReplayFrames
 
         $localName = $game->localPlayers->first()?->username;
 
-        return $timeline->map(function (GameTimeline $event) use ($cardsByMtgoId, $localName, $portableImages) {
+        return RepairActivePlayer::run($timeline->map(function (GameTimeline $event) use ($cardsByMtgoId, $localName, $portableImages) {
             $content = $event->content;
 
             foreach ($content['Players'] as $i => $player) {
@@ -50,7 +54,7 @@ class BuildReplayFrames
                 'timestamp' => (string) $event->timestamp,
                 'content' => $content,
             ];
-        })->values()->all();
+        })->values()->all());
     }
 
     /**
