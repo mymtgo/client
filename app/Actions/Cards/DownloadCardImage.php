@@ -2,6 +2,7 @@
 
 namespace App\Actions\Cards;
 
+use App\Actions\Settings\ApplyCardImagesPath;
 use App\Models\Card;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -11,7 +12,10 @@ class DownloadCardImage
 {
     public static function run(Card $card): void
     {
-        if (! $card->mtgo_id) {
+        // With the chosen folder unreachable the disk points at the default
+        // one, and images written there would be stranded when the drive
+        // comes back. The card keeps its remote image until then.
+        if (! $card->mtgo_id || ! ApplyCardImagesPath::available()) {
             return;
         }
 

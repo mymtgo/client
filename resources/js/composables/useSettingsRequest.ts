@@ -1,7 +1,8 @@
 import { router } from '@inertiajs/vue3';
 import { type Ref, ref } from 'vue';
 
-type Method = 'patch' | 'post';
+type Method = 'patch' | 'post' | 'delete';
+type Payload = Parameters<typeof router.post>[1];
 
 /**
  * Tracks which settings control is mid-request so a card can disable exactly
@@ -9,18 +10,25 @@ type Method = 'patch' | 'post';
  */
 export function useSettingsRequest(): {
     processing: Ref<string | null>;
-    send: (key: string, method: Method, url: string, data?: Record<string, unknown>) => void;
+    send: (key: string, method: Method, url: string, data?: Payload) => void;
 } {
     const processing = ref<string | null>(null);
 
-    function send(key: string, method: Method, url: string, data: Record<string, unknown> = {}) {
+    function send(key: string, method: Method, url: string, data: Payload = {}) {
         processing.value = key;
-        router[method](url, data, {
+
+        const options = {
             preserveScroll: true,
             onFinish: () => {
                 processing.value = null;
             },
-        });
+        };
+
+        if (method === 'delete') {
+            router.delete(url, options);
+        } else {
+            router[method](url, data, options);
+        }
     }
 
     return { processing, send };

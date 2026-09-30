@@ -5,7 +5,7 @@ import FilePathsCard from '@/components/settings/FilePathsCard.vue';
 import LocalImagesCard from '@/components/settings/LocalImagesCard.vue';
 import WatcherCard from '@/components/settings/WatcherCard.vue';
 import SettingsLayout from '@/layouts/SettingsLayout.vue';
-import type { PathStatus } from '@/types/settings';
+import type { CardImagesFolder, PathStatus } from '@/types/settings';
 import { computed } from 'vue';
 
 defineOptions({ layout: [AppLayout, SettingsLayout] });
@@ -18,6 +18,7 @@ const props = defineProps<{
     watcherActive: boolean;
     localImages: boolean;
     localImagesSize: string;
+    cardImages: CardImagesFolder;
     cardsTotal: number;
     cardsIncomplete: number;
 }>();
@@ -27,7 +28,7 @@ const pathsValid = computed(() => props.logPathStatus.valid && props.dataPathSta
 
 <template>
     <div class="flex flex-col divide-y divide-border">
-        <LocalImagesCard :enabled="localImages" :usage="localImagesSize" />
+        <LocalImagesCard :enabled="localImages" :usage="localImagesSize" :folder="cardImages" />
         <CardDataCard :total="cardsTotal" :incomplete="cardsIncomplete" />
         <FilePathsCard :log-path="logPath" :data-path="dataPath" :log-path-status="logPathStatus" :data-path-status="dataPathStatus" />
         <WatcherCard :active="watcherActive" :paths-valid="pathsValid" />

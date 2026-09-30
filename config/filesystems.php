@@ -48,7 +48,10 @@ return [
          */
         'cards' => [
             'driver' => 'local',
+            // ApplyCardImagesPath swaps `root` for the folder chosen on the
+            // Storage settings page; `default_root` is where it goes back to.
             'root' => storage_path('app/cards'),
+            'default_root' => storage_path('app/cards'),
             'serve' => true,
             'url' => '/media/cards',
             'visibility' => 'public',

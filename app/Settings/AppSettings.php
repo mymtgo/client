@@ -491,6 +491,22 @@ class AppSettings
         $this->set('local_images', $value);
     }
 
+    /**
+     * The folder card images are stored in, or null for the default
+     * location inside the app's own storage.
+     */
+    public function cardImagesPath(): ?string
+    {
+        $value = $this->get('card_images_path');
+
+        return is_string($value) && $value !== '' ? $value : null;
+    }
+
+    public function setCardImagesPath(?string $path): void
+    {
+        $this->set('card_images_path', $path);
+    }
+
     public function overlayBackgroundPath(): ?string
     {
         $value = $this->get('overlay_background_path');

@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Actions\Database\ConfigureNativephpConnection;
 use App\Actions\RegisterDevice;
+use App\Actions\Settings\ApplyCardImagesPath;
 use App\Actions\Sidecar\StartSidecarSupervisor;
 use App\Actions\Sync\Auth\EnsureAccessToken;
 use App\Dashboard\WidgetRegistry;
@@ -32,6 +33,7 @@ use App\Settings\MigrateSettingsToJson;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\ServiceProvider;
 use Native\Desktop\Events\App\OpenedFromURL;
@@ -105,6 +107,12 @@ class AppServiceProvider extends ServiceProvider
         if (! Storage::disk()->exists('settings.json')) {
             (new MigrateSettingsToJson)->run();
         }
+
+        // Every process resolves the image folder at boot, but queue workers
+        // live for the whole session: re-check before each job so a folder
+        // changed on the settings page reaches downloads straight away.
+        ApplyCardImagesPath::run();
+        Queue::before(fn () => ApplyCardImagesPath::run());
 
         if (! config('mymtgo_api.verify_ssl')) {
             Http::globalOptions([

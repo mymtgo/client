@@ -25,3 +25,11 @@ export type HelperStatus = {
     progress: number | null;
     error: 'network' | 'checksum' | 'quarantined' | null;
 };
+
+export type CardImagesFolder = {
+    path: string;
+    isDefault: boolean;
+    missing: boolean;
+    moving: boolean;
+    error: string | null;
+};
