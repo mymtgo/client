@@ -3,6 +3,7 @@
 namespace App\Managers;
 
 use App\Actions\Accounts\BackfillAccountLoginIds;
+use App\Actions\AutoUpdate\ResolveUpdateStatus;
 use App\Actions\Cards\EnqueueCardStats;
 use App\Actions\Logs\FindMtgoLogPath;
 use App\Actions\Logs\GetLogFilePaths;
@@ -30,6 +31,7 @@ use App\Services\Sync\SyncTokens;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Native\Desktop\Facades\AutoUpdater;
 
 class MtgoManager
 {
@@ -316,6 +318,14 @@ class MtgoManager
         $schedule->call(fn () => $this->syncDecks())
             ->everyFiveMinutes()
             ->name('sync_decks');
+
+        // NativePHP only checks for app updates once, at Electron boot, and
+        // heavy players leave the app running for days. Re-check so the
+        // banner and tray learn about releases without a restart.
+        $schedule->call(fn () => AutoUpdater::checkForUpdates())
+            ->everyThreeHours()
+            ->name('check_for_updates')
+            ->when(fn () => ResolveUpdateStatus::active());
 
         $schedule->job(new ShipTournamentObservations)
             ->everyThirtySeconds()

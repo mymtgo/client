@@ -6,3 +6,4 @@ Source SVG in design exploration 2026-04-29.
 - `tray.ico` — Windows system tray icon (multi-resolution)
 - `trayTemplate.png` — macOS tray template (1x)
 - `trayTemplate@2x.png` — macOS tray template (2x retina)
+- `tray-update.ico` / `trayTemplate-update@2x.png`: tray icon with an update badge, shown while an update is ready

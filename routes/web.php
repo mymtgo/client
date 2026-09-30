@@ -97,6 +97,7 @@ use App\Http\Controllers\Overlay\StoreNoteController;
 use App\Http\Controllers\Overlay\UpdateOpponentArchetypeController;
 use App\Http\Controllers\Settings\BrowseFolderController;
 use App\Http\Controllers\Settings\CheckApiStatusController;
+use App\Http\Controllers\Settings\CheckForUpdatesController;
 use App\Http\Controllers\Settings\DeleteOverlayBackgroundController;
 use App\Http\Controllers\Settings\MarkSidecarNoticeSeenController;
 use App\Http\Controllers\Settings\Pages\AccountController;
@@ -128,6 +129,7 @@ use App\Http\Controllers\Settings\UploadOverlayBackgroundController;
 use App\Http\Controllers\Support\DownloadReportBundleController;
 use App\Http\Controllers\Support\MarkDonationPromptSeenController;
 use App\Http\Controllers\Updates\InstallController;
+use App\Http\Controllers\WhatsNewController;
 use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Route;
 
@@ -321,6 +323,7 @@ Route::group([], function (Router $router) {
         $group->patch('watcher', UpdateWatcherController::class)->name('settings.watcher');
         $group->post('ingest', RunIngestController::class)->name('settings.ingest');
         $group->post('sync', RunSyncController::class)->name('settings.sync');
+        $group->post('check-updates', CheckForUpdatesController::class)->name('settings.check-updates');
         $group->post('populate-cards', RunPopulateCardsController::class)->name('settings.populate-cards');
         $group->patch('offline-mode', UpdateOfflineModeController::class)->name('settings.offline-mode');
         $group->post('submit-matches', RunSubmitMatchesController::class)->name('settings.submit-matches');
@@ -361,6 +364,7 @@ Route::group([], function (Router $router) {
     });
 
     $router->get('updates/install', InstallController::class)->name('updates.install');
+    $router->get('whats-new', WhatsNewController::class)->name('whats-new');
 
     $router->group([
         'prefix' => 'support',

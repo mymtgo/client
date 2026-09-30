@@ -371,6 +371,20 @@ class AppSettings
     }
 
     /**
+     * App version whose what's-new page was last shown (or seeded on a
+     * fresh install). Null until the first page load of a build that has it.
+     */
+    public function whatsNewSeenVersion(): ?string
+    {
+        return $this->get('whats_new_seen_version');
+    }
+
+    public function setWhatsNewSeenVersion(string $version): void
+    {
+        $this->set('whats_new_seen_version', $version);
+    }
+
+    /**
      * Whether the game overlay window is enabled.
      *
      * Falls back to the two windows this one replaced so an upgrade does not

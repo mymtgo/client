@@ -39,3 +39,26 @@ it('never dispatches an archetype download or refresh from any scheduled event',
     Bus::assertNotDispatched(DownloadArchetypes::class);
     Bus::assertNotDispatched(RefreshArchetypes::class);
 });
+
+it('checks for app updates every three hours', function () {
+    $schedule = app(Schedule::class);
+
+    Mtgo::schedule($schedule);
+
+    $event = collect($schedule->events())->first(fn ($e) => $e->description === 'check_for_updates');
+
+    expect($event)->not->toBeNull()
+        ->and($event->expression)->toBe('0 */3 * * *');
+});
+
+it('only runs the update check in a packaged production app', function () {
+    $schedule = app(Schedule::class);
+    Mtgo::schedule($schedule);
+    $event = collect($schedule->events())->first(fn ($e) => $e->description === 'check_for_updates');
+
+    expect($event->filtersPass(app()))->toBeFalse();
+
+    app()->detectEnvironment(fn () => 'production');
+
+    expect($event->filtersPass(app()))->toBeTrue();
+});

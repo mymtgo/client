@@ -243,3 +243,72 @@
         filter: drop-shadow(0 0 4px rgba(56, 189, 248, 0.7)) drop-shadow(0 0 8px rgba(56, 189, 248, 0.35));
     }
 }
+
+/* Rendered markdown on /whats-new. Hand-rolled instead of the typography
+   plugin so it follows the app's tokens without a new dependency. */
+@layer components {
+    .markdown-content {
+        @apply flex flex-col gap-4 text-sm leading-relaxed text-muted-foreground;
+    }
+
+    .markdown-content h1 {
+        @apply text-2xl font-semibold text-foreground;
+    }
+
+    .markdown-content h2 {
+        @apply pt-4 text-lg font-semibold text-foreground;
+    }
+
+    .markdown-content h3 {
+        @apply pt-2 text-base font-semibold text-foreground;
+    }
+
+    .markdown-content strong {
+        @apply font-semibold text-foreground;
+    }
+
+    .markdown-content a {
+        @apply text-primary underline underline-offset-2 hover:text-primary/80;
+    }
+
+    .markdown-content ul {
+        @apply flex list-disc flex-col gap-1 pl-5;
+    }
+
+    .markdown-content ol {
+        @apply flex list-decimal flex-col gap-1 pl-5;
+    }
+
+    .markdown-content img {
+        @apply w-full rounded-md border;
+    }
+
+    .markdown-content code {
+        @apply rounded bg-muted px-1 py-0.5 font-mono text-xs text-foreground;
+    }
+
+    .markdown-content pre {
+        @apply overflow-x-auto rounded-md border bg-muted p-3;
+    }
+
+    .markdown-content pre code {
+        @apply bg-transparent p-0;
+    }
+
+    .markdown-content table {
+        @apply w-full border-collapse text-left;
+    }
+
+    .markdown-content th,
+    .markdown-content td {
+        @apply border-b px-3 py-2;
+    }
+
+    .markdown-content th {
+        @apply font-semibold text-foreground;
+    }
+
+    .markdown-content blockquote {
+        @apply border-l-2 border-primary pl-4 italic;
+    }
+}

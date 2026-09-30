@@ -22,7 +22,7 @@ class CreateTrayMenuBar
 
         MenuBar::create()
             ->icon($icon)
-            ->tooltip('mymtgo')
+            ->tooltip(self::tooltip(null))
             ->onlyShowContextMenu(true)
             ->showDockIcon()
             ->withContextMenu(
@@ -34,11 +34,18 @@ class CreateTrayMenuBar
             );
     }
 
-    private static function iconPath(): ?string
+    public static function tooltip(?string $readyVersion): string
     {
+        return $readyVersion === null ? 'mymtgo' : "mymtgo: update ready (v{$readyVersion})";
+    }
+
+    public static function iconPath(bool $updateReady = false): ?string
+    {
+        $suffix = $updateReady ? '-update' : '';
+
         $candidate = match (PHP_OS_FAMILY) {
-            'Windows' => resource_path('icons/tray.ico'),
-            'Darwin' => resource_path('icons/trayTemplate@2x.png'),
+            'Windows' => resource_path("icons/tray{$suffix}.ico"),
+            'Darwin' => resource_path("icons/trayTemplate{$suffix}@2x.png"),
             default => null,
         };
 

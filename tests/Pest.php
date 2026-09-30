@@ -3,6 +3,7 @@
 use App\Actions\Logs\IngestLogInstance;
 use App\Actions\Overlay\SyncDraftNotesWindowVisibility;
 use App\Actions\Pipeline\RunPipeline;
+use App\Actions\WhatsNew\WhatsNewContent;
 use App\Enums\LogEventType;
 use App\Enums\MatchState;
 use App\Facades\AppSettings;
@@ -43,6 +44,10 @@ pest()->extend(TestCase::class)
 
         // Reset request-scoped Account cache between tests.
         Account::flushCurrent();
+
+        // The what's-new redirect would bounce any page load in a test that
+        // has matches. Point it at a missing file; its own tests opt back in.
+        WhatsNewContent::usePath('/nonexistent/whats-new.md');
 
         // NativePHP facades make HTTP calls to localhost:4000 (the Electron
         // backend) which doesn't exist in CI or during testing.

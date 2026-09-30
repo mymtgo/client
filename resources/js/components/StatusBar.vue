@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { usePage } from '@inertiajs/vue3';
 import { computed } from 'vue';
+import WhatsNewController from '@/actions/App/Http/Controllers/WhatsNewController';
 import HelpPopover from '@/components/HelpPopover.vue';
+import StatusBarVersion from '@/components/StatusBarVersion.vue';
 import SupportPopover from '@/components/SupportPopover.vue';
 import { useOfflineMode } from '@/composables/useOfflineMode';
 
@@ -14,6 +16,8 @@ const status = computed(() => page.props.status as {
 });
 
 const offlineMode = useOfflineMode();
+
+const whatsNewUrl = computed(() => (page.props.whatsNewAvailable ? WhatsNewController.url() : null));
 </script>
 
 <template>
@@ -45,6 +49,10 @@ const offlineMode = useOfflineMode();
 
         <!-- Spacer -->
         <div class="flex-1" />
+
+        <StatusBarVersion :whats-new-url="whatsNewUrl" />
+
+        <div class="h-3 w-px bg-border" />
 
         <SupportPopover />
 

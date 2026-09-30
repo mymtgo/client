@@ -5,6 +5,7 @@ import DonationModal from '@/components/DonationModal.vue';
 import StatusBar from '@/components/StatusBar.vue';
 import ToastContainer from '@/components/ToastContainer.vue';
 import UpdateBanner from '@/components/UpdateBanner.vue';
+import UpdateInstallingOverlay from '@/components/UpdateInstallingOverlay.vue';
 import { useToast } from '@/composables/useToast';
 import { usePage } from '@inertiajs/vue3';
 import { onMounted, watch } from 'vue';
@@ -51,6 +52,7 @@ onMounted(() => {
         </div>
         <StatusBar />
         <ToastContainer />
+        <UpdateInstallingOverlay />
         <DonationModal />
     </div>
 </template>

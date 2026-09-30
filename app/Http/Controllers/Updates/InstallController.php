@@ -2,21 +2,15 @@
 
 namespace App\Http\Controllers\Updates;
 
-use Illuminate\Support\Facades\Cache;
+use App\Actions\AutoUpdate\InstallDownloadedUpdate;
 use Inertia\Inertia;
-use Native\Desktop\Facades\AutoUpdater;
+use Inertia\Response;
 
 class InstallController
 {
-    public function __invoke()
+    public function __invoke(): Response
     {
-        Cache::forget('available_update');
-
-        try {
-            AutoUpdater::quitAndInstall();
-        } catch (\Throwable $e) {
-            report($e);
-        }
+        InstallDownloadedUpdate::run();
 
         return Inertia::render('updates/Install');
     }

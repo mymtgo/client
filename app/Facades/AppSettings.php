@@ -68,6 +68,8 @@ use Illuminate\Support\Facades\Facade;
  * @method static void setSyncTokenExpiresAt(?string $expiresAt)
  * @method static bool donationPromptSeen()
  * @method static void setDonationPromptSeen(bool $value)
+ * @method static ?string whatsNewSeenVersion()
+ * @method static void setWhatsNewSeenVersion(string $version)
  * @method static ?string archetypesLastRefreshedAt()
  * @method static void setArchetypesLastRefreshedAt(string $value)
  * @method static bool archetypesRefreshInProgress()

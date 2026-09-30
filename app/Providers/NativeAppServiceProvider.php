@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Actions\AutoUpdate\ResolveUpdateStatus;
 use App\Actions\Leagues\OpenOverlayWindow;
 use App\Actions\Overlay\SyncDraftNotesWindowVisibility;
 use App\Actions\Overlay\SyncGameOverlayVisibility;
@@ -35,6 +36,8 @@ class NativeAppServiceProvider implements ProvidesPhpIni
         AppSettings::setAppServerUrl(url('/'));
 
         RunAppUpdates::run();
+
+        ResolveUpdateStatus::startSession();
 
         if (PHP_OS_FAMILY !== 'Linux') {
             NativeApp::openAtLogin(AppSettings::autostartEnabled());

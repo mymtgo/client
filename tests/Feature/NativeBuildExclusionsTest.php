@@ -64,4 +64,7 @@ it('still ships the application', function (string $path) {
     'vendor' => 'vendor/laravel/framework/src/Illuminate/Foundation/Application.php',
     'artisan' => 'artisan',
     'composer' => 'composer.json',
+    'whats-new markdown' => 'resources/content/whats-new.md',
+    'whats-new images' => 'public/content/whats-new/deck.png',
+    'tray update icon' => 'resources/icons/tray-update.ico',
 ]);

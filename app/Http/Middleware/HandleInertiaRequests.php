@@ -3,6 +3,8 @@
 namespace App\Http\Middleware;
 
 use App\Actions\Archetypes\RecordArchetypeVersion;
+use App\Actions\AutoUpdate\ResolveUpdateStatus;
+use App\Actions\WhatsNew\WhatsNewContent;
 use App\Facades\AppSettings;
 use App\Models\Account;
 use App\Models\Game;
@@ -10,7 +12,6 @@ use App\Models\LogCursor;
 use App\Models\MtgoMatch;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
@@ -43,7 +44,8 @@ class HandleInertiaRequests extends Middleware
             'offlineMode' => fn () => AppSettings::isOffline(),
             'activeAccount' => fn () => Account::current()?->username,
             'accounts' => fn () => Account::tracked()->orderBy('username')->get(['id', 'username', 'active']),
-            'availableUpdate' => fn () => Cache::get('available_update'),
+            'update' => fn () => ResolveUpdateStatus::run(),
+            'whatsNewAvailable' => fn () => WhatsNewContent::exists(),
             'archetypeUpdate' => fn () => [
                 'available' => RecordArchetypeVersion::updateAvailable(),
                 'version' => RecordArchetypeVersion::remoteVersion(),
