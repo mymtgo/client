@@ -9,3 +9,9 @@ Go to **Settings > Storage**, find **Card images** and click **Change** next to 
 Changed your mind? **Reset to default** moves them back.
 
 If the drive is ever disconnected, mymtgo keeps working. Downloaded images won't show and new downloads pause until the drive is back.
+
+## Recently played decks
+
+The **Decks** page now opens on your 8 most recently played decks, so the ones you're playing right now are one click away. You'll find **Recently played** at the top of the archetype list in the sidebar. Pick another archetype, or click **Recently played** again to see every deck.
+
+Archetypes in the sidebar are now listed alphabetically, which makes them easier to find.

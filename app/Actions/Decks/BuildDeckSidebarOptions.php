@@ -21,6 +21,8 @@ use Spatie\LaravelData\DataCollection;
  */
 class BuildDeckSidebarOptions
 {
+    public const RECENT_LIMIT = 8;
+
     /**
      * @return DataCollection<int, DeckFormatOptionData>
      */
@@ -93,12 +95,30 @@ class BuildDeckSidebarOptions
                 record: MatchRecord::fromTotal((int) $row->wins, (int) $row->losses, (int) $row->total)->toData(),
             ))
             ->sortBy([
-                fn (DeckArchetypeOptionData $a, DeckArchetypeOptionData $b) => $b->deckCount <=> $a->deckCount,
                 fn (DeckArchetypeOptionData $a, DeckArchetypeOptionData $b) => strcasecmp($a->name, $b->name),
+                fn (DeckArchetypeOptionData $a, DeckArchetypeOptionData $b) => strcasecmp((string) $a->format, (string) $b->format),
             ])
             ->values();
 
         return DeckArchetypeOptionData::collect($options, DataCollection::class);
+    }
+
+    /**
+     * The decks behind the "Recently played" row, newest match first. Decks
+     * that have never finished a match are left out.
+     *
+     * @return array<int, int>
+     */
+    public static function recentDeckIds(?string $format, bool $hideDeleted): array
+    {
+        return self::scopedDecks($format, $hideDeleted)
+            ->whereHas('matches')
+            ->withMax('matches', 'started_at')
+            ->orderByDesc('matches_max_started_at')
+            ->orderByDesc('decks.id')
+            ->limit(self::RECENT_LIMIT)
+            ->pluck('decks.id')
+            ->all();
     }
 
     public static function unclassifiedCount(?string $format, bool $hideDeleted): int

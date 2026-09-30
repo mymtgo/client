@@ -9,7 +9,7 @@ import { Switch } from '@/components/ui/switch';
 import { archetypeFormatKey } from '@/composables/useArchetypeSplit';
 import { hasDeckDrag, readDeckDrag } from '@/lib/deckDrag';
 import { cn } from '@/lib/utils';
-import { Plus, Search, TriangleAlert } from 'lucide-vue-next';
+import { History, Plus, Search, TriangleAlert } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 
 const props = defineProps<{
@@ -183,6 +183,46 @@ const otherFormat = computed(() => {
         <section class="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto border-t border-b border-white/5 border-b-black/60 px-3 py-3">
             <h3 class="px-2.5 text-[10px] font-semibold tracking-wider text-muted-foreground/70 uppercase">Archetype</h3>
 
+            <Popover :open="otherOpen" @update:open="onOtherOpenChange">
+                <PopoverTrigger as-child>
+                    <button
+                        type="button"
+                        :class="cn(rowClass, inactiveClass, dropTarget === 'other' && dropClass)"
+                        :title="selectedCount === 0 ? 'Select decks, or drop one here' : `Assign ${selectedCount} selected`"
+                        @dragover="onDragOver($event, 'other')"
+                        @dragleave="onDragLeave($event, 'other')"
+                        @drop="onDropOther"
+                    >
+                        <Plus class="size-3.5 shrink-0" />
+                        <span class="flex-1">Other archetype…</span>
+                    </button>
+                </PopoverTrigger>
+                <PopoverContent side="right" align="start" class="w-72 p-2">
+                    <p v-if="otherTargetIds.length === 0" class="px-2 py-3 text-sm text-muted-foreground">
+                        Select one or two decks or drag a deck to assign a new archetype
+                    </p>
+                    <ArchetypePicker
+                        v-else
+                        :archetypes="archetypes"
+                        :format="otherFormat"
+                        :show-format="otherFormat === null"
+                        autofocus
+                        @select="onOtherPick"
+                    />
+                </PopoverContent>
+            </Popover>
+
+            <button
+                type="button"
+                :class="cn(rowClass, archetype === 'recent' ? activeClass : inactiveClass)"
+                :aria-pressed="archetype === 'recent'"
+                title="Your 8 most recently played decks"
+                @click="toggleArchetype('recent')"
+            >
+                <History class="size-3.5 shrink-0 text-muted-foreground" />
+                <span class="flex-1">Recently played</span>
+            </button>
+
             <button
                 type="button"
                 :class="cn(rowClass, archetype === 'none' ? activeClass : inactiveClass, dropTarget === 'none' && dropClass)"
@@ -240,35 +280,6 @@ const otherFormat = computed(() => {
                     </span>
                 </span>
             </button>
-
-            <Popover :open="otherOpen" @update:open="onOtherOpenChange">
-                <PopoverTrigger as-child>
-                    <button
-                        type="button"
-                        :class="cn(rowClass, inactiveClass, dropTarget === 'other' && dropClass)"
-                        :title="selectedCount === 0 ? 'Select decks, or drop one here' : `Assign ${selectedCount} selected`"
-                        @dragover="onDragOver($event, 'other')"
-                        @dragleave="onDragLeave($event, 'other')"
-                        @drop="onDropOther"
-                    >
-                        <Plus class="size-3.5 shrink-0" />
-                        <span class="flex-1">Other archetype…</span>
-                    </button>
-                </PopoverTrigger>
-                <PopoverContent side="right" align="start" class="w-72 p-2">
-                    <p v-if="otherTargetIds.length === 0" class="px-2 py-3 text-sm text-muted-foreground">
-                        Select one or two decks or drag a deck to assign a new archetype
-                    </p>
-                    <ArchetypePicker
-                        v-else
-                        :archetypes="archetypes"
-                        :format="otherFormat"
-                        :show-format="otherFormat === null"
-                        autofocus
-                        @select="onOtherPick"
-                    />
-                </PopoverContent>
-            </Popover>
         </section>
 
         <!-- Pinned bottom: view -->

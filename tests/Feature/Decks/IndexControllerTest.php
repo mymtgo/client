@@ -240,3 +240,40 @@ it('treats an archetype filter with no decks in the current format as unset', fu
             ->where('archetypeHeader', null)
         );
 });
+
+it('opens on the recently played decks when no filter is remembered', function () {
+    $played = seedDeck(['name' => 'Played'], won: 1);
+    seedDeck(['name' => 'Never played']);
+
+    $this->get(route('decks.index'))
+        ->assertInertia(fn ($page) => $page
+            ->where('filters.archetype', 'recent')
+            ->has('decks.data', 1)
+            ->where('decks.data.0.id', $played->id)
+            ->where('archetypeHeader', null)
+        );
+});
+
+it('limits the recently played filter to eight decks', function () {
+    collect(range(1, 10))->each(fn () => seedDeck(won: 1));
+
+    $this->get(route('decks.index', ['archetype' => 'recent']))
+        ->assertInertia(fn ($page) => $page->where('filters.archetype', 'recent')->has('decks.data', 8));
+});
+
+it('falls back to every deck when nothing has been played yet', function () {
+    Deck::factory()->count(2)->create();
+
+    $this->get(route('decks.index', ['archetype' => 'recent']))
+        ->assertInertia(fn ($page) => $page->where('filters.archetype', '')->has('decks.data', 2));
+});
+
+it('keeps showing every deck once the user clears the archetype filter', function () {
+    seedDeck(won: 1);
+    seedDeck();
+
+    $this->get(route('decks.index', ['archetype' => '']))->assertOk();
+
+    $this->get(route('decks.index'))
+        ->assertInertia(fn ($page) => $page->where('filters.archetype', '')->has('decks.data', 2));
+});

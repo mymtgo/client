@@ -11,19 +11,22 @@ use Illuminate\Http\Request;
  * sidebar selection and land the user on the full grid (or, with Unclassified
  * chosen, an empty one). The request stays authoritative whenever it mentions
  * a filter, including mentioning it as empty, which is how the user clears
- * one; the remembered pair only fills the silence. Search is deliberately not
+ * one; the remembered pair only fills the silence. With nothing remembered the
+ * listing opens on the recently played decks. Search is deliberately not
  * remembered: it is a one-off narrowing, not a place the user works from.
  */
 class RememberDeckIndexFilters
 {
     public const SESSION_KEY = 'decks.index.filters';
 
+    public const RECENT = 'recent';
+
     /**
      * @return array{format: ?string, archetype: string}
      */
     public static function resolve(Request $request, string $archetype): array
     {
-        $remembered = $request->session()->get(self::SESSION_KEY, ['format' => null, 'archetype' => '']);
+        $remembered = $request->session()->get(self::SESSION_KEY, ['format' => null, 'archetype' => self::RECENT]);
 
         if ($request->has('format') || $request->has('archetype')) {
             $filters = [

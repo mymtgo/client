@@ -89,19 +89,46 @@ it('keeps archetypes whose decks have no matches and only counts complete matche
     expect($row->record->winrate)->toBe(0);
 });
 
-it('sorts archetypes by deck count descending then name', function () {
-    $a = Archetype::factory()->create(['name' => 'Affinity']);
-    $z = Archetype::factory()->create(['name' => 'Zoo']);
-    $big = Archetype::factory()->create(['name' => 'Tron']);
+it('sorts archetypes alphabetically, then by format for same-named archetypes', function () {
+    $zoo = Archetype::factory()->create(['name' => 'Zoo', 'format' => 'modern']);
+    $affinity = Archetype::factory()->create(['name' => 'affinity', 'format' => 'modern']);
+    $tronPioneer = Archetype::factory()->create(['name' => 'Tron', 'format' => 'pioneer']);
+    $tronModern = Archetype::factory()->create(['name' => 'Tron', 'format' => 'modern']);
 
-    Deck::factory()->create(['archetype_id' => $z->id]);
-    Deck::factory()->create(['archetype_id' => $a->id]);
-    Deck::factory()->count(2)->create(['archetype_id' => $big->id]);
+    Deck::factory()->count(3)->create(['archetype_id' => $zoo->id]);
+    Deck::factory()->create(['archetype_id' => $affinity->id]);
+    Deck::factory()->create(['archetype_id' => $tronPioneer->id]);
+    Deck::factory()->count(2)->create(['archetype_id' => $tronModern->id]);
 
-    $names = BuildDeckSidebarOptions::archetypeOptions(format: null, hideDeleted: true)
-        ->toCollection()->pluck('name')->all();
+    $rows = BuildDeckSidebarOptions::archetypeOptions(format: null, hideDeleted: true)
+        ->toCollection()->map(fn ($row) => $row->name.'/'.$row->format)->all();
 
-    expect($names)->toBe(['Tron', 'Affinity', 'Zoo']);
+    expect($rows)->toBe(['affinity/modern', 'Tron/modern', 'Tron/pioneer', 'Zoo/modern']);
+});
+
+it('picks the eight most recently played decks, newest first', function () {
+    $decks = collect(range(1, 10))->map(function (int $daysAgo) {
+        $deck = Deck::factory()->create(['name' => "Deck {$daysAgo}"]);
+        $version = DeckVersion::factory()->create(['deck_id' => $deck->id]);
+        MtgoMatch::factory()->won()->create(['deck_version_id' => $version->id, 'started_at' => now()->subDays($daysAgo)]);
+
+        return $deck;
+    });
+    Deck::factory()->create(['name' => 'Never played']);
+
+    $ids = BuildDeckSidebarOptions::recentDeckIds(format: null, hideDeleted: true);
+
+    expect($ids)->toBe($decks->take(8)->pluck('id')->all());
+});
+
+it('scopes recently played decks to the format and archived setting', function () {
+    $modern = sidebarDeck(['format' => 'CModern'], won: 1);
+    sidebarDeck(['format' => 'CPauper'], won: 1);
+    $archived = sidebarDeck(['format' => 'CModern'], won: 1);
+    $archived->delete();
+    sidebarDeck(['format' => EnsureLimitedDeckVersion::FORMAT], won: 1);
+
+    expect(BuildDeckSidebarOptions::recentDeckIds(format: 'CModern', hideDeleted: true))->toBe([$modern->id]);
 });
 
 it('respects the format filter and excludes limited decks from archetype options', function () {

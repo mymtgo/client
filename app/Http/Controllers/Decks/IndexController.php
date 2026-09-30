@@ -24,11 +24,21 @@ class IndexController
             $this->archetypeFilter($request->input('archetype')),
         );
 
-        // A stale `archetype` query param (e.g. switching format, or archiving
-        // the last deck of that archetype) must not strand the user on an
-        // empty grid with no visible filter. `none` is left alone: an empty
-        // Unclassified scope is a legitimate empty result, not a stale one.
-        if ($archetype !== '' && $archetype !== 'none') {
+        $recentIds = [];
+
+        if ($archetype === RememberDeckIndexFilters::RECENT) {
+            $recentIds = BuildDeckSidebarOptions::recentDeckIds($format, $hideDeleted);
+
+            // Nothing played yet in this scope: show every deck rather than
+            // opening a new player on an empty grid.
+            if ($recentIds === []) {
+                $archetype = '';
+            }
+        } elseif ($archetype !== '' && $archetype !== 'none') {
+            // A stale `archetype` query param (e.g. switching format, or archiving
+            // the last deck of that archetype) must not strand the user on an
+            // empty grid with no visible filter. `none` is left alone: an empty
+            // Unclassified scope is a legitimate empty result, not a stale one.
             $inScope = BuildDeckSidebarOptions::scopedDecks($format, $hideDeleted)
                 ->where('archetype_id', (int) $archetype)
                 ->exists();
@@ -49,7 +59,9 @@ class IndexController
             $query->where('format', $format);
         }
 
-        if ($archetype === 'none') {
+        if ($archetype === RememberDeckIndexFilters::RECENT) {
+            $query->whereIn('decks.id', $recentIds);
+        } elseif ($archetype === 'none') {
             $query->whereNull('archetype_id');
         } elseif ($archetype !== '') {
             $query->where('archetype_id', (int) $archetype);
@@ -89,13 +101,14 @@ class IndexController
     }
 
     /**
-     * `none` selects unclassified decks, digits select one archetype, anything
-     * else is treated as no filter rather than a query for archetype "abc".
+     * `none` selects unclassified decks, `recent` the recently played ones,
+     * digits select one archetype, anything else is treated as no filter
+     * rather than a query for archetype "abc".
      */
     protected function archetypeFilter(mixed $raw): string
     {
-        if ($raw === 'none') {
-            return 'none';
+        if ($raw === 'none' || $raw === RememberDeckIndexFilters::RECENT) {
+            return $raw;
         }
 
         if (is_string($raw) && ctype_digit($raw)) {

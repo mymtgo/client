@@ -20,7 +20,7 @@ class BuildDeckArchetypeHeader
 
     public static function run(string $archetypeFilter, ?string $format, bool $hideDeleted): ?DeckArchetypeHeaderData
     {
-        if ($archetypeFilter === '') {
+        if ($archetypeFilter === '' || $archetypeFilter === RememberDeckIndexFilters::RECENT) {
             return null;
         }
 
