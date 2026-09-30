@@ -51,11 +51,11 @@ class ComputeDrawOdds
             ->mapWithKeys(fn ($c) => [(int) $c['mtgo_id'] => (int) $c['quantity']]);
 
         $cardMeta = Card::whereIn('mtgo_id', $deckByMtgoId->keys())
-            ->get(['mtgo_id', 'name', 'type', 'color_identity', 'image', 'local_image', 'art_crop', 'local_art_crop'])
+            ->get(['mtgo_id', 'oracle_id', 'name', 'type', 'color_identity', 'image', 'local_image', 'art_crop', 'local_art_crop'])
             ->keyBy(fn ($c) => (int) $c->mtgo_id);
 
         // Copies of each mtgo_id seen outside the local player's library.
-        $seenOutside = self::seenOutsideLibrary($snapshotContent, $localInstanceId);
+        $seenOutside = self::seenOutsideLibrary($snapshotContent, $localInstanceId, $deckByMtgoId, $cardMeta);
         $liveLibraryCount = self::liveLibraryCount($snapshotContent, $localInstanceId);
 
         $remainingByMtgoId = $deckByMtgoId->map(
@@ -101,10 +101,15 @@ class ComputeDrawOdds
     }
 
     /**
+     * Copies of each deck card seen outside the local player's library, keyed
+     * by the deck's CatalogID.
+     *
      * @param  array<string, mixed>  $snapshotContent
+     * @param  Collection<int, int>  $deckByMtgoId
+     * @param  Collection<int, Card>  $cardMeta
      * @return array<int, int>
      */
-    private static function seenOutsideLibrary(array $snapshotContent, int $localInstanceId): array
+    private static function seenOutsideLibrary(array $snapshotContent, int $localInstanceId, Collection $deckByMtgoId, Collection $cardMeta): array
     {
         // Exclude `Library` (still in deck) and `Sideboard` (never in deck).
         // Also exclude `Stack` — activated abilities create stack entries sharing
@@ -112,12 +117,81 @@ class ComputeDrawOdds
         // on Stack would double-count. The corollary: a spell briefly on the
         // Stack while being cast won't decrement remaining until it resolves,
         // but that window is sub-second and self-corrects.
-        return collect($snapshotContent['Cards'] ?? [])
+        $outside = collect($snapshotContent['Cards'] ?? [])
             ->filter(fn ($c) => (int) ($c['Owner'] ?? -1) === $localInstanceId
-                && ! in_array($c['Zone'] ?? null, ['Library', 'Sideboard', 'Stack'], true))
-            ->groupBy(fn ($c) => (int) $c['CatalogID'])
-            ->map(fn ($group) => $group->count())
-            ->all();
+                && ! in_array($c['Zone'] ?? null, ['Library', 'Sideboard', 'Stack'], true));
+
+        $resolve = self::deckCardResolver($outside, $deckByMtgoId, $cardMeta);
+        $seen = [];
+
+        foreach ($outside as $card) {
+            $candidates = $resolve((int) $card['CatalogID'], $card['Name'] ?? null);
+
+            if ($candidates === []) {
+                continue;
+            }
+
+            // Several printings of one card: charge the first that still has copies left.
+            $target = collect($candidates)->first(fn (int $id) => ($seen[$id] ?? 0) < $deckByMtgoId[$id]) ?? $candidates[0];
+            $seen[$target] = ($seen[$target] ?? 0) + 1;
+        }
+
+        return $seen;
+    }
+
+    /**
+     * Snapshot zones do not always use the deck's CatalogID. A modal
+     * double-faced card played as its back face (Witch Enchanter as
+     * Witch-Blessed Meadow) carries the face's own id, and other printings of
+     * a card carry theirs. Match on the exact id, then on a shared oracle id,
+     * then on the snapshot's face name against the deck card's faces.
+     *
+     * @param  Collection<int, array<string, mixed>>  $outside
+     * @param  Collection<int, int>  $deckByMtgoId
+     * @param  Collection<int, Card>  $cardMeta
+     * @return callable(int, ?string): array<int, int>
+     */
+    private static function deckCardResolver(Collection $outside, Collection $deckByMtgoId, Collection $cardMeta): callable
+    {
+        $unknownIds = $outside->pluck('CatalogID')->map(fn ($id) => (int) $id)
+            ->reject(fn (int $id) => $deckByMtgoId->has($id))
+            ->unique()->values();
+
+        $oracleByUnknownId = $unknownIds->isEmpty()
+            ? collect()
+            : Card::whereIn('mtgo_id', $unknownIds)->whereNotNull('oracle_id')->pluck('oracle_id', 'mtgo_id')
+                ->mapWithKeys(fn ($oracle, $id) => [(int) $id => $oracle]);
+
+        $deckIdsByOracle = [];
+        $deckIdsByFaceName = [];
+
+        foreach ($deckByMtgoId->keys() as $mtgoId) {
+            $meta = $cardMeta->get($mtgoId);
+
+            if ($meta?->oracle_id) {
+                $deckIdsByOracle[$meta->oracle_id][] = $mtgoId;
+            }
+
+            foreach (array_unique([$meta?->name, ...explode(' // ', (string) $meta?->name)]) as $face) {
+                if ($face) {
+                    $deckIdsByFaceName[mb_strtolower($face)][] = $mtgoId;
+                }
+            }
+        }
+
+        return function (int $catalogId, ?string $name) use ($deckByMtgoId, $oracleByUnknownId, $deckIdsByOracle, $deckIdsByFaceName): array {
+            if ($deckByMtgoId->has($catalogId)) {
+                return [$catalogId];
+            }
+
+            $oracle = $oracleByUnknownId->get($catalogId);
+
+            if ($oracle !== null && isset($deckIdsByOracle[$oracle])) {
+                return $deckIdsByOracle[$oracle];
+            }
+
+            return $name ? ($deckIdsByFaceName[mb_strtolower($name)] ?? []) : [];
+        };
     }
 
     /**

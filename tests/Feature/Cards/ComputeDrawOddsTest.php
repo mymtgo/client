@@ -460,3 +460,69 @@ it('includes the art crop in the payload, taking the first printing that has one
 
     expect($card->artCrop)->toBe('https://img/mine-art.jpg');
 });
+
+/**
+ * @param  array<int, array<string, mixed>>  $cards
+ */
+function drawOddsMatchWithSnapshot(string $signature, array $cards): MtgoMatch
+{
+    $deck = Deck::factory()->create();
+    $deckVersion = DeckVersion::create(['deck_id' => $deck->id, 'signature' => $signature, 'modified_at' => now()]);
+
+    $match = MtgoMatch::create([
+        'mtgo_id' => (string) fake()->unique()->numberBetween(500000, 599999), 'token' => fake()->uuid(), 'format' => 'CModern',
+        'match_type' => 'League', 'state' => MatchState::InProgress,
+        'started_at' => now(), 'deck_version_id' => $deckVersion->id,
+    ]);
+
+    $game = Game::create(['match_id' => $match->id, 'mtgo_id' => fake()->uuid(), 'started_at' => now()]);
+    $game->players()->attach(Player::create(['username' => 'me'])->id, ['is_local' => 1, 'instance_id' => 1]);
+
+    GameTimeline::create([
+        'game_id' => $game->id,
+        'timestamp' => '10:00:05',
+        'content' => ['Players' => [['Id' => 1, 'LibraryCount' => 20]], 'Cards' => $cards],
+    ]);
+
+    return $match;
+}
+
+it('subtracts a modal double-faced card played as its back face when the face id has no card row', function () {
+    Card::create(['mtgo_id' => '126501', 'oracle_id' => 'o-witch', 'name' => 'Witch Enchanter // Witch-Blessed Meadow', 'type' => 'Creature']);
+
+    $match = drawOddsMatchWithSnapshot(signatureFor([['126501', '4', 'false']]), [
+        ['Id' => 425, 'CatalogID' => 126501, 'Owner' => 1, 'Zone' => 'Hand', 'Name' => 'Witch Enchanter'],
+        ['Id' => 532, 'CatalogID' => 126503, 'Owner' => 1, 'Zone' => 'Battlefield', 'Name' => 'Witch-Blessed Meadow'],
+    ]);
+
+    $witch = collect(ComputeDrawOdds::run($match)->cards->all())->firstWhere('name', 'Witch Enchanter // Witch-Blessed Meadow');
+
+    expect($witch->remaining)->toBe(2)
+        ->and($witch->total)->toBe(4);
+});
+
+it('subtracts a card seen under another printing of the same oracle card', function () {
+    Card::create(['mtgo_id' => '126501', 'oracle_id' => 'o-witch', 'name' => 'Witch Enchanter // Witch-Blessed Meadow', 'type' => 'Creature']);
+    Card::create(['mtgo_id' => '126503', 'oracle_id' => 'o-witch', 'name' => 'Witch Enchanter // Witch-Blessed Meadow', 'type' => 'Creature']);
+
+    // Log-built snapshots carry no face name, so only the oracle link can match.
+    $match = drawOddsMatchWithSnapshot(signatureFor([['126501', '4', 'false']]), [
+        ['Id' => 532, 'CatalogID' => 126503, 'Owner' => 1, 'Zone' => 'Battlefield'],
+    ]);
+
+    $result = ComputeDrawOdds::run($match);
+
+    expect($result->cards->all())->toHaveCount(1)
+        ->and($result->cards->all()[0]->remaining)->toBe(3)
+        ->and($result->librarySize)->toBe(3);
+});
+
+it('ignores snapshot cards that match nothing in the deck', function () {
+    Card::create(['mtgo_id' => '102', 'oracle_id' => 'o-bolt', 'name' => 'Lightning Bolt', 'type' => 'Instant']);
+
+    $match = drawOddsMatchWithSnapshot(signatureFor([['102', '4', 'false']]), [
+        ['Id' => 950, 'CatalogID' => 777777, 'Owner' => 1, 'Zone' => 'Battlefield', 'Name' => 'Treasure'],
+    ]);
+
+    expect(ComputeDrawOdds::run($match)->cards->all()[0]->remaining)->toBe(4);
+});
