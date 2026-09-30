@@ -1,4 +1,4 @@
-# What's new in 0.41.0
+# What's new in 0.45.0
 
 ## Choose where card images are stored
 
@@ -23,6 +23,12 @@ The game overlay no longer has to cover your game log or chat when you want to r
 ## See what your opponent could still have
 
 Once your opponent's archetype is known, the overlay's **Revealed** tab now goes beyond the cards they've shown. Under what they've revealed you'll find **Could still have**: cards that archetype usually plays, grouped by type like the rest of the overlay, with how many copies could still be in their deck. Below that, **Potential sideboard cards** lists what they might bring in after game 1. The counts go down as your opponent reveals copies, and a card drops off once you've seen them all.
+
+Card previews in the overlay now open when you hover a card's picture rather than the whole row, so they stay out of the way while you scroll through a list.
+
+## Easier to stay up to date
+
+When a new version of mymtgo is ready, you'll now see it in the status bar, and the tray icon gets a badge. Head to **Settings > General** to see which version you're on and check for updates yourself. After an update, this page shows you what's changed.
 
 ## Fixes
 
