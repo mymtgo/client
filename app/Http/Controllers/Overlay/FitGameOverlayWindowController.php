@@ -21,9 +21,10 @@ class FitGameOverlayWindowController extends Controller
     {
         $validated = $request->validate([
             'fixed_height' => 'required|integer|min:0|max:2000',
+            'bar_height' => 'nullable|integer|min:0|max:200',
         ]);
 
-        FitGameOverlayWindow::run((int) $validated['fixed_height']);
+        FitGameOverlayWindow::run((int) $validated['fixed_height'], (int) ($validated['bar_height'] ?? 0));
 
         return response()->noContent();
     }

@@ -314,6 +314,14 @@ onPlay: boolean;
 startingHandSize: number;
 deck: Array<any>;
 };
+export type PotentialCardData = {
+mtgoId: number | null;
+name: string;
+type: string;
+image: string | null;
+artCrop: string | null;
+quantity: number;
+};
 export type RevealedCardData = {
 mtgoId: number | null;
 name: string;

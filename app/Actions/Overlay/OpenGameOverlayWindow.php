@@ -3,7 +3,8 @@
 namespace App\Actions\Overlay;
 
 use App\Facades\AppSettings;
-use Native\Desktop\Facades\Window;
+use Native\Desktop\Facades\Window as WindowFacade;
+use Native\Desktop\Windows\Window;
 
 class OpenGameOverlayWindow
 {
@@ -13,19 +14,19 @@ class OpenGameOverlayWindow
 
     public static function run(): void
     {
-        $alreadyOpen = collect(Window::all())->contains(fn ($w) => $w->getId() === self::ID);
-
-        if ($alreadyOpen) {
+        if (self::find()) {
             return;
         }
 
-        Window::open(self::ID)
+        WindowFacade::open(self::ID)
             ->url(self::overlayUrl())
             ->width(self::DEFAULT_WIDTH)
             ->height(ComputeGameOverlayHeight::fromSettings())
             ->minWidth(300)
             ->maxWidth(400)
-            ->minHeight(ComputeGameOverlayHeight::MIN_HEIGHT)
+            // Low enough for the collapsed strip, which is shorter than any
+            // expanded layout when the opponent header is switched off.
+            ->minHeight(ComputeGameOverlayHeight::COLLAPSED_MIN_HEIGHT)
             ->rememberState()
             ->alwaysOnTop(true, 'screen-saver')
             ->frameless()
@@ -36,6 +37,11 @@ class OpenGameOverlayWindow
             ->hideMenu()
             ->showDevTools(false)
             ->title('Game overlay');
+    }
+
+    public static function find(): ?Window
+    {
+        return collect(WindowFacade::all())->first(fn (Window $window) => $window->getId() === self::ID);
     }
 
     /**

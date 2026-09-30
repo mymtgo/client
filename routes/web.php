@@ -89,6 +89,7 @@ use App\Http\Controllers\Matches\DetectArchetypeController;
 use App\Http\Controllers\Matches\ShowController;
 use App\Http\Controllers\Matches\UpdateArchetypeController;
 use App\Http\Controllers\Matches\UpdateNotesController;
+use App\Http\Controllers\Overlay\CollapseGameOverlayWindowController;
 use App\Http\Controllers\Overlay\DestroyNoteController;
 use App\Http\Controllers\Overlay\DraftNotesController;
 use App\Http\Controllers\Overlay\FitGameOverlayWindowController;
@@ -194,6 +195,8 @@ Route::group([], function (Router $router) {
             ->name('overlay.archetype');
         $group->post('fit', FitGameOverlayWindowController::class)
             ->name('overlay.fit');
+        $group->post('collapse', CollapseGameOverlayWindowController::class)
+            ->name('overlay.collapse');
         $group->post('notes', StoreNoteController::class)
             ->name('overlay.notes.store');
         $group->delete('notes/{note}', DestroyNoteController::class)

@@ -19,7 +19,8 @@ it('opens an opponent-only overlay short instead of at the full default height',
 
     Window::assertOpened('game-overlay');
     expect($window->height)->toBe(ComputeGameOverlayHeight::OPPONENT_HEADER_ESTIMATE);
-    expect($window->minHeight)->toBe(ComputeGameOverlayHeight::MIN_HEIGHT);
+    // Low enough for the collapsed strip.
+    expect($window->minHeight)->toBe(ComputeGameOverlayHeight::COLLAPSED_MIN_HEIGHT);
 });
 
 it('opens at the full height when a tab section is enabled', function () {

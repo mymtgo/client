@@ -26,3 +26,16 @@ it('rejects a missing or absurd height', function () {
     $this->postJson(route('overlay.fit'), [])->assertUnprocessable();
     $this->postJson(route('overlay.fit'), ['fixed_height' => 5000])->assertUnprocessable();
 });
+
+it('keeps a collapsed overlay collapsed when it refits', function () {
+    AppSettings::setOverlayShowDrawOdds(true);
+    AppSettings::setOverlayCollapsed(true);
+
+    $open = (new WindowInstance('game-overlay'))->fromRuntimeWindow((object) ['width' => 320, 'height' => 162]);
+    Window::shouldReceive('all')->andReturn([$open]);
+    Window::shouldReceive('resize')->once()->with(320, 180, 'game-overlay');
+
+    // The opponent header grew once an archetype resolved.
+    $this->postJson(route('overlay.fit'), ['fixed_height' => 138, 'bar_height' => 42])
+        ->assertNoContent();
+});

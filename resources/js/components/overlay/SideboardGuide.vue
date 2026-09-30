@@ -121,8 +121,8 @@ const offlineMode = useOfflineMode();
                         :count="card.quantity"
                         :art-crop="card.artCrop"
                         :class="{ 'opacity-40': card.stale || (!hasPlan && card.sidedInGames === 0 && card.communityRate === null) }"
-                        @mouseenter="onCardEnter(card, $event)"
-                        @mouseleave="onCardLeave"
+                        @preview-enter="onCardEnter(card, $event)"
+                        @preview-leave="onCardLeave"
                     >
                         <div class="flex shrink-0 items-center gap-2 px-2">
                             <span v-if="!hasPlan" class="w-8 text-right text-[10px] font-bold tracking-wider uppercase">
@@ -166,8 +166,8 @@ const offlineMode = useOfflineMode();
                         :count="hasPlan ? card.quantity : null"
                         :art-crop="card.artCrop"
                         :class="{ 'opacity-40': card.stale }"
-                        @mouseenter="onCardEnter(card, $event)"
-                        @mouseleave="onCardLeave"
+                        @preview-enter="onCardEnter(card, $event)"
+                        @preview-leave="onCardLeave"
                     >
                         <div class="flex shrink-0 items-center gap-2 px-2">
                             <span v-if="!hasPlan" class="w-8 text-right text-[10px] font-bold tracking-wider uppercase">

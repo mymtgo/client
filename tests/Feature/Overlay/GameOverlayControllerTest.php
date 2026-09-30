@@ -4,6 +4,7 @@ use App\Enums\MatchState;
 use App\Facades\AppSettings;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Models\Archetype;
+use App\Models\ArchetypeDeck;
 use App\Models\Card;
 use App\Models\Deck;
 use App\Models\DeckArchetypeNote;
@@ -526,4 +527,53 @@ it('falls back to history when the guide for the matchup has no cards', function
             ->where('sideboard.sidedIn.0.oracleId', 'o-rip')
             ->where('sideboard.sidedIn.0.quantity', 2)
         );
+});
+
+it('tells the page whether the overlay is collapsed', function () {
+    $this->get(route('overlay.game'))
+        ->assertInertia(fn ($page) => $page->where('collapsed', false));
+
+    AppSettings::setOverlayCollapsed(true);
+
+    $this->get(route('overlay.game'))
+        ->assertInertia(fn ($page) => $page->where('collapsed', true));
+});
+
+it('suggests cards the picked archetype could still have alongside the reveals', function () {
+    [$match, $opponent] = liveOverlayMatch();
+    $murktide = Card::create(['mtgo_id' => '103', 'oracle_id' => 'o-murktide', 'name' => 'Murktide Regent', 'type' => 'Creature']);
+
+    $archetype = Archetype::factory()->create(['name' => 'Murktide']);
+    ArchetypeDeck::factory()->create(['archetype_id' => $archetype->id])->syncCardRows([
+        ['card_id' => Card::where('mtgo_id', '102')->value('id'), 'quantity' => 4, 'sideboard' => false],
+        ['card_id' => $murktide->id, 'quantity' => 4, 'sideboard' => false],
+    ]);
+    MatchArchetype::create([
+        'mtgo_match_id' => $match->id, 'player_id' => $opponent->id, 'archetype_id' => $archetype->id,
+        'confidence' => 1.0, 'manual' => true,
+    ]);
+    $match->games()->first()->players()->updateExistingPivot($opponent->id, [
+        'deck_json' => [['mtgo_id' => 102, 'quantity' => 2]],
+    ]);
+
+    Http::fake(['*' => Http::response([], 404)]);
+
+    overlayPartial(['potentialCards'])
+        ->assertSuccessful()
+        // 2 of the list's 4 Bolts are revealed, so 2 could still be in there.
+        ->assertJsonCount(2, 'props.potentialCards.maindeck')
+        ->assertJsonPath('props.potentialCards.maindeck.0.name', 'Lightning Bolt')
+        ->assertJsonPath('props.potentialCards.maindeck.0.quantity', 2)
+        ->assertJsonPath('props.potentialCards.maindeck.1.name', 'Murktide Regent')
+        ->assertJsonPath('props.potentialCards.maindeck.1.quantity', 4)
+        ->assertJsonCount(0, 'props.potentialCards.sideboard');
+});
+
+it('suggests nothing until an archetype is known', function () {
+    liveOverlayMatch();
+    Http::fake(['*' => Http::response([], 404)]);
+
+    overlayPartial(['potentialCards'])
+        ->assertSuccessful()
+        ->assertJsonPath('props.potentialCards', null);
 });

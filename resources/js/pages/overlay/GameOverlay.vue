@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import CollapseGameOverlayWindowController from '@/actions/App/Http/Controllers/Overlay/CollapseGameOverlayWindowController';
 import FitGameOverlayWindowController from '@/actions/App/Http/Controllers/Overlay/FitGameOverlayWindowController';
 import UpdateOpponentArchetypeController from '@/actions/App/Http/Controllers/Overlay/UpdateOpponentArchetypeController';
 import DrawOddsPanel from '@/components/decks/DrawOddsPanel.vue';
@@ -8,7 +9,7 @@ import RevealedCards from '@/components/overlay/RevealedCards.vue';
 import SideboardGuide from '@/components/overlay/SideboardGuide.vue';
 import OverlayLayout from '@/layouts/OverlayLayout.vue';
 import { router, usePoll } from '@inertiajs/vue3';
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
 defineOptions({ layout: OverlayLayout });
 
@@ -36,6 +37,8 @@ const props = withDefaults(
         drawOdds?: DrawOdds | null;
         sideboard: App.Data.Front.SideboardGuideData | null;
         reveals: App.Data.Front.RevealedCardData[] | null;
+        /** Cards the opponent's archetype plays that they have not revealed; null until an archetype is known. */
+        potentialCards: { maindeck: App.Data.Front.PotentialCardData[]; sideboard: App.Data.Front.PotentialCardData[] } | null;
         notes: { current: App.Data.Front.ArchetypeNoteData[]; other: App.Data.Front.ArchetypeNoteData[] };
         isSideboarding: boolean;
         /** Whether a live match exists at all, independent of any section toggle. */
@@ -49,6 +52,8 @@ const props = withDefaults(
          */
         hasArchetype: boolean;
         format?: string | null;
+        /** Collapsed to the header and tab bar; remembered across restarts. */
+        collapsed: boolean;
     }>(),
     { archetypes: () => [], drawOdds: null },
 );
@@ -81,7 +86,20 @@ watch(
  * rebuilds hypergeometric data mid-turn.
  */
 usePoll(5000, {
-    only: ['opponent', 'sideboard', 'reveals', 'notes', 'isSideboarding', 'sections', 'hasMatch', 'hasDeck', 'hasArchetype', 'format', 'offlineMode'],
+    only: [
+        'opponent',
+        'sideboard',
+        'reveals',
+        'potentialCards',
+        'notes',
+        'isSideboarding',
+        'sections',
+        'hasMatch',
+        'hasDeck',
+        'hasArchetype',
+        'format',
+        'offlineMode',
+    ],
 });
 
 onMounted(() => {
@@ -105,6 +123,7 @@ const hasTabSections = computed(() => props.sections.drawOdds || props.sections.
  * it also follows the header as it changes shape (no opponent yet → opponent
  * resolved → archetype picked) via a ResizeObserver.
  */
+const root = ref<HTMLElement | null>(null);
 const fixedRegion = ref<HTMLElement | null>(null);
 let lastSentFixedHeight: number | null = null;
 let fitTimer: ReturnType<typeof setTimeout> | null = null;
@@ -114,25 +133,59 @@ function fitWindow(): void {
     if (measured === lastSentFixedHeight) return;
     lastSentFixedHeight = measured;
 
-    // A plain fetch, deliberately outside the Inertia router: an Inertia visit
-    // to this URL (a different URL to the page's) cancels the page's in-flight
-    // async requests — including the deferred `archetypes`/`drawOdds` fetch at
-    // mount, which is never retried. Resizing the window is a native command,
-    // not page state, so nothing needs to flow back into the page either.
-    const xsrf = document.cookie.match(/XSRF-TOKEN=([^;]+)/)?.[1] ?? '';
-    fetch(FitGameOverlayWindowController.url(), {
-        method: 'POST',
-        headers: {
-            'X-XSRF-TOKEN': decodeURIComponent(xsrf),
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ fixed_height: measured }),
-    }).catch(() => {
+    postWindowCommand(FitGameOverlayWindowController.url(), { fixed_height: measured, bar_height: measureBar() }).catch(() => {
         // The bundled server can be briefly unreachable at boot; let the next
         // measurement (ResizeObserver / section change) retry this height.
         lastSentFixedHeight = null;
     });
+}
+
+/**
+ * A plain fetch, deliberately outside the Inertia router: an Inertia visit
+ * to these URLs (different to the page's) cancels the page's in-flight async
+ * requests, including the deferred `archetypes`/`drawOdds` fetch at mount,
+ * which is never retried. Resizing the window is a native command, not page
+ * state, so nothing needs to flow back into the page either.
+ */
+function postWindowCommand(url: string, body: Record<string, unknown>): Promise<Response> {
+    const xsrf = document.cookie.match(/XSRF-TOKEN=([^;]+)/)?.[1] ?? '';
+
+    return fetch(url, {
+        method: 'POST',
+        headers: {
+            'X-XSRF-TOKEN': decodeURIComponent(xsrf),
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+    });
+}
+
+/** Height of the tab bar, which stays visible when the overlay is collapsed. */
+function measureBar(): number {
+    return Math.round(root.value?.querySelector<HTMLElement>('[data-overlay-bar]')?.offsetHeight ?? 0);
+}
+
+/**
+ * Collapsing shrinks the window to the header and tab bar so the player can
+ * read the game or chat log underneath without dragging the overlay away.
+ * The bar is measured after Vue has hidden the panels, so the height sent is
+ * the one the window should become.
+ */
+const collapsed = ref(props.collapsed);
+
+async function setCollapsed(next: boolean): Promise<void> {
+    collapsed.value = next;
+    await nextTick();
+
+    const fixedHeight = Math.round(fixedRegion.value?.offsetHeight ?? 0);
+    lastSentFixedHeight = fixedHeight;
+    postWindowCommand(CollapseGameOverlayWindowController.url(), { collapsed: next, fixed_height: fixedHeight, bar_height: measureBar() }).catch(
+        () => {
+            // Leave the page state as chosen; the next fit retries the window size.
+            lastSentFixedHeight = null;
+        },
+    );
 }
 
 function scheduleFit(): void {
@@ -142,11 +195,14 @@ function scheduleFit(): void {
 
 const fixedRegionObserver = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(scheduleFit);
 
+// A collapsed overlay has no scrolling area to absorb a taller header either.
+const followsHeader = computed(() => !hasTabSections.value || collapsed.value);
+
 watch(
-    hasTabSections,
-    (tabbed) => {
+    followsHeader,
+    (follows) => {
         fixedRegionObserver?.disconnect();
-        if (!tabbed && fixedRegion.value) {
+        if (follows && fixedRegion.value) {
             fixedRegionObserver?.observe(fixedRegion.value);
         }
     },
@@ -165,7 +221,7 @@ watch(
 );
 
 onMounted(() => {
-    if (!hasTabSections.value && fixedRegion.value) {
+    if (followsHeader.value && fixedRegion.value) {
         fixedRegionObserver?.observe(fixedRegion.value);
     }
     scheduleFit();
@@ -180,13 +236,13 @@ function selectArchetype(archetypeId: number): void {
     router.post(
         UpdateOpponentArchetypeController.url(),
         { archetype_id: archetypeId },
-        { preserveScroll: true, only: ['opponent', 'sideboard', 'notes', 'hasArchetype'] },
+        { preserveScroll: true, only: ['opponent', 'sideboard', 'notes', 'hasArchetype', 'potentialCards'] },
     );
 }
 </script>
 
 <template>
-    <div class="flex h-screen flex-col bg-background text-foreground">
+    <div ref="root" class="flex h-screen flex-col bg-background text-foreground">
         <div ref="fixedRegion" class="shrink-0">
             <OpponentHeader
                 v-if="props.sections.opponent"
@@ -207,13 +263,15 @@ function selectArchetype(archetypeId: number): void {
             :show-draw-odds="props.sections.drawOdds"
             :show-sideboard="props.sections.sideboard"
             :show-reveals="props.sections.reveals"
+            :collapsed="collapsed"
+            @update:collapsed="setCollapsed"
         >
             <template #draw-odds>
                 <DrawOddsPanel :draw-odds="props.drawOdds" />
             </template>
 
             <template #reveals>
-                <RevealedCards :reveals="props.reveals" :has-match="props.hasMatch" />
+                <RevealedCards :reveals="props.reveals" :potential="props.potentialCards" :has-match="props.hasMatch" />
             </template>
 
             <template #sideboard>

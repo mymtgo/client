@@ -471,6 +471,32 @@ class AppSettings
         $this->set('overlay_show_reveals', $value);
     }
 
+    public function overlayCollapsed(): bool
+    {
+        return (bool) $this->get('overlay_collapsed', false);
+    }
+
+    public function setOverlayCollapsed(bool $value): void
+    {
+        $this->set('overlay_collapsed', $value);
+    }
+
+    /**
+     * Height the overlay had before it was collapsed, so expanding puts it
+     * back the way the player sized it. Null while expanded.
+     */
+    public function overlayExpandedHeight(): ?int
+    {
+        $value = $this->get('overlay_expanded_height');
+
+        return is_numeric($value) ? (int) $value : null;
+    }
+
+    public function setOverlayExpandedHeight(?int $height): void
+    {
+        $this->set('overlay_expanded_height', $height);
+    }
+
     public function overlayShowSideboard(): bool
     {
         return (bool) $this->get('overlay_show_sideboard', true);

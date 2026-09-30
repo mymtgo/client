@@ -8,6 +8,7 @@ use App\Actions\Overlay\BuildSideboardGuide;
 use App\Actions\Overlay\DetectSideboarding;
 use App\Actions\Overlay\FetchCommunitySideboardRates;
 use App\Actions\Overlay\GetArchetypeNotes;
+use App\Actions\Overlay\GetArchetypePotentialCards;
 use App\Actions\Overlay\GetOpponentReveals;
 use App\Actions\Overlay\ResolveOverlayOpponent;
 use App\Data\Front\SideboardGuideData;
@@ -42,13 +43,16 @@ class GameOverlayController extends Controller
         // notes are both keyed on the opponent's archetype, so gating
         // resolution on the header would empty them whenever the header is
         // switched off. Only the prop itself is gated on the header setting.
-        $opponent = $match && ($sections['opponent'] || $sections['sideboard'])
+        // Reveals need it too, for the cards the archetype could still have.
+        $opponent = $match && ($sections['opponent'] || $sections['sideboard'] || $sections['reveals'])
             ? ResolveOverlayOpponent::run($match)
             : null;
 
         $archetype = $opponent?->archetypeId
             ? Archetype::query()->find($opponent->archetypeId)
             : null;
+
+        $reveals = $match && $sections['reveals'] ? GetOpponentReveals::run($match) : null;
 
         return Inertia::render('overlay/GameOverlay', [
             'sections' => $sections,
@@ -65,7 +69,10 @@ class GameOverlayController extends Controller
             'drawOdds' => Inertia::defer(
                 fn () => $match && $sections['drawOdds'] ? ComputeDrawOdds::run($match) : null
             ),
-            'reveals' => $match && $sections['reveals'] ? GetOpponentReveals::run($match) : null,
+            'reveals' => $reveals,
+            'potentialCards' => $reveals !== null && $archetype
+                ? GetArchetypePotentialCards::run($archetype, collect($reveals->all())->pluck('quantity', 'name')->all())
+                : null,
             'sideboard' => $sections['sideboard'] ? $this->sideboardGuide($match, $archetype) : null,
             'notes' => $sections['sideboard'] ? $this->notes($match, $archetype) : ['current' => [], 'other' => []],
             'isSideboarding' => $match && $sections['sideboard'] ? DetectSideboarding::run($match) : false,
@@ -80,6 +87,7 @@ class GameOverlayController extends Controller
             // not read "pick an archetype" off a null `opponent` prop, which is
             // null whenever the opponent header is switched off.
             'hasArchetype' => (bool) $archetype,
+            'collapsed' => AppSettings::overlayCollapsed(),
         ]);
     }
 

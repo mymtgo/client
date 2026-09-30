@@ -20,6 +20,9 @@ class ComputeGameOverlayHeight
     /** Smallest window that still shows a full opponent header. */
     public const MIN_HEIGHT = 120;
 
+    /** Smallest collapsed strip: the tab bar alone, with the opponent header off. */
+    public const COLLAPSED_MIN_HEIGHT = 40;
+
     /**
      * Estimated rendered height of the opponent header before the page has
      * measured it. The page reports the real value once mounted.
@@ -31,6 +34,14 @@ class ComputeGameOverlayHeight
         $height = $fixedHeight + ($hasTabSections ? self::TAB_AREA : 0);
 
         return max(self::MIN_HEIGHT, $height);
+    }
+
+    /**
+     * A collapsed overlay shows only its fixed region and the tab bar.
+     */
+    public static function collapsed(int $fixedHeight, int $barHeight): int
+    {
+        return max(self::COLLAPSED_MIN_HEIGHT, $fixedHeight + $barHeight);
     }
 
     /**

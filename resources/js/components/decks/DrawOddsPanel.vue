@@ -192,8 +192,8 @@ watch(
                                 'opacity-20': card.remaining === 0,
                                 'is-flashing': highlighted.has(cardKey(card)),
                             }"
-                            @mouseenter="onCardEnter(card, $event)"
-                            @mouseleave="onCardLeave"
+                            @preview-enter="onCardEnter(card, $event)"
+                            @preview-leave="onCardLeave"
                         >
                             <div class="flex shrink-0 items-center gap-2 px-2">
                                 <span class="w-12 text-right font-medium text-muted-foreground tabular-nums">
