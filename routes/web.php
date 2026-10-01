@@ -26,6 +26,7 @@ use App\Http\Controllers\Debug\Matches\ReprocessController;
 use App\Http\Controllers\Debug\Matches\RestoreController;
 use App\Http\Controllers\Debug\Matches\UpdateController;
 use App\Http\Controllers\Debug\Overlay\PhaseController;
+use App\Http\Controllers\Debug\Sidecar\UpdateAuthorityController;
 use App\Http\Controllers\Decks\BulkUpdateDeckArchetypeController;
 use App\Http\Controllers\Decks\CardStatsController;
 use App\Http\Controllers\Decks\CoverArtOptionsController;
@@ -429,6 +430,7 @@ Route::group([], function (Router $router) {
 
         // Sidecar
         $group->get('sidecar', App\Http\Controllers\Debug\Sidecar\IndexController::class)->name('debug.sidecar.index');
+        $group->patch('sidecar/authority', UpdateAuthorityController::class)->name('debug.sidecar.authority');
 
         // Pipeline Log
         $group->get('pipeline-log', App\Http\Controllers\Debug\PipelineLog\IndexController::class)->name('debug.pipeline-log.index');

@@ -32,6 +32,7 @@ class IndexController extends Controller
                 'available' => AppSettings::sidecarAvailable(),
                 'tripped' => AppSettings::sidecarTripped(),
                 'authority' => SidecarAuthorityFlags::current(),
+                'authorityDefaults' => SidecarAuthorityFlags::DEFAULTS,
             ],
             'summary' => BuildSidecarAgreementSummary::run(),
             'recentEvents' => $ready ? GameEvent::query()

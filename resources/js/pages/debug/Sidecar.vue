@@ -1,9 +1,11 @@
 <script setup lang="ts">
+import UpdateAuthorityController from '@/actions/App/Http/Controllers/Debug/Sidecar/UpdateAuthorityController';
 import DebugNav from '@/components/debug/DebugNav.vue';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { usePoll } from '@inertiajs/vue3';
+import { router, usePoll } from '@inertiajs/vue3';
 import { Check, X } from 'lucide-vue-next';
 
 usePoll(10000);
@@ -21,7 +23,13 @@ const props = defineProps<{
         stale: boolean;
     };
     download: { status: string; version: string; bytes: number; total: number | null; error: string | null; updated_at: string | null };
-    settings: { enabled: boolean; available: boolean; tripped: boolean; authority: Record<string, boolean> };
+    settings: {
+        enabled: boolean;
+        available: boolean;
+        tripped: boolean;
+        authority: Record<string, boolean>;
+        authorityDefaults: Record<string, boolean>;
+    };
     summary: Record<string, { agree: number; disagree: number; sidecar_incomplete: number; sidecar_degraded: number }>;
     recentEvents: Array<{
         id: number;
@@ -52,7 +60,18 @@ const fieldLabels: Record<string, string> = {
     game_boundaries: 'Game boundaries',
     game_result: 'Game result',
     match_result: 'Match result',
+    match_deck: 'Match deck',
+    league_run: 'League run',
+    league_drop: 'League drop',
 };
+
+/**
+ * Hand a field back to the logs (or to the helper) on this machine. Takes
+ * effect on the next projection; matches already built keep what they have.
+ */
+function setAuthority(field: string, enabled: boolean): void {
+    router.patch(UpdateAuthorityController.url(), { field, enabled }, { preserveScroll: true, only: ['settings'] });
+}
 
 function agreementPercent(row: { agree: number; disagree: number }): string {
     const total = row.agree + row.disagree;
@@ -129,6 +148,10 @@ function stringifyValue(value: unknown): string {
                 <Card>
                     <CardHeader>
                         <CardTitle>Authority</CardTitle>
+                        <p class="text-xs text-muted-foreground">
+                            Which source decides each field. Switch one off to let the logs decide it if the helper gets it wrong on this machine.
+                            Applies to matches from now on.
+                        </p>
                     </CardHeader>
                     <CardContent>
                         <Table>
@@ -147,9 +170,17 @@ function stringifyValue(value: unknown): string {
                                 <TableRow v-for="field in Object.keys(summary)" :key="field">
                                     <TableCell class="text-xs">{{ fieldLabels[field] ?? field }}</TableCell>
                                     <TableCell class="text-xs">
-                                        <Badge :variant="settings.authority[field] ? 'default' : 'outline'">
-                                            {{ settings.authority[field] ? 'sidecar' : 'log' }}
-                                        </Badge>
+                                        <div class="flex items-center gap-2">
+                                            <Switch
+                                                :model-value="settings.authority[field]"
+                                                :aria-label="`Let the helper decide ${fieldLabels[field] ?? field}`"
+                                                @update:model-value="(value) => setAuthority(field, value)"
+                                            />
+                                            <span>{{ settings.authority[field] ? 'sidecar' : 'log' }}</span>
+                                            <Badge v-if="settings.authority[field] !== settings.authorityDefaults[field]" variant="outline"
+                                                >changed</Badge
+                                            >
+                                        </div>
                                     </TableCell>
                                     <TableCell class="text-xs">{{ agreementPercent(summary[field]) }}</TableCell>
                                     <TableCell class="text-xs">{{ summary[field].agree }}</TableCell>
