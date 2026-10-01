@@ -2,8 +2,10 @@
 import DeleteOverlayBackgroundController from '@/actions/App/Http/Controllers/Settings/DeleteOverlayBackgroundController';
 import UpdateOverlaySettingsController from '@/actions/App/Http/Controllers/Settings/UpdateOverlaySettingsController';
 import UploadOverlayBackgroundController from '@/actions/App/Http/Controllers/Settings/UploadOverlayBackgroundController';
-import type { LeagueData } from '@/components/leagues/LeagueTracker.vue';
-import LeagueTracker from '@/components/leagues/LeagueTracker.vue';
+import type { OverlayState, OverlayStatus } from '@/components/leagues/LeagueOverlayCard.vue';
+import LeagueOverlayCard from '@/components/leagues/LeagueOverlayCard.vue';
+import { sampleOverlayState } from '@/components/leagues/overlaySamples';
+import SegmentedControl from '@/components/SegmentedControl.vue';
 import SettingsSection from '@/components/settings/SettingsSection.vue';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -15,6 +17,10 @@ import { computed, ref } from 'vue';
 const props = defineProps<{
     enabled: boolean;
     backgroundUrl: string | null;
+    artwork: 'deck' | 'none' | 'custom';
+    size: 'full' | 'compact';
+    deckArtUrl: string | null;
+    deck: OverlayState['deck'];
 }>();
 
 const { processing, send } = useSettingsRequest();
@@ -61,23 +67,42 @@ function removeBackground() {
     });
 }
 
-const sampleLeague = computed<LeagueData>(() => ({
-    id: 0,
-    name: 'Friendly League',
-    format: 'Modern',
-    wins: 3,
-    losses: 1,
-    totalMatches: 4,
-    deckId: null,
-    deckName: 'Mono Green Tron',
-    backgroundUrl: props.backgroundUrl,
-    hasActiveMatch: true,
-    games: [
-        { won: true, ended: true },
-        { won: false, ended: true },
-        { won: null, ended: false },
-    ],
-}));
+function setArtwork(value: string) {
+    send('artwork', 'post', UpdateOverlaySettingsController.url(), { overlay_artwork: value });
+}
+
+function setSize(value: string) {
+    send('size', 'post', UpdateOverlaySettingsController.url(), { overlay_size: value });
+}
+
+const previewStatus = ref<OverlayStatus>('in_game');
+
+const previewArt = computed(() => {
+    if (props.artwork === 'none') return null;
+    if (props.artwork === 'custom') return props.backgroundUrl ?? props.deckArtUrl;
+    return props.deckArtUrl;
+});
+
+const previewState = computed(() => sampleOverlayState(previewStatus.value, { art: previewArt.value, size: props.size, deck: props.deck }));
+
+const artworkOptions = [
+    { value: 'deck', label: 'Use deck cover' },
+    { value: 'none', label: 'No artwork' },
+    { value: 'custom', label: 'Custom artwork' },
+];
+const sizeOptions = [
+    { value: 'full', label: 'Full' },
+    { value: 'compact', label: 'Compact' },
+];
+const previewOptions: Array<{ value: OverlayStatus; label: string }> = [
+    { value: 'in_game', label: 'In game' },
+    { value: 'sideboarding', label: 'Sideboarding' },
+    { value: 'waiting', label: 'Waiting' },
+    { value: 'complete', label: 'Complete' },
+    { value: 'trophied', label: 'Trophied' },
+    { value: 'dropped', label: 'Dropped' },
+    { value: 'idle', label: 'Idle' },
+];
 </script>
 
 <template>
@@ -90,16 +115,36 @@ const sampleLeague = computed<LeagueData>(() => ({
             <Switch :modelValue="enabled" @update:modelValue="setEnabled" :disabled="processing === 'leagueWindow'" />
         </div>
 
-        <div class="mx-auto w-64 overflow-hidden rounded-md border border-border">
-            <LeagueTracker :league="sampleLeague" />
+        <div class="flex flex-col items-center gap-3">
+            <div :class="size === 'compact' ? 'h-[58px] w-[240px]' : 'h-[100px] w-[300px]'">
+                <LeagueOverlayCard :state="previewState" />
+            </div>
+            <div class="flex flex-wrap justify-center">
+                <SegmentedControl v-model="previewStatus" :options="previewOptions" />
+            </div>
         </div>
 
-        <div class="flex flex-col gap-2 rounded-md border border-border bg-muted/30 p-3">
+        <div class="flex items-center justify-between gap-3">
+            <Label>Artwork</Label>
+            <SegmentedControl
+                :model-value="artwork"
+                :options="artworkOptions"
+                :disabled="processing === 'artwork'"
+                @update:model-value="setArtwork"
+            />
+        </div>
+
+        <div class="flex items-center justify-between gap-3">
+            <Label>Size</Label>
+            <SegmentedControl :model-value="size" :options="sizeOptions" :disabled="processing === 'size'" @update:model-value="setSize" />
+        </div>
+
+        <div v-if="artwork === 'custom'" class="flex flex-col gap-2 rounded-md border border-border bg-muted/30 p-3">
             <div class="flex items-center justify-between gap-3">
                 <div>
                     <Label>Custom background</Label>
                     <p class="text-sm text-muted-foreground">
-                        Upload an image (e.g. channel art, brand logo). Falls back to your deck cover when empty. Recommended: ~1200×400, max 5MB.
+                        Upload an image (e.g. channel art, brand logo). It replaces the deck art everywhere. Recommended: 900×300, max 5MB.
                     </p>
                 </div>
                 <div class="flex shrink-0 items-center gap-2">

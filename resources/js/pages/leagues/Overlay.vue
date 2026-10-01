@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import type { LeagueData } from '@/components/leagues/LeagueTracker.vue';
-import LeagueTracker from '@/components/leagues/LeagueTracker.vue';
+import type { OverlayState } from '@/components/leagues/LeagueOverlayCard.vue';
+import LeagueOverlayCard from '@/components/leagues/LeagueOverlayCard.vue';
 import OverlayLayout from '@/layouts/OverlayLayout.vue';
 import { router, usePoll } from '@inertiajs/vue3';
 import { useDebounceFn } from '@vueuse/core';
@@ -9,7 +9,7 @@ import { onMounted } from 'vue';
 defineOptions({ layout: OverlayLayout });
 
 defineProps<{
-    league: LeagueData | null;
+    state: OverlayState;
 }>();
 
 /**
@@ -18,21 +18,22 @@ defineProps<{
  * Chromium reports the window hidden, which is how a streamer's overlay sits
  * behind the game or on a captured screen.
  */
-usePoll(5000, { only: ['league'] }, { keepAlive: true });
+usePoll(5000, { only: ['state'] }, { keepAlive: true });
 
 /**
  * One pipeline tick can create a game, record its result and complete the
  * match, each firing the event. Collapse the burst into one reload.
  */
-const reloadLeague = useDebounceFn(() => router.reload({ only: ['league'] }), 150);
+const reloadState = useDebounceFn(() => router.reload({ only: ['state'] }), 150);
 
 onMounted(() => {
-    window.Native?.on('App\\Events\\LeagueOverlayChanged', reloadLeague);
+    window.Native?.on('App\\Events\\LeagueOverlayChanged', reloadState);
 });
 </script>
 
 <template>
-    <div class="h-screen" style="-webkit-app-region: drag">
-        <LeagueTracker :league="league" />
+    <!-- p-4 matches OpenOverlayWindow::PADDING: transparent room for the card glow, which stays within 16px. -->
+    <div class="h-screen p-4" style="-webkit-app-region: drag">
+        <LeagueOverlayCard :state="state" />
     </div>
 </template>

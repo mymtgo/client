@@ -551,6 +551,118 @@ class AppSettings
         $this->set('overlay_background_path', $path);
     }
 
+    /**
+     * Raw artwork mode for the league overlay. Null when never chosen;
+     * ResolveOverlayArt owns the read-time default.
+     */
+    public function overlayArtwork(): ?string
+    {
+        $value = $this->get('overlay_artwork');
+
+        return in_array($value, ['deck', 'none', 'custom'], true) ? $value : null;
+    }
+
+    public function setOverlayArtwork(string $value): void
+    {
+        $this->set('overlay_artwork', $value);
+    }
+
+    public function overlaySize(): string
+    {
+        return $this->get('overlay_size') === 'compact' ? 'compact' : 'full';
+    }
+
+    public function setOverlaySize(string $value): void
+    {
+        $this->set('overlay_size', $value);
+    }
+
+    public function overlayPublish(): bool
+    {
+        return (bool) $this->get('overlay_publish', false);
+    }
+
+    public function setOverlayPublish(bool $value): void
+    {
+        $this->set('overlay_publish', $value);
+    }
+
+    /**
+     * Streamer-chosen deck names for the league overlay, keyed by deck id.
+     *
+     * @return array<int, string>
+     */
+    public function overlayDeckLabels(): array
+    {
+        $labels = $this->get('overlay_deck_labels', []);
+
+        return is_array($labels) ? array_map('strval', $labels) : [];
+    }
+
+    /** Trimmed and capped at 40 characters; null or blank removes the label. */
+    public function setOverlayDeckLabel(int $deckId, ?string $label): void
+    {
+        $labels = $this->overlayDeckLabels();
+        $label = mb_substr(trim((string) $label), 0, 40);
+
+        if ($label === '') {
+            unset($labels[$deckId]);
+        } else {
+            $labels[$deckId] = $label;
+        }
+
+        $this->set('overlay_deck_labels', $labels);
+    }
+
+    /**
+     * The custom background as uploaded to the API, with the sha1 of the
+     * local file it was made from.
+     *
+     * @return array{url: string, hash: string}|null
+     */
+    public function overlayBackgroundRemote(): ?array
+    {
+        $value = $this->get('overlay_background_remote');
+
+        return is_array($value) && isset($value['url'], $value['hash'])
+            ? ['url' => (string) $value['url'], 'hash' => (string) $value['hash']]
+            : null;
+    }
+
+    /** @param  array{url: string, hash: string}|null  $value */
+    public function setOverlayBackgroundRemote(?array $value): void
+    {
+        $this->set('overlay_background_remote', $value);
+    }
+
+    public function overlayLastPublishedAt(): ?string
+    {
+        $value = $this->get('overlay_last_published_at');
+
+        return is_string($value) ? $value : null;
+    }
+
+    public function setOverlayLastPublishedAt(?string $value): void
+    {
+        $this->set('overlay_last_published_at', $value);
+    }
+
+    /**
+     * Why the last overlay push failed (not_claimed, rejected, unreachable,
+     * no_login_id), or null after a success.
+     */
+    public function overlayPublishError(): ?string
+    {
+        $value = $this->get('overlay_publish_error');
+
+        return is_string($value) ? $value : null;
+    }
+
+    public function setOverlayPublishError(?string $value): void
+    {
+        $this->set('overlay_publish_error', $value);
+    }
+
     public function hideArchivedDecks(): bool
     {
         return (bool) $this->get('hide_archived_decks', true);

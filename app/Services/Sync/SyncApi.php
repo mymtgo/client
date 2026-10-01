@@ -233,6 +233,44 @@ class SyncApi
     }
 
     /**
+     * The league overlay's current state, for the hosted OBS page. A player
+     * the account does not govern comes back 409 and throws like any failure.
+     *
+     * @param  array<string, mixed>  $state
+     */
+    public function publishOverlay(int $loginId, array $state): void
+    {
+        $this->send(fn (PendingRequest $request): Response => $request->put('/api/overlay', [
+            'login_id' => $loginId,
+            'state' => $state,
+        ]));
+    }
+
+    /** Blanks the hosted overlay. A 404 means nothing was published, which is the goal. */
+    public function clearOverlay(int $loginId): void
+    {
+        $this->send(
+            fn (PendingRequest $request): Response => $request->delete("/api/overlay/{$loginId}"),
+            passthroughStatuses: [404],
+        );
+    }
+
+    /** Uploads the custom overlay background and returns its public URL. */
+    public function uploadOverlayBackground(string $contents, string $filename): string
+    {
+        return (string) $this->send(
+            fn (PendingRequest $request): Response => $request
+                ->attach('image', $contents, $filename)
+                ->post('/api/overlay/background'),
+        )->json('url');
+    }
+
+    public function deleteOverlayBackground(): void
+    {
+        $this->send(fn (PendingRequest $request): Response => $request->delete('/api/overlay/background'));
+    }
+
+    /**
      * MTGO's token catalog from this install, for the API to map tokens to
      * their exact printings. Admin accounts only; anyone else gets a 403,
      * which throws like any other failure.

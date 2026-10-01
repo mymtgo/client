@@ -4,12 +4,18 @@ namespace App\Http\Controllers\Settings;
 
 use App\Actions\Leagues\CloseOverlayWindow;
 use App\Actions\Leagues\OpenOverlayWindow;
+use App\Actions\Leagues\ResolveOverlayArt;
+use App\Actions\Overlay\ClearPublishedOverlay;
 use App\Actions\Overlay\SyncDraftNotesWindowVisibility;
 use App\Actions\Overlay\SyncGameOverlayVisibility;
+use App\Events\LeagueOverlayChanged;
 use App\Facades\AppSettings;
 use App\Http\Controllers\Controller;
+use App\Jobs\PublishOverlayStateJob;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
+use Native\Desktop\Facades\Window;
 
 class UpdateOverlaySettingsController extends Controller
 {
@@ -23,6 +29,9 @@ class UpdateOverlaySettingsController extends Controller
             'overlay_show_draw_odds' => 'sometimes|boolean',
             'overlay_show_sideboard' => 'sometimes|boolean',
             'overlay_show_reveals' => 'sometimes|boolean',
+            'overlay_artwork' => ['sometimes', Rule::in(ResolveOverlayArt::MODES)],
+            'overlay_size' => ['sometimes', Rule::in(array_keys(OpenOverlayWindow::SIZES))],
+            'overlay_publish' => 'sometimes|boolean',
         ]);
 
         if (isset($validated['league_window'])) {
@@ -71,6 +80,34 @@ class UpdateOverlaySettingsController extends Controller
 
         if (isset($validated['overlay_show_reveals'])) {
             AppSettings::setOverlayShowReveals($validated['overlay_show_reveals']);
+        }
+
+        if (isset($validated['overlay_artwork'])) {
+            AppSettings::setOverlayArtwork($validated['overlay_artwork']);
+        }
+
+        if (isset($validated['overlay_publish'])) {
+            AppSettings::setOverlayPublish($validated['overlay_publish']);
+
+            if ($validated['overlay_publish']) {
+                PublishOverlayStateJob::dispatch();
+            } else {
+                ClearPublishedOverlay::run();
+            }
+        }
+
+        if (isset($validated['overlay_size'])) {
+            AppSettings::setOverlaySize($validated['overlay_size']);
+
+            if (OpenOverlayWindow::find()) {
+                [$width, $height] = OpenOverlayWindow::windowSize($validated['overlay_size']);
+                Window::resize($width, $height, OpenOverlayWindow::ID);
+            }
+        }
+
+        // The league overlay shows artwork and size; push instead of waiting for its poll.
+        if (isset($validated['overlay_artwork']) || isset($validated['overlay_size'])) {
+            LeagueOverlayChanged::dispatch();
         }
 
         return back();

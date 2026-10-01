@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Settings;
 
+use App\Actions\Overlay\SyncOverlayBackground;
+use App\Events\LeagueOverlayChanged;
 use App\Facades\AppSettings;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
@@ -20,6 +22,9 @@ class DeleteOverlayBackgroundController extends Controller
         }
 
         AppSettings::setOverlayBackgroundPath(null);
+        SyncOverlayBackground::forget();
+
+        LeagueOverlayChanged::dispatch();
 
         return back();
     }

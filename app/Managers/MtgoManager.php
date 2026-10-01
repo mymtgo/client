@@ -17,6 +17,7 @@ use App\Facades\AppSettings;
 use App\Jobs\CheckArchetypeVersion;
 use App\Jobs\DownloadArchetypes;
 use App\Jobs\PopulateMissingCardData;
+use App\Jobs\PublishOverlayStateJob;
 use App\Jobs\RunPipelineJob;
 use App\Jobs\RunSyncJob;
 use App\Jobs\ShipCardStats;
@@ -306,6 +307,13 @@ class MtgoManager
             ->name('run_sync')
             ->withoutOverlapping(120)
             ->when(fn () => ! AppSettings::isOffline() && app(SyncTokens::class)->linked());
+
+        // Hosted overlay heartbeat: republishes so the OBS page can tell a
+        // live state from a closed app (it idles 90s after the last push).
+        $schedule->job(new PublishOverlayStateJob)
+            ->everyThirtySeconds()
+            ->name('publish_overlay')
+            ->when(fn () => AppSettings::overlayPublish() && ! AppSettings::isOffline() && app(SyncTokens::class)->linked());
 
         // Periodic maintenance (unchanged)
         $schedule->call(fn () => $this->retryUnsubmittedMatches())

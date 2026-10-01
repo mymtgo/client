@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Settings;
 
+use App\Events\LeagueOverlayChanged;
 use App\Facades\AppSettings;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
@@ -30,6 +31,8 @@ class UploadOverlayBackgroundController extends Controller
         $disk->putFileAs('', $upload, $filename);
 
         AppSettings::setOverlayBackgroundPath($filename);
+
+        LeagueOverlayChanged::dispatch();
 
         return back();
     }

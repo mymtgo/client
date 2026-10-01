@@ -21,6 +21,9 @@ it('routes every mymtgo request through a macro', function () {
         // Reads the configured host only to name the site in error
         // messages; the share request itself goes through SyncApi.
         'Http/Controllers/Games/ShareReplayController.php',
+        // Reads the configured host only to show the OBS overlay URL; it
+        // makes no request (publishing goes through SyncApi).
+        'Http/Controllers/Settings/Pages/OverlaysController.php',
     ];
 
     // Four ways a call site can bypass the macros and talk to mymtgo.com

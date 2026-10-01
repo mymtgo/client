@@ -1,13 +1,21 @@
 <!DOCTYPE html>
+<?php
+    // The league overlay window is transparent so its card glow is not clipped.
+    $transparentPage = ($page['component'] ?? null) === 'leagues/Overlay';
+?>
 <html lang="<?php echo e(str_replace('_', '-', app()->getLocale())); ?>" class="dark">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
     <style>
+        <?php if($transparentPage): ?>
+        html { background-color: transparent; }
+        <?php else: ?>
         html {
             background-color: oklch(0.145 0 0);
         }
+        <?php endif; ?>
     </style>
 
     <title data-inertia><?php echo e(config('app.name', 'Laravel')); ?></title>
@@ -22,7 +30,7 @@
     <?php echo app('Illuminate\Foundation\Vite')(['resources/js/app.ts', "resources/js/pages/{$page['component']}.vue"]); ?>
     <?php $__inertiaSsrResponse = app(\Inertia\Ssr\SsrState::class)->setPage($page)->dispatch();  if ($__inertiaSsrResponse) { echo $__inertiaSsrResponse->head; } ?>
 </head>
-<body class="font-sans antialiased texture-bg">
+<body class="font-sans antialiased <?php echo e($transparentPage ? 'bg-transparent' : 'texture-bg'); ?>">
 <?php $__inertiaSsrResponse = app(\Inertia\Ssr\SsrState::class)->setPage($page)->dispatch();  if ($__inertiaSsrResponse) { echo $__inertiaSsrResponse->body; } else { ?><script data-page="app" type="application/json"><?php echo json_encode($page, JSON_HEX_TAG); ?></script><div id="app"></div><?php } ?>
 </body>
 </html>

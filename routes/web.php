@@ -125,6 +125,7 @@ use App\Http\Controllers\Settings\UpdateDebugModeController;
 use App\Http\Controllers\Settings\UpdateLocalImagesController;
 use App\Http\Controllers\Settings\UpdateLogPathController;
 use App\Http\Controllers\Settings\UpdateOfflineModeController;
+use App\Http\Controllers\Settings\UpdateOverlayDeckLabelController;
 use App\Http\Controllers\Settings\UpdateOverlaySettingsController;
 use App\Http\Controllers\Settings\UpdateSidecarEnabledController;
 use App\Http\Controllers\Settings\UpdateTrustSettingController;
@@ -339,6 +340,7 @@ Route::group([], function (Router $router) {
         $group->post('overlay', UpdateOverlaySettingsController::class)->name('settings.overlay');
         $group->post('overlay/background', UploadOverlayBackgroundController::class)->name('settings.overlay.background.upload');
         $group->delete('overlay/background', DeleteOverlayBackgroundController::class)->name('settings.overlay.background.delete');
+        $group->put('overlay/deck-label', UpdateOverlayDeckLabelController::class)->name('settings.overlay.deck-label');
         $group->patch('debug-mode', UpdateDebugModeController::class)->name('settings.debug-mode');
         $group->patch('sidecar-enabled', UpdateSidecarEnabledController::class)->name('settings.sidecar-enabled');
         $group->post('sidecar-notice/seen', MarkSidecarNoticeSeenController::class)->name('settings.sidecar-notice.seen');

@@ -1,12 +1,16 @@
 <?php
 
 use App\Enums\MatchState;
+use App\Facades\AppSettings;
 use App\Models\Game;
 use App\Models\League;
 use App\Models\MtgoMatch;
+use App\Support\MtgoFormat;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
+
+beforeEach(fn () => AppSettings::setSidecarDirectory(sys_get_temp_dir().'/no-sidecar-'.uniqid()));
 
 it('renders overlay with no active league', function () {
     $response = $this->get(route('leagues.overlay'));
@@ -14,7 +18,7 @@ it('renders overlay with no active league', function () {
     $response->assertOk();
     $response->assertInertia(fn ($page) => $page
         ->component('leagues/Overlay')
-        ->where('league', null)
+        ->where('state.status', 'idle')->where('state.event', null)
     );
 });
 
@@ -55,11 +59,11 @@ it('renders overlay with active league data', function () {
     $response->assertOk();
     $response->assertInertia(fn ($page) => $page
         ->component('leagues/Overlay')
-        ->where('league.wins', 1)
-        ->where('league.losses', 1)
-        ->where('league.totalMatches', 2)
-        ->where('league.format', 'Modern')
-        ->where('league.hasActiveMatch', false)
+        ->where('state.record.wins', 1)
+        ->where('state.record.losses', 1)
+        ->where('state.progress.played', 2)
+        ->where('state.event.format', MtgoFormat::display('Modern'))
+        ->where('state.status', 'waiting')
     );
 });
 
@@ -87,8 +91,8 @@ it('detects an active match in the league', function () {
     $response->assertOk();
     $response->assertInertia(fn ($page) => $page
         ->component('leagues/Overlay')
-        ->where('league.hasActiveMatch', true)
-        ->where('league.totalMatches', 1)
+        ->where('state.status', 'in_game')
+        ->where('state.progress.played', 0)
     );
 });
 
@@ -132,12 +136,10 @@ it('includes game results for the active match', function () {
     $response->assertOk();
     $response->assertInertia(fn ($page) => $page
         ->component('leagues/Overlay')
-        ->where('league.hasActiveMatch', true)
-        ->has('league.games', 2)
-        ->where('league.games.0.won', true)
-        ->where('league.games.0.ended', true)
-        ->where('league.games.1.won', null)
-        ->where('league.games.1.ended', false)
+        ->where('state.status', 'in_game')
+        ->has('state.match.games', 2)
+        ->where('state.match.games.0.won', true)
+        ->where('state.match.games.1.won', null)
     );
 });
 
@@ -170,10 +172,10 @@ it('falls back to most recent completed league when no active league exists', fu
     $response->assertOk();
     $response->assertInertia(fn ($page) => $page
         ->component('leagues/Overlay')
-        ->where('league.id', $league->id)
-        ->where('league.wins', 5)
-        ->where('league.losses', 0)
-        ->where('league.hasActiveMatch', false)
+        ->where('state.event.name', 'Completed League')
+        ->where('state.record.wins', 5)
+        ->where('state.record.losses', 0)
+        ->where('state.status', 'trophied')
     );
 });
 
@@ -204,7 +206,7 @@ it('hides completed league when completed_at is older than 5 minutes', function 
     $response->assertOk();
     $response->assertInertia(fn ($page) => $page
         ->component('leagues/Overlay')
-        ->where('league', null)
+        ->where('state.status', 'idle')->where('state.event', null)
     );
 });
 
@@ -235,7 +237,8 @@ it('shows completed league when completed_at is within 5 minutes', function () {
     $response->assertOk();
     $response->assertInertia(fn ($page) => $page
         ->component('leagues/Overlay')
-        ->where('league.id', $league->id)
+        ->where('state.event.name', 'Fresh League')
+        ->where('state.status', 'complete')
     );
 });
 
@@ -266,7 +269,8 @@ it('shows dropped league when dropped_at is within 5 minutes', function () {
     $response->assertOk();
     $response->assertInertia(fn ($page) => $page
         ->component('leagues/Overlay')
-        ->where('league.id', $league->id)
+        ->where('state.event.name', 'Fresh Dropped League')
+        ->where('state.status', 'dropped')
     );
 });
 
@@ -297,7 +301,7 @@ it('hides dropped league when dropped_at is older than 5 minutes', function () {
     $response->assertOk();
     $response->assertInertia(fn ($page) => $page
         ->component('leagues/Overlay')
-        ->where('league', null)
+        ->where('state.status', 'idle')->where('state.event', null)
     );
 });
 
@@ -346,6 +350,20 @@ it('prefers active league over completed when both exist', function () {
     $response->assertOk();
     $response->assertInertia(fn ($page) => $page
         ->component('leagues/Overlay')
-        ->where('league.id', $active->id)
+        ->where('state.event.name', 'New League')
+        ->where('state.status', 'waiting')
     );
+});
+
+it('renders the overlay on a transparent page so the window can show the glow', function () {
+    $this->get(route('leagues.overlay'))
+        ->assertOk()
+        ->assertSee('<body class="font-sans antialiased bg-transparent">', false)
+        ->assertSee('html { background-color: transparent; }', false);
+});
+
+it('keeps the normal page background everywhere else', function () {
+    $this->get(route('settings.overlays'))
+        ->assertOk()
+        ->assertSee('<body class="font-sans antialiased texture-bg">', false);
 });

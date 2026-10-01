@@ -2,7 +2,9 @@
 
 namespace App\Actions\Sidecar;
 
+use App\Actions\Leagues\DecideMatchPhase;
 use App\Actions\Logs\SealLogInstance;
+use App\Events\LeagueOverlayChanged;
 use App\Models\GameEvent;
 use App\Models\LogCursor;
 use App\Models\LogInstance;
@@ -22,12 +24,16 @@ class IngestSidecarEvents
 
     private static int $tick = 0;
 
+    /** Set when a run parsed a row that can move the league overlay; cleared when pushed. */
+    private static bool $overlayLifecycleSeen = false;
+
     private static ?string $lastCurrentFile = null;
 
     public static function resetTick(): void
     {
         self::$tick = 0;
         self::$lastCurrentFile = null;
+        self::$overlayLifecycleSeen = false;
     }
 
     /**
@@ -79,6 +85,13 @@ class IngestSidecarEvents
                     'message' => $e->getMessage(),
                 ]);
             }
+        }
+
+        // One push per run, not per row: the overlay reloads its whole state.
+        // Consumed here, so a run that throws part way still pushes next run.
+        if (self::$overlayLifecycleSeen) {
+            self::$overlayLifecycleSeen = false;
+            LeagueOverlayChanged::dispatch();
         }
 
         return $inserted;
@@ -178,6 +191,10 @@ class IngestSidecarEvents
 
                 if ($parsed !== null) {
                     $rows[] = $parsed->toRow($instance->id);
+
+                    if (in_array($parsed->type, DecideMatchPhase::LIFECYCLE_TYPES, true)) {
+                        self::$overlayLifecycleSeen = true;
+                    }
                 }
 
                 $safeOffset = $end;

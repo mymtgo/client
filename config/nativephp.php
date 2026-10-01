@@ -217,6 +217,12 @@ return [
             'timeout' => 3600,
             'sleep' => 3,
         ],
+        'overlay' => [
+            'queues' => ['overlay'],
+            'memory_limit' => 512,
+            'timeout' => 30,
+            'sleep' => 1,
+        ],
     ],
 
     /**
