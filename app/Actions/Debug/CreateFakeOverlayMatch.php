@@ -32,14 +32,16 @@ class CreateFakeOverlayMatch
             'format' => 'C'.strtoupper((string) $archetype->format),
             'match_type' => 'League',
             'state' => MatchState::InProgress,
-            'started_at' => now(),
+            'started_at' => now()->subMinutes(10),
             'deck_version_id' => $deck->latestVersion?->id,
         ]);
 
+        // Backdated so a sideboarding transition planted "now" by
+        // AdvanceFakeOverlayPhase lands after the game began, as in a real match.
         $game = Game::create([
             'match_id' => $match->id,
             'mtgo_id' => 'fake-g1-'.$match->id,
-            'started_at' => now(),
+            'started_at' => now()->subMinutes(9),
         ]);
 
         $local = Player::firstOrCreate(['username' => Mtgo::getUsername() ?? 'You']);

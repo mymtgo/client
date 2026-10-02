@@ -88,8 +88,8 @@ class AdvanceFakeOverlayPhase
             ]);
         }
 
-        // A snapshot is what tells DetectSideboarding the next game is
-        // actually underway.
+        // DetectSideboarding anchors on the new game's started_at, so the row
+        // alone flips the overlay back; the snapshot feeds the game tabs.
         $game->timeline()->create([
             'timestamp' => now(),
             'content' => ['Players' => []],
