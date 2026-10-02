@@ -7,6 +7,7 @@ use App\Enums\LogEventType;
 use App\Enums\MatchOutcome;
 use App\Enums\MatchState;
 use App\Facades\AppSettings;
+use App\Models\Archetype;
 use App\Models\Card;
 use App\Models\Deck;
 use App\Models\DeckVersion;
@@ -249,7 +250,7 @@ it('sends a null label when none is stored', function () {
 
 it('sends the deck archetype for the card title', function () {
     $league = leagueWithResults(['win']);
-    $archetype = \App\Models\Archetype::factory()->create(['name' => 'Mono Green Tron']);
+    $archetype = Archetype::factory()->create(['name' => 'Mono Green Tron']);
     $league->deckVersion->deck->update(['archetype_id' => $archetype->id]);
 
     expect(BuildOverlayState::run()['deck']['archetype'])->toBe('Mono Green Tron');

@@ -10,17 +10,27 @@ use App\Facades\AppSettings;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Managers\MtgoManager;
 use App\Models\Account;
+use App\Models\Archetype;
 use App\Models\Card;
+use App\Models\CardGameStat;
 use App\Models\Deck;
 use App\Models\DeckVersion;
 use App\Models\Game;
+use App\Models\GameTimeline;
+use App\Models\League;
 use App\Models\LogCursor;
 use App\Models\LogEvent;
+use App\Models\LogInstance;
+use App\Models\MatchArchetype;
 use App\Models\MtgoMatch;
 use App\Models\Player;
 use Database\Factories\DraftPickFactory;
+use Illuminate\Http\Client\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\ParallelTesting;
+use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
 use Native\Desktop\Facades\Settings;
 use Native\Desktop\Facades\Window;
@@ -41,6 +51,13 @@ pest()->extend(TestCase::class)
  // ->use(Illuminate\Foundation\Testing\RefreshDatabase::class)
     ->beforeEach(function () {
         $this->withoutVite();
+
+        // Parallel workers share tests/storage, so each gets its own sync
+        // activity feed: otherwise one worker's "Sync complete." line ends
+        // another worker's run mid-test.
+        if ($token = ParallelTesting::token()) {
+            config(['logging.channels.sync.path' => storage_path("logs/sync_{$token}.log")]);
+        }
 
         // Reset request-scoped Account cache between tests.
         Account::flushCurrent();
@@ -338,4 +355,231 @@ function createManualMatchFixture(bool $manual = true): array
     });
 
     return compact('match', 'version', 'games', 'local', 'opponent', 'cards');
+}
+
+/*
+|--------------------------------------------------------------------------
+| Shared pipeline and sync helpers
+|--------------------------------------------------------------------------
+|
+| Used by more than one test file, so they live here: under --parallel a
+| file can run in a worker that never loaded the file a helper was in.
+|
+*/
+
+function createPipelineLogEvent(array $attributes = []): LogEvent
+{
+    return LogEvent::create(array_merge([
+        'log_instance_id' => LogInstance::factory()->create()->id,
+        'file_path' => '/tmp/test.log',
+        'byte_offset_start' => rand(0, 999999),
+        'byte_offset_end' => rand(1000000, 9999999),
+        'timestamp' => now(),
+        'level' => 'Info',
+        'category' => 'Test',
+        'context' => 'TestContext',
+        'raw_text' => 'test log line',
+        'ingested_at' => now(),
+        'logged_at' => now(),
+        'processed_at' => null,
+    ], $attributes));
+}
+
+function mockMtgoManager(): void
+{
+    $tempDir = sys_get_temp_dir().'/mtgo_test_'.uniqid();
+    @mkdir($tempDir, 0755, true);
+
+    $mock = Mockery::mock(MtgoManager::class)->makePartial();
+    $mock->shouldReceive('pathsAreValid')->andReturn(true);
+    $mock->shouldReceive('ingestLogs')->andReturnNull();
+    $mock->shouldReceive('getLogDataPath')->andReturn($tempDir);
+
+    app()->instance('mtgo', $mock);
+}
+
+/**
+ * A full 2-game match graph: a deck + version, a league link, two games,
+ * one game_player row per game per side, two timelines, four card stats,
+ * and two match_archetypes rows (one per side, distinct uuids). Creating
+ * children bumps the parent's updated_at through the $touches cascade,
+ * which is expected and not worked around here.
+ */
+function syncTestMatch(array $overrides = []): MtgoMatch
+{
+    // Matches only sync when their deck is enabled for cloud sync, so the
+    // shared fixture is enabled by default; a test that wants the gated
+    // case turns the flag off explicitly.
+    $deck = Deck::factory()->create(['cloud_sync_enabled' => true]);
+    $version = DeckVersion::factory()->create(['deck_id' => $deck->id]);
+    $league = League::factory()->create();
+
+    $match = MtgoMatch::factory()->create(array_merge([
+        'deck_version_id' => $version->id,
+        'league_id' => $league->id,
+        'result' => '2-1',
+    ], $overrides));
+
+    $local = Player::firstOrCreate(['username' => 'local_player'], ['is_player' => true]);
+    $opponent = Player::firstOrCreate(['username' => 'opp_'.$match->token]);
+
+    foreach ([1, 2] as $number) {
+        $game = Game::factory()->create([
+            'match_id' => $match->id,
+            'mtgo_id' => 'game-'.$match->token.'-'.$number,
+            'won' => $number === 1,
+            'turn_count' => 7 + $number,
+        ]);
+
+        $game->players()->attach($local->id, [
+            'is_local' => true,
+            'on_play' => $number === 1,
+            'starting_hand_size' => 7,
+            'mulligan_count' => 0,
+            'dice_roll' => 5,
+            'deck_json' => null,
+            'instance_id' => fake()->randomNumber(6),
+        ]);
+        $game->players()->attach($opponent->id, [
+            'is_local' => false,
+            'on_play' => $number !== 1,
+            'starting_hand_size' => 7,
+            'mulligan_count' => 1,
+            'dice_roll' => 2,
+            'deck_json' => null,
+            'instance_id' => fake()->randomNumber(6),
+        ]);
+
+        GameTimeline::create(['game_id' => $game->id, 'timestamp' => now(), 'content' => ['turn' => $number]]);
+
+        CardGameStat::create([
+            'oracle_id' => 'oracle-'.$number.'-mine',
+            'game_id' => $game->id,
+            'deck_version_id' => $version->id,
+            'quantity' => 4,
+            'won' => true,
+            'opponent' => false,
+        ]);
+        CardGameStat::create([
+            'oracle_id' => 'oracle-'.$number.'-theirs',
+            'game_id' => $game->id,
+            'deck_version_id' => $version->id,
+            'quantity' => 2,
+            'won' => false,
+            'opponent' => true,
+        ]);
+    }
+
+    $playerArchetype = Archetype::factory()->create();
+    $opponentArchetype = Archetype::factory()->create();
+
+    MatchArchetype::create([
+        'mtgo_match_id' => $match->id,
+        'archetype_id' => $playerArchetype->id,
+        'player_id' => $local->id,
+        'confidence' => 1.0,
+    ]);
+    MatchArchetype::create([
+        'mtgo_match_id' => $match->id,
+        'archetype_id' => $opponentArchetype->id,
+        'player_id' => $opponent->id,
+        'confidence' => 0.5,
+    ]);
+
+    return $match->fresh();
+}
+
+/**
+ * Two leagues sharing a token but with different started_at values, the
+ * case (token, started_at) uniqueness exists to cover.
+ *
+ * @return array{0: League, 1: League}
+ */
+function syncTestLeaguePair(): array
+{
+    $token = (string) Str::uuid();
+
+    $a = League::factory()->create(['token' => $token, 'started_at' => now()->subDays(2)]);
+    $b = League::factory()->create(['token' => $token, 'started_at' => now()]);
+
+    return [$a->fresh(), $b->fresh()];
+}
+
+function syncTestDeck(): Deck
+{
+    $deck = Deck::factory()->create(['original_name' => 'Original Name']);
+    DeckVersion::factory()->create(['deck_id' => $deck->id, 'modified_at' => now()]);
+
+    return $deck->fresh();
+}
+
+/**
+ * Fakes the three sync endpoints. $manifestByType maps a type to a list of
+ * response bodies, consumed in call order and holding on the last one once
+ * exhausted (so a single-entry list answers every manifest call for that
+ * type, partial chunks included); a type absent from the map gets the
+ * empty default on every call. $uploadResponse/$fetchResponse answer every
+ * call to their endpoint.
+ *
+ * @param  array<string, list<array<string, mixed>>>  $manifestByType
+ */
+function fakeSync(array $manifestByType = [], mixed $uploadResponse = null, mixed $fetchResponse = null): void
+{
+    // Http::fake() merges new stubs onto the existing stub list rather than
+    // replacing it (first-registered match wins), so a second call within
+    // the same test would otherwise leave the first call's responses (and
+    // its now-stale request-count expectations) shadowing this one. Reset
+    // the same way the suite-global beforeEach does.
+    $reflection = new ReflectionProperty(Http::getFacadeRoot(), 'stubCallbacks');
+    $reflection->setAccessible(true);
+    $reflection->setValue(Http::getFacadeRoot(), collect());
+
+    // slots is null rather than an empty ledger on purpose: an empty ledger
+    // is a real instruction to turn every deck off, which would gate every
+    // match and league out of the tests that do not care about slots. A test
+    // that does care passes its own ledger through $manifestByType.
+    $default = ['upload' => [], 'download' => [], 'tombstones' => [], 'slots' => null];
+    $cursors = [];
+
+    Http::fake([
+        '*/api/sync/manifest' => function ($request) use ($manifestByType, $default, &$cursors) {
+            $type = $request['type'];
+            $responses = $manifestByType[$type] ?? [$default];
+            $index = $cursors[$type] ?? 0;
+            $cursors[$type] = $index + 1;
+
+            return Http::response($responses[$index] ?? $responses[array_key_last($responses)]);
+        },
+        '*/api/sync/blobs/fetch' => $fetchResponse ?? Http::response(['blobs' => []]),
+        '*/api/sync/blobs' => $uploadResponse ?? Http::response(['stored' => [], 'rejected' => []]),
+    ]);
+}
+
+/**
+ * Every manifest request sent, in send order, for one type.
+ *
+ * @return Collection<int, Request>
+ */
+function manifestRequestsFor(string $type)
+{
+    return collect(Http::recorded(fn ($request) => $request->url() === 'https://mymtgo.com/api/sync/manifest' && $request['type'] === $type))
+        ->map(fn (array $pair) => $pair[0])
+        ->values();
+}
+
+/**
+ * Deletes a match's whole local graph so a later pull genuinely recreates
+ * it rather than refreshing an already-present row. Mirrors
+ * BundleRoundTripTest's syncRoundTrip cleanup.
+ */
+function wipeMatchLocally(MtgoMatch $match): void
+{
+    $match->games()->each(function ($game) {
+        DB::table('game_player')->where('game_id', $game->id)->delete();
+        $game->timeline()->delete();
+        CardGameStat::where('game_id', $game->id)->delete();
+    });
+    $match->archetypes()->delete();
+    $match->games()->delete();
+    $match->delete();
 }

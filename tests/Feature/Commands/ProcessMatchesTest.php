@@ -2,44 +2,11 @@
 
 use App\Enums\MatchOutcome;
 use App\Enums\MatchState;
-use App\Managers\MtgoManager;
 use App\Models\LogEvent;
-use App\Models\LogInstance;
 use App\Models\MtgoMatch;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
-
-function createPipelineLogEvent(array $attributes = []): LogEvent
-{
-    return LogEvent::create(array_merge([
-        'log_instance_id' => LogInstance::factory()->create()->id,
-        'file_path' => '/tmp/test.log',
-        'byte_offset_start' => rand(0, 999999),
-        'byte_offset_end' => rand(1000000, 9999999),
-        'timestamp' => now(),
-        'level' => 'Info',
-        'category' => 'Test',
-        'context' => 'TestContext',
-        'raw_text' => 'test log line',
-        'ingested_at' => now(),
-        'logged_at' => now(),
-        'processed_at' => null,
-    ], $attributes));
-}
-
-function mockMtgoManager(): void
-{
-    $tempDir = sys_get_temp_dir().'/mtgo_test_'.uniqid();
-    @mkdir($tempDir, 0755, true);
-
-    $mock = Mockery::mock(MtgoManager::class)->makePartial();
-    $mock->shouldReceive('pathsAreValid')->andReturn(true);
-    $mock->shouldReceive('ingestLogs')->andReturnNull();
-    $mock->shouldReceive('getLogDataPath')->andReturn($tempDir);
-
-    app()->instance('mtgo', $mock);
-}
 
 it('runs without error when there is no work', function () {
     mockMtgoManager();

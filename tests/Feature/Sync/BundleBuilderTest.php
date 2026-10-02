@@ -3,7 +3,6 @@
 use App\Facades\AppSettings;
 use App\Models\Archetype;
 use App\Models\Card;
-use App\Models\CardGameStat;
 use App\Models\Deck;
 use App\Models\DeckArchetypeNote;
 use App\Models\DeckVersion;
@@ -14,8 +13,6 @@ use App\Models\GameTimeline;
 use App\Models\League;
 use App\Models\LimitedDeckSnapshot;
 use App\Models\MatchArchetype;
-use App\Models\MtgoMatch;
-use App\Models\Player;
 use App\Models\SideboardGuide;
 use App\Models\SideboardGuideCard;
 use App\Services\Sync\Bundles\DeckBundleBuilder;
@@ -24,124 +21,8 @@ use App\Services\Sync\Bundles\MatchBundleBuilder;
 use App\Services\Sync\DirtyRows;
 use App\Support\CanonicalJson;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Str;
 
 uses(RefreshDatabase::class);
-
-/**
- * A full 2-game match graph: a deck + version, a league link, two games,
- * one game_player row per game per side, two timelines, four card stats,
- * and two match_archetypes rows (one per side, distinct uuids). Creating
- * children bumps the parent's updated_at through the $touches cascade,
- * which is expected and not worked around here.
- */
-function syncTestMatch(array $overrides = []): MtgoMatch
-{
-    // Matches only sync when their deck is enabled for cloud sync, so the
-    // shared fixture is enabled by default; a test that wants the gated
-    // case turns the flag off explicitly.
-    $deck = Deck::factory()->create(['cloud_sync_enabled' => true]);
-    $version = DeckVersion::factory()->create(['deck_id' => $deck->id]);
-    $league = League::factory()->create();
-
-    $match = MtgoMatch::factory()->create(array_merge([
-        'deck_version_id' => $version->id,
-        'league_id' => $league->id,
-        'result' => '2-1',
-    ], $overrides));
-
-    $local = Player::firstOrCreate(['username' => 'local_player'], ['is_player' => true]);
-    $opponent = Player::firstOrCreate(['username' => 'opp_'.$match->token]);
-
-    foreach ([1, 2] as $number) {
-        $game = Game::factory()->create([
-            'match_id' => $match->id,
-            'mtgo_id' => 'game-'.$match->token.'-'.$number,
-            'won' => $number === 1,
-            'turn_count' => 7 + $number,
-        ]);
-
-        $game->players()->attach($local->id, [
-            'is_local' => true,
-            'on_play' => $number === 1,
-            'starting_hand_size' => 7,
-            'mulligan_count' => 0,
-            'dice_roll' => 5,
-            'deck_json' => null,
-            'instance_id' => fake()->randomNumber(6),
-        ]);
-        $game->players()->attach($opponent->id, [
-            'is_local' => false,
-            'on_play' => $number !== 1,
-            'starting_hand_size' => 7,
-            'mulligan_count' => 1,
-            'dice_roll' => 2,
-            'deck_json' => null,
-            'instance_id' => fake()->randomNumber(6),
-        ]);
-
-        GameTimeline::create(['game_id' => $game->id, 'timestamp' => now(), 'content' => ['turn' => $number]]);
-
-        CardGameStat::create([
-            'oracle_id' => 'oracle-'.$number.'-mine',
-            'game_id' => $game->id,
-            'deck_version_id' => $version->id,
-            'quantity' => 4,
-            'won' => true,
-            'opponent' => false,
-        ]);
-        CardGameStat::create([
-            'oracle_id' => 'oracle-'.$number.'-theirs',
-            'game_id' => $game->id,
-            'deck_version_id' => $version->id,
-            'quantity' => 2,
-            'won' => false,
-            'opponent' => true,
-        ]);
-    }
-
-    $playerArchetype = Archetype::factory()->create();
-    $opponentArchetype = Archetype::factory()->create();
-
-    MatchArchetype::create([
-        'mtgo_match_id' => $match->id,
-        'archetype_id' => $playerArchetype->id,
-        'player_id' => $local->id,
-        'confidence' => 1.0,
-    ]);
-    MatchArchetype::create([
-        'mtgo_match_id' => $match->id,
-        'archetype_id' => $opponentArchetype->id,
-        'player_id' => $opponent->id,
-        'confidence' => 0.5,
-    ]);
-
-    return $match->fresh();
-}
-
-/**
- * Two leagues sharing a token but with different started_at values, the
- * case (token, started_at) uniqueness exists to cover.
- *
- * @return array{0: League, 1: League}
- */
-function syncTestLeaguePair(): array
-{
-    $token = (string) Str::uuid();
-
-    $a = League::factory()->create(['token' => $token, 'started_at' => now()->subDays(2)]);
-    $b = League::factory()->create(['token' => $token, 'started_at' => now()]);
-
-    return [$a->fresh(), $b->fresh()];
-}
-
-function syncTestDeck(): Deck
-{
-    $deck = Deck::factory()->create(['original_name' => 'Original Name']);
-    DeckVersion::factory()->create(['deck_id' => $deck->id, 'modified_at' => now()]);
-
-    return $deck->fresh();
-}
 
 it('builds a match bundle carrying games, players, timelines, card stats and archetype sides', function () {
     $match = syncTestMatch(); // helper below builds a full 2-game match with players, timelines, stats, both archetype sides
