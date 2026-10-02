@@ -27,13 +27,10 @@ class EncodeDeckScreenshotData
     public static function run(DeckVersion $deckVersion): array
     {
         $cardRefs = $deckVersion->cards;
-        $cardModels = GetCards::run($cardRefs)->keyBy('oracle_id');
+        $cardModels = GetCards::run($cardRefs);
 
-        // Build base64 image cache (unique cards only)
+        // Base64 images, encoded once per printing actually in the deck.
         $imageCache = [];
-        foreach ($cardModels as $card) {
-            $imageCache[$card->oracle_id] = self::toBase64($card);
-        }
 
         $nonLandCards = [];
         $landCards = [];
@@ -42,10 +39,12 @@ class EncodeDeckScreenshotData
         $typeCounts = [];
 
         foreach ($cardRefs as $ref) {
-            $card = $cardModels->get($ref['oracle_id']);
+            $card = GetCards::forRef($cardModels, $ref);
             if (! $card) {
                 continue;
             }
+
+            $imageCache[$card->mtgo_id] ??= self::toBase64($card);
 
             $normalizedType = self::normalizeType($card->type ?? '');
             $isSideboard = ($ref['sideboard'] ?? 'false') === 'true';
@@ -55,7 +54,7 @@ class EncodeDeckScreenshotData
                 'name' => $card->name,
                 'type' => $normalizedType,
                 'quantity' => $quantity,
-                'imageBase64' => $imageCache[$card->oracle_id] ?? null,
+                'imageBase64' => $imageCache[$card->mtgo_id],
             ];
 
             if ($isSideboard) {

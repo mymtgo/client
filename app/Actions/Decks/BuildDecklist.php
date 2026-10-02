@@ -19,7 +19,7 @@ class BuildDecklist
         $cards = GetCards::run($deckVersion->cards);
 
         $deckCards = collect($deckVersion->cards)->map(function ($card) use ($cards) {
-            $cardModel = $cards->first(fn ($c) => $c->oracle_id == $card['oracle_id']);
+            $cardModel = GetCards::forRef($cards, $card);
 
             if (! $cardModel) {
                 return null;
