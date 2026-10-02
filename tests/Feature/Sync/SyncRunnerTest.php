@@ -5,7 +5,6 @@ use App\Events\AppNotification;
 use App\Facades\AppSettings;
 use App\Models\Account;
 use App\Models\Card;
-use App\Models\CardGameStat;
 use App\Models\Deck;
 use App\Models\MtgoMatch;
 use App\Models\SyncRejection;
@@ -19,7 +18,6 @@ use App\Support\CanonicalJson;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Http;
@@ -39,77 +37,6 @@ beforeEach(function () {
 
     app(SyncTokens::class)->store('access-token', 'refresh-token', 2592000);
 });
-
-/**
- * Fakes the three sync endpoints. $manifestByType maps a type to a list of
- * response bodies, consumed in call order and holding on the last one once
- * exhausted (so a single-entry list answers every manifest call for that
- * type, partial chunks included); a type absent from the map gets the
- * empty default on every call. $uploadResponse/$fetchResponse answer every
- * call to their endpoint.
- *
- * @param  array<string, list<array<string, mixed>>>  $manifestByType
- */
-function fakeSync(array $manifestByType = [], mixed $uploadResponse = null, mixed $fetchResponse = null): void
-{
-    // Http::fake() merges new stubs onto the existing stub list rather than
-    // replacing it (first-registered match wins), so a second call within
-    // the same test would otherwise leave the first call's responses (and
-    // its now-stale request-count expectations) shadowing this one. Reset
-    // the same way the suite-global beforeEach does.
-    $reflection = new ReflectionProperty(Http::getFacadeRoot(), 'stubCallbacks');
-    $reflection->setAccessible(true);
-    $reflection->setValue(Http::getFacadeRoot(), collect());
-
-    // slots is null rather than an empty ledger on purpose: an empty ledger
-    // is a real instruction to turn every deck off, which would gate every
-    // match and league out of the tests that do not care about slots. A test
-    // that does care passes its own ledger through $manifestByType.
-    $default = ['upload' => [], 'download' => [], 'tombstones' => [], 'slots' => null];
-    $cursors = [];
-
-    Http::fake([
-        '*/api/sync/manifest' => function ($request) use ($manifestByType, $default, &$cursors) {
-            $type = $request['type'];
-            $responses = $manifestByType[$type] ?? [$default];
-            $index = $cursors[$type] ?? 0;
-            $cursors[$type] = $index + 1;
-
-            return Http::response($responses[$index] ?? $responses[array_key_last($responses)]);
-        },
-        '*/api/sync/blobs/fetch' => $fetchResponse ?? Http::response(['blobs' => []]),
-        '*/api/sync/blobs' => $uploadResponse ?? Http::response(['stored' => [], 'rejected' => []]),
-    ]);
-}
-
-/**
- * Every manifest request sent, in send order, for one type.
- *
- * @return Collection<int, Request>
- */
-function manifestRequestsFor(string $type)
-{
-    return collect(Http::recorded(fn ($request) => $request->url() === 'https://mymtgo.com/api/sync/manifest' && $request['type'] === $type))
-        ->map(fn (array $pair) => $pair[0])
-        ->values();
-}
-
-/**
- * Deletes a match's whole local graph so a later pull genuinely recreates
- * it rather than refreshing an already-present row. Mirrors
- * BundleRoundTripTest's syncRoundTrip cleanup.
- */
-function wipeMatchLocally(MtgoMatch $match): void
-{
-    $match->games()->each(function ($game) {
-        DB::table('game_player')->where('game_id', $game->id)->delete();
-        $game->timeline()->delete();
-        CardGameStat::where('game_id', $game->id)->delete();
-    });
-    $match->archetypes()->delete();
-    $match->games()->delete();
-    $match->delete();
-}
 
 it('pushes a dirty match, carrying the right hash and sidecar, and sets synced_hash once stored', function () {
     $match = syncTestMatch();
