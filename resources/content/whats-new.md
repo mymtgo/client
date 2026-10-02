@@ -82,4 +82,5 @@ Next to **All time**, **This year**, **30 days** and the other quick picks, ther
 - The "per page" picker on the Decks page no longer cuts off its label.
 - Limited match tables now sit in a card like the other tables.
 - The result and type filters on a deck's Matches tab no longer cut off "All Results".
+- The **Decklist** page and deck screenshots now show the exact printings in your deck, not whichever version of each card the app found first.
 - The **Opponents** page has been removed from the menu. Your record against an opponent still shows on the game overlay when you're paired with someone you've played before.
