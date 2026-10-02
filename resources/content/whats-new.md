@@ -73,6 +73,10 @@ A deck's **Game Stats** page has three new columns:
 
 Every row splits these by game number and by play or draw, so you can spot where you lose time. The clock is only recorded while the MTGO helper is running, so clock stats build up from the games you play with it on.
 
+## Pick your own date range
+
+Next to **All time**, **This year**, **30 days** and the other quick picks, there's now a **Custom** button. Choose a start and end date and every stat on the page covers just that stretch. It's handy for tracking a deck from the day you changed the list. Click the **×** on the range, or any quick pick, to go back.
+
 ## Misc UI tweaks
 
 - The "per page" picker on the Decks page no longer cuts off its label.
