@@ -1,12 +1,12 @@
 <script setup lang="ts">
+import GameStatsController from '@/actions/App/Http/Controllers/Decks/GameStatsController';
 import AppLayout from '@/AppLayout.vue';
-import DeckViewLayout from '@/layouts/DeckViewLayout.vue';
-import GameStatsTable from '@/pages/decks/partials/GameStatsTable.vue';
 import TimeframeFilter from '@/components/TimeframeFilter.vue';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import GameStatsController from '@/actions/App/Http/Controllers/Decks/GameStatsController';
-import { router } from '@inertiajs/vue3';
+import DeckViewLayout from '@/layouts/DeckViewLayout.vue';
+import GameStatsTable from '@/pages/decks/partials/GameStatsTable.vue';
 import type { VersionStats } from '@/types/decks';
+import { router } from '@inertiajs/vue3';
 
 defineOptions({ layout: [AppLayout, DeckViewLayout] });
 
@@ -19,6 +19,10 @@ type StatRow = {
     mulligans: number | null;
     opponent_mulligans: number | null;
     turns: number | null;
+    duration: number | null;
+    clock_left: number | null;
+    opponent_clock_left: number | null;
+    clock_games: number;
 };
 
 type OpponentOption = {
@@ -59,6 +63,11 @@ function setOpponent(value: string) {
 }
 
 const hasGames = props.stats.rows.some((r) => r.wins + r.losses > 0);
+
+/** Clock data comes from the MTGO helper only, so say how much of the record it covers. */
+const gameRows = props.stats.rows.filter((r) => r.group !== 'all_games' && r.split === 'overall');
+const clockGames = gameRows.reduce((sum, r) => sum + r.clock_games, 0);
+const totalGames = gameRows.reduce((sum, r) => sum + r.wins + r.losses, 0);
 </script>
 
 <template>
@@ -83,6 +92,14 @@ const hasGames = props.stats.rows.some((r) => r.wins + r.losses > 0);
             No games yet — play some matches with this deck to see stats here.
         </div>
 
-        <GameStatsTable v-else :rows="stats.rows" />
+        <template v-else>
+            <GameStatsTable :rows="stats.rows" />
+            <p class="text-xs text-muted-foreground">
+                Clock left is the average time remaining at the end of each game, and at the end of the match for All Games.
+                <template v-if="clockGames < totalGames">
+                    It covers {{ clockGames }} of {{ totalGames }} games: the clock is only recorded while the MTGO helper is running.
+                </template>
+            </p>
+        </template>
     </div>
 </template>

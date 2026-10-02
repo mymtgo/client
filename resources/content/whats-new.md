@@ -63,8 +63,19 @@ As soon as they reveal enough cards to show they're on something else, the overl
 
 Your history with them now reads like **Met 3× · won 2**, and it only counts matches in the format you're playing.
 
+## Clock and game length on Game Stats
+
+A deck's **Game Stats** page has three new columns:
+
+- **Time/G** is how long your games take on average.
+- **Clock left** is how much of your MTGO clock you had left at the end of each game. On the **All Games** rows, it's what you had left when the match ended.
+- **Opp clock left** is the same for your opponent, so you can see whether you're the one running low.
+
+Every row splits these by game number and by play or draw, so you can spot where you lose time. The clock is only recorded while the MTGO helper is running, so clock stats build up from the games you play with it on.
+
 ## Misc UI tweaks
 
 - The "per page" picker on the Decks page no longer cuts off its label.
 - Limited match tables now sit in a card like the other tables.
+- The result and type filters on a deck's Matches tab no longer cut off "All Results".
 - The **Opponents** page has been removed from the menu. Your record against an opponent still shows on the game overlay when you're paired with someone you've played before.

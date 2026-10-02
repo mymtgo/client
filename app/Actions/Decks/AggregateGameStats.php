@@ -4,6 +4,7 @@ namespace App\Actions\Decks;
 
 use App\Actions\Util\TimeframeRange;
 use App\Models\Deck;
+use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -15,6 +16,14 @@ class AggregateGameStats
      *   split: string,
      *   wins: int,
      *   losses: int,
+     *   win_rate: float|null,
+     *   mulligans: float|null,
+     *   opponent_mulligans: float|null,
+     *   turns: float|null,
+     *   duration: int|null,
+     *   clock_left: int|null,
+     *   opponent_clock_left: int|null,
+     *   clock_games: int,
      * }>
      */
     public static function run(
@@ -71,15 +80,20 @@ class AggregateGameStats
                 'g.won',
                 'g.turn_count',
                 'g.started_at',
+                'g.ended_at',
                 'gp_local.on_play as on_play',
                 'gp_local.mulligan_count as local_mulligans',
                 'gp_opp.mulligan_count as opponent_mulligans',
+                'gp_local.clock_remaining_ms_end as clock_left',
+                'gp_opp.clock_remaining_ms_end as opponent_clock_left',
             ]);
 
         $numbered = $games
             ->groupBy('match_id')
-            ->flatMap(fn ($matchGames) => $matchGames->values()->map(function ($g, $i) {
+            ->flatMap(fn ($matchGames) => $matchGames->values()->map(function ($g, $i) use ($matchGames) {
                 $g->game_number = $i + 1;
+                $g->is_final_game = $i === $matchGames->count() - 1;
+                $g->duration = self::durationSeconds($g->started_at, $g->ended_at);
 
                 return $g;
             }))
@@ -121,6 +135,12 @@ class AggregateGameStats
                     return true;
                 });
 
+                // MTGO's clock runs across the whole match, so the all games
+                // rows read the clock off each match's final game: what was
+                // left when the match ended.
+                $clocked = ($gameNumber === null ? $scoped->where('is_final_game', true) : $scoped)
+                    ->filter(fn ($g) => $g->clock_left !== null);
+
                 $wins = $scoped->where('won', 1)->count();
                 $losses = $scoped->where('won', 0)->count();
                 $decided = $wins + $losses;
@@ -134,6 +154,10 @@ class AggregateGameStats
                     'mulligans' => self::averageOrNull($scoped, 'local_mulligans'),
                     'opponent_mulligans' => self::averageOrNull($scoped, 'opponent_mulligans'),
                     'turns' => self::averageOrNull($scoped, 'turn_count'),
+                    'duration' => self::averageWholeOrNull($scoped, 'duration'),
+                    'clock_left' => self::averageWholeOrNull($clocked, 'clock_left'),
+                    'opponent_clock_left' => self::averageWholeOrNull($clocked, 'opponent_clock_left'),
+                    'clock_games' => $clocked->count(),
                 ]);
             }
         }
@@ -158,5 +182,38 @@ class AggregateGameStats
         }
 
         return round((float) $values->avg(), 2);
+    }
+
+    /**
+     * How long a game took, in seconds. Null when either end is missing or
+     * the timestamps run backwards: log timestamps are not trustworthy.
+     */
+    protected static function durationSeconds(?string $startedAt, ?string $endedAt): ?int
+    {
+        if ($startedAt === null || $endedAt === null) {
+            return null;
+        }
+
+        $seconds = Carbon::parse($startedAt)->diffInSeconds(Carbon::parse($endedAt), false);
+
+        return $seconds >= 0 ? (int) $seconds : null;
+    }
+
+    /**
+     * An average rounded to a whole number, for clock milliseconds and game
+     * seconds. Missing values are skipped rather than counted as zero: clock
+     * data is sidecar-only, so most games have none.
+     *
+     * @param  Collection<int, object>  $games
+     */
+    protected static function averageWholeOrNull(Collection $games, string $field): ?int
+    {
+        $values = $games->pluck($field)->filter(fn ($v) => $v !== null);
+
+        if ($values->isEmpty()) {
+            return null;
+        }
+
+        return (int) round((float) $values->avg());
     }
 }

@@ -111,7 +111,7 @@ const updateSort = (column: string) => {
                     Add manual match
                 </Button>
                 <Select v-model="filterResult">
-                    <SelectTrigger class="h-8 w-28 text-xs">
+                    <SelectTrigger class="h-8 w-fit min-w-28 text-xs">
                         <SelectValue placeholder="Result" />
                     </SelectTrigger>
                     <SelectContent>
@@ -121,7 +121,7 @@ const updateSort = (column: string) => {
                     </SelectContent>
                 </Select>
                 <Select v-model="filterType">
-                    <SelectTrigger class="h-8 w-28 text-xs">
+                    <SelectTrigger class="h-8 w-fit min-w-28 text-xs">
                         <SelectValue placeholder="Type" />
                     </SelectTrigger>
                     <SelectContent>
