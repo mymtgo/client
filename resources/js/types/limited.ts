@@ -188,7 +188,8 @@ export type DeckVersionRow = {
 export type DeckCardQty = { catalogId: number; quantity: number };
 
 export type PoolStatus = 'main' | 'side' | 'pool' | 'cut';
-export type PoolCard = { catalogId: number; quantity: number; status: PoolStatus; mainQty: number; sideQty: number };
+/** `added` is how many copies joined the pool after the first registered deck (a sealed booster). */
+export type PoolCard = { catalogId: number; quantity: number; added: number; status: PoolStatus; mainQty: number; sideQty: number };
 export type PoolGroup = { key: string; label: string; count: number; cards: PoolCard[] };
 
 export type GameBoardRow = { number: number; added: DeckDiffEntry[]; removed: DeckDiffEntry[]; note: string | null };
@@ -197,6 +198,7 @@ export type MatchBoardRow = { matchId: number; label: string; opponentName: stri
 export type DeckEvolution = {
     summary: {
         drafted: number;
+        added: number;
         mainSpells: number;
         basics: number;
         sideboard: number;
@@ -238,6 +240,8 @@ export type LimitedCardRow = {
     ordinals: number[];
     labels: string[];
     status: PoolStatus;
+    /** Sealed only: the card came from the booster added mid-run. */
+    added: boolean;
     gamesCast: number;
     castWon: number;
     castLost: number;

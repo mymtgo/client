@@ -10,15 +10,17 @@ use App\Models\LogEvent;
 class ResolveLeagueSetCode
 {
     /**
-     * Fill leagues.set_code (and kind for D-prefixed formats). First source
+     * Fill leagues.set_code (and kind for limited formats). First source
      * that answers wins; an existing value is never replaced.
      */
     public static function run(League $league, ?string $matchPlayFormatCd = null): void
     {
         $changes = [];
 
-        if ($matchPlayFormatCd && str_starts_with($matchPlayFormatCd, 'D') && $league->kind === LeagueKind::Constructed) {
-            $changes['kind'] = LeagueKind::Draft;
+        $kind = LeagueKind::fromFormatCode($matchPlayFormatCd);
+
+        if ($kind !== LeagueKind::Constructed && $league->kind === LeagueKind::Constructed) {
+            $changes['kind'] = $kind;
         }
 
         if (! $league->set_code) {
@@ -37,7 +39,8 @@ class ResolveLeagueSetCode
     }
 
     /**
-     * "DHOBHOBHOB" (draft, one code per booster) or "HOBx3" (league panel).
+     * "DHOBHOBHOB" (draft, one code per booster), "S6FRA" (sealed, booster
+     * count then the code) or "HOBx3" (league panel).
      * Codes are not always three characters, so find the shortest repeating
      * unit rather than splitting in threes.
      */
@@ -48,6 +51,10 @@ class ResolveLeagueSetCode
         }
 
         if (preg_match('/^(?<code>[A-Z0-9]{2,5})x\d+$/', $playFormatCd, $m)) {
+            return $m['code'];
+        }
+
+        if (preg_match('/^S\d+(?<code>[A-Z0-9]{2,5})$/', $playFormatCd, $m)) {
             return $m['code'];
         }
 

@@ -3,6 +3,7 @@
 namespace App\Actions\Limited\Read;
 
 use App\Data\Front\LimitedCardData;
+use App\Enums\LeagueKind;
 use App\Enums\MatchOutcome;
 use App\Enums\MatchState;
 use App\Models\Card;
@@ -13,7 +14,7 @@ use App\Models\MtgoMatch;
 use Illuminate\Support\Collection;
 
 /**
- * The story of one limited deck: what was drafted, which registered versions
+ * The story of one limited deck: what was in the pool, which registered versions
  * MTGO sent at each match start, and how the board changed game to game.
  */
 class BuildDeckEvolution
@@ -26,7 +27,7 @@ class BuildDeckEvolution
      */
     public static function run(League $league): array
     {
-        ['snapshots' => $snapshots, 'pool' => $pool, 'ids' => $poolIds] = self::poolInputs($league);
+        ['snapshots' => $snapshots, 'pool' => $pool, 'added' => $added, 'ids' => $poolIds] = self::poolInputs($league);
         $matches = $league->matches()->where('state', MatchState::Complete)->withOpponentName()->with('games.players')->orderBy('started_at')->get();
 
         $ids = $poolIds
@@ -51,11 +52,13 @@ class BuildDeckEvolution
 
         $current = $snapshots->last();
         ['main' => $currentMain, 'side' => $currentSide, 'everSeen' => $everSeen] = self::currentZones($snapshots);
-        $versions = self::versions($snapshots, $matchOrder, $cards, $pool, $everSeen, $isBasic);
+        $versions = self::versions($snapshots, $matchOrder, $cards, $pool, $added, $everSeen, $isBasic);
+        $nonBasic = fn (array $counts): int => (int) collect($counts)->reject(fn (int $quantity, int|string $id) => $isBasic((int) $id))->sum();
 
         return [
             'summary' => [
-                'drafted' => array_sum($pool),
+                'drafted' => $nonBasic($pool),
+                'added' => $nonBasic($added),
                 'mainSpells' => (int) collect($currentMain)->filter(fn (int $quantity, int|string $id) => ! $isBasic((int) $id))->sum(),
                 'basics' => (int) collect($currentMain)->filter(fn (int $quantity, int|string $id) => $isBasic((int) $id))->sum(),
                 'sideboard' => (int) array_sum($currentSide),
@@ -64,7 +67,7 @@ class BuildDeckEvolution
                 'lastRegisteredAt' => $current?->captured_at?->toIso8601String(),
             ],
             'versions' => $versions,
-            'pool' => ['groups' => self::poolGroups($pool, $currentMain, $currentSide, $everSeen, $cards, $isBasic)],
+            'pool' => ['groups' => self::poolGroups($pool, $added, $currentMain, $currentSide, $everSeen, $cards, $isBasic)],
             'games' => self::games($matches, $snapshots),
             'cards' => $ids->mapWithKeys(fn (int $id) => [(string) $id => LimitedCardData::fromCatalog($id, $cards->get((string) $id))])->all(),
         ];
@@ -79,14 +82,14 @@ class BuildDeckEvolution
      */
     public static function poolStatuses(League $league): array
     {
-        ['snapshots' => $snapshots, 'pool' => $pool, 'ids' => $ids] = self::poolInputs($league);
+        ['snapshots' => $snapshots, 'pool' => $pool, 'added' => $added, 'ids' => $ids] = self::poolInputs($league);
 
         $cards = ResolveCatalogCards::run($ids);
         $isBasic = fn (int $id): bool => $cards->get((string) $id)?->type === 'Basic Land';
         ['main' => $main, 'side' => $side, 'everSeen' => $everSeen] = self::currentZones($snapshots);
 
         $statuses = [];
-        foreach (self::poolGroups($pool, $main, $side, $everSeen, $cards, $isBasic) as $group) {
+        foreach (self::poolGroups($pool, $added, $main, $side, $everSeen, $cards, $isBasic) as $group) {
             foreach ($group['cards'] as $card) {
                 $statuses[(int) $card['catalogId']] = (string) $card['status'];
             }
@@ -96,16 +99,25 @@ class BuildDeckEvolution
     }
 
     /**
-     * The registered snapshots, the drafted pool and every catalog id the two
-     * of them mention: everything the pool view needs and nothing else.
+     * The registered snapshots, the pool and every catalog id the two of
+     * them mention: everything the pool view needs and nothing else.
      *
-     * @return array{snapshots: Collection<int, LimitedDeckSnapshot>, pool: array<int, int>, ids: Collection<int, int>}
+     * A draft's pool is its picks. Sealed has no picks, so its pool is read
+     * off the registered decks instead (see ReadSealedPool). `added` is how
+     * many copies of each card joined the pool after the first registered
+     * deck: the booster MTGO lets a sealed player add mid-run. Always empty
+     * for a draft.
+     *
+     * @return array{snapshots: Collection<int, LimitedDeckSnapshot>, pool: array<int, int>, added: array<int, int>, ids: Collection<int, int>}
      */
     private static function poolInputs(League $league): array
     {
         $league->loadMissing(['draft']);
         $snapshots = $league->deckSnapshots()->where('source', 'registered')->orderBy('captured_at')->get();
-        $pool = $league->draft?->poolCounts() ?? [];
+
+        ['pool' => $pool, 'added' => $added] = $league->kind === LeagueKind::Sealed && ! $league->draft
+            ? ReadSealedPool::run($league)
+            : ['pool' => $league->draft?->poolCounts() ?? [], 'added' => []];
 
         $ids = collect(array_keys($pool))
             ->merge($snapshots->flatMap(fn (LimitedDeckSnapshot $s) => collect($s->cards)->pluck('catalog_id')))
@@ -113,7 +125,7 @@ class BuildDeckEvolution
             ->unique()
             ->values();
 
-        return ['snapshots' => $snapshots, 'pool' => $pool, 'ids' => $ids];
+        return ['snapshots' => $snapshots, 'pool' => $pool, 'added' => $added, 'ids' => $ids];
     }
 
     /**
@@ -210,11 +222,12 @@ class BuildDeckEvolution
      * @param  array<int, int>  $matchOrder  match id => its number within the league
      * @param  Collection<string, Card>  $cards
      * @param  array<int, int>  $pool
+     * @param  array<int, int>  $added
      * @param  array<int, int>  $everSeen
      * @param  callable(int): bool  $isBasic
      * @return array<int, array<string, mixed>>
      */
-    private static function versions(Collection $snapshots, array $matchOrder, Collection $cards, array $pool, array $everSeen, callable $isBasic): array
+    private static function versions(Collection $snapshots, array $matchOrder, Collection $cards, array $pool, array $added, array $everSeen, callable $isBasic): array
     {
         $out = [];
         $prevMain = [];
@@ -251,7 +264,7 @@ class BuildDeckEvolution
                 'diffMain' => $isFirst ? self::emptyDiff() : self::diff($prevMain, $main),
                 'diffSide' => $isFirst ? self::emptyDiff() : self::diff($prevSide, $side),
                 'isCurrent' => false,
-                'pool' => ['groups' => self::poolGroups($pool, $main, $side, $everSeen, $cards, $isBasic)],
+                'pool' => ['groups' => self::poolGroups($pool, $added, $main, $side, $everSeen, $cards, $isBasic)],
                 'mainCards' => self::cardList($main),
                 'sideCards' => self::cardList($side),
             ];
@@ -276,9 +289,11 @@ class BuildDeckEvolution
      * up in the current registered deck. Basics are never drafted, so they are
      * left out entirely rather than reported as cut. With nothing registered
      * yet there is no deck to be in or out of, so every card reads as 'pool'
-     * rather than as a cut.
+     * rather than as a cut. `added` is how many of a card's copies arrived
+     * after the first registered deck (a sealed booster).
      *
      * @param  array<int, int>  $pool
+     * @param  array<int, int>  $added
      * @param  array<int, int>  $main
      * @param  array<int, int>  $side
      * @param  array<int, int>  $everSeen
@@ -286,7 +301,7 @@ class BuildDeckEvolution
      * @param  callable(int): bool  $isBasic
      * @return array<int, array<string, mixed>>
      */
-    private static function poolGroups(array $pool, array $main, array $side, array $everSeen, Collection $cards, callable $isBasic): array
+    private static function poolGroups(array $pool, array $added, array $main, array $side, array $everSeen, Collection $cards, callable $isBasic): array
     {
         $groups = [];
         foreach (self::GROUPS as $key => $label) {
@@ -311,7 +326,7 @@ class BuildDeckEvolution
                 default => 'cut',
             };
 
-            $groups[$key]['cards'][] = ['catalogId' => $id, 'quantity' => (int) $quantity, 'status' => $status, 'mainQty' => $mainQty, 'sideQty' => $sideQty];
+            $groups[$key]['cards'][] = ['catalogId' => $id, 'quantity' => (int) $quantity, 'added' => (int) ($added[$id] ?? 0), 'status' => $status, 'mainQty' => $mainQty, 'sideQty' => $sideQty];
             $groups[$key]['count'] += (int) $quantity;
         }
 

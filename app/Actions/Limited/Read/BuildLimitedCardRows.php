@@ -7,6 +7,7 @@ use App\Actions\Limited\Analytics\ComputeCrossDraftCardStats;
 use App\Actions\Limited\Analytics\ComputeSeenWheel;
 use App\Actions\Limited\EnsureLimitedDeckVersion;
 use App\Data\Front\LimitedCardData;
+use App\Enums\LeagueKind;
 use App\Models\Deck;
 use App\Models\DraftPick;
 use App\Models\League;
@@ -26,6 +27,10 @@ class BuildLimitedCardRows
     {
         $league->loadMissing(['draft']);
         $draft = $league->draft;
+
+        if (! $draft && $league->kind === LeagueKind::Sealed) {
+            return self::sealed($league);
+        }
 
         if (! $draft) {
             return ['rows' => [], 'summary' => ['distinct' => 0, 'games' => 0, 'otherDrafts' => 0], 'cards' => []];
@@ -59,6 +64,7 @@ class BuildLimitedCardRows
                 'ordinals' => $group->pluck('ordinal')->map(fn ($ordinal) => (int) $ordinal)->sort()->values()->all(),
                 'labels' => $group->sortBy('ordinal')->map(fn (DraftPick $pick) => "P{$pick->pack_number}p{$pick->pick_number}")->values()->all(),
                 'status' => $status[$catalogId] ?? 'cut',
+                'added' => false,
                 'gamesCast' => (int) ($stat['castGames'] ?? 0),
                 'castWon' => $castWon,
                 'castLost' => $castLost,
@@ -82,6 +88,59 @@ class BuildLimitedCardRows
             'cards' => $picked->keys()
                 ->mapWithKeys(fn (int $id) => [(string) $id => LimitedCardData::fromCatalog($id, $cards->get((string) $id))])
                 ->all(),
+        ];
+    }
+
+    /**
+     * Sealed has no picks, so its rows are the pool it opened: where each
+     * card ended up and how it played, with the booster added mid-run
+     * flagged. The pick, seen, wheel and prior draft facts have no meaning
+     * here and stay at their empty values.
+     *
+     * @return array{rows: array<int, array<string, mixed>>, summary: array{distinct:int, games:int, otherDrafts:int}, cards: array<string, LimitedCardData>}
+     */
+    private static function sealed(League $league): array
+    {
+        ['pool' => $pool, 'added' => $added] = ReadSealedPool::run($league);
+        $ids = collect(array_keys($pool));
+        $cards = ResolveCatalogCards::run($ids);
+        $status = BuildDeckEvolution::poolStatuses($league);
+
+        $deck = self::deck($league);
+        $gameStats = self::gameStats($deck);
+        $gamesPlayed = $deck ? (int) $deck->matches()->withCount('games')->get()->sum('games_count') : 0;
+
+        $rows = $ids->map(function (int $catalogId) use ($cards, $status, $added, $gameStats) {
+            $oracle = $cards->get((string) $catalogId)?->oracle_id;
+            $stat = $oracle !== null ? $gameStats->get($oracle) : null;
+            $castWon = (int) ($stat['castWon'] ?? 0);
+            $castLost = (int) ($stat['castLost'] ?? 0);
+            $decided = $castWon + $castLost;
+
+            return [
+                'catalogId' => $catalogId,
+                'oracleId' => $oracle,
+                'ordinals' => [],
+                'labels' => [],
+                'status' => $status[$catalogId] ?? 'cut',
+                'added' => isset($added[$catalogId]),
+                'gamesCast' => (int) ($stat['castGames'] ?? 0),
+                'castWon' => $castWon,
+                'castLost' => $castLost,
+                'winPctCast' => $decided > 0 ? (int) round($castWon / $decided * 100) : null,
+                'seenCount' => 0,
+                'wheeled' => false,
+                'priorTaken' => 0,
+                'priorAvgOrdinal' => null,
+                'priorWheeled' => 0,
+                'priorDrafts' => 0,
+            ];
+        })->values()->all();
+
+        return [
+            'rows' => $rows,
+            'summary' => ['distinct' => count($rows), 'games' => $gamesPlayed, 'otherDrafts' => 0],
+            'cards' => $ids->mapWithKeys(fn (int $id) => [(string) $id => LimitedCardData::fromCatalog($id, $cards->get((string) $id))])->all(),
         ];
     }
 

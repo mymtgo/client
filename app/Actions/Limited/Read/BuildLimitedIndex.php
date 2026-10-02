@@ -127,9 +127,10 @@ class BuildLimitedIndex
             startedAtHuman: $league->started_at?->format('D j M · H:i'),
             wins: $wins,
             losses: $losses,
-            results: self::results($matches),
+            results: self::results($matches, $league->kind->roundCount()),
             picksMade: (int) ($draft?->picks_made_count ?? 0),
             picksExpected: (int) ($draft?->picks_expected ?? 42),
+            packs: CountSealedPacks::run($league),
             deckRegistered: $league->deckSnapshots->isNotEmpty(),
             versionCount: $league->deckSnapshots->pluck('signature')->unique()->count(),
             avgPickSeconds: $draft ? ($timings[$draft->id]['avg'] ?? null) : null,
@@ -164,6 +165,7 @@ class BuildLimitedIndex
             results: [null, null, null],
             picksMade: (int) $draft->picks_made_count,
             picksExpected: (int) $draft->picks_expected,
+            packs: null,
             deckRegistered: false,
             versionCount: 0,
             avgPickSeconds: $timings[$draft->id]['avg'] ?? null,
@@ -179,12 +181,13 @@ class BuildLimitedIndex
     }
 
     /**
-     * The result dots, padded to the three-match league minimum.
+     * The result dots, padded to the league's round count (three for a
+     * draft, six for sealed).
      *
      * @param  Collection<int, MtgoMatch>  $matches
      * @return array<int, 'W'|'L'|null>
      */
-    private static function results(Collection $matches): array
+    private static function results(Collection $matches, int $roundCount): array
     {
         $results = $matches->map(fn (MtgoMatch $match) => match ($match->outcome) {
             MatchOutcome::Win => 'W',
@@ -192,7 +195,7 @@ class BuildLimitedIndex
             default => null,
         })->values()->all();
 
-        while (count($results) < 3) {
+        while (count($results) < $roundCount) {
             $results[] = null;
         }
 

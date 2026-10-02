@@ -30,8 +30,12 @@ const props = defineProps<{
 
 const ALL = 'all';
 
+/** Sealed has no picks: its rows are the pool it opened. */
+const isSealed = computed(() => props.event.kind === 'sealed');
+const columns = computed(() => COLUMNS.filter((col) => !(isSealed.value && col.draftOnly)));
+
 const filter = ref<typeof ALL | PoolStatus>(ALL);
-const sortKey = ref<SortKey>('pick');
+const sortKey = ref<SortKey>(props.event.kind === 'sealed' ? 'status' : 'pick');
 const sortDir = ref<'asc' | 'desc'>('asc');
 
 /**
@@ -84,8 +88,8 @@ function alignClass(align: 'left' | 'right' | 'center'): string {
             <div class="flex flex-col gap-1">
                 <h1 class="text-base font-semibold tracking-tight">Cards</h1>
                 <p v-if="table" class="text-xs text-muted-foreground">
-                    {{ table.summary.distinct }} distinct card{{ table.summary.distinct === 1 ? '' : 's' }} drafted · game stats from
-                    {{ table.summary.games }} game{{ table.summary.games === 1 ? '' : 's' }} with this deck
+                    {{ table.summary.distinct }} distinct card{{ table.summary.distinct === 1 ? '' : 's' }} {{ isSealed ? 'in pool' : 'drafted' }} ·
+                    game stats from {{ table.summary.games }} game{{ table.summary.games === 1 ? '' : 's' }} with this deck
                     <template v-if="table.summary.otherDrafts">
                         · prior columns from {{ table.summary.otherDrafts }} other {{ event.setCode }} draft{{
                             table.summary.otherDrafts === 1 ? '' : 's'
@@ -105,15 +109,21 @@ function alignClass(align: 'left' | 'right' | 'center'): string {
         <Skeleton v-if="!table" class="h-96 w-full" />
         <div v-else-if="!table.rows.length" class="flex flex-col items-center gap-2 py-16 text-center">
             <Layers class="size-10 text-muted-foreground/40" />
-            <p class="font-medium">No picks recorded.</p>
-            <p class="text-sm text-muted-foreground">Cards appear here once a draft has been tracked for this event.</p>
+            <p class="font-medium">{{ isSealed ? 'No pool recorded yet.' : 'No picks recorded.' }}</p>
+            <p class="text-sm text-muted-foreground">
+                {{
+                    isSealed
+                        ? 'Your pool appears here once a match with this deck has started.'
+                        : 'Cards appear here once a draft has been tracked for this event.'
+                }}
+            </p>
         </div>
         <div v-else class="overflow-x-auto rounded-lg border border-black/60">
             <Table>
                 <TableHeader>
                     <TableRow>
                         <TableHead
-                            v-for="col in COLUMNS"
+                            v-for="col in columns"
                             :key="col.key"
                             class="cursor-pointer whitespace-nowrap select-none"
                             :class="alignClass(col.align)"
@@ -138,7 +148,10 @@ function alignClass(align: 'left' | 'right' | 'center'): string {
                                 />
                                 <span v-else class="size-7 shrink-0 rounded bg-muted" />
                                 <div class="flex flex-col leading-tight">
-                                    <span>{{ cardFor(table.cards, row.catalogId).name }}</span>
+                                    <span class="inline-flex items-center gap-1.5"
+                                        >{{ cardFor(table.cards, row.catalogId).name }}
+                                        <Badge v-if="row.added" variant="secondary" class="px-1.5 py-0 text-[10px]">Added booster</Badge></span
+                                    >
                                     <span class="text-[11px] text-muted-foreground">
                                         {{
                                             [cardFor(table.cards, row.catalogId).type, cardFor(table.cards, row.catalogId).rarity]
@@ -149,7 +162,7 @@ function alignClass(align: 'left' | 'right' | 'center'): string {
                                 </div>
                             </div>
                         </TableCell>
-                        <TableCell class="whitespace-nowrap tabular-nums">{{ row.labels.join(' · ') }}</TableCell>
+                        <TableCell v-if="!isSealed" class="whitespace-nowrap tabular-nums">{{ row.labels.join(' · ') }}</TableCell>
                         <TableCell class="text-center">
                             <Badge variant="outline" :class="poolStatusTint(row.status)">{{ POOL_STATUS_LABELS[row.status] }}</Badge>
                         </TableCell>
@@ -160,21 +173,23 @@ function alignClass(align: 'left' | 'right' | 'center'): string {
                         >
                             {{ row.winPctCast !== null ? `${row.winPctCast}%` : NO_VALUE }}
                         </TableCell>
-                        <TableCell class="text-right tabular-nums">{{ row.seenCount }}</TableCell>
-                        <TableCell class="text-center">
-                            <Check v-if="row.wheeled" class="mx-auto size-4 text-muted-foreground" />
-                            <span v-else class="text-muted-foreground">{{ NO_VALUE }}</span>
-                        </TableCell>
-                        <TableCell class="text-right whitespace-nowrap text-muted-foreground tabular-nums">
-                            <template v-if="row.priorDrafts === 0">{{ NO_VALUE }}</template>
-                            <template v-else-if="row.priorTaken > 0">
-                                taken {{ row.priorTaken }}×<template v-if="row.priorAvgOrdinal !== null">
-                                    · avg {{ ordinalLabel(Math.round(row.priorAvgOrdinal)) }}</template
-                                >
-                            </template>
-                            <template v-else-if="row.priorWheeled > 0">wheeled in {{ row.priorWheeled }} of {{ row.priorDrafts }}</template>
-                            <template v-else>passed</template>
-                        </TableCell>
+                        <template v-if="!isSealed">
+                            <TableCell class="text-right tabular-nums">{{ row.seenCount }}</TableCell>
+                            <TableCell class="text-center">
+                                <Check v-if="row.wheeled" class="mx-auto size-4 text-muted-foreground" />
+                                <span v-else class="text-muted-foreground">{{ NO_VALUE }}</span>
+                            </TableCell>
+                            <TableCell class="text-right whitespace-nowrap text-muted-foreground tabular-nums">
+                                <template v-if="row.priorDrafts === 0">{{ NO_VALUE }}</template>
+                                <template v-else-if="row.priorTaken > 0">
+                                    taken {{ row.priorTaken }}×<template v-if="row.priorAvgOrdinal !== null">
+                                        · avg {{ ordinalLabel(Math.round(row.priorAvgOrdinal)) }}</template
+                                    >
+                                </template>
+                                <template v-else-if="row.priorWheeled > 0">wheeled in {{ row.priorWheeled }} of {{ row.priorDrafts }}</template>
+                                <template v-else>passed</template>
+                            </TableCell>
+                        </template>
                     </TableRow>
                 </TableBody>
             </Table>

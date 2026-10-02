@@ -233,3 +233,56 @@ it('carries a pool grouping per registered version so older builds can be inspec
         ->and($evo['versions'][0]['mainCards'])->toBe([['catalogId' => 1, 'quantity' => 1], ['catalogId' => 2, 'quantity' => 1], ['catalogId' => 9, 'quantity' => 17]])
         ->and($evo['versions'][1]['sideCards'])->toBe([['catalogId' => 3, 'quantity' => 1], ['catalogId' => 5, 'quantity' => 1]]);
 });
+
+/**
+ * A sealed run: no draft, so the pool is whatever the registered decks
+ * hold. In limited the sideboard is every pool card not in the main deck.
+ * The second snapshot carries the booster MTGO lets you add after match 3.
+ */
+function sealedDeckFixture(): League
+{
+    $league = League::factory()->create(['kind' => LeagueKind::Sealed, 'set_code' => 'FRA', 'started_at' => now()->subHour()]);
+    Card::factory()->create(['mtgo_id' => '1', 'name' => 'Bard', 'colors' => 'W', 'type' => 'Creature']);
+    Card::factory()->create(['mtgo_id' => '2', 'name' => 'Harper', 'colors' => 'U', 'type' => 'Creature']);
+    Card::factory()->create(['mtgo_id' => '3', 'name' => 'Grasp', 'colors' => 'U', 'type' => 'Instant']);
+    Card::factory()->create(['mtgo_id' => '6', 'name' => 'Boosted', 'colors' => 'R', 'type' => 'Creature']);
+    Card::factory()->create(['mtgo_id' => '9', 'name' => 'Island', 'colors' => '', 'type' => 'Basic Land']);
+
+    $m1 = MtgoMatch::factory()->create(['league_id' => $league->id, 'state' => MatchState::Complete, 'started_at' => now()->subMinutes(50)]);
+    $m4 = MtgoMatch::factory()->create(['league_id' => $league->id, 'state' => MatchState::Complete, 'started_at' => now()->subMinutes(20)]);
+
+    $before = [['catalog_id' => 1, 'quantity' => 1, 'sideboard' => false], ['catalog_id' => 9, 'quantity' => 17, 'sideboard' => false], ['catalog_id' => 2, 'quantity' => 1, 'sideboard' => true], ['catalog_id' => 3, 'quantity' => 1, 'sideboard' => true]];
+    $after = [['catalog_id' => 1, 'quantity' => 1, 'sideboard' => false], ['catalog_id' => 6, 'quantity' => 1, 'sideboard' => false], ['catalog_id' => 9, 'quantity' => 16, 'sideboard' => false], ['catalog_id' => 2, 'quantity' => 1, 'sideboard' => true], ['catalog_id' => 3, 'quantity' => 2, 'sideboard' => true]];
+    LimitedDeckSnapshot::create(['league_id' => $league->id, 'match_id' => $m1->id, 'source' => 'registered', 'signature' => 's1', 'captured_at' => now()->subMinutes(50), 'cards' => $before]);
+    LimitedDeckSnapshot::create(['league_id' => $league->id, 'match_id' => $m4->id, 'source' => 'registered', 'signature' => 's2', 'captured_at' => now()->subMinutes(20), 'cards' => $after]);
+
+    return $league;
+}
+
+it('builds a sealed pool from the registered decks and tags booster cards as added', function () {
+    $evo = BuildDeckEvolution::run(sealedDeckFixture());
+
+    $byId = collect($evo['pool']['groups'])->flatMap(fn ($g) => $g['cards'])->keyBy('catalogId');
+
+    expect($evo['summary'])->toMatchArray(['drafted' => 5, 'added' => 2])
+        ->and($byId->has(9))->toBeFalse()
+        ->and($byId[1])->toMatchArray(['quantity' => 1, 'added' => 0, 'status' => 'main'])
+        ->and($byId[3])->toMatchArray(['quantity' => 2, 'added' => 1, 'status' => 'side'])
+        ->and($byId[6])->toMatchArray(['quantity' => 1, 'added' => 1, 'status' => 'main']);
+});
+
+it('tags nothing as added for a sealed run with one registered deck', function () {
+    $league = sealedDeckFixture();
+    $league->deckSnapshots()->where('signature', 's2')->delete();
+
+    $evo = BuildDeckEvolution::run($league);
+
+    expect($evo['summary'])->toMatchArray(['drafted' => 3, 'added' => 0]);
+});
+
+it('never tags draft pool cards as added', function () {
+    $evo = BuildDeckEvolution::run(limitedDeckFixture());
+
+    expect($evo['summary']['added'])->toBe(0)
+        ->and(collect($evo['pool']['groups'])->flatMap(fn ($g) => $g['cards'])->pluck('added')->unique()->all())->toBe([0]);
+});

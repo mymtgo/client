@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed } from 'vue';
 import { Separator } from '@/components/ui/separator';
+import { normalizeType, TYPE_ORDER } from '@/lib/cardTypes';
 import DeckListCard from '@/pages/decks/partials/DeckListCard.vue';
+import { computed } from 'vue';
 
 const props = defineProps<{
     maindeck: Record<string, App.Data.Front.CardData[]>;
@@ -9,18 +10,6 @@ const props = defineProps<{
 }>();
 
 const getCount = (cards: App.Data.Front.CardData[]) => cards.reduce((sum, c) => sum + c.quantity, 0);
-
-// Canonical MTG permanent/spell types in display order.
-// The first match wins, so Creature beats Artifact for "Artifact Creature".
-const CANONICAL_TYPES = ['Creature', 'Planeswalker', 'Battle', 'Instant', 'Sorcery', 'Enchantment', 'Artifact', 'Land'] as const;
-const TYPE_ORDER = Object.fromEntries(CANONICAL_TYPES.map((t, i) => [t, i]));
-
-function normalizeType(raw: string): string {
-    for (const canonical of CANONICAL_TYPES) {
-        if (raw.includes(canonical)) return canonical;
-    }
-    return raw;
-}
 
 const groupedMaindeck = computed(() => {
     const merged: Record<string, App.Data.Front.CardData[]> = {};

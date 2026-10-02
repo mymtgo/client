@@ -4,6 +4,7 @@ namespace App\Actions\Limited\Read;
 
 use App\Actions\Limited\EnsureLimitedDeckVersion;
 use App\Data\Front\LimitedEventData;
+use App\Enums\LeagueKind;
 use App\Enums\MatchOutcome;
 use App\Enums\MatchState;
 use App\Models\Card;
@@ -31,7 +32,11 @@ class GetLimitedEventSharedProps
             ? $draft->picks()->whereNotNull('picked_catalog_id')->orderBy('ordinal')->pluck('picked_catalog_id')->map(fn ($id) => (int) $id)
             : collect();
         $picksMade = $pickedAll->count();
-        $pickedIds = $pickedAll->unique()->values()->all();
+
+        // Sealed has no picks: its cards are the pool it opened.
+        $pickedIds = $league->kind === LeagueKind::Sealed && ! $draft
+            ? array_keys(ReadSealedPool::run($league)['pool'])
+            : $pickedAll->unique()->values()->all();
         $cards = ResolveCatalogCards::run($pickedIds);
         $setName = $cards->first(fn (Card $c) => $c->set_name !== null)?->set_name;
         $cover = self::coverArt($pickedIds, $cards);
@@ -59,6 +64,7 @@ class GetLimitedEventSharedProps
                 losses: $losses,
                 picksMade: $picksMade,
                 picksExpected: (int) ($draft?->picks_expected ?? 42),
+                packs: CountSealedPacks::run($league),
                 deckRegistered: $league->deckSnapshots->where('source', 'registered')->isNotEmpty(),
                 deckId: $deck?->id,
                 coverArt: $cover,
