@@ -1,5 +1,29 @@
 # What's new in 0.46.0
 
+## Sealed leagues
+
+Sealed leagues are now tracked properly. Before, a sealed run was mistaken for a constructed league, counted out of five matches and mixed in with your constructed stats. Now it shows up under **Limited** as a sealed run, counted out of six matches, with the number of packs you opened.
+
+Sealed has no picks to review, so a sealed run skips the Draft page and opens on its deck. Your card pool is worked out from the deck you register, so every card you opened is there. If you add the extra booster after match 3, its cards are marked **Added booster**.
+
+Any sealed runs the app already recorded are fixed automatically.
+
+## A new limited deck view
+
+![The limited deck page: the main deck as card images grouped by type, with the mana curve and colours of the deck and the card pool](/content/whats-new/sealed-deck.jpg)
+
+The deck page for drafts and sealed runs has been redesigned to look like your constructed decklists.
+
+- **Maindeck** shows your 40 cards as card images, grouped by type and sorted by mana cost.
+- **Card pool** shows everything you didn't play, grouped by colour.
+- The mana curve and colour split are shown for both your deck and your whole pool, so you can see which colours your pool was deep in.
+
+## Other improvements
+
+- The **Cards** page for a sealed run lists your whole pool, with where each card ended up and how it played.
+- Sealed runs now show their set name and cover art, taken from the cards you opened.
+- The Limited list shows one result dot per match in the run, so a sealed run shows six.
+
 ## A new league window
 
 The league window has been redesigned. It now shows which league you're in, your record, and what's happening right now, with your deck's artwork behind it if you like.
@@ -25,3 +49,8 @@ You can now put your league card on stream without having the league window open
 The card updates on stream within a second or two of anything changing. It works on a second streaming PC too, because the link isn't tied to the computer you play on.
 
 Publishing is off until you turn it on. You need to be signed in to MyMTGO, and anyone with the link can see your current league. If something stops it publishing, the settings page tells you why.
+
+## Misc UI tweaks
+
+- The "per page" picker on the Decks page no longer cuts off its label.
+- Limited match tables now sit in a card like the other tables.
