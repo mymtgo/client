@@ -121,3 +121,90 @@ it('is false when no sideboarding event exists', function () {
 
     expect(DetectSideboarding::run($match))->toBeFalse();
 });
+
+it('is true when the sideboarding transition lands in the same second the game ended', function () {
+    $match = sideboardingMatch('tok-sb-same-second');
+    $gameEnd = now()->subMinutes(5)->startOfSecond();
+
+    Game::create([
+        'match_id' => $match->id, 'mtgo_id' => 'g-1',
+        'started_at' => now()->subMinutes(18), 'ended_at' => $gameEnd,
+    ]);
+
+    sideboardingStateEvent(
+        'tok-sb-same-second',
+        'Match State Changed from LeagueMatchJoinedEventUnderwayState to LeagueMatchJoinedSideboardingState',
+        $gameEnd->copy(),
+    );
+
+    expect(DetectSideboarding::run($match))->toBeTrue();
+});
+
+it('is true when ended_at trails the sideboarding transition by several seconds', function () {
+    $match = sideboardingMatch('tok-sb-trailing-end');
+    $transitionAt = now()->subMinutes(5)->startOfSecond();
+
+    Game::create([
+        'match_id' => $match->id, 'mtgo_id' => 'g-1',
+        'started_at' => now()->subMinutes(18), 'ended_at' => $transitionAt->copy()->addSeconds(5),
+    ]);
+
+    sideboardingStateEvent(
+        'tok-sb-trailing-end',
+        'Match State Changed from MatchJoinedEventUnderwayState to MatchJoinedSideboardingState',
+        $transitionAt,
+    );
+
+    expect(DetectSideboarding::run($match))->toBeTrue();
+});
+
+it('stays false during a game whose sideboarding transition preceded its start', function () {
+    $match = sideboardingMatch('tok-sb-mid-game');
+
+    Game::create([
+        'match_id' => $match->id, 'mtgo_id' => 'g-1',
+        'started_at' => now()->subMinutes(18), 'ended_at' => now()->subMinutes(10),
+    ]);
+
+    sideboardingStateEvent(
+        'tok-sb-mid-game',
+        'Match State Changed from MatchJoinedEventUnderwayState to MatchJoinedSideboardingState',
+        now()->subMinutes(10),
+    );
+
+    Game::create([
+        'match_id' => $match->id, 'mtgo_id' => 'g-2',
+        'started_at' => now()->subMinutes(9), 'ended_at' => now()->subMinute(),
+    ]);
+
+    expect(DetectSideboarding::run($match))->toBeFalse();
+});
+
+it('ignores the exit transition when it shares a second with the next game start', function () {
+    $match = sideboardingMatch('tok-sb-exit-same-second');
+    $nextGameStart = now()->subMinutes(2)->startOfSecond();
+
+    Game::create([
+        'match_id' => $match->id, 'mtgo_id' => 'g-1',
+        'started_at' => now()->subMinutes(18), 'ended_at' => now()->subMinutes(5),
+    ]);
+
+    sideboardingStateEvent(
+        'tok-sb-exit-same-second',
+        'Match State Changed from LeagueMatchJoinedEventUnderwayState to LeagueMatchJoinedSideboardingState',
+        now()->subMinutes(5),
+    );
+
+    sideboardingStateEvent(
+        'tok-sb-exit-same-second',
+        'Match State Changed from LeagueMatchJoinedSideboardingState to LeagueMatchSideboardingDeckSubmittedState',
+        $nextGameStart->copy(),
+    );
+
+    Game::create([
+        'match_id' => $match->id, 'mtgo_id' => 'g-2',
+        'started_at' => $nextGameStart,
+    ]);
+
+    expect(DetectSideboarding::run($match))->toBeFalse();
+});
