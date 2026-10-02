@@ -50,7 +50,21 @@ The card updates on stream within a second or two of anything changing. It works
 
 Publishing is off until you turn it on. You need to be signed in to MyMTGO, and anyone with the link can see your current league. If something stops it publishing, the settings page tells you why.
 
+## Better opponent info on the game overlay
+
+When you're paired, the game overlay now works out what your opponent is likely playing in this order:
+
+- **What you faced them on last time** in this format, labelled **you faced**.
+- **A 5-0 list** they've published.
+- **The last deck they played** if they use MyMTGO too.
+- **What other MyMTGO players saw them on.**
+
+As soon as they reveal enough cards to show they're on something else, the overlay switches to that.
+
+Your history with them now reads like **Met 3× · won 2**, and it only counts matches in the format you're playing.
+
 ## Misc UI tweaks
 
 - The "per page" picker on the Decks page no longer cuts off its label.
 - Limited match tables now sit in a card like the other tables.
+- The **Opponents** page has been removed from the menu. Your record against an opponent still shows on the game overlay when you're paired with someone you've played before.
