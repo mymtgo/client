@@ -181,16 +181,20 @@ function updateSort(column: string): void {
             <p class="font-medium">No league matches yet.</p>
             <p class="text-sm text-muted-foreground">Matches attach here as soon as they finish.</p>
         </div>
-        <TooltipProvider v-else>
-            <MatchesTable
-                :matches="sortedMatches"
-                :show-deck="false"
-                :show-archetype="false"
-                :sort-by="sortBy"
-                :sort-dir="sortDir"
-                :match-url="(id) => MatchController.url({ league: event.id, match: id })"
-                @sort="updateSort"
-            />
-        </TooltipProvider>
+        <Card v-else class="gap-0 overflow-hidden p-0">
+            <CardContent class="px-0">
+                <TooltipProvider>
+                    <MatchesTable
+                        :matches="sortedMatches"
+                        :show-deck="false"
+                        :show-archetype="false"
+                        :sort-by="sortBy"
+                        :sort-dir="sortDir"
+                        :match-url="(id) => MatchController.url({ league: event.id, match: id })"
+                        @sort="updateSort"
+                    />
+                </TooltipProvider>
+            </CardContent>
+        </Card>
     </div>
 </template>

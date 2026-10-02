@@ -172,7 +172,7 @@ function syncDecks() {
             </Select>
 
             <Select :model-value="perPage" @update:model-value="(value) => updatePerPage(String(value))">
-                <SelectTrigger size="sm" class="w-32 gap-1.5 text-xs">
+                <SelectTrigger size="sm" class="w-fit gap-1.5 text-xs">
                     <Rows3 class="size-3.5 text-muted-foreground" />
                     <SelectValue />
                 </SelectTrigger>
