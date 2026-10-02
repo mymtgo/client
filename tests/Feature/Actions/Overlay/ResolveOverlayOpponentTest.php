@@ -22,7 +22,7 @@ beforeEach(function () {
 
     // tests/Pest.php installs a blanket Http::fake() that always matches and
     // therefore shadows any URL-specific fake registered inside a test (see
-    // FetchOpponentLeagueArchetypeTest for the same workaround). Reset the
+    // FetchOpponentScoutingTest for the same workaround). Reset the
     // stub list so per-test Http::fake([...]) calls actually take effect.
     $factory = Http::getFacadeRoot();
     $ref = new ReflectionProperty($factory, 'stubCallbacks');
@@ -391,4 +391,174 @@ it('never calls the API estimator when stats sharing is switched off', function 
     expect($result->source)->toBe('none');
     expect($result->archetypeId)->toBeNull();
     Http::assertNotSent(fn ($request) => str_contains($request->url(), '/api/archetypes/estimate'));
+});
+
+it('falls back to the deck the opponent last tracked when there is no 5-0', function () {
+    Archetype::factory()->create(['uuid' => 'arch-tracked', 'name' => 'Boros Energy', 'format' => 'modern']);
+    Archetype::factory()->create(['uuid' => 'arch-observed', 'name' => 'Amulet Titan', 'format' => 'modern']);
+
+    [$match] = overlayMatchWithOpponent('tok-tracked');
+
+    Http::fake([
+        '*/api/players' => Http::response([
+            'data' => [
+                'league_result' => null,
+                'tracked' => ['archetype' => ['uuid' => 'arch-tracked', 'name' => 'Boros Energy']],
+                'observed' => ['archetype' => ['uuid' => 'arch-observed', 'name' => 'Amulet Titan']],
+            ],
+        ]),
+    ]);
+
+    $result = ResolveOverlayOpponent::run($match);
+
+    expect($result->source)->toBe('tracked')
+        ->and($result->archetypeName)->toBe('Boros Energy');
+});
+
+it('falls back to what other tracker users saw when the opponent has no full list', function () {
+    $observed = Archetype::factory()->create(['uuid' => 'arch-observed', 'name' => 'Amulet Titan', 'format' => 'modern']);
+
+    [$match, $opponent] = overlayMatchWithOpponent('tok-observed');
+
+    // Our own sighting of them was in another format, so it says nothing here.
+    $ownSighting = Archetype::factory()->create(['name' => 'Old Brew', 'format' => 'pauper']);
+    $pauper = overlayPastMatch('tok-observed-pauper', $opponent, 'CPauper', MatchOutcome::Win);
+    $opponent->matchArchetypes()->create(['mtgo_match_id' => $pauper->id, 'archetype_id' => $ownSighting->id]);
+
+    Http::fake([
+        '*/api/players' => Http::response([
+            'data' => [
+                'league_result' => null,
+                'tracked' => null,
+                'observed' => ['archetype' => ['uuid' => 'arch-observed', 'name' => 'Amulet Titan']],
+            ],
+        ]),
+    ]);
+
+    $result = ResolveOverlayOpponent::run($match);
+
+    expect($result->source)->toBe('observed')
+        ->and($result->archetypeId)->toBe($observed->id);
+});
+
+/**
+ * A completed match against $opponent in $format, started $hoursAgo ago.
+ */
+function overlayPastMatch(string $token, Player $opponent, string $format, MatchOutcome $outcome, int $hoursAgo = 1): MtgoMatch
+{
+    $past = MtgoMatch::create([
+        'mtgo_id' => 'm-'.$token, 'token' => $token, 'format' => $format,
+        'match_type' => 'League', 'state' => MatchState::Complete,
+        'started_at' => now()->subHours($hoursAgo), 'outcome' => $outcome,
+    ]);
+
+    $game = Game::create(['match_id' => $past->id, 'mtgo_id' => 'g-'.$token, 'started_at' => now()->subHours($hoursAgo)]);
+    $game->players()->attach($opponent->id, ['is_local' => 0, 'instance_id' => 'i-2']);
+
+    return $past;
+}
+
+/**
+ * Every API source answering at once, so a test can prove local history
+ * beats all of them.
+ */
+function overlayFakeFullScouting(): void
+{
+    foreach (['arch-league' => 'Mono Red Prowess', 'arch-tracked' => 'Boros Energy', 'arch-observed' => 'Amulet Titan'] as $uuid => $name) {
+        Archetype::factory()->create(['uuid' => $uuid, 'name' => $name, 'format' => 'modern']);
+    }
+
+    Http::fake([
+        '*/api/players' => Http::response([
+            'data' => [
+                'league_result' => ['archetype' => ['uuid' => 'arch-league', 'name' => 'Mono Red Prowess']],
+                'tracked' => ['archetype' => ['uuid' => 'arch-tracked', 'name' => 'Boros Energy']],
+                'observed' => ['archetype' => ['uuid' => 'arch-observed', 'name' => 'Amulet Titan']],
+            ],
+        ]),
+    ]);
+}
+
+it('prefers what we last faced them on in this format over every API source', function () {
+    $opponent = Player::create(['username' => 'faced-opp']);
+    $older = Archetype::factory()->create(['name' => 'Burn', 'format' => 'modern']);
+    $newer = Archetype::factory()->create(['name' => 'Living End', 'format' => 'modern']);
+
+    $first = overlayPastMatch('tok-faced-1', $opponent, 'CModern', MatchOutcome::Win, hoursAgo: 48);
+    $second = overlayPastMatch('tok-faced-2', $opponent, 'CModern', MatchOutcome::Loss, hoursAgo: 2);
+    // Inserted newest-first, so ordering by id would pick the wrong one.
+    MatchArchetype::create(['mtgo_match_id' => $second->id, 'player_id' => $opponent->id, 'archetype_id' => $newer->id, 'confidence' => 0.9]);
+    MatchArchetype::create(['mtgo_match_id' => $first->id, 'player_id' => $opponent->id, 'archetype_id' => $older->id, 'confidence' => 0.9]);
+
+    [$match] = overlayMatchWithOpponent('tok-faced-live', $opponent);
+    overlayFakeFullScouting();
+
+    $result = ResolveOverlayOpponent::run($match);
+
+    expect($result->source)->toBe('local')
+        ->and($result->archetypeId)->toBe($newer->id);
+});
+
+it('ignores what we faced them on in another format', function () {
+    $opponent = Player::create(['username' => 'pauper-opp']);
+    $pauperDeck = Archetype::factory()->create(['name' => 'Affinity', 'format' => 'pauper']);
+
+    $pauper = overlayPastMatch('tok-other-format', $opponent, 'CPauper', MatchOutcome::Win);
+    MatchArchetype::create(['mtgo_match_id' => $pauper->id, 'player_id' => $opponent->id, 'archetype_id' => $pauperDeck->id, 'confidence' => 0.9]);
+
+    [$match] = overlayMatchWithOpponent('tok-other-format-live', $opponent);
+    Http::fake(['*/api/players' => Http::response([], 404)]);
+
+    $result = ResolveOverlayOpponent::run($match);
+
+    expect($result->source)->toBe('none')
+        ->and($result->archetypeId)->toBeNull();
+});
+
+it('does not count an automatic guess on the live match as history', function () {
+    [$match, $opponent] = overlayMatchWithOpponent('tok-live-row');
+    $guess = Archetype::factory()->create(['name' => 'Guessed', 'format' => 'modern']);
+    MatchArchetype::create(['mtgo_match_id' => $match->id, 'player_id' => $opponent->id, 'archetype_id' => $guess->id, 'confidence' => 0.4]);
+
+    overlayFakeFullScouting();
+
+    expect(ResolveOverlayOpponent::run($match)->source)->toBe('league');
+});
+
+it('lets a confident live read override what we last faced them on', function () {
+    [$liveArchetype] = overlayLiveArchetypeDeck('Izzet Murktide', 'modern');
+    $opponent = Player::create(['username' => 'switched-decks']);
+    $old = Archetype::factory()->create(['name' => 'Burn', 'format' => 'modern']);
+
+    $past = overlayPastMatch('tok-switch-old', $opponent, 'CModern', MatchOutcome::Win);
+    MatchArchetype::create(['mtgo_match_id' => $past->id, 'player_id' => $opponent->id, 'archetype_id' => $old->id, 'confidence' => 0.9]);
+
+    [$match] = overlayMatchWithOpponent('tok-switch-live', $opponent);
+    Http::fake(['*/api/players' => Http::response([], 404)]);
+
+    // 9 of the deck's 15 cards revealed this match: above the confidence floor.
+    $match->games()->first()->players()->updateExistingPivot($opponent->id, [
+        'deck_json' => collect(range(1, 9))->map(fn (int $i) => ['mtgo_id' => 1000 + $i, 'quantity' => 4])->all(),
+    ]);
+
+    $result = ResolveOverlayOpponent::run($match->fresh());
+
+    expect($result->source)->toBe('live')
+        ->and($result->archetypeId)->toBe($liveArchetype->id);
+});
+
+it('counts the head-to-head record in this format only', function () {
+    $opponent = Player::create(['username' => 'two-formats']);
+    overlayPastMatch('tok-h2h-modern', $opponent, 'CModern', MatchOutcome::Win);
+    overlayPastMatch('tok-h2h-pauper-1', $opponent, 'CPauper', MatchOutcome::Loss);
+    overlayPastMatch('tok-h2h-pauper-2', $opponent, 'CPauper', MatchOutcome::Loss);
+
+    [$match] = overlayMatchWithOpponent('tok-h2h-format-live', $opponent);
+    Http::fake(['*/api/players' => Http::response([], 404)]);
+
+    $result = ResolveOverlayOpponent::run($match);
+
+    expect($result->previousMatches)->toBe(1)
+        ->and($result->wins)->toBe(1)
+        ->and($result->losses)->toBe(0);
 });

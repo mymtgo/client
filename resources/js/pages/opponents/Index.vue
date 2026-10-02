@@ -1,16 +1,19 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue';
-import { router } from '@inertiajs/vue3';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+/**
+ * @deprecated 0.46.0 Hidden from the nav. See Opponents\IndexController: delete next release cycle.
+ */
 import ManaSymbols from '@/components/ManaSymbols.vue';
 import MatchRecord from '@/components/MatchRecord.vue';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import WinRateBar from '@/components/WinRateBar.vue';
+import { router } from '@inertiajs/vue3';
 import { Skull, Swords } from 'lucide-vue-next';
+import { ref, watch } from 'vue';
 
 type Opponent = {
     playerId: number;

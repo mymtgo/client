@@ -13,6 +13,12 @@ use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
+/**
+ * @deprecated 0.46.0 Hidden from the nav; the route still works so it can be
+ * restored if anyone misses it. Delete the controller, page, route and
+ * OpponentsPerformanceTest next release cycle. Head-to-head records live on
+ * the game overlay (ResolveOverlayOpponent).
+ */
 class IndexController extends Controller
 {
     public function __invoke(Request $request): Response
