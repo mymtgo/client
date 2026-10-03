@@ -5,35 +5,31 @@ use App\Updates\RemoveSidecarHelper;
 use Illuminate\Support\Facades\File;
 
 beforeEach(function () {
+    // A per-test storage root, so the suite never touches the repo's storage/app or races a parallel run.
+    $this->storage = sys_get_temp_dir().'/remove-helper-'.uniqid();
+    $this->app->useStoragePath($this->storage);
+
     $this->bin = storage_path(RemoveSidecarHelper::BIN_DIRECTORY);
-    $this->defaultDir = storage_path(RemoveSidecarHelper::DEFAULT_DIRECTORY);
-    $this->customDir = sys_get_temp_dir().'/remove-helper-'.uniqid();
+    $this->dataDir = storage_path(RemoveSidecarHelper::DATA_DIRECTORY);
 
     File::ensureDirectoryExists($this->bin);
     File::put($this->bin.'/mymtgo-helper-0.1.2.exe', 'exe');
     File::put($this->bin.'/download.json', '{}');
 
+    File::ensureDirectoryExists($this->dataDir);
+
+    foreach (['events-aaaa.ndjson', 'status.json', 'sidecar.log', 'known-good-cache.json', 'crash.dmp'] as $name) {
+        File::put($this->dataDir.'/'.$name, 'x');
+    }
+
     foreach (RemoveSidecarHelper::SETTINGS_KEYS as $key) {
         AppSettings::set($key, 'x');
     }
-
-    AppSettings::forget('sidecar_directory');
 });
 
 afterEach(function () {
-    File::deleteDirectory($this->bin);
-    File::deleteDirectory($this->defaultDir);
-    File::deleteDirectory($this->customDir);
+    File::deleteDirectory($this->storage);
 });
-
-function writeRemovedHelperFiles(string $dir): void
-{
-    File::ensureDirectoryExists($dir);
-
-    foreach (['events-aaaa.ndjson', 'status.json', 'status.json.tmp', 'sidecar.log', 'sidecar.1.log', 'known-good-cache.json', 'known-good-cache.json.tmp'] as $name) {
-        File::put($dir.'/'.$name, 'x');
-    }
-}
 
 it('deletes the helper exe and its download state', function () {
     (new RemoveSidecarHelper)->run();
@@ -41,36 +37,13 @@ it('deletes the helper exe and its download state', function () {
     expect(file_exists($this->bin))->toBeFalse();
 });
 
-it('removes the default helper directory once its files are gone', function () {
-    writeRemovedHelperFiles($this->defaultDir);
-
+it('deletes the helper data directory with everything in it', function () {
     (new RemoveSidecarHelper)->run();
 
-    expect(file_exists($this->defaultDir))->toBeFalse();
-});
-
-it('keeps the default directory when it holds files the helper did not write', function () {
-    writeRemovedHelperFiles($this->defaultDir);
-    File::put($this->defaultDir.'/notes.txt', 'mine');
-
-    (new RemoveSidecarHelper)->run();
-
-    expect(array_map(fn ($file) => $file->getFilename(), File::files($this->defaultDir)))->toBe(['notes.txt']);
-});
-
-it('deletes only helper files from a custom directory and keeps the directory', function () {
-    writeRemovedHelperFiles($this->customDir);
-    File::put($this->customDir.'/notes.txt', 'mine');
-    AppSettings::set('sidecar_directory', $this->customDir);
-
-    (new RemoveSidecarHelper)->run();
-
-    expect(array_map(fn ($file) => $file->getFilename(), File::files($this->customDir)))->toBe(['notes.txt']);
+    expect(file_exists($this->dataDir))->toBeFalse();
 });
 
 it('removes every helper settings key', function () {
-    AppSettings::set('sidecar_directory', $this->customDir);
-
     (new RemoveSidecarHelper)->run();
 
     foreach (RemoveSidecarHelper::SETTINGS_KEYS as $key) {
@@ -80,6 +53,7 @@ it('removes every helper settings key', function () {
 
 it('does nothing when the helper was never installed', function () {
     File::deleteDirectory($this->bin);
+    File::deleteDirectory($this->dataDir);
 
     (new RemoveSidecarHelper)->run();
 
@@ -87,13 +61,29 @@ it('does nothing when the helper was never installed', function () {
         ->and(AppSettings::get('sidecar_enabled'))->toBeNull();
 });
 
-it('throws and keeps the settings when the exe survives the delete', function () {
-    // Stands in for an exe Windows still has locked: the delete leaves it.
+it('throws and keeps the settings when a helper directory survives the delete', function () {
+    // Stands in for a file Windows still has locked: the delete leaves it.
     $update = new class extends RemoveSidecarHelper
     {
-        protected function deleteBinDirectory(string $bin): void {}
+        protected function deleteDirectory(string $directory): void {}
     };
 
     expect(fn () => $update->run())->toThrow(RuntimeException::class, 'sidecar-bin')
+        ->and(AppSettings::get('sidecar_enabled'))->toBe('x');
+});
+
+it('throws when only the data directory survives the delete', function () {
+    $update = new class extends RemoveSidecarHelper
+    {
+        protected function deleteDirectory(string $directory): void
+        {
+            if (str_ends_with($directory, 'sidecar-bin')) {
+                parent::deleteDirectory($directory);
+            }
+        }
+    };
+
+    expect(fn () => $update->run())->toThrow(RuntimeException::class, 'sidecar could not be deleted')
+        ->and(file_exists($this->bin))->toBeFalse()
         ->and(AppSettings::get('sidecar_enabled'))->toBe('x');
 });
