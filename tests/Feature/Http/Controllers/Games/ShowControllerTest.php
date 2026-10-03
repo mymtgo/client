@@ -36,7 +36,7 @@ it('lists the match games in play order so the replay can offer the next one', f
  * game 1 starts with Duress and Abrade in your sideboard, game 2 with two
  * Duress and a Thoughtseize. The recorded deck always holds the sideboard;
  * the frames only do when `$inFrames` is set, as log-built timelines do,
- * and never do otherwise, as sidecar ones.
+ * and never do otherwise, as dense ones.
  *
  * @return list<Game>
  */

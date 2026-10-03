@@ -12,7 +12,6 @@ const tabs = [
     { label: 'Leagues', href: '/debug/leagues' },
     { label: 'Cards', href: '/debug/cards' },
     { label: 'Log Cursors', href: '/debug/log-cursors' },
-    { label: 'Sidecar', href: '/debug/sidecar' },
     { label: 'Pipeline Log', href: '/debug/pipeline-log' },
     { label: 'Overlay', href: '/debug/overlay' },
 ];

@@ -23,7 +23,7 @@ class Game extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['match_id', 'mtgo_id', 'started_at', 'ended_at', 'won', 'turn_count', 'timeline_source'];
+    protected $fillable = ['match_id', 'mtgo_id', 'started_at', 'ended_at', 'won', 'turn_count'];
 
     // Sync dirtiness: editing this row must bump the parent's updated_at.
     protected $touches = ['match'];
@@ -77,11 +77,5 @@ class Game extends Model
     public function shipQueueEntry(): HasOne
     {
         return $this->hasOne(CardStatShipQueue::class);
-    }
-
-    /** @return HasMany<GameFieldDiff, $this> */
-    public function fieldDiffs(): HasMany
-    {
-        return $this->hasMany(GameFieldDiff::class);
     }
 }

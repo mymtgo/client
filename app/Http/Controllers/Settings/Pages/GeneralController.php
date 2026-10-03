@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Settings\Pages;
 
-use App\Actions\Sidecar\ResolveHelperStatus;
 use App\Facades\AppSettings;
 use App\Http\Controllers\Controller;
 use App\Models\Account;
@@ -18,7 +17,6 @@ class GeneralController extends Controller
             'accounts' => Account::orderBy('username')->get(['id', 'username', 'tracked', 'active']),
             'autostartEnabled' => AppSettings::autostartEnabled(),
             'trayAvailable' => PHP_OS_FAMILY !== 'Linux',
-            'helper' => ResolveHelperStatus::run(),
         ]);
     }
 }

@@ -5,7 +5,6 @@ use App\Models\Account;
 use App\Models\Archetype;
 use App\Models\DeckVersion;
 use App\Models\Game;
-use App\Models\GameEvent;
 use App\Models\League;
 use App\Models\MtgoMatch;
 use App\Models\Player;
@@ -425,7 +424,7 @@ it('sends per-game clocks, timeout flags and the opponent name', function (): vo
     });
 });
 
-it('sends null clocks and timeouts for games the sidecar never saw', function (): void {
+it('sends null clocks and timeouts for games with no recorded clock', function (): void {
     Http::fake([
         '*/api/matches/report' => Http::response([], 200),
         '*' => Http::response([]),
@@ -449,7 +448,7 @@ it('sends null clocks and timeouts for games the sidecar never saw', function ()
     });
 });
 
-it('sends null for the side the sidecar did not record', function (): void {
+it('sends null for a side with no recorded clock', function (): void {
     Http::fake([
         '*/api/matches/report' => Http::response([], 200),
         '*' => Http::response([]),
@@ -472,106 +471,4 @@ it('sends null for the side the sidecar did not record', function (): void {
 
         return true;
     });
-});
-
-function unprocessedSidecarEvent(MtgoMatch $match): GameEvent
-{
-    return GameEvent::factory()->create([
-        'match_mtgo_id' => (string) $match->mtgo_id,
-        'processed_at' => null,
-    ]);
-}
-
-it('holds a report while the sidecar is still writing the match', function (): void {
-    Http::fake(['*' => Http::response([], 200)]);
-
-    $match = makeSubmittableMatch([[['mtgo_id' => 6001, 'quantity' => 1]]]);
-    $match->update(['ended_at' => now()->subSeconds(30)]);
-    unprocessedSidecarEvent($match);
-
-    SubmitMatchToApi::run($match->id);
-
-    Http::assertNotSent(fn ($request) => str_contains($request->url(), '/api/matches/report'));
-    expect($match->fresh()->submitted_at)->toBeNull();
-});
-
-it('submits once the sidecar events are processed', function (): void {
-    Http::fake(['*' => Http::response([], 200)]);
-
-    $match = makeSubmittableMatch([[['mtgo_id' => 6002, 'quantity' => 1]]]);
-    $match->update(['ended_at' => now()->subSeconds(30)]);
-    unprocessedSidecarEvent($match)->update(['processed_at' => now()]);
-    GameEvent::factory()->create([
-        'match_mtgo_id' => (string) $match->mtgo_id,
-        'game_mtgo_id' => null,
-        'type' => 'match_ended',
-        'data' => ['winner_p' => 0, 'score' => [2, 0]],
-        'processed_at' => now(),
-    ]);
-
-    SubmitMatchToApi::run($match->id);
-
-    expect($match->fresh()->submitted_at)->not->toBeNull();
-});
-
-it('stops waiting two minutes after the match ended', function (): void {
-    Http::fake(['*' => Http::response([], 200)]);
-
-    $match = makeSubmittableMatch([[['mtgo_id' => 6003, 'quantity' => 1]]]);
-    $match->update(['ended_at' => now()->subSeconds(121)]);
-    unprocessedSidecarEvent($match);
-
-    SubmitMatchToApi::run($match->id);
-
-    expect($match->fresh()->submitted_at)->not->toBeNull();
-});
-
-it('does not wait forever on a match with no end time', function (): void {
-    Http::fake(['*' => Http::response([], 200)]);
-
-    $match = makeSubmittableMatch([[['mtgo_id' => 6004, 'quantity' => 1]]]);
-    $match->update(['ended_at' => null, 'updated_at' => now()->subMinutes(5)]);
-    unprocessedSidecarEvent($match);
-
-    SubmitMatchToApi::run($match->id);
-
-    expect($match->fresh()->submitted_at)->not->toBeNull();
-});
-
-it('submits straight away when there are no sidecar events', function (): void {
-    Http::fake(['*' => Http::response([], 200)]);
-
-    $match = makeSubmittableMatch([[['mtgo_id' => 6005, 'quantity' => 1]]]);
-    $match->update(['ended_at' => now()]);
-
-    SubmitMatchToApi::run($match->id);
-
-    expect($match->fresh()->submitted_at)->not->toBeNull();
-});
-
-it('holds a report until the sidecar has written the match end', function (): void {
-    // The log can mark the match Complete a tick before the sidecar's
-    // final events are flushed and ingested: every row seen so far is
-    // processed, but match_ended has not arrived yet.
-    Http::fake(['*' => Http::response([], 200)]);
-
-    $match = makeSubmittableMatch([[['mtgo_id' => 6006, 'quantity' => 1]]]);
-    $match->update(['ended_at' => now()->subSeconds(30)]);
-    unprocessedSidecarEvent($match)->update(['processed_at' => now()]);
-
-    SubmitMatchToApi::run($match->id);
-
-    expect($match->fresh()->submitted_at)->toBeNull();
-
-    GameEvent::factory()->create([
-        'match_mtgo_id' => (string) $match->mtgo_id,
-        'game_mtgo_id' => null,
-        'type' => 'match_ended',
-        'data' => ['winner_p' => 0, 'score' => [2, 0]],
-        'processed_at' => now(),
-    ]);
-
-    SubmitMatchToApi::run($match->id);
-
-    expect($match->fresh()->submitted_at)->not->toBeNull();
 });

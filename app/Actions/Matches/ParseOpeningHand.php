@@ -44,7 +44,7 @@ class ParseOpeningHand
         // the highest count seen while the opponent holds a hand during the
         // opening phase: bottoming is the only thing that raises it, draws
         // and fetches only lower it. The first hand frame is not enough on
-        // its own, because dense (sidecar) frames catch the initial 7-card
+        // its own, because dense frames catch the initial 7-card
         // draw before any mulligan, which always reads as zero.
         $opponentStartLibrary = null;
         $opponentKeptLibrary = null;
@@ -59,8 +59,8 @@ class ParseOpeningHand
             if ($opponentState) {
                 $oppHand = (int) $opponentState['HandCount'];
                 $oppLib = (int) $opponentState['LibraryCount'];
-                // A zero library with a zero hand is the sidecar's placeholder
-                // frame before the decks load, not the starting library.
+                // A zero library with a zero hand is a placeholder frame from
+                // before the decks load, not the starting library.
                 if ($opponentStartLibrary === null && $oppHand === 0 && $oppLib > 0) {
                     $opponentStartLibrary = $oppLib;
                 } elseif ($oppHand > 0 && ($openingPhase || $opponentKeptLibrary === null)) {
