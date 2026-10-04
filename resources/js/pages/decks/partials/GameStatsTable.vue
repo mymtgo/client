@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Card } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { formatClock, isCloseToTime } from '@/lib/clock';
+import { formatClock } from '@/lib/clock';
 import { computed } from 'vue';
 
 type StatRow = {
@@ -14,9 +14,6 @@ type StatRow = {
     opponent_mulligans: number | null;
     turns: number | null;
     duration: number | null;
-    clock_left: number | null;
-    opponent_clock_left: number | null;
-    clock_games: number;
 };
 
 const props = defineProps<{
@@ -54,14 +51,6 @@ function fmtPct(v: number | null): string {
     return v === null ? '—' : `${v.toFixed(1)}%`;
 }
 
-function fmtClock(ms: number | null): string {
-    return ms === null ? '—' : formatClock(ms);
-}
-
-function clockClass(ms: number | null): string {
-    return ms !== null && isCloseToTime(ms) ? 'text-destructive' : 'text-muted-foreground';
-}
-
 function winRateClass(v: number | null): string {
     if (v === null) return 'text-muted-foreground';
     if (v > 50) return 'text-success';
@@ -84,8 +73,6 @@ function winRateClass(v: number | null): string {
                     <TableHead class="text-right">Opp Mulls/G</TableHead>
                     <TableHead class="border-l border-border/60 text-right">Turns/G</TableHead>
                     <TableHead class="text-right">Time/G</TableHead>
-                    <TableHead class="border-l border-border/60 text-right">Clock left</TableHead>
-                    <TableHead class="text-right">Opp clock left</TableHead>
                 </TableRow>
             </TableHeader>
             <TableBody>
@@ -121,12 +108,6 @@ function winRateClass(v: number | null): string {
                         </TableCell>
                         <TableCell class="py-2 text-right text-muted-foreground tabular-nums">
                             {{ row.duration === null ? '—' : formatClock(row.duration * 1000) }}
-                        </TableCell>
-                        <TableCell class="border-l border-border/60 py-2 text-right tabular-nums" :class="clockClass(row.clock_left)">
-                            {{ fmtClock(row.clock_left) }}
-                        </TableCell>
-                        <TableCell class="py-2 text-right tabular-nums" :class="clockClass(row.opponent_clock_left)">
-                            {{ fmtClock(row.opponent_clock_left) }}
                         </TableCell>
                     </TableRow>
                 </template>

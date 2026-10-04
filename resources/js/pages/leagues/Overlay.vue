@@ -33,7 +33,7 @@ onMounted(() => {
 
 <template>
     <!-- p-4 matches OpenOverlayWindow::PADDING: transparent room for the card glow, which stays within 16px. -->
-    <div class="h-screen p-4" style="-webkit-app-region: drag">
+    <div class="h-screen" style="-webkit-app-region: drag">
         <LeagueOverlayCard :state="state" />
     </div>
 </template>

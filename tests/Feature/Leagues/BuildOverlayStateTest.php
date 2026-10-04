@@ -21,11 +21,6 @@ use Illuminate\Support\Facades\DB;
 
 uses(RefreshDatabase::class);
 
-beforeEach(function () {
-    // No sidecar on this "machine": the log floor decides phases.
-    AppSettings::setSidecarDirectory(sys_get_temp_dir().'/no-sidecar-'.uniqid());
-});
-
 function overlayDeckVersion(string $name = 'Mono Green Tron', ?string $colors = 'G'): DeckVersion
 {
     $card = Card::factory()->create(['art_crop' => 'https://cards.example/karn.jpg', 'local_art_crop' => null]);

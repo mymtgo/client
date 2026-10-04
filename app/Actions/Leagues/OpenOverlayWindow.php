@@ -12,7 +12,7 @@ class OpenOverlayWindow
 
     /** Card sizes; the window adds PADDING on every side. */
     /** @var array<'full'|'compact', array{0: int, 1: int}> */
-    public const SIZES = ['full' => [300, 100], 'compact' => [240, 58]];
+    public const SIZES = ['full' => [300, 80], 'compact' => [240, 58]];
 
     /**
      * Transparent margin around the card. Its glow is a box-shadow drawn
@@ -36,9 +36,7 @@ class OpenOverlayWindow
             ->height($height)
             ->minWidth(200 + 2 * self::PADDING)
             ->minHeight(50 + 2 * self::PADDING)
-            ->transparent()
             ->hasShadow(false)
-            ->trafficLightsHidden()
             ->alwaysOnTop(true, 'screen-saver')
             ->frameless()
             ->resizable()

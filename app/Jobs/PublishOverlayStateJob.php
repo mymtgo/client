@@ -9,7 +9,7 @@ use Illuminate\Foundation\Queue\Queueable;
 
 /**
  * One push of the league card to the hosted overlay. Unique until it starts,
- * so a burst of sidecar events leaves one pending job, and that job builds
+ * so a burst of changes leaves one pending job, and that job builds
  * the state when it runs, so it always sends the latest.
  */
 class PublishOverlayStateJob implements ShouldBeUniqueUntilProcessing, ShouldQueue

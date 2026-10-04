@@ -17,7 +17,6 @@ uses(RefreshDatabase::class);
 
 beforeEach(function () {
     Storage::fake('overlay');
-    AppSettings::setSidecarDirectory(sys_get_temp_dir().'/no-sidecar-'.uniqid());
     app(SyncTokens::class)->store('access-token', 'refresh-token', 2592000);
     AppSettings::setOverlayPublish(true);
     Mtgo::setUsername('StreamPlayer');

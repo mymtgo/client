@@ -21,9 +21,6 @@ class AggregateGameStats
      *   opponent_mulligans: float|null,
      *   turns: float|null,
      *   duration: int|null,
-     *   clock_left: int|null,
-     *   opponent_clock_left: int|null,
-     *   clock_games: int,
      * }>
      */
     public static function run(
@@ -84,15 +81,12 @@ class AggregateGameStats
                 'gp_local.on_play as on_play',
                 'gp_local.mulligan_count as local_mulligans',
                 'gp_opp.mulligan_count as opponent_mulligans',
-                'gp_local.clock_remaining_ms_end as clock_left',
-                'gp_opp.clock_remaining_ms_end as opponent_clock_left',
             ]);
 
         $numbered = $games
             ->groupBy('match_id')
-            ->flatMap(fn ($matchGames) => $matchGames->values()->map(function ($g, $i) use ($matchGames) {
+            ->flatMap(fn ($matchGames) => $matchGames->values()->map(function ($g, $i) {
                 $g->game_number = $i + 1;
-                $g->is_final_game = $i === $matchGames->count() - 1;
                 $g->duration = self::durationSeconds($g->started_at, $g->ended_at);
 
                 return $g;
@@ -135,12 +129,6 @@ class AggregateGameStats
                     return true;
                 });
 
-                // MTGO's clock runs across the whole match, so the all games
-                // rows read the clock off each match's final game: what was
-                // left when the match ended.
-                $clocked = ($gameNumber === null ? $scoped->where('is_final_game', true) : $scoped)
-                    ->filter(fn ($g) => $g->clock_left !== null);
-
                 $wins = $scoped->where('won', 1)->count();
                 $losses = $scoped->where('won', 0)->count();
                 $decided = $wins + $losses;
@@ -155,9 +143,6 @@ class AggregateGameStats
                     'opponent_mulligans' => self::averageOrNull($scoped, 'opponent_mulligans'),
                     'turns' => self::averageOrNull($scoped, 'turn_count'),
                     'duration' => self::averageWholeOrNull($scoped, 'duration'),
-                    'clock_left' => self::averageWholeOrNull($clocked, 'clock_left'),
-                    'opponent_clock_left' => self::averageWholeOrNull($clocked, 'opponent_clock_left'),
-                    'clock_games' => $clocked->count(),
                 ]);
             }
         }
@@ -200,9 +185,8 @@ class AggregateGameStats
     }
 
     /**
-     * An average rounded to a whole number, for clock milliseconds and game
-     * seconds. Missing values are skipped rather than counted as zero: clock
-     * data is sidecar-only, so most games have none.
+     * An average rounded to a whole number, for game seconds. Missing values
+     * are skipped rather than counted as zero.
      *
      * @param  Collection<int, object>  $games
      */

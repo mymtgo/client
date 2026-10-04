@@ -84,7 +84,7 @@ class BuildOverlayState
         /** @var Collection<int, Game> $games */
         $games = $active->games()->orderBy('started_at')->get(['id', 'won', 'started_at']);
 
-        return self::payload(DecideMatchPhase::run($active, $games->count()), deck: $deck, extra: $common + [
+        return self::payload(DecideMatchPhase::run($active), deck: $deck, extra: $common + [
             'match' => [
                 'number' => $matches->search(fn (MtgoMatch $m) => $m->id === $active->id) + 1,
                 'games' => $games->map(fn (Game $g) => ['won' => $g->won])->values()->all(),

@@ -1,7 +1,6 @@
 <?php
 
 use App\Enums\MatchState;
-use App\Facades\AppSettings;
 use App\Models\Game;
 use App\Models\League;
 use App\Models\MtgoMatch;
@@ -9,8 +8,6 @@ use App\Support\MtgoFormat;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
-
-beforeEach(fn () => AppSettings::setSidecarDirectory(sys_get_temp_dir().'/no-sidecar-'.uniqid()));
 
 it('renders overlay with no active league', function () {
     $response = $this->get(route('leagues.overlay'));

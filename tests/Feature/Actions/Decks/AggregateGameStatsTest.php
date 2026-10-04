@@ -25,9 +25,7 @@ uses(RefreshDatabase::class);
  *   opponent_mulligans?: int,
  *   turn_count?: int|null,
  *   started_at?: CarbonInterface|string,
- *   clock_end?: int|null,
  *   duration_seconds?: int|null,
- *   opponent_clock_end?: int|null,
  * }>  $games
  */
 function createMatchForGameStats(
@@ -69,7 +67,6 @@ function createMatchForGameStats(
             'is_local' => true,
             'on_play' => $gameData['on_play'],
             'mulligan_count' => $gameData['local_mulligans'] ?? 0,
-            'clock_remaining_ms_end' => $gameData['clock_end'] ?? null,
             'instance_id' => fake()->randomNumber(6),
         ]);
 
@@ -77,7 +74,6 @@ function createMatchForGameStats(
             'is_local' => false,
             'on_play' => ! $gameData['on_play'],
             'mulligan_count' => $gameData['opponent_mulligans'] ?? 0,
-            'clock_remaining_ms_end' => $gameData['opponent_clock_end'] ?? null,
             'instance_id' => fake()->randomNumber(6),
         ]);
     }
@@ -320,63 +316,6 @@ it('bounds the timeframe on local midnight in the system timezone', function () 
     $rows = AggregateGameStats::run($deck, 'week', null);
 
     expect(findRow($rows, 'all_games', 'overall'))->toMatchArray(['wins' => 1, 'losses' => 0]);
-});
-
-it('averages the clock each side had left at the end of each game', function () {
-    $deck = Deck::factory()->create();
-    $deckVersion = DeckVersion::factory()->create(['deck_id' => $deck->id]);
-
-    createMatchForGameStats($deckVersion, null, MatchOutcome::Win, [
-        ['won' => true, 'on_play' => true, 'clock_end' => 1_200_000, 'opponent_clock_end' => 1_300_000],
-        ['won' => true, 'on_play' => false, 'clock_end' => 600_000, 'opponent_clock_end' => 1_000_000],
-    ]);
-    createMatchForGameStats($deckVersion, null, MatchOutcome::Loss, [
-        ['won' => false, 'on_play' => false, 'clock_end' => 1_000_000, 'opponent_clock_end' => 1_100_000],
-        ['won' => false, 'on_play' => true, 'clock_end' => 400_000, 'opponent_clock_end' => 900_000],
-    ]);
-
-    $rows = AggregateGameStats::run($deck, 'alltime', null);
-
-    expect(findRow($rows, 'game_1', 'overall'))
-        ->toMatchArray(['clock_left' => 1_100_000, 'opponent_clock_left' => 1_200_000, 'clock_games' => 2])
-        ->and(findRow($rows, 'game_1', 'play'))->toMatchArray(['clock_left' => 1_200_000])
-        ->and(findRow($rows, 'game_2', 'overall'))->toMatchArray(['clock_left' => 500_000, 'opponent_clock_left' => 950_000])
-        ->and(findRow($rows, 'game_3', 'overall'))->toMatchArray(['clock_left' => null, 'opponent_clock_left' => null, 'clock_games' => 0]);
-});
-
-it('uses the clock left when the match ended for the all games rows', function () {
-    $deck = Deck::factory()->create();
-    $deckVersion = DeckVersion::factory()->create(['deck_id' => $deck->id]);
-
-    // The match clock carries across games, so only the final game's end
-    // says how much was left of the match.
-    createMatchForGameStats($deckVersion, null, MatchOutcome::Win, [
-        ['won' => true, 'on_play' => true, 'clock_end' => 1_200_000, 'opponent_clock_end' => 1_300_000],
-        ['won' => false, 'on_play' => false, 'clock_end' => 800_000, 'opponent_clock_end' => 1_000_000],
-        ['won' => true, 'on_play' => true, 'clock_end' => 300_000, 'opponent_clock_end' => 700_000],
-    ]);
-
-    $row = findRow(AggregateGameStats::run($deck, 'alltime', null), 'all_games', 'overall');
-
-    expect($row)->toMatchArray(['clock_left' => 300_000, 'opponent_clock_left' => 700_000, 'clock_games' => 1]);
-});
-
-it('leaves clock averages empty for games the helper did not cover', function () {
-    $deck = Deck::factory()->create();
-    $deckVersion = DeckVersion::factory()->create(['deck_id' => $deck->id]);
-
-    createMatchForGameStats($deckVersion, null, MatchOutcome::Win, [
-        ['won' => true, 'on_play' => true, 'clock_end' => 900_000, 'opponent_clock_end' => 1_000_000],
-        ['won' => true, 'on_play' => false],
-    ]);
-    createMatchForGameStats($deckVersion, null, MatchOutcome::Win, [
-        ['won' => true, 'on_play' => true],
-    ]);
-
-    $rows = AggregateGameStats::run($deck, 'alltime', null);
-
-    expect(findRow($rows, 'game_1', 'overall'))->toMatchArray(['clock_left' => 900_000, 'clock_games' => 1])
-        ->and(findRow($rows, 'all_games', 'overall'))->toMatchArray(['clock_left' => null, 'clock_games' => 0]);
 });
 
 it('averages how long each game took in seconds', function () {

@@ -124,7 +124,6 @@ function blurLabel() {
     <div
         class="h-full w-full p-[1.5px] font-sans text-white"
         :class="state.size === 'compact' ? 'rounded-[10px]' : 'rounded-[14px]'"
-        :style="{ background: border, boxShadow: '0 3px 10px rgb(0 0 0 / .45)' }"
     >
         <div
             class="relative h-full overflow-hidden bg-[#0c1014] [text-shadow:0_0_2px_#000,0_1px_3px_rgb(0_0_0/.95),0_0_10px_rgb(0_0_0/.85),0_0_18px_rgb(0_0_0/.6)]"
