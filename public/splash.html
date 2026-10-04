@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>mymtgo</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+            background: transparent;
+            overflow: hidden;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        body {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+            color: oklch(0.985 0 0);
+        }
+
+        .card {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 14px;
+            padding: 28px 24px;
+            border-radius: 20px;
+            background: oklch(0.205 0 0);
+            border: 1px solid oklch(1 0 0 / 0.08);
+            box-shadow: 0 20px 50px oklch(0 0 0 / 0.5);
+            -webkit-app-region: drag;
+            animation: rise 420ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+        }
+
+        .logo {
+            width: 128px;
+            height: 128px;
+            border-radius: 28px;
+            box-shadow: 0 10px 30px oklch(0 0 0 / 0.45);
+        }
+
+        .title {
+            font-size: 22px;
+            font-weight: 600;
+            letter-spacing: -0.01em;
+            line-height: 1;
+            color: oklch(0.985 0 0);
+        }
+
+        .tagline {
+            font-size: 13px;
+            line-height: 1.4;
+            text-align: center;
+            color: oklch(0.708 0 0);
+            animation: breathe 2.4s ease-in-out infinite;
+        }
+
+        @keyframes rise {
+            from {
+                opacity: 0;
+                transform: translateY(8px) scale(0.98);
+            }
+            to {
+                opacity: 1;
+                transform: none;
+            }
+        }
+
+        @keyframes breathe {
+            0%,
+            100% {
+                opacity: 0.55;
+            }
+            50% {
+                opacity: 1;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .card,
+            .tagline {
+                animation: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <img class="logo" src="icon.png" alt="">
+        <div class="title">mymtgo</div>
+        <div class="tagline">Sleeving up</div>
+    </div>
+</body>
+</html>

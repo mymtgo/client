@@ -36,13 +36,13 @@ class OpenOverlayWindow
             ->height($height)
             ->minWidth(200 + 2 * self::PADDING)
             ->minHeight(50 + 2 * self::PADDING)
-            ->hasShadow(false)
             ->alwaysOnTop(true, 'screen-saver')
             ->frameless()
             ->resizable()
             ->maximizable(false)
             ->fullscreenable(false)
             ->hideMenu()
+            ->transparent(true)
             ->showDevTools(false)
             ->title('League Overlay');
     }
