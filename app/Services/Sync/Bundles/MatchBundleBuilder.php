@@ -250,7 +250,7 @@ class MatchBundleBuilder
             ])->all();
 
             // Log frames are second precision, so same-second rows are
-            // common (rapid log events). Sidecar frames carry milliseconds,
+            // common (rapid log events). Dense frames carry milliseconds,
             // and a burst within one second must keep its order, hence the
             // millisecond key. The content hash stays as the tiebreak so
             // output is byte-stable across devices: it must never be the

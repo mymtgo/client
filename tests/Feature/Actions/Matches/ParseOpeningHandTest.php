@@ -284,7 +284,7 @@ it('detects opponent mulligans via library count difference', function () {
 });
 
 /**
- * Sidecar frames record every change, so the first frame with an opponent
+ * Dense frames record every change, so the first frame with an opponent
  * hand is the initial 7-card draw, before any mulligan. The London
  * mulligan's redraw never shows a 0 hand either (7 stays 7), so only the
  * cards bottomed afterwards move the library back up.
@@ -328,7 +328,7 @@ function denseOpeningFrames(array $opponentFrames): array
     return $frames;
 }
 
-it('counts opponent mulligans from dense sidecar frames', function (array $opponentFrames, int $expected) {
+it('counts opponent mulligans from dense frames', function (array $opponentFrames, int $expected) {
     $game = createGameForHandTest(timelineSnapshots: denseOpeningFrames($opponentFrames));
 
     $result = ParseOpeningHand::run($game, 1, 2);
@@ -341,7 +341,7 @@ it('counts opponent mulligans from dense sidecar frames', function (array $oppon
     'on the draw, draws before the local player acts' => [[[7, 53], [6, 54], [7, 53]], 1],
 ]);
 
-it('skips the empty placeholder frame the sidecar writes before the decks load', function () {
+it('skips the empty placeholder frame written before the decks load', function () {
     $frames = denseOpeningFrames([[7, 53], [6, 54]]);
     array_unshift($frames, [
         'Players' => [

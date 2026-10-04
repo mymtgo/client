@@ -9,13 +9,12 @@ class CloseLeagueRun
 {
     /**
      * Close a run the next match does not belong to: Complete when it holds
-     * a full run of matches, Partial otherwise. The run length is the
-     * league kind's round count unless the caller knows better (a sidecar
-     * snapshot's total_matches).
+     * a full run of matches (the league kind's round count), Partial
+     * otherwise.
      */
-    public static function run(League $league, ?int $totalMatches = null): LeagueState
+    public static function run(League $league): LeagueState
     {
-        if ($league->matches()->count() >= ($totalMatches ?? $league->kind->roundCount())) {
+        if ($league->matches()->count() >= $league->kind->roundCount()) {
             CompleteLeague::run($league);
 
             return LeagueState::Complete;

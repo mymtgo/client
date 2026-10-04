@@ -9,8 +9,8 @@ class GetLocalSideboard
     /**
      * Your sideboard as the game began, one entry per card, from the deck
      * recorded for the game. CreateGames builds that deck from MTGO's log,
-     * so it is there whichever source owns the frames, where the sidecar's
-     * frames never hold the sideboard. Empty when no deck was recorded.
+     * so it is there even for frames that never hold the sideboard. Empty
+     * when no deck was recorded.
      *
      * @return list<array{mtgo_id: int, quantity: int}>
      */

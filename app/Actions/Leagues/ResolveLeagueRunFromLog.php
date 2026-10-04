@@ -9,8 +9,7 @@ use Illuminate\Support\Facades\Log;
 class ResolveLeagueRunFromLog
 {
     /**
-     * Assign the match to a league run from log signals alone: the path
-     * every machine without the sidecar takes, unchanged in behaviour.
+     * Assign the match to a league run from log signals.
      *
      * @param  array<string, mixed>  $gameMeta
      */

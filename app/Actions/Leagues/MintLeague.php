@@ -13,8 +13,7 @@ class MintLeague
     /**
      * Create a league run for the match. Leagues are only ever minted when
      * a match arrives carrying a League Token but no matching league exists,
-     * so deck_version_id is known at creation time. Shared by the log path
-     * and the sidecar decision applier.
+     * so deck_version_id is known at creation time.
      */
     public static function run(MtgoMatch $match, string $token, ?int $eventId, ?string $format, ?string $structure, ?CarbonInterface $joinedAt): League
     {

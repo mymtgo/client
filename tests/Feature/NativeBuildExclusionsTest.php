@@ -38,7 +38,7 @@ it('keeps local data and dev files out of the installer', function (string $path
     'app settings with api key' => 'storage/app/private/settings.json',
     'support bundles' => 'storage/app/support/some_player/mtgo.log',
     'card dump' => 'storage/app/AllIdentifiers.json',
-    'helper logs' => 'storage/app/sidecar_logs/sidecar/events.ndjson',
+    'captured logs' => 'storage/app/captures/events.ndjson',
     'inertia devtools dumps' => 'storage/inertia-devtools/01ABC.json',
     'stray log in storage/app' => 'storage/app/mtgo.log',
     'stray log in database' => 'database/mtgo.log',

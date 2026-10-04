@@ -211,12 +211,6 @@ class CreateGames
      */
     private static function replaceTimeline(Game $game, Collection $gameStateEvents): void
     {
-        // Sidecar frames replace log frames wholesale; a log reprocess must
-        // not claw them back (spec 2026-09-23 §2).
-        if ($game->timeline_source === 'sidecar') {
-            return;
-        }
-
         $events = [];
         $timelineCatalogIds = [];
 
@@ -246,7 +240,6 @@ class CreateGames
         try {
             GameTimeline::where('game_id', $game->id)->delete();
             GameTimeline::insert($events);
-            $game->update(['timeline_source' => 'log']);
         } catch (QueryException $e) {
             Log::channel('pipeline')->info("CreateGames: timeline update skipped for game {$game->id}: {$e->getMessage()}");
         }

@@ -5,7 +5,6 @@ namespace App\Providers;
 use App\Actions\Database\ConfigureNativephpConnection;
 use App\Actions\RegisterDevice;
 use App\Actions\Settings\ApplyCardImagesPath;
-use App\Actions\Sidecar\StartSidecarSupervisor;
 use App\Actions\Sync\Auth\EnsureAccessToken;
 use App\Dashboard\WidgetRegistry;
 use App\Dashboard\Widgets\ArchetypeStatsWidget;
@@ -37,8 +36,6 @@ use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\ServiceProvider;
 use Native\Desktop\Events\App\OpenedFromURL;
-use Native\Desktop\Events\ChildProcess\ProcessExited;
-use Native\Desktop\Events\ChildProcess\ProcessSpawned;
 use Native\Desktop\Events\MenuBar\MenuBarClicked;
 
 class AppServiceProvider extends ServiceProvider
@@ -91,18 +88,6 @@ class AppServiceProvider extends ServiceProvider
             OpenedFromURL::class,
             HandleSyncAuthCallback::class,
         );
-
-        Event::listen(ProcessExited::class, function ($event) {
-            if ($event->alias === StartSidecarSupervisor::ALIAS) {
-                StartSidecarSupervisor::handleExit($event->code);
-            }
-        });
-
-        Event::listen(ProcessSpawned::class, function ($event) {
-            if ($event->alias === StartSidecarSupervisor::ALIAS) {
-                StartSidecarSupervisor::handleSpawn();
-            }
-        });
 
         if (! Storage::disk()->exists('settings.json')) {
             (new MigrateSettingsToJson)->run();

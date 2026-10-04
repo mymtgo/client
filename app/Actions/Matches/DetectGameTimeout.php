@@ -7,8 +7,8 @@ use App\Models\Game;
 class DetectGameTimeout
 {
     /**
-     * A clock at or under this at game end counts as run out. The sidecar
-     * writes a final clock reading when a game ends, so a real timeout
+     * A clock at or under this at game end counts as run out. A recorded
+     * clock is the final reading when a game ends, so a real timeout
      * should read about zero. Provisional until a real timeout has been
      * observed (see the report payload spec).
      */
@@ -17,8 +17,8 @@ class DetectGameTimeout
     /**
      * Whether one side of a game lost it on time. MTGO reports no timeout
      * reason, so this is inferred from the clock. Null when that side's
-     * clock or the game result is unknown, so a machine without the
-     * sidecar never reports a false "did not time out".
+     * clock or the game result is unknown, so a game with no recorded
+     * clock never reports a false "did not time out".
      */
     public static function run(Game $game, bool $local): ?bool
     {

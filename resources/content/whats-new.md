@@ -36,8 +36,6 @@ The league window has been redesigned. It now shows which league you're in, your
 - **Run complete** shows your final record and your games won and lost. Go 5-0 and you get a **Trophied!** card.
 - The card's border takes on your deck's colours.
 
-If the MTGO helper is turned on, sideboarding and new games show up on the card as they happen, without waiting for MTGO's logs.
-
 The card shows your deck's archetype, like "Mono Green Tron", rather than whatever you named the deck in MTGO. Click the name on the card to type your own; it's remembered for that deck.
 
 Go to **Settings > Overlays** to choose the artwork (your deck's cover, no artwork, or your own image) and the size (**Full** or **Compact**).
@@ -63,15 +61,9 @@ As soon as they reveal enough cards to show they're on something else, the overl
 
 Your history with them now reads like **Met 3× · won 2**, and it only counts matches in the format you're playing.
 
-## Clock and game length on Game Stats
+## Game length on Game Stats
 
-A deck's **Game Stats** page has three new columns:
-
-- **Time/G** is how long your games take on average.
-- **Clock left** is how much of your MTGO clock you had left at the end of each game. On the **All Games** rows, it's what you had left when the match ended.
-- **Opp clock left** is the same for your opponent, so you can see whether you're the one running low.
-
-Every row splits these by game number and by play or draw, so you can spot where you lose time. The clock is only recorded while the MTGO helper is running, so clock stats build up from the games you play with it on.
+A deck's **Game Stats** page has a new **Time/G** column showing how long your games take on average. Every row splits it by game number and by play or draw, so you can spot which games drag on.
 
 ## Pick your own date range
 
@@ -84,3 +76,7 @@ Next to **All time**, **This year**, **30 days** and the other quick picks, ther
 - The result and type filters on a deck's Matches tab no longer cut off "All Results".
 - The **Decklist** page and deck screenshots now show the exact printings in your deck, not whichever version of each card the app found first.
 - The **Opponents** page has been removed from the menu. Your record against an opponent still shows on the game overlay when you're paired with someone you've played before.
+
+## The MTGO helper has been removed
+
+The MTGO helper has been removed. Matches are tracked from MTGO's log files, as before, and everything you've already recorded is kept. If MTGO was open while you updated, restart it once.

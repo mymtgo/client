@@ -11,8 +11,6 @@ use App\Actions\Logs\IngestLogInstance;
 use App\Actions\Logs\PruneProcessedLogEvents;
 use App\Actions\RegisterDevice;
 use App\Actions\Settings\ValidatePath;
-use App\Actions\Sidecar\PruneSidecarFiles;
-use App\Actions\Sidecar\ResolveSidecarUsername;
 use App\Facades\AppSettings;
 use App\Jobs\CheckArchetypeVersion;
 use App\Jobs\DownloadArchetypes;
@@ -102,9 +100,7 @@ class MtgoManager
 
     public function getUsername(): ?string
     {
-        return ResolveSidecarUsername::run()
-            ?? $this->username
-            ?? Account::active()->value('username');
+        return $this->username ?? Account::active()->value('username');
     }
 
     /**
@@ -365,10 +361,6 @@ class MtgoManager
         $schedule->call(fn () => PruneProcessedLogEvents::run())
             ->daily()
             ->name('prune_log_events');
-
-        $schedule->call(fn () => PruneSidecarFiles::run())
-            ->daily()
-            ->name('prune_sidecar_files');
 
         // Belt and braces for the call after ingestion: an account can be
         // registered while the id-bearing login row is already stored, and

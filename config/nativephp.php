@@ -205,12 +205,6 @@ return [
             'timeout' => 60,
             'sleep' => 3,
         ],
-        'sidecar' => [
-            'queues' => ['sidecar'],
-            'memory_limit' => 1024,
-            'timeout' => 600,
-            'sleep' => 3,
-        ],
         'sync' => [
             'queues' => ['sync'],
             'memory_limit' => 1024,

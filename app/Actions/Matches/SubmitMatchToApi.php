@@ -10,20 +10,12 @@ use App\Models\Archetype;
 use App\Models\Card;
 use App\Models\DeckVersion;
 use App\Models\Game;
-use App\Models\GameEvent;
 use App\Models\MtgoMatch;
-use App\Sidecar\SidecarTables;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 class SubmitMatchToApi
 {
-    /**
-     * How long a report waits for the sidecar to finish projecting the match
-     * (clocks, concede results) before going out with whatever is written.
-     */
-    public const SIDECAR_WAIT_SECONDS = 120;
-
     public static function run(int $matchId): void
     {
         if (AppSettings::isOffline()) {
@@ -56,10 +48,6 @@ class SubmitMatchToApi
         // They stay local only; scopeSubmittable filters them too, this guard
         // covers direct-dispatch callers.
         if ($match->manual) {
-            return;
-        }
-
-        if (self::sidecarStillWriting($match)) {
             return;
         }
 
@@ -174,40 +162,8 @@ class SubmitMatchToApi
     }
 
     /**
-     * A submitted match is never re-sent, so a report that beats the sidecar
-     * keeps null clocks and a pre-correction result for good. Hold it while
-     * the match has unprocessed sidecar events, or has events but no
-     * match_ended yet (the log can complete the match a tick before the
-     * sidecar's final events are flushed and ingested). The once-a-minute
-     * retry brings it back. Capped so a stuck sidecar never blocks
-     * reporting. With no end time, the last write stands in for it. No
-     * sidecar tables, or no events for this match, means nothing to wait for.
-     */
-    private static function sidecarStillWriting(MtgoMatch $match): bool
-    {
-        if (! SidecarTables::ready()) {
-            return false;
-        }
-
-        $settledAt = $match->ended_at ?? $match->updated_at;
-
-        if ($settledAt !== null && $settledAt->lt(now()->subSeconds(self::SIDECAR_WAIT_SECONDS))) {
-            return false;
-        }
-
-        $events = GameEvent::query()->where('match_mtgo_id', (string) $match->mtgo_id);
-
-        if (! (clone $events)->exists()) {
-            return false;
-        }
-
-        return (clone $events)->whereNull('processed_at')->exists()
-            || ! (clone $events)->where('type', 'match_ended')->exists();
-    }
-
-    /**
      * Each side's clock at the end of the game and whether it ran out.
-     * Sidecar-only: without it every value is null.
+     * Games with no recorded clock send null for every value.
      *
      * @return array{clock_remaining_ms: ?int, opponent_clock_remaining_ms: ?int, timed_out: ?bool, opponent_timed_out: ?bool}
      */

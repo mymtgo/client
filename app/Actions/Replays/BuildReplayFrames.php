@@ -19,7 +19,7 @@ class BuildReplayFrames
      * the card's remote https image or nothing.
      *
      * The active player is repaired the way shared replays are, since
-     * sidecar frames carry the player who went first throughout.
+     * dense frames carry the player who went first throughout.
      *
      * @return list<array{timestamp: string, content: array<string, mixed>}>
      */

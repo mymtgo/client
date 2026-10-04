@@ -399,7 +399,7 @@ it('includes the local clock left at the end of the game', function () {
     expect($result['clockRemainingMs'])->toBe(481000);
 });
 
-it('leaves the clock null when the sidecar never recorded it', function () {
+it('leaves the clock null when no clock was recorded', function () {
     $result = BuildMatchGameData::run(makeGameWithLocalDeck([]), 1, collect(), collect(), []);
 
     expect($result['clockRemainingMs'])->toBeNull();

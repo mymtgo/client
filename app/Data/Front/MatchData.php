@@ -45,7 +45,7 @@ class MatchData extends Data
         /**
          * The local player's clock left when the match ended: MTGO's clock
          * runs across the whole match, so that is the last game's end value.
-         * Sidecar-only, so null wherever it was not running.
+         * Null when no clock was recorded.
          */
         public Lazy|int|null $clockRemainingMs = null,
         /** The opponent's clock left when the match ended, same rules. */

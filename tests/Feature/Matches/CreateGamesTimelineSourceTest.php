@@ -32,7 +32,7 @@ beforeEach(function () {
     $this->match = MtgoMatch::factory()->create(['mtgo_id' => '288955358']);
 });
 
-it('marks a log-built timeline as log owned', function () {
+it('builds a game timeline from its log state events', function () {
     $events = collect([
         stateEvent($this->instance, 958291826, 288955358, '13:16:41'),
         stateEvent($this->instance, 958291826, 288955358, '13:16:45'),
@@ -41,12 +41,11 @@ it('marks a log-built timeline as log owned', function () {
     CreateGames::run($this->match, 958291826, $events, 0, []);
 
     $game = Game::where('mtgo_id', 958291826)->first();
-    expect($game->timeline_source)->toBe('log')
-        ->and(GameTimeline::where('game_id', $game->id)->count())->toBe(2);
+    expect(GameTimeline::where('game_id', $game->id)->count())->toBe(2);
 });
 
-it('leaves a sidecar owned timeline untouched on log reprocess', function () {
-    $game = Game::factory()->create(['match_id' => $this->match->id, 'mtgo_id' => 958291826, 'timeline_source' => 'sidecar']);
+it('replaces existing frames on a log reprocess', function () {
+    $game = Game::factory()->create(['match_id' => $this->match->id, 'mtgo_id' => 958291826]);
     GameTimeline::create(['game_id' => $game->id, 'timestamp' => '13:16:41.050', 'content' => ['Turn' => 2, 'Players' => [], 'Cards' => []]]);
 
     $events = collect([
@@ -56,8 +55,5 @@ it('leaves a sidecar owned timeline untouched on log reprocess', function () {
 
     CreateGames::run($this->match, 958291826, $events, 0, []);
 
-    $rows = GameTimeline::where('game_id', $game->id)->get();
-    expect($rows)->toHaveCount(1)
-        ->and($rows[0]->timestamp)->toBe('13:16:41.050')
-        ->and($game->fresh()->timeline_source)->toBe('sidecar');
+    expect(GameTimeline::where('game_id', $game->id)->orderBy('id')->pluck('timestamp')->all())->toBe(['13:16:41', '13:16:45']);
 });

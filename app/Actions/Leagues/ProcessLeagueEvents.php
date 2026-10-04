@@ -2,15 +2,9 @@
 
 namespace App\Actions\Leagues;
 
-use App\Actions\Sidecar\AwaitSidecarAnswer;
 use App\Enums\LeagueState;
-use App\Models\GameEvent;
 use App\Models\League;
 use App\Models\LogEvent;
-use App\Sidecar\LeagueSnapshot;
-use App\Sidecar\SidecarAuthorityFlags;
-use App\Sidecar\SidecarPaths;
-use App\Sidecar\SidecarTables;
 use Illuminate\Support\Facades\Log;
 
 class ProcessLeagueEvents
@@ -27,18 +21,12 @@ class ProcessLeagueEvents
             $event->update(['processed_at' => now()]);
         }
 
-        self::processSidecarLeagueEvents();
-
         $dropEvents = LogEvent::where('event_type', 'league_dropped')
             ->whereNull('processed_at')
             ->orderBy('timestamp')
             ->get();
 
         foreach ($dropEvents as $event) {
-            if (AwaitSidecarAnswer::run('league_drop', $event->created_at)) {
-                continue;
-            }
-
             AttributeDropFromLog::run($event);
             $event->update(['processed_at' => now()]);
         }
@@ -77,85 +65,5 @@ class ProcessLeagueEvents
         ]);
 
         Log::channel('pipeline')->info("ProcessLeagueEvents: backfilled event_id={$event->match_id} on league #{$league->id}");
-    }
-
-    /**
-     * Sidecar league membership events (spec 5.4), applied only with the
-     * league_drop flag on and a verified event. Joins are recorded and never
-     * acted on: a join says nothing about any other league the user runs.
-     *
-     * A leave with matches remaining only drops a league when the log also
-     * shows the user dropping (a league_dropped line in the window). MTGO's
-     * EventRemoved hook also fires when the client logs out, closes or loses
-     * its connection; without that pairing each of those would drop every
-     * running league. The sidecar's job here is naming the right league, not
-     * deciding that a drop happened. A leave that arrives before its log
-     * line waits (unprocessed) for the rest of the window.
-     *
-     * One bad event is logged and marked processed; it never stalls the tick.
-     */
-    private static function processSidecarLeagueEvents(): void
-    {
-        // Directory check first, mirroring IngestSidecarEvents: a machine with
-        // no sidecar at all must still add zero queries per tick.
-        if (! is_dir(SidecarPaths::directory()) || ! SidecarTables::ready()) {
-            return;
-        }
-
-        $applyLeaves = SidecarAuthorityFlags::isOn('league_drop');
-
-        GameEvent::query()
-            ->whereIn('type', ['league_left', 'league_joined'])
-            ->whereNull('processed_at')
-            ->orderBy('session_started_at')
-            ->orderBy('seq')
-            ->get()
-            ->each(function (GameEvent $event) use ($applyLeaves): void {
-                try {
-                    if ($applyLeaves && $event->type === 'league_left' && $event->verified && ! self::applyLeave($event)) {
-                        return;
-                    }
-                } catch (\Throwable $e) {
-                    Log::channel('pipeline')->warning('ProcessLeagueEvents: sidecar league event failed', [
-                        'game_event_id' => $event->id,
-                        'error' => $e->getMessage(),
-                    ]);
-                }
-
-                $event->update(['processed_at' => now()]);
-            });
-    }
-
-    /**
-     * @return bool false to leave the event unprocessed for a later tick
-     */
-    private static function applyLeave(GameEvent $event): bool
-    {
-        $window = [
-            $event->created_at->copy()->subSeconds(AwaitSidecarAnswer::WINDOW_SECONDS),
-            $event->created_at->copy()->addSeconds(AwaitSidecarAnswer::WINDOW_SECONDS),
-        ];
-
-        $snapshot = LeagueSnapshot::fromArray($event->data['league'] ?? null);
-        $isDrop = ($snapshot?->matchesRemaining ?? 0) > 0;
-        $logDropSeen = LogEvent::query()->where('event_type', 'league_dropped')->whereBetween('created_at', $window)->exists();
-
-        if ($isDrop && ! $logDropSeen) {
-            return $event->created_at->lt(now()->subSeconds(AwaitSidecarAnswer::WINDOW_SECONDS));
-        }
-
-        $league = ApplySidecarLeagueLeft::run($event);
-
-        if ($league !== null) {
-            LogEvent::query()
-                ->where('event_type', 'league_dropped')
-                ->whereNull('processed_at')
-                ->whereBetween('created_at', $window)
-                ->update(['processed_at' => now()]);
-
-            RevertLogDropAttribution::run($event, $league);
-        }
-
-        return true;
     }
 }

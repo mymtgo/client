@@ -3,8 +3,6 @@
 namespace App\Actions\Matches;
 
 use App\Actions\Leagues\ResolveLeagueRunFromLog;
-use App\Actions\Leagues\ResolveLeagueRunFromSidecar;
-use App\Actions\Sidecar\AwaitSidecarAnswer;
 use App\Models\MtgoMatch;
 
 class AssignLeague
@@ -27,21 +25,6 @@ class AssignLeague
         }
 
         if (empty($gameMeta['League Token'])) {
-            return;
-        }
-
-        // A deferred deck is waited for first, before even the sidecar
-        // league answer: minting now would give the league no deck, and a
-        // league without one never syncs (spec 5.3).
-        if ($match->deck_version_id === null && AwaitSidecarAnswer::run('match_deck', $match->created_at, $match->started_at)) {
-            return;
-        }
-
-        if (ResolveLeagueRunFromSidecar::run($match, $gameMeta)) {
-            return;
-        }
-
-        if (AwaitSidecarAnswer::run('league_run', $match->created_at, $match->started_at)) {
             return;
         }
 
