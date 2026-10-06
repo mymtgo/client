@@ -1,17 +1,20 @@
 <script setup lang="ts">
-import StateBadge from '@/components/limited/StateBadge.vue';
-import DraftController from '@/actions/App/Http/Controllers/Limited/DraftController';
-import DeckController from '@/actions/App/Http/Controllers/Limited/DeckController';
-import MatchesController from '@/actions/App/Http/Controllers/Limited/MatchesController';
 import CardsController from '@/actions/App/Http/Controllers/Limited/CardsController';
+import DeckController from '@/actions/App/Http/Controllers/Limited/DeckController';
+import DraftController from '@/actions/App/Http/Controllers/Limited/DraftController';
+import MatchesController from '@/actions/App/Http/Controllers/Limited/MatchesController';
+import StateBadge from '@/components/limited/StateBadge.vue';
 import { Link } from '@inertiajs/vue3';
 import { BookOpen, Calendar, Layers2, List, Swords } from 'lucide-vue-next';
 import { computed } from 'vue';
 
 const props = defineProps<{ event: App.Data.Front.LimitedEventData; currentPage: string }>();
 
+/** Sealed has no picks to review, so it has no Draft page. */
 const navItems = computed(() => [
-    { key: 'draft', label: 'Draft', icon: BookOpen, href: DraftController.url({ league: props.event.id }) },
+    ...(props.event.kind === 'sealed'
+        ? []
+        : [{ key: 'draft', label: 'Draft', icon: BookOpen, href: DraftController.url({ league: props.event.id }) }]),
     { key: 'deck', label: 'Deck', icon: Layers2, href: DeckController.url({ league: props.event.id }) },
     { key: 'matches', label: 'Matches', icon: Swords, href: MatchesController.url({ league: props.event.id }) },
     { key: 'cards', label: 'Cards', icon: List, href: CardsController.url({ league: props.event.id }) },
@@ -26,22 +29,35 @@ const recordClass = computed(() => {
 <template>
     <div class="flex h-full flex-col border-r border-black/80 bg-muted/20">
         <div class="relative h-24 overflow-hidden border-b border-black/60">
-            <img v-if="event.coverArt" :src="event.coverArt" :alt="event.title" class="pointer-events-none absolute inset-0 h-full w-full object-cover object-top opacity-50" />
-            <div class="relative flex h-full flex-col items-start justify-center gap-1 px-4" :class="event.coverArt ? '[text-shadow:_0_1px_4px_rgb(0_0_0_/_80%)]' : ''">
-                <span class="text-sm font-semibold leading-tight">{{ event.title }}</span>
+            <img
+                v-if="event.coverArt"
+                :src="event.coverArt"
+                :alt="event.title"
+                class="pointer-events-none absolute inset-0 h-full w-full object-cover object-top opacity-50"
+            />
+            <div
+                class="relative flex h-full flex-col items-start justify-center gap-1 px-4"
+                :class="event.coverArt ? '[text-shadow:_0_1px_4px_rgb(0_0_0_/_80%)]' : ''"
+            >
+                <span class="text-sm leading-tight font-semibold">{{ event.title }}</span>
                 <span class="text-xs text-muted-foreground">{{ event.subtitle }}</span>
             </div>
         </div>
         <div class="flex flex-col gap-2 border-b border-black/80 px-3 py-3">
             <div class="flex flex-wrap items-center gap-2">
-                <span v-if="event.setCode" class="rounded-md border border-black/70 bg-background px-2.5 py-1 text-xs font-medium">{{ event.setCode }}</span>
+                <span v-if="event.setCode" class="rounded-md border border-black/70 bg-background px-2.5 py-1 text-xs font-medium">{{
+                    event.setCode
+                }}</span>
                 <span class="rounded-md border border-black/70 bg-background px-2.5 py-1 text-xs font-medium capitalize">{{ event.kind }}</span>
-                <span class="rounded-md border border-black/70 bg-background px-2.5 py-1 text-xs font-medium tabular-nums" :class="recordClass">{{ event.wins }}-{{ event.losses }}</span>
+                <span class="rounded-md border border-black/70 bg-background px-2.5 py-1 text-xs font-medium tabular-nums" :class="recordClass"
+                    >{{ event.wins }}-{{ event.losses }}</span
+                >
             </div>
             <div class="inline-flex items-center gap-1 text-xs text-muted-foreground"><Calendar class="size-3" />{{ event.startedAtHuman }}</div>
             <div class="flex flex-wrap items-center gap-2">
                 <StateBadge :label="event.state" :variant="event.stateVariant" />
-                <span class="text-xs text-muted-foreground tabular-nums">{{ event.picksMade }}/{{ event.picksExpected }} picks</span>
+                <span v-if="event.packs !== null" class="text-xs text-muted-foreground tabular-nums">{{ event.packs }} packs</span>
+                <span v-else class="text-xs text-muted-foreground tabular-nums">{{ event.picksMade }}/{{ event.picksExpected }} picks</span>
             </div>
         </div>
         <nav class="flex flex-1 flex-col gap-0.5 border-t border-white/5 px-2 py-3">
@@ -52,9 +68,7 @@ const recordClass = computed(() => {
                 prefetch
                 preserve-state
                 class="flex items-center gap-3 rounded px-3 py-2 text-sm font-medium transition-colors"
-                :class="currentPage === item.key
-                    ? 'nav-item-active'
-                    : 'nav-item-inactive'"
+                :class="currentPage === item.key ? 'nav-item-active' : 'nav-item-inactive'"
             >
                 <component
                     :is="item.icon"

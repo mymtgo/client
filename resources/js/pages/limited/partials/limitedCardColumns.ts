@@ -2,17 +2,18 @@ import type { LimitedCardRow, PoolStatus } from '@/types/limited';
 
 export type SortKey = 'pick' | 'name' | 'status' | 'gamesCast' | 'winPctCast' | 'seenCount' | 'wheeled' | 'prior';
 
-export type CardColumn = { key: SortKey; label: string; align: 'left' | 'right' | 'center' };
+/** `draftOnly` columns describe picks, so sealed (no picks) hides them. */
+export type CardColumn = { key: SortKey; label: string; align: 'left' | 'right' | 'center'; draftOnly?: boolean };
 
 export const COLUMNS: CardColumn[] = [
     { key: 'name', label: 'Card', align: 'left' },
-    { key: 'pick', label: 'Pick', align: 'left' },
+    { key: 'pick', label: 'Pick', align: 'left', draftOnly: true },
     { key: 'status', label: 'In deck', align: 'center' },
     { key: 'gamesCast', label: 'Games cast', align: 'right' },
     { key: 'winPctCast', label: 'Win % cast', align: 'right' },
-    { key: 'seenCount', label: 'Seen', align: 'right' },
-    { key: 'wheeled', label: 'Wheeled', align: 'center' },
-    { key: 'prior', label: 'Prior drafts', align: 'right' },
+    { key: 'seenCount', label: 'Seen', align: 'right', draftOnly: true },
+    { key: 'wheeled', label: 'Wheeled', align: 'center', draftOnly: true },
+    { key: 'prior', label: 'Prior drafts', align: 'right', draftOnly: true },
 ];
 
 /** Ascending by default for these: the rest read best largest first. */

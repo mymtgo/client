@@ -29,6 +29,8 @@ class LimitedIndexRowData extends Data
         public array $results,
         public int $picksMade,
         public int $picksExpected,
+        /** Boosters a sealed pool was opened from; null for a draft. */
+        public ?int $packs,
         public bool $deckRegistered,
         public int $versionCount,
         public ?int $avgPickSeconds,

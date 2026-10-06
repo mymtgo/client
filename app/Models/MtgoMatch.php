@@ -168,12 +168,13 @@ class MtgoMatch extends Model
 
     /**
      * Whether an MTGO format code belongs to limited play. MTGO prefixes
-     * constructed codes with 'C' (CModern) and limited codes with 'D'
-     * (DHOBHOBHOB, a draft of three Hobbit packs).
+     * constructed codes with 'C' (CModern), draft codes with 'D'
+     * (DHOBHOBHOB, a draft of three Hobbit packs) and sealed codes with 'S'
+     * and the booster count (S6FRA, a sealed pool of six FRA boosters).
      */
     public static function isLimitedFormatCode(?string $format): bool
     {
-        return $format !== null && preg_match('/^D[A-Z]/', $format) === 1;
+        return $format !== null && preg_match('/^(D[A-Z]|S[0-9])/', $format) === 1;
     }
 
     /** Whether this match was played in a limited format. */
@@ -184,14 +185,14 @@ class MtgoMatch extends Model
 
     /**
      * Exclude limited-format matches. Mirrors isLimitedFormatCode() in SQL:
-     * GLOB is native SQLite and case-sensitive, so 'D[A-Z]*' matches the
-     * same codes as the regex. Null and unknown formats are kept.
+     * GLOB is native SQLite and case-sensitive, so 'D[A-Z]*' and 'S[0-9]*'
+     * match the same codes as the regex. Null and unknown formats are kept.
      */
     public function scopeNotLimitedFormat(Builder $query): Builder
     {
         return $query->where(function (Builder $q) {
             $q->whereNull('format')
-                ->orWhereRaw("format NOT GLOB 'D[A-Z]*'");
+                ->orWhereRaw("format NOT GLOB 'D[A-Z]*' AND format NOT GLOB 'S[0-9]*'");
         });
     }
 

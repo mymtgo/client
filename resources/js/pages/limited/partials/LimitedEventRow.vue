@@ -39,8 +39,10 @@ const scoreLabel = computed(() => {
     return `${props.row.wins}-${props.row.losses}`;
 });
 
-const draftHref = computed(() => (props.row.leagueId ? DraftController.url({ league: props.row.leagueId }) : null));
+/** Sealed has no picks to review: its title goes to the deck instead. */
+const draftHref = computed(() => (props.row.leagueId && props.row.kind !== 'sealed' ? DraftController.url({ league: props.row.leagueId }) : null));
 const deckHref = computed(() => (props.row.leagueId ? DeckController.url({ league: props.row.leagueId }) : null));
+const titleHref = computed(() => draftHref.value ?? deckHref.value);
 </script>
 
 <template>
@@ -55,7 +57,7 @@ const deckHref = computed(() => (props.row.leagueId ? DeckController.url({ leagu
 
             <div class="flex min-w-0 flex-1 flex-col gap-1">
                 <div class="flex flex-wrap items-center gap-2">
-                    <Link v-if="draftHref" :href="draftHref" prefetch class="font-semibold underline-offset-2 hover:underline">{{ row.title }}</Link>
+                    <Link v-if="titleHref" :href="titleHref" prefetch class="font-semibold underline-offset-2 hover:underline">{{ row.title }}</Link>
                     <span v-else class="font-semibold">{{ row.title }}</span>
                     <Badge v-if="row.setCode" variant="secondary">{{ row.setCode }}</Badge>
                     <Badge variant="outline" class="capitalize">{{ row.kind }}</Badge>
@@ -72,7 +74,8 @@ const deckHref = computed(() => (props.row.leagueId ? DeckController.url({ leagu
 
                 <div class="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
                     <span class="inline-flex items-center gap-1"><Calendar class="size-3" />{{ row.startedAtHuman }}</span>
-                    <span>{{ row.picksMade }}/{{ row.picksExpected }} picks</span>
+                    <span v-if="row.packs !== null">{{ row.packs }} packs</span>
+                    <span v-else>{{ row.picksMade }}/{{ row.picksExpected }} picks</span>
                     <span v-if="row.deckRegistered">{{ row.versionCount }} deck version{{ row.versionCount === 1 ? '' : 's' }}</span>
                     <span v-if="row.avgPickSeconds !== null" class="inline-flex items-center gap-1">
                         <Timer class="size-3" />avg {{ formatSeconds(row.avgPickSeconds) }} / pick

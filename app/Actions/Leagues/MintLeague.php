@@ -25,7 +25,7 @@ class MintLeague
             'started_at' => $match->started_at ?? now(),
             'joined_at' => $joinedAt,
             'name' => trim(($structure ?? '').' League '.now()->toLocal()->format('d-m-Y h:ma')),
-            'kind' => MtgoMatch::isLimitedFormatCode($format) ? LeagueKind::Draft : LeagueKind::Constructed,
+            'kind' => LeagueKind::fromFormatCode($format),
         ]);
 
         // Mark older active leagues with the same token as partial. Format is

@@ -40,7 +40,7 @@ it('renders the draft page with picks and deferred cross draft block', function 
 });
 
 it('renders an empty draft page when the league has no draft', function () {
-    $league = League::factory()->create(['kind' => LeagueKind::Sealed, 'started_at' => now()]);
+    $league = League::factory()->create(['kind' => LeagueKind::Draft, 'started_at' => now()]);
 
     $this->get(route('limited.draft', ['league' => $league->id]))
         ->assertOk()
@@ -89,4 +89,11 @@ it('does not rebuild the review on a partial reload for the deferred cross draft
     expect($response->json('props'))->toHaveKey('crossDraft')
         ->and($response->json('props'))->not->toHaveKey('review')
         ->and($response->json('props'))->not->toHaveKey('event');
+});
+
+it('sends a sealed league to its deck page, since sealed has no picks', function () {
+    $league = League::factory()->create(['kind' => LeagueKind::Sealed]);
+
+    $this->get(route('limited.draft', ['league' => $league->id]))
+        ->assertRedirect(route('limited.deck', ['league' => $league->id]));
 });
