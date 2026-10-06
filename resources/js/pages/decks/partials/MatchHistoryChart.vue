@@ -2,6 +2,7 @@
 import type { ChartConfig } from '@/components/ui/chart';
 import { ChartContainer } from '@/components/ui/chart';
 import { formatMatchRecord } from '@/lib/matchRecord';
+import { customRangeDays } from '@/lib/timeframes';
 import { parseLocalDate } from '@/lib/utils';
 import { VisAxis, VisCrosshair, VisLine, VisTooltip, VisXYContainer } from '@unovis/vue';
 import { computed, onMounted, ref, watch } from 'vue';
@@ -85,6 +86,14 @@ const bucketDays = computed(() => {
         return 1;
     }
 
+    // A custom range is bucketed by its length, like the preset of that size.
+    const customDays = customRangeDays(props.timeframe);
+    if (customDays !== null) {
+        if (customDays <= 60) return 1;
+
+        return customDays <= 400 ? 7 : 30;
+    }
+
     if (props.timeframe === 'year') {
         return 7;
     }
@@ -112,7 +121,14 @@ const dailyRows = computed<DailyRow[]>(() =>
 
 const bucketedRows = computed(() => {
     const size = bucketDays.value;
-    const buckets: { date: string; endDate: string; wins: number; losses: number; draws: number; peer: { wins: number; losses: number; draws: number } | null }[] = [];
+    const buckets: {
+        date: string;
+        endDate: string;
+        wins: number;
+        losses: number;
+        draws: number;
+        peer: { wins: number; losses: number; draws: number } | null;
+    }[] = [];
 
     for (let i = 0; i < dailyRows.value.length; i += size) {
         const slice = dailyRows.value.slice(i, i + size);
@@ -126,10 +142,10 @@ const bucketedRows = computed(() => {
             draws: slice.reduce((sum, row) => sum + row.draws, 0),
             peer: peerRows.length
                 ? {
-                    wins: peerRows.reduce((sum, row) => sum + (row.peer?.wins ?? 0), 0),
-                    losses: peerRows.reduce((sum, row) => sum + (row.peer?.losses ?? 0), 0),
-                    draws: peerRows.reduce((sum, row) => sum + (row.peer?.draws ?? 0), 0),
-                }
+                      wins: peerRows.reduce((sum, row) => sum + (row.peer?.wins ?? 0), 0),
+                      losses: peerRows.reduce((sum, row) => sum + (row.peer?.losses ?? 0), 0),
+                      draws: peerRows.reduce((sum, row) => sum + (row.peer?.draws ?? 0), 0),
+                  }
                 : null,
         });
     }
@@ -204,9 +220,7 @@ const crosshairColorAccessor = (_d: DataPoint, i: number) => {
 };
 
 const lineColor = computed(() => winColor.value);
-const winrateCrosshairColors = computed(() =>
-    hasPeer.value ? [winColor.value, peerColor.value] : [winColor.value],
-);
+const winrateCrosshairColors = computed(() => (hasPeer.value ? [winColor.value, peerColor.value] : [winColor.value]));
 
 const formatTick = (ms: number) => {
     return new Date(ms).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
@@ -251,13 +265,14 @@ const winrateTooltipTemplate = (d: DataPoint): string | null => {
     </div>
     <div style="font-size:11px;opacity:0.7;margin-left:14px">${formatMatchRecord(d.cumWins, d.cumLosses, d.cumDraws)}</div>`;
 
-    const peerRow = hasPeer.value && d.peerCumRate !== null
-        ? `<div style="display:flex;justify-content:space-between;gap:16px;align-items:center;margin-top:6px">
+    const peerRow =
+        hasPeer.value && d.peerCumRate !== null
+            ? `<div style="display:flex;justify-content:space-between;gap:16px;align-items:center;margin-top:6px">
             <span style="display:flex;align-items:center;gap:6px"><span style="width:8px;height:0;border-top:2px dashed ${peerColor.value}"></span>${peerLabel.value}</span>
             <span style="font-weight:600">${d.peerCumRate}%</span>
         </div>
         <div style="font-size:11px;opacity:0.7;margin-left:14px">${formatMatchRecord(d.peerCumWins, d.peerCumLosses, d.peerCumDraws)}</div>`
-        : '';
+            : '';
 
     return `<div style="padding:8px 12px;line-height:1.4;min-width:200px">
         <div style="font-size:11px;opacity:0.6;margin-bottom:6px">${label}</div>
@@ -317,38 +332,17 @@ const maxTotal = computed(() => {
                 </span>
             </div>
         </div>
-        <ChartContainer
-            :config="chartConfig"
-            class="mt-4 h-[400px] w-full"
-        >
-            <VisXYContainer
-                v-if="mode === 'counts'"
-                :data="chartData"
-                :y-domain="[0, maxTotal]"
-            >
-                <VisLine
-                    :x="(d: DataPoint) => d.date"
-                    :y="(d: DataPoint) => d.wins"
-                    :color="winColor"
-                    :line-width="2"
-                />
-                <VisLine
-                    :x="(d: DataPoint) => d.date"
-                    :y="(d: DataPoint) => d.losses"
-                    :color="lossColor"
-                    :line-width="2"
-                />
+        <ChartContainer :config="chartConfig" class="mt-4 h-[400px] w-full">
+            <VisXYContainer v-if="mode === 'counts'" :data="chartData" :y-domain="[0, maxTotal]">
+                <VisLine :x="(d: DataPoint) => d.date" :y="(d: DataPoint) => d.wins" :color="winColor" :line-width="2" />
+                <VisLine :x="(d: DataPoint) => d.date" :y="(d: DataPoint) => d.losses" :color="lossColor" :line-width="2" />
 
                 <VisCrosshair :template="countsTooltipTemplate" :color="crosshairColorAccessor" />
                 <VisTooltip />
                 <VisAxis type="x" :tick-format="formatTick" />
                 <VisAxis type="y" :grid-line="true" />
             </VisXYContainer>
-            <VisXYContainer
-                v-else
-                :data="chartData"
-                :y-domain="[0, 100]"
-            >
+            <VisXYContainer v-else :data="chartData" :y-domain="[0, 100]">
                 <VisLine
                     v-if="hasPeer"
                     :x="(d: DataPoint) => d.date"
@@ -357,12 +351,7 @@ const maxTotal = computed(() => {
                     :line-width="2"
                     :line-dash-array="[4, 4]"
                 />
-                <VisLine
-                    :x="(d: DataPoint) => d.date"
-                    :y="(d: DataPoint) => d.cumRate"
-                    :color="lineColor"
-                    :line-width="2"
-                />
+                <VisLine :x="(d: DataPoint) => d.date" :y="(d: DataPoint) => d.cumRate" :color="lineColor" :line-width="2" />
 
                 <VisCrosshair :template="winrateTooltipTemplate" :color="winrateCrosshairColors" />
                 <VisTooltip />
@@ -374,7 +363,7 @@ const maxTotal = computed(() => {
 </template>
 
 <style>
-.match-history-chart [data-slot="chart"] {
+.match-history-chart [data-slot='chart'] {
     --vis-tooltip-background-color: hsl(var(--popover)) !important;
     --vis-tooltip-text-color: hsl(var(--popover-foreground)) !important;
     --vis-tooltip-border-color: hsl(var(--border)) !important;

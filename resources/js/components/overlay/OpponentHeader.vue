@@ -15,7 +15,8 @@ const headToHead = computed(() => {
         return null;
     }
 
-    return `${props.opponent.wins}–${props.opponent.losses} vs you`;
+    // A count, not a score: "2–1" reads like the result of the match in progress.
+    return `Met ${props.opponent.previousMatches}× · won ${props.opponent.wins}`;
 });
 
 /**
@@ -26,8 +27,10 @@ const headToHead = computed(() => {
  */
 const sourceLabels: Record<string, string> = {
     league: '5-0 list',
+    tracked: 'last played',
+    observed: 'seen by others',
     api: 'guess',
-    local: 'last seen',
+    local: 'you faced',
 };
 
 const sourceLabel = computed(() => {

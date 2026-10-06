@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import AppLayout from '@/AppLayout.vue';
-import LimitedEventLayout from '@/layouts/LimitedEventLayout.vue';
 import MatchController from '@/actions/App/Http/Controllers/Limited/MatchController';
+import AppLayout from '@/AppLayout.vue';
 import MatchesTable from '@/components/matches/MatchesTable.vue';
 import { Card, CardContent } from '@/components/ui/card';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import LimitedEventLayout from '@/layouts/LimitedEventLayout.vue';
 import { NO_VALUE, formatSeconds, timeLabel } from '@/types/limited';
 import { Head } from '@inertiajs/vue3';
 import { Clock, Swords, Target, Timer } from 'lucide-vue-next';
@@ -181,16 +181,20 @@ function updateSort(column: string): void {
             <p class="font-medium">No league matches yet.</p>
             <p class="text-sm text-muted-foreground">Matches attach here as soon as they finish.</p>
         </div>
-        <TooltipProvider v-else>
-            <MatchesTable
-                :matches="sortedMatches"
-                :show-deck="false"
-                :show-archetype="false"
-                :sort-by="sortBy"
-                :sort-dir="sortDir"
-                :match-url="(id) => MatchController.url({ league: event.id, match: id })"
-                @sort="updateSort"
-            />
-        </TooltipProvider>
+        <Card v-else class="gap-0 overflow-hidden p-0">
+            <CardContent class="px-0">
+                <TooltipProvider>
+                    <MatchesTable
+                        :matches="sortedMatches"
+                        :show-deck="false"
+                        :show-archetype="false"
+                        :sort-by="sortBy"
+                        :sort-dir="sortDir"
+                        :match-url="(id) => MatchController.url({ league: event.id, match: id })"
+                        @sort="updateSort"
+                    />
+                </TooltipProvider>
+            </CardContent>
+        </Card>
     </div>
 </template>

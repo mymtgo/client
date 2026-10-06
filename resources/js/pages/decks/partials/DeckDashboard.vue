@@ -1,15 +1,16 @@
 <script setup lang="ts">
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Deferred } from '@inertiajs/vue3';
+import { customRangeLabel } from '@/lib/timeframes';
+import KpiBestWorstMatchups from '@/pages/decks/partials/KpiBestWorstMatchups.vue';
+import KpiBoardingSplit from '@/pages/decks/partials/KpiBoardingSplit.vue';
+import KpiMatchWinRate from '@/pages/decks/partials/KpiMatchWinRate.vue';
+import KpiPlayDrawGap from '@/pages/decks/partials/KpiPlayDrawGap.vue';
+import LeagueRunCard from '@/pages/decks/partials/LeagueRunCard.vue';
 import MatchHistoryChart from '@/pages/decks/partials/MatchHistoryChart.vue';
 import StandoutCards from '@/pages/decks/partials/StandoutCards.vue';
-import KpiMatchWinRate from '@/pages/decks/partials/KpiMatchWinRate.vue';
-import KpiBoardingSplit from '@/pages/decks/partials/KpiBoardingSplit.vue';
-import KpiPlayDrawGap from '@/pages/decks/partials/KpiPlayDrawGap.vue';
-import KpiBestWorstMatchups from '@/pages/decks/partials/KpiBestWorstMatchups.vue';
-import LeagueRunCard from '@/pages/decks/partials/LeagueRunCard.vue';
 import type { LeagueRun } from '@/types/leagues';
+import { Deferred } from '@inertiajs/vue3';
 import { computed } from 'vue';
 
 const props = defineProps<{
@@ -44,7 +45,7 @@ const TIMEFRAME_LABELS: Record<string, string> = {
     alltime: 'All time',
 };
 
-const timeframeLabel = computed(() => TIMEFRAME_LABELS[props.timeframe] ?? 'All time');
+const timeframeLabel = computed(() => TIMEFRAME_LABELS[props.timeframe] ?? customRangeLabel(props.timeframe) ?? 'All time');
 
 const totalGames = computed(() => props.gamesWon + props.gamesLost);
 
@@ -73,16 +74,13 @@ const leagueResultsBuckets = [
     <div class="space-y-4">
         <!-- KPI Cards -->
         <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <KpiMatchWinRate
-                :match-record="matchRecord"
-                :winrate-delta="winrateDelta"
-                :chart-data="chartData"
-                :timeframe-label="timeframeLabel"
-            />
+            <KpiMatchWinRate :match-record="matchRecord" :winrate-delta="winrateDelta" :chart-data="chartData" :timeframe-label="timeframeLabel" />
 
             <Deferred data="boardingSplit">
                 <template #fallback>
-                    <Card class="gap-0 py-0"><CardContent class="p-4"><Skeleton class="h-28 w-full" /></CardContent></Card>
+                    <Card class="gap-0 py-0"
+                        ><CardContent class="p-4"><Skeleton class="h-28 w-full" /></CardContent
+                    ></Card>
                 </template>
                 <KpiBoardingSplit v-if="boardingSplit" :split="boardingSplit" />
             </Deferred>
@@ -100,7 +98,9 @@ const leagueResultsBuckets = [
 
             <Deferred data="matchupSpread">
                 <template #fallback>
-                    <Card class="gap-0 py-0"><CardContent class="p-4"><Skeleton class="h-28 w-full" /></CardContent></Card>
+                    <Card class="gap-0 py-0"
+                        ><CardContent class="p-4"><Skeleton class="h-28 w-full" /></CardContent
+                    ></Card>
                 </template>
                 <KpiBestWorstMatchups :spread="matchupSpread" />
             </Deferred>
@@ -110,20 +110,12 @@ const leagueResultsBuckets = [
         <div class="grid grid-cols-3 gap-4">
             <Card class="col-span-2">
                 <CardContent>
-                    <MatchHistoryChart
-                        v-if="chartData.length"
-                        :data="chartData"
-                        :peer="peerChart ?? null"
-                        :timeframe="timeframe"
-                    />
-                    <p v-else class="py-12 text-center text-sm text-muted-foreground">
-                        No match data for this period.
-                    </p>
+                    <MatchHistoryChart v-if="chartData.length" :data="chartData" :peer="peerChart ?? null" :timeframe="timeframe" />
+                    <p v-else class="py-12 text-center text-sm text-muted-foreground">No match data for this period.</p>
                 </CardContent>
             </Card>
 
             <div class="flex flex-col gap-4">
-
                 <!-- League Finishes -->
                 <Deferred data="leagueResults">
                     <template #fallback>
@@ -140,7 +132,7 @@ const leagueResultsBuckets = [
                             <p class="mb-3 text-xs font-medium tracking-wide text-muted-foreground uppercase">League Finishes</p>
                             <div class="flex flex-col gap-2">
                                 <div v-for="bucket in leagueResultsBuckets" :key="bucket.key" class="flex items-center gap-3">
-                                    <span class="w-8 text-right text-sm tabular-nums font-medium">{{ bucket.label }}</span>
+                                    <span class="w-8 text-right text-sm font-medium tabular-nums">{{ bucket.label }}</span>
                                     <div class="relative h-5 flex-1 rounded bg-muted">
                                         <div
                                             class="h-full rounded"
@@ -148,21 +140,24 @@ const leagueResultsBuckets = [
                                             :style="{ width: `${((activeLeagueResults[bucket.key] ?? 0) / leagueResultsTotal) * 100}%` }"
                                         />
                                     </div>
-                                    <span class="w-6 text-right text-sm tabular-nums text-muted-foreground">{{ activeLeagueResults[bucket.key] ?? 0 }}</span>
+                                    <span class="w-6 text-right text-sm text-muted-foreground tabular-nums">{{
+                                        activeLeagueResults[bucket.key] ?? 0
+                                    }}</span>
                                 </div>
                             </div>
                         </CardContent>
                     </Card>
                 </Deferred>
 
-                                <!-- The run being played, or the last one finished -->
+                <!-- The run being played, or the last one finished -->
                 <Deferred :data="['leagueInProgress', 'latestLeague']">
                     <template #fallback>
-                        <Card class="gap-0 py-0"><CardContent class="p-4"><Skeleton class="h-40 w-full" /></CardContent></Card>
+                        <Card class="gap-0 py-0"
+                            ><CardContent class="p-4"><Skeleton class="h-40 w-full" /></CardContent
+                        ></Card>
                     </template>
                     <LeagueRunCard v-if="currentLeagueRun" :run="currentLeagueRun" />
                 </Deferred>
-
             </div>
         </div>
 
@@ -185,6 +180,5 @@ const leagueResultsBuckets = [
                 :most-sided-out="standoutCards.mostSidedOut"
             />
         </Deferred>
-
     </div>
 </template>

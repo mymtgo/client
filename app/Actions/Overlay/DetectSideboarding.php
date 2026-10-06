@@ -18,16 +18,30 @@ class DetectSideboarding
     private const CANDIDATE_LIMIT = 20;
 
     /**
+     * A transition whose destination is a sideboarding state, across the
+     * casual, league and tournament prefixes MTGO uses.
+     */
+    private const ENTERING_PATTERN = '/\bto \w*SideboardingState\b/';
+
+    /**
      * Whether the local player is sideboarding right now.
      *
-     * MTGO emits a *JoinedSideboardingState transition both when submitting a
-     * deck before game 1 and between games. What excludes the pre-game-1 case
-     * is not `ended_at` meaning "finished" — SyncGamePivots advances it on
-     * every pipeline tick while a game is still being played, so it is a
-     * "last activity seen" marker, never a completion flag — it's that no
-     * `Game` row is projected at all until game 1 starts producing events.
-     * Before that, `$match->games()` is empty and the guard below returns
-     * false regardless of any log event.
+     * MTGO only enters a *JoinedSideboardingState once a game has ended, so a
+     * transition logged after the most recent game began means that game is
+     * over and the next one has not produced a snapshot yet. Once the next
+     * game's first state event arrives, its `started_at` becomes the anchor
+     * and the earlier transition no longer counts.
+     *
+     * The anchor is deliberately `started_at`, not `ended_at`. SyncGamePivots
+     * advances `ended_at` as a "last activity seen" marker, and MTGO logs the
+     * sideboarding transition in the same second the game ends (sometimes
+     * seconds before the final game-log entry). Comparing against `ended_at`
+     * dropped the real transition and only matched the later
+     * `JoinedSideboardingState -> DeckSubmittedState` exit, so the overlay
+     * flipped to sideboarding only after the deck was submitted.
+     *
+     * No `Game` row is projected until game 1 starts producing events, so a
+     * pre-game-1 deck submission never reads as sideboarding.
      *
      * Live-match log events are safe to read here: PruneProcessedLogEvents'
      * normal pruneCompleted() path only deletes a match's events once it
@@ -37,31 +51,24 @@ class DetectSideboarding
      */
     public static function run(MtgoMatch $match): bool
     {
-        $lastGameEnd = $match->games()->whereNotNull('ended_at')->max('ended_at');
+        /** @var string|null $lastGameStart */
+        $lastGameStart = $match->games()->whereNotNull('started_at')->max('started_at');
 
-        if (! $lastGameEnd) {
+        if (! $lastGameStart) {
             return false;
         }
 
-        $lastGameEnd = Carbon::parse($lastGameEnd);
-
-        $latest = self::latestSideboardingAt($match->token, $lastGameEnd);
-
-        if (! $latest) {
-            return false;
-        }
-
-        $resumed = $match->games()
-            ->where('started_at', '>=', $latest)
-            ->whereHas('timeline')
-            ->exists();
-
-        return ! $resumed;
+        return self::latestSideboardingAt($match->token, Carbon::parse($lastGameStart)) !== null;
     }
 
     /**
-     * The most recent sideboarding transition for this match that lands after
-     * the given moment, as a real UTC instant.
+     * The most recent transition *into* a sideboarding state for this match
+     * that lands after the given moment, as a real UTC instant.
+     *
+     * Only the entering transition counts. The exits
+     * (`JoinedSideboardingState -> DeckSubmitted/DeckAccepted`) also contain
+     * "SideboardingState" and can share a second with the next game's first
+     * state event, which would read as sideboarding for the whole game.
      *
      * `log_events.timestamp` is a raw HH:MM:SS string, so it is only
      * meaningful once combined with `logged_at` — comparing it directly
@@ -78,6 +85,7 @@ class DetectSideboarding
             ->get(['id', 'context', 'timestamp', 'logged_at']);
 
         return $candidates
+            ->filter(fn (LogEvent $event) => preg_match(self::ENTERING_PATTERN, (string) $event->context) === 1)
             ->map(fn (LogEvent $event) => ConvertMtgoTimestamp::run($event->logged_at, (string) $event->timestamp))
             ->filter(fn (Carbon $at) => $at->greaterThan($after))
             ->max();

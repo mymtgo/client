@@ -5,7 +5,7 @@ namespace App\Actions\Overlay;
 use App\Actions\Archetypes\AggregateOpponentCards;
 use App\Actions\Archetypes\EstimateArchetypeLocally;
 use App\Actions\DetermineDeckArchetype;
-use App\Actions\Leagues\FetchOpponentLeagueArchetype;
+use App\Actions\Leagues\FetchOpponentScouting;
 use App\Data\Front\OverlayOpponentData;
 use App\Enums\MatchOutcome;
 use App\Facades\AppSettings;
@@ -69,7 +69,9 @@ class ResolveOverlayOpponent
     }
 
     /**
-     * Completed matches against this opponent, excluding the live one.
+     * Completed matches against this opponent in the live match's format,
+     * excluding the live one. A Pauper record says nothing about a Modern
+     * pairing.
      *
      * Computed independently of archetype resolution: the record is useful
      * whether or not the opponent happens to have a 5-0 list on file.
@@ -80,7 +82,8 @@ class ResolveOverlayOpponent
     {
         $base = MtgoMatch::complete()
             ->whereHas('games.opponents', fn ($q) => $q->where('players.id', $opponent->id))
-            ->where('matches.id', '!=', $match->id);
+            ->where('matches.id', '!=', $match->id)
+            ->where('format', $match->format);
 
         return [
             (clone $base)->where('outcome', MatchOutcome::Win)->count(),
@@ -122,16 +125,35 @@ class ResolveOverlayOpponent
             }
         }
 
-        $league = self::leagueArchetype($match, $opponent);
+        // What we last faced them on in this format. Above every API source:
+        // it is first-hand, and the live read above replaces it as soon as
+        // this match reveals a different deck.
+        $faced = self::lastFaced($match, $opponent);
+
+        if ($faced) {
+            return [$faced, 'local', false];
+        }
+
+        $scouting = self::scouting($match, $opponent);
+
+        $league = self::scoutedArchetype($scouting, 'league');
 
         if ($league) {
             return [$league, 'league', false];
         }
 
-        // Below the league list on purpose: a 5-0 decklist filed under this
+        // A deck the opponent played through the tracker was classified from
+        // its full list, so it is as sound as a 5-0, only unpublished.
+        $tracked = self::scoutedArchetype($scouting, 'tracked');
+
+        if ($tracked) {
+            return [$tracked, 'tracked', false];
+        }
+
+        // Below the full-list sources on purpose: a decklist filed under this
         // opponent's name is near-certain, while the API guess is scored from a
-        // partial reveal. It sits above `lastSeen`, which only knows what they
-        // brought some other day.
+        // partial reveal. It sits above `observed`, which only knows what
+        // they brought some other day.
         if ($cards && $fingerprint) {
             $api = self::apiEstimate($match, $opponent, $cards, $fingerprint);
 
@@ -140,17 +162,34 @@ class ResolveOverlayOpponent
             }
         }
 
-        $lastSeen = $opponent->matchArchetypes()
-            ->with('archetype')
-            ->latest('id')
-            ->first()
-            ?->archetype;
+        // Another tracker user's read of this opponent, from what they revealed
+        // in that match.
+        $observed = self::scoutedArchetype($scouting, 'observed');
 
-        if ($lastSeen) {
-            return [$lastSeen, 'local', false];
+        if ($observed) {
+            return [$observed, 'observed', false];
         }
 
         return [null, 'none', false];
+    }
+
+    /**
+     * The archetype from our most recent earlier match against this opponent
+     * in the live match's format. The live match's own row is skipped: it is
+     * this match's guess, not history.
+     */
+    private static function lastFaced(MtgoMatch $match, Player $opponent): ?Archetype
+    {
+        return $opponent->matchArchetypes()
+            ->join('matches', 'matches.id', '=', 'match_archetypes.mtgo_match_id')
+            ->where('matches.id', '!=', $match->id)
+            ->where('matches.format', $match->format)
+            ->orderByDesc('matches.started_at')
+            ->orderByDesc('match_archetypes.id')
+            ->select('match_archetypes.*')
+            ->with('archetype')
+            ->first()
+            ?->archetype;
     }
 
     /**
@@ -249,25 +288,37 @@ class ResolveOverlayOpponent
     }
 
     /**
-     * The cached payload gained its `uuid` key when the overlay shipped, so the
-     * key carries a version suffix: `cache.default` is the file driver, entries
-     * live for an hour, and they survive the restart that installs an upgrade —
-     * a pre-upgrade entry holding only `name` and `colors` would otherwise make
-     * every poll error for that opponent. The shape is re-checked anyway; a
-     * cache file is no more trustworthy than a log line.
+     * The API's answer for this opponent in this format, cached for an hour.
+     * The key carries the format, since the answer differs per format, and a
+     * version suffix: `cache.default` is the file driver and entries survive
+     * the restart that installs an upgrade, so an entry in an older shape must
+     * never be read back. The shape is re-checked anyway; a cache file is no
+     * more trustworthy than a log line.
+     *
+     * @return array<string, mixed>|null
      */
-    private static function leagueArchetype(MtgoMatch $match, Player $opponent): ?Archetype
+    private static function scouting(MtgoMatch $match, Player $opponent): ?array
     {
-        $league = Cache::remember(
-            $opponent->username.'_archetype_v2',
+        $scouting = Cache::remember(
+            $opponent->username.'_'.$match->format.'_scouting_v3',
             now()->addHour(),
-            fn () => FetchOpponentLeagueArchetype::run($opponent->username, $match->format) ?? false,
+            fn () => FetchOpponentScouting::run($opponent->username, $match->format) ?? false,
         );
 
-        if (! is_array($league) || ! isset($league['uuid'])) {
+        return is_array($scouting) ? $scouting : null;
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $scouting
+     */
+    private static function scoutedArchetype(?array $scouting, string $source): ?Archetype
+    {
+        $archetype = $scouting[$source] ?? null;
+
+        if (! is_array($archetype) || ! isset($archetype['uuid'])) {
             return null;
         }
 
-        return Archetype::query()->where('uuid', $league['uuid'])->first();
+        return Archetype::query()->where('uuid', $archetype['uuid'])->first();
     }
 }

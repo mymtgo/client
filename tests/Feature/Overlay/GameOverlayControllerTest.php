@@ -27,7 +27,7 @@ beforeEach(function () {
 
     // tests/Pest.php installs a blanket Http::fake() that always matches and
     // therefore shadows any URL-specific fake registered inside a test (see
-    // FetchOpponentLeagueArchetypeTest and ResolveOverlayOpponentTest for the
+    // FetchOpponentScoutingTest and ResolveOverlayOpponentTest for the
     // same workaround). Reset the stub list so per-test Http::fake([...])
     // calls actually take effect.
     $factory = Http::getFacadeRoot();
@@ -303,6 +303,7 @@ it('still responds when a pre-upgrade league cache entry is missing its uuid', f
     // versioned key must not read it — and the shape is re-checked regardless.
     Cache::put('overlayOpp_archetype', ['name' => 'Esper Blink', 'colors' => 'WUB'], now()->addHour());
     Cache::put('overlayOpp_archetype_v2', ['name' => 'Esper Blink', 'colors' => 'WUB'], now()->addHour());
+    Cache::put('overlayOpp_CModern_scouting_v3', ['league' => ['name' => 'Esper Blink', 'colors' => 'WUB']], now()->addHour());
 
     Http::fake(['*/api/players' => Http::response([], 404)]);
 
