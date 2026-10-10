@@ -45,6 +45,13 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        // The farewell release (0.47.0): the 0.x database stays as 0.46.0 left
+        // it, and a build's cache store may be that database. The updater's
+        // status entries are the only cache use left and nothing shows them.
+        if (config('farewell.enabled', true)) {
+            config(['cache.default' => 'array']);
+        }
+
         $this->app->singleton('mtgo', function ($app) {
             return new MtgoManager;
         });

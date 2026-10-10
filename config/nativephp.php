@@ -171,47 +171,13 @@ return [
     /**
      * The queue workers that get auto-started on your application start.
      *
-     * NOTE: `default`, `importer`, `match_archetypes`, and `archetypes` share
-     * a single worker to prevent writer-vs-writer contention on the SQLite
-     * file. Queues are listed in priority order — the worker drains `default`
-     * first (live match pipeline, highest urgency), then `importer` (bulk
-     * imports, heavy but rare), then `match_archetypes` (post-match
-     * enrichment), then `archetypes` (daily decklist refresh — bulk and
-     * non-urgent, must never block live work). See
-     * docs/superpowers/plans/2026-04-22-sqlite-transient-error-retention.md.
+     * None in the farewell release (0.47.0): MyMTGO 1.0 replaces this app and
+     * the database is left as it is for MyMTGO 1.0 to import. Every 0.x queue
+     * writes to it, `updates` included (it carries ReDecodeGameLogsJob, not
+     * the app updater), so a job left over from 0.46.0 must never run. The
+     * update re-check is a scheduled call and needs no worker.
      */
-    'queue_workers' => [
-        'pipeline' => [
-            'queues' => ['pipeline'],
-            'memory_limit' => 2048,
-            'timeout' => 60,
-            'sleep' => 3,
-        ],
-        'writer' => [
-            'queues' => ['default', 'importer', 'match_archetypes', 'archetypes'],
-            'memory_limit' => 1024,
-            'timeout' => 300,
-            'sleep' => 3,
-        ],
-        'downloads' => [
-            'queues' => ['card_downloads'],
-            'memory_limit' => 1024,
-            'timeout' => 60,
-            'sleep' => 3,
-        ],
-        'updates' => [
-            'queues' => ['updates'],
-            'memory_limit' => 1024,
-            'timeout' => 60,
-            'sleep' => 3,
-        ],
-        'sync' => [
-            'queues' => ['sync'],
-            'memory_limit' => 1024,
-            'timeout' => 3600,
-            'sleep' => 3,
-        ],
-    ],
+    'queue_workers' => [],
 
     /**
      * Windows NSIS installer options.

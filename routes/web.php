@@ -135,6 +135,9 @@ use Illuminate\Support\Facades\Route;
 
 Route::group([], function (Router $router) {
     $router->get('/', IndexController::class)->name('home');
+    // The farewell's download button: ShowFarewell opens the browser and
+    // answers before this action could run.
+    $router->get('farewell/download', IndexController::class)->name('farewell.download');
     $router->post('dashboard/layout', UpdateLayoutController::class)->name('dashboard.layout');
 
     $router->group([

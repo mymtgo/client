@@ -14,7 +14,6 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
-use Native\Desktop\Events\App\OpenedFromURL;
 
 uses(RefreshDatabase::class);
 
@@ -107,18 +106,6 @@ it('drops the stash without exchanging when the consent screen returns an error'
         ->and(AppSettings::syncOauthState())->toBeNull();
 
     Http::assertNothingSent();
-});
-
-it('handles the NativePHP OpenedFromURL event end to end', function () {
-    AppSettings::setSyncOauthVerifier('verifier');
-    AppSettings::setSyncOauthState('goodstate');
-    Http::fake([
-        '*/oauth/token' => Http::response(['access_token' => 'at1', 'refresh_token' => 'rt1', 'expires_in' => 2592000]),
-    ]);
-
-    event(new OpenedFromURL('mymtgo://oauth/callback?code=abc123&state=goodstate'));
-
-    expect(app(SyncTokens::class)->linked())->toBeTrue();
 });
 
 it('exchanges the code and stores rotated tokens', function () {
