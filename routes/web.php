@@ -57,7 +57,6 @@ use App\Http\Controllers\Decks\UpdateCoverArtController;
 use App\Http\Controllers\Decks\UpdateDeckArchetypeController;
 use App\Http\Controllers\Decks\UpdateNameController;
 use App\Http\Controllers\Decks\UpdatePerPageController;
-use App\Http\Controllers\Farewell\OpenDownloadController;
 use App\Http\Controllers\Games\OpenReplayController;
 use App\Http\Controllers\Games\RevokeReplayShareController;
 use App\Http\Controllers\Games\ShareReplayController;
@@ -136,7 +135,9 @@ use Illuminate\Support\Facades\Route;
 
 Route::group([], function (Router $router) {
     $router->get('/', IndexController::class)->name('home');
-    $router->get('farewell/download', OpenDownloadController::class)->name('farewell.download');
+    // The farewell's download button: ShowFarewell opens the browser and
+    // answers before this action could run.
+    $router->get('farewell/download', IndexController::class)->name('farewell.download');
     $router->post('dashboard/layout', UpdateLayoutController::class)->name('dashboard.layout');
 
     $router->group([

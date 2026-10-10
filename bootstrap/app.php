@@ -58,6 +58,11 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->respond(function (Response $response, Throwable $e, Request $request) {
             $status = $response->getStatusCode();
 
+            // The farewell release: an unknown page is the farewell screen too.
+            if ($status === 404 && config('farewell.enabled', true)) {
+                return ShowFarewell::page()->toResponse($request);
+            }
+
             if (! in_array($status, [403, 404, 419, 500, 503])) {
                 return $response;
             }

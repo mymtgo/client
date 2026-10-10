@@ -8,9 +8,11 @@
  */
 
 use App\Actions\Sync\Auth\HandleSyncOauthCallback;
+use App\Actions\WhatsNew\WhatsNewContent;
 use App\Facades\AppSettings;
 use App\Facades\Mtgo;
 use App\Http\Middleware\ShowFarewell;
+use App\Models\MtgoMatch;
 use App\Providers\NativeAppServiceProvider;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Contracts\Http\Kernel;
@@ -76,6 +78,55 @@ function farewellWebRoutes(): array
     return $routes;
 }
 
+/**
+ * An in-memory AppSettings that records every write.
+ *
+ * @param  array<string, mixed>  $store
+ */
+function farewellSettingsRecorder(array $store = []): App\Settings\AppSettings
+{
+    $recorder = new class extends App\Settings\AppSettings
+    {
+        /** @var array<int, string> */
+        public array $writes = [];
+
+        public array $initial = [];
+
+        protected array $store = [];
+
+        public function get(string $key, mixed $default = null): mixed
+        {
+            return array_key_exists($key, $this->store) ? $this->store[$key] : $default;
+        }
+
+        public function set(string $key, mixed $value): void
+        {
+            $this->writes[] = $key;
+            $this->store[$key] = $value;
+        }
+
+        public function forget(string $key): void
+        {
+            $this->writes[] = $key;
+            unset($this->store[$key]);
+        }
+
+        public function isOffline(): bool
+        {
+            return false;
+        }
+
+        /** @param  array<string, mixed>  $store */
+        public function seed(array $store): void
+        {
+            $this->store = $store;
+        }
+    };
+    $recorder->seed($store);
+
+    return $recorder;
+}
+
 it('ships with the farewell switched on', function () {
     $config = require config_path('farewell.php');
 
@@ -134,12 +185,31 @@ it('answers 410 to a post and to every other non-GET web route', function () {
     }
 });
 
-it('opens the v1 download in the browser through the shell', function () {
+it('opens the v1 download on the first click after the update from 0.46.0, writing nothing', function () {
     Shell::fake();
 
-    $this->get(route('farewell.download'))->assertRedirect(route('home'));
+    // An existing user: matches recorded, what's new last seen at 0.46.0, so
+    // the what's-new redirect would take any request that reached it.
+    config(['nativephp.version' => '0.47.0']);
+    WhatsNewContent::usePath(resource_path('content/whats-new.md'));
+    MtgoMatch::factory()->create();
+
+    $recorder = farewellSettingsRecorder(['whats_new_seen_version' => '0.46.0']);
+    AppSettings::swap($recorder);
+
+    $this->get(route('farewell.download'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page->component('Farewell'))
+        ->assertCookieMissing((string) config('session.cookie'));
 
     Shell::assertOpenedExternal(FAREWELL_DOWNLOAD_URL);
+
+    expect($recorder->writes)->toBe([]);
+});
+
+it('renders the farewell screen for an unknown page', function () {
+    $this->get('/no-such-page')
+        ->assertInertia(fn (AssertableInertia $page) => $page->component('Farewell'));
 });
 
 it('makes no API call when a page is opened', function () {

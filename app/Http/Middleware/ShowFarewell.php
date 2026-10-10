@@ -5,6 +5,8 @@ namespace App\Http\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use Inertia\Response as InertiaResponse;
+use Native\Desktop\Facades\Shell;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -12,8 +14,8 @@ use Symfony\Component\HttpFoundation\Response;
  * the session, the shared props, the what's-new redirect and route model
  * binding run: no page reads or writes anything. Every GET is the farewell
  * screen and every other method is refused with 410, so no controller runs
- * and no API call or database write can happen. The one exception is the
- * download button's own route, which only opens the browser.
+ * and no API call or database write can happen. The download button's own
+ * route opens the browser here, before any other middleware.
  */
 class ShowFarewell
 {
@@ -39,10 +41,21 @@ class ShowFarewell
             return response('MyMTGO 1.0 replaces this app.', 410);
         }
 
+        // The "Download MyMTGO" button. Handled here so the session, the
+        // what's-new redirect and every other web middleware never run: the
+        // first click after the update opens the browser and writes nothing.
         if ($request->routeIs('farewell.download')) {
-            return $next($request);
+            Shell::openExternal((string) config('farewell.download_url'));
         }
 
+        return self::page()->toResponse($request);
+    }
+
+    /**
+     * The farewell screen, also used for unknown pages.
+     */
+    public static function page(): InertiaResponse
+    {
         return Inertia::render(self::COMPONENT, [
             'title' => self::TITLE,
             'body' => self::BODY,
@@ -50,6 +63,6 @@ class ShowFarewell
             'downloadUrl' => (string) config('farewell.download_url'),
             'smartScreen' => self::SMARTSCREEN,
             'uninstall' => self::UNINSTALL,
-        ])->toResponse($request);
+        ]);
     }
 }
