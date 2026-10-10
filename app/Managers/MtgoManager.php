@@ -4,28 +4,21 @@ namespace App\Managers;
 
 use App\Actions\Accounts\BackfillAccountLoginIds;
 use App\Actions\AutoUpdate\ResolveUpdateStatus;
-use App\Actions\Cards\EnqueueCardStats;
 use App\Actions\Logs\FindMtgoLogPath;
 use App\Actions\Logs\GetLogFilePaths;
 use App\Actions\Logs\IngestLogInstance;
-use App\Actions\Logs\PruneProcessedLogEvents;
 use App\Actions\RegisterDevice;
 use App\Actions\Settings\ValidatePath;
 use App\Facades\AppSettings;
 use App\Jobs\CheckArchetypeVersion;
 use App\Jobs\DownloadArchetypes;
 use App\Jobs\PopulateMissingCardData;
-use App\Jobs\RunPipelineJob;
-use App\Jobs\RunSyncJob;
-use App\Jobs\ShipCardStats;
-use App\Jobs\ShipTournamentObservations;
 use App\Jobs\SubmitMatch;
 use App\Jobs\SyncDecks;
 use App\Models\Account;
 use App\Models\Archetype;
 use App\Models\Deck;
 use App\Models\MtgoMatch;
-use App\Services\Sync\SyncTokens;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -279,87 +272,15 @@ class MtgoManager
 
     public function schedule(Schedule $schedule): void
     {
-        // Dispatch the pipeline tick as a unique queued job so a long-running
-        // tick (backlog drain, transient SQLite contention) cannot stack
-        // overlapping runs against each other. RunPipelineJob is ShouldBeUnique;
-        // duplicate dispatches while one is in flight drop silently.
-        $schedule->job(new RunPipelineJob)
-            ->everySecond()
-            ->name('process_matches');
-
-        // Cross-device sync. Gated on the device actually being linked, and
-        // on offline mode being off, so an unlinked or offline install
-        // never dispatches a job that would only abort itself inside
-        // SyncRunner (offline mode throws OfflineModeException from the
-        // first HTTP call, which SyncRunner also catches as a belt-and-
-        // braces info-level skip for a run already queued when the user
-        // goes offline). withoutOverlapping's expiry is in minutes, per
-        // this file's convention; 120 comfortably outlives the job's own
-        // 3600-second (60-minute) timeout so a killed worker's stale lock
-        // can't outlive a legitimate retry window.
-        $schedule->job(new RunSyncJob)
-            ->everyThirtyMinutes()
-            ->name('run_sync')
-            ->withoutOverlapping(120)
-            ->when(fn () => ! AppSettings::isOffline() && app(SyncTokens::class)->linked());
-
-        // Periodic maintenance (unchanged)
-        $schedule->call(fn () => $this->retryUnsubmittedMatches())
-            ->everyMinute()
-            ->name('submit_matches')
-            ->skip(fn () => AppSettings::isOffline());
-
-        // Pick up new/updated deck XML files so RunPipeline's orphan relinker
-        // has fresh DeckVersions to match against.
-        $schedule->call(fn () => $this->syncDecks())
-            ->everyFiveMinutes()
-            ->name('sync_decks');
-
+        // The farewell release (0.47.0): MyMTGO 1.0 replaces this app, so
+        // nothing is ingested, synced, submitted or shipped any more and the
+        // database is left as it is for MyMTGO 1.0 to import. Only the
+        // update re-check stays, so a 0.47.x fix could still reach users.
         // NativePHP only checks for app updates once, at Electron boot, and
-        // heavy players leave the app running for days. Re-check so the
-        // banner and tray learn about releases without a restart.
+        // heavy players leave the app running for days.
         $schedule->call(fn () => AutoUpdater::checkForUpdates())
             ->everyThreeHours()
             ->name('check_for_updates')
             ->when(fn () => ResolveUpdateStatus::active());
-
-        $schedule->job(new ShipTournamentObservations)
-            ->everyThirtySeconds()
-            ->name('ship_tournament_observations')
-            ->withoutOverlapping(60)
-            ->skip(fn () => AppSettings::isOffline());
-
-        $schedule->job(new ShipCardStats)
-            ->everyThirtySeconds()
-            ->name('ship_card_stats')
-            ->withoutOverlapping(60)
-            ->skip(fn () => AppSettings::isOffline());
-
-        $schedule->call(fn () => EnqueueCardStats::run())
-            ->everyMinute()
-            ->name('enqueue_card_stats')
-            ->skip(fn () => AppSettings::isOffline());
-
-        $schedule->call(fn () => $this->populateMissingCardData())
-            ->hourly();
-
-        // Read-only probe of the API archetype version. Drives the "archetypes
-        // out of date" banner; the refresh itself stays user-triggered.
-        $schedule->job(new CheckArchetypeVersion)
-            ->hourly()
-            ->name('check_archetype_version')
-            ->skip(fn () => AppSettings::isOffline());
-
-        $schedule->call(fn () => PruneProcessedLogEvents::run())
-            ->daily()
-            ->name('prune_log_events');
-
-        // Belt and braces for the call after ingestion: an account can be
-        // registered while the id-bearing login row is already stored, and
-        // an account with no id never attests, so the website holds its
-        // matches under a player the user does not hold.
-        $schedule->call(fn () => BackfillAccountLoginIds::run())
-            ->hourly()
-            ->name('backfill_account_login_ids');
     }
 }

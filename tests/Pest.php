@@ -59,6 +59,11 @@ pest()->extend(TestCase::class)
             config(['logging.channels.sync.path' => storage_path("logs/sync_{$token}.log")]);
         }
 
+        // The farewell release (0.47.0) answers every page with one screen.
+        // The page tests below it keep exercising the controllers; the
+        // farewell's own tests switch it back on.
+        config(['farewell.enabled' => false]);
+
         // Reset request-scoped Account cache between tests.
         Account::flushCurrent();
 

@@ -11,7 +11,6 @@ use App\Models\LogEvent;
 use App\Models\LogInstance;
 use App\Models\TournamentObservationQueue;
 use Illuminate\Console\Scheduling\Event;
-use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
 use Tests\Helpers\CardStatsTelemetryFactory;
@@ -43,45 +42,6 @@ function makeEligibleTournamentSyncEvent(): LogEvent
         'tournament_token' => 'tok-1',
     ]);
 }
-
-/**
- * `Schedule` is normally populated by the `withSchedule()` callback wired
- * up in bootstrap/app.php, but that callback only fires when Laravel's
- * console `Application` bootstraps (i.e. when an artisan command actually
- * runs) — not merely by resolving `Schedule::class` from the container.
- * Registering `MtgoManager::schedule()` against a fresh `Schedule` instance
- * directly sidesteps that timing and gives every test a deterministic,
- * fully-populated schedule to inspect.
- */
-function scheduledEventNamed(string $name): Event
-{
-    $schedule = app(Schedule::class);
-
-    if (empty($schedule->events())) {
-        app(MtgoManager::class)->schedule($schedule);
-    }
-
-    $events = collect($schedule->events());
-
-    return $events->first(fn ($event) => str_contains((string) $event->description, $name)
-        || str_contains((string) $event->mutexName(), $name))
-        ?? throw new RuntimeException("No scheduled event matching {$name}");
-}
-
-it('skips the shipping jobs while offline', function () {
-    AppSettings::setOffline(true);
-
-    expect(scheduledEventNamed('ship_card_stats')->filtersPass(app()))->toBeFalse()
-        ->and(scheduledEventNamed('ship_tournament_observations')->filtersPass(app()))->toBeFalse()
-        ->and(scheduledEventNamed('submit_matches')->filtersPass(app()))->toBeFalse()
-        ->and(scheduledEventNamed('enqueue_card_stats')->filtersPass(app()))->toBeFalse();
-});
-
-it('runs the shipping jobs while online', function () {
-    AppSettings::setOffline(false);
-
-    expect(scheduledEventNamed('ship_card_stats')->filtersPass(app()))->toBeTrue();
-});
 
 it('does not enqueue card stats while offline', function () {
     // Fixture is deliberately eligible — same shape the "control" test below

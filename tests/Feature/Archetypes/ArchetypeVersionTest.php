@@ -2,13 +2,11 @@
 
 use App\Actions\Archetypes\ApplyArchetypeRefresh;
 use App\Facades\AppSettings;
-use App\Facades\Mtgo;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Jobs\CheckArchetypeVersion;
 use App\Jobs\DownloadArchetypes;
 use App\Managers\MtgoManager;
 use App\Models\Archetype;
-use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -120,22 +118,6 @@ it('marks archetypes up to date without a page when the refresh plan is empty', 
         ->assertSessionHas('success');
 
     expect(AppSettings::archetypeVersion())->toBe('8');
-});
-
-it('schedules an hourly archetype version check that skips while offline', function () {
-    $schedule = app(Schedule::class);
-    Mtgo::schedule($schedule);
-
-    $event = collect($schedule->events())->first(fn ($e) => $e->description === 'check_archetype_version');
-
-    expect($event)->not->toBeNull()
-        ->and($event->expression)->toBe('0 * * * *');
-
-    AppSettings::setOffline(true);
-    expect($event->filtersPass(app()))->toBeFalse();
-
-    AppSettings::setOffline(false);
-    expect($event->filtersPass(app()))->toBeTrue();
 });
 
 it('checks the archetype version at boot when archetypes are already synced', function () {
